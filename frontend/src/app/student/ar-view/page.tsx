@@ -58,7 +58,7 @@ function ARViewerContent() {
             const items = data.vocabulary as any[]
             const found = items.find(m => m.id === id)
             if (found) {
-              const defaultUrl = defaultModelGlbUrls[id] || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
+              const defaultUrl = defaultModelGlbUrls[id as string] || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
               setModel({
                 ...found,
                 glbUrl: found.glbUrl || defaultUrl
@@ -82,7 +82,7 @@ function ARViewerContent() {
         const qImageUrl = searchParams.get('imageUrl')
 
         if (qNameEn) {
-          const defaultUrl = defaultModelGlbUrls[id] || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
+          const defaultUrl = defaultModelGlbUrls[id as string] || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
           setModel({
             id: id || '',
             nameEn: qNameEn,
@@ -105,7 +105,7 @@ function ARViewerContent() {
             const parsed = JSON.parse(storedModels)
             const found = parsed.find((m: any) => m.id === id)
             if (found) {
-              const defaultUrl = defaultModelGlbUrls[id] || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
+              const defaultUrl = defaultModelGlbUrls[id as string] || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
               setModel({
                 ...found,
                 glbUrl: found.glbUrl || defaultUrl
