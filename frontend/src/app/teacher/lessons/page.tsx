@@ -826,21 +826,48 @@ export default function TeacherLessonsDashboard() {
         setARSent(autoSent)
         setARDesc(autoDesc)
 
-        // Map Image URL based on keywords
+        // Map Image and 3D Model URLs based on keywords
         const lowerEn = autoEn.toLowerCase()
         let autoImg = '/images/espresso_cup_3d.png'
-        if (lowerEn.includes('spoon') || lowerEn.includes('cutlery') || lowerEn.includes('fork') || lowerEn.includes('knife')) {
-          autoImg = '/images/soup_spoon_3d.png'
-        } else if (lowerEn.includes('glass') || lowerEn.includes('wine') || lowerEn.includes('champagne') || lowerEn.includes('goblet')) {
+        let autoGlb = ''
+        let autoUsdz = ''
+
+        if (lowerEn.includes('glass') || lowerEn.includes('wine') || lowerEn.includes('champagne') || lowerEn.includes('goblet')) {
           autoImg = '/images/wine_glass_3d.png'
+          autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WineGlass/glTF-Binary/WineGlass.glb'
+        } else if (lowerEn.includes('teapot') || lowerEn.includes('tea pot') || lowerEn.includes('kettle')) {
+          autoImg = '/images/teapot_3d.png'
+          autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb'
+        } else if (lowerEn.includes('bottle') || lowerEn.includes('flask') || lowerEn.includes('water')) {
+          autoImg = '/images/water_bottle_3d.png'
+          autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/WaterBottle/glTF-Binary/WaterBottle.glb'
+        } else if (lowerEn.includes('cake') || lowerEn.includes('dessert') || lowerEn.includes('sweet') || lowerEn.includes('bakery')) {
+          autoImg = '/images/cake_3d.png'
+          autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Cake/glTF-Binary/Cake.glb'
+        } else if (lowerEn.includes('apple') || lowerEn.includes('fruit')) {
+          autoImg = '/images/apple_3d.png'
+          autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Apple/glTF-Binary/Apple.glb'
+        } else if (lowerEn.includes('avocado')) {
+          autoImg = '/images/plate_3d.png'
+          autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Avocado/glTF-Binary/Avocado.glb'
+        } else if (lowerEn.includes('fish') || lowerEn.includes('seafood') || lowerEn.includes('salmon')) {
+          autoImg = '/images/plate_3d.png'
+          autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/BarramundiFish/glTF-Binary/BarramundiFish.glb'
+        } else if (lowerEn.includes('spoon') || lowerEn.includes('cutlery') || lowerEn.includes('fork') || lowerEn.includes('knife')) {
+          autoImg = '/images/soup_spoon_3d.png'
+          autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb' // fallback to teapot
         } else if (lowerEn.includes('plate') || lowerEn.includes('dish') || lowerEn.includes('bowl')) {
           autoImg = '/images/plate_3d.png'
-        } else if (lowerEn.includes('shaker') || lowerEn.includes('cocktail') || lowerEn.includes('mix')) {
-          autoImg = '/images/cocktail_shaker_3d.png'
+          autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Avocado/glTF-Binary/Avocado.glb' // fallback to avocado
+        } else {
+          autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb'
         }
+
         setArImageUrl(autoImg)
+        setArGlbUrl(autoGlb)
+        setArUsdzUrl(autoUsdz)
         setArCreationMode('manual')
-        alert('AI จัดร่างรายละเอียดและแมปภาพโมเดล 3D สำเร็จ! ท่านสามารถตรวจสอบและกดบันทึกเข้าคลังด้านล่าง')
+        alert('AI จัดร่างรายละเอียดและแมปปิ้งคลังไฟล์ 3D (.glb & .usdz) สำเร็จ! ท่านสามารถปรับปรุงเพิ่มเติมและกดบันทึกเข้าคลัง')
       } else {
         throw new Error('Invalid format')
       }
@@ -854,16 +881,43 @@ export default function TeacherLessonsDashboard() {
       
       const lowerEn = arAiTopic.toLowerCase()
       let autoImg = '/images/espresso_cup_3d.png'
-      if (lowerEn.includes('spoon') || lowerEn.includes('cutlery') || lowerEn.includes('fork') || lowerEn.includes('knife')) {
-        autoImg = '/images/soup_spoon_3d.png'
-      } else if (lowerEn.includes('glass') || lowerEn.includes('wine') || lowerEn.includes('champagne') || lowerEn.includes('goblet')) {
+      let autoGlb = ''
+      let autoUsdz = ''
+
+      if (lowerEn.includes('glass') || lowerEn.includes('wine') || lowerEn.includes('champagne') || lowerEn.includes('goblet')) {
         autoImg = '/images/wine_glass_3d.png'
+        autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WineGlass/glTF-Binary/WineGlass.glb'
+      } else if (lowerEn.includes('teapot') || lowerEn.includes('tea pot') || lowerEn.includes('kettle')) {
+        autoImg = '/images/teapot_3d.png'
+        autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb'
+      } else if (lowerEn.includes('bottle') || lowerEn.includes('flask') || lowerEn.includes('water')) {
+        autoImg = '/images/water_bottle_3d.png'
+        autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/WaterBottle/glTF-Binary/WaterBottle.glb'
+      } else if (lowerEn.includes('cake') || lowerEn.includes('dessert') || lowerEn.includes('sweet') || lowerEn.includes('bakery')) {
+        autoImg = '/images/cake_3d.png'
+        autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Cake/glTF-Binary/Cake.glb'
+      } else if (lowerEn.includes('apple') || lowerEn.includes('fruit')) {
+        autoImg = '/images/apple_3d.png'
+        autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Apple/glTF-Binary/Apple.glb'
+      } else if (lowerEn.includes('avocado')) {
+        autoImg = '/images/plate_3d.png'
+        autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Avocado/glTF-Binary/Avocado.glb'
+      } else if (lowerEn.includes('fish') || lowerEn.includes('seafood') || lowerEn.includes('salmon')) {
+        autoImg = '/images/plate_3d.png'
+        autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/BarramundiFish/glTF-Binary/BarramundiFish.glb'
+      } else if (lowerEn.includes('spoon') || lowerEn.includes('cutlery') || lowerEn.includes('fork') || lowerEn.includes('knife')) {
+        autoImg = '/images/soup_spoon_3d.png'
+        autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb'
       } else if (lowerEn.includes('plate') || lowerEn.includes('dish') || lowerEn.includes('bowl')) {
         autoImg = '/images/plate_3d.png'
-      } else if (lowerEn.includes('shaker') || lowerEn.includes('cocktail') || lowerEn.includes('mix')) {
-        autoImg = '/images/cocktail_shaker_3d.png'
+        autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Avocado/glTF-Binary/Avocado.glb'
+      } else {
+        autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb'
       }
+
       setArImageUrl(autoImg)
+      setArGlbUrl(autoGlb)
+      setArUsdzUrl(autoUsdz)
       setArCreationMode('manual')
       alert('จัดร่างอุปกรณ์สำเร็จ (โหมดจำลองออฟไลน์)')
     } finally {
