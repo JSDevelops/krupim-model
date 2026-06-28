@@ -128,7 +128,8 @@ export default function ExplorePage() {
 
     try {
       const storedApiKey = typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : ''
-      const resp = await fetch('http://localhost:3001/api/scan', {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+      const resp = await fetch(`${backendUrl}/api/scan`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

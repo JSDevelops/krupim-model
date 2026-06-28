@@ -29,7 +29,8 @@ export default function AdminDashboard() {
   async function handlePing() {
     setPinging(true)
     try {
-      const resp = await fetch('http://localhost:3001/api/ping-all')
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+      const resp = await fetch(`${backendUrl}/api/ping-all`)
       if (resp.ok) {
         const data = await resp.json()
         setPingData(data.services)

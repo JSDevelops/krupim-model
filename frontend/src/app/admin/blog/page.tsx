@@ -34,7 +34,8 @@ export default function AIBlogWriterPage() {
     setBlog(null)
 
     try {
-      const resp = await fetch('http://localhost:3001/api/blog/generate', {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+      const resp = await fetch(`${backendUrl}/api/blog/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ topic, category, tone, keywords })

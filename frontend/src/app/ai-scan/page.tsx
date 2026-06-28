@@ -35,7 +35,8 @@ export default function AIScanPage() {
     setError('')
     setResult(null)
     try {
-      const resp = await fetch('http://localhost:3001/api/scan', {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+      const resp = await fetch(`${backendUrl}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64: base64, mimeType })

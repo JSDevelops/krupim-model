@@ -559,7 +559,8 @@ export default function TeacherLessonsDashboard() {
     const planContext = linkedPlan ? `แผนการสอนเรื่อง: ${linkedPlan.title}. คลังคำศัพท์ที่เรียน: ${linkedPlan.vocabulary.join(', ')}` : ''
 
     try {
-      const resp = await fetch('http://localhost:3001/api/blog/generate', {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+      const resp = await fetch(`${backendUrl}/api/blog/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -604,7 +605,8 @@ export default function TeacherLessonsDashboard() {
     }
     setAiGenerating(true)
     try {
-      const resp = await fetch('http://localhost:3001/api/blog/generate', {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+      const resp = await fetch(`${backendUrl}/api/blog/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -631,7 +633,8 @@ export default function TeacherLessonsDashboard() {
     }
     setAiGenerating(true)
     try {
-      const resp = await fetch('http://localhost:3001/api/blog/generate', {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+      const resp = await fetch(`${backendUrl}/api/blog/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
