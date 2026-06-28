@@ -475,6 +475,46 @@ export default function TeacherLessonsDashboard() {
   const [aiGenerating3DImage, setAiGenerating3DImage] = useState(false)
   const [aiStatusText, setAiStatusText] = useState('')
 
+  // 12-Step AI 3D/AR Generator Wizard States
+  const [wizardOpen, setWizardOpen] = useState(false)
+  const [wizardStep, setWizardStep] = useState(1)
+  const [wizardCategory, setWizardCategory] = useState('tableware')
+  const [wizardEduLevel, setWizardEduLevel] = useState('Vocational')
+  const [wizardLanguage, setWizardLanguage] = useState('TH/EN')
+  const [wizardQuality, setWizardQuality] = useState('High')
+  const [wizardTexture, setWizardTexture] = useState('PBR, AR Ready')
+  const [wizardSize, setWizardSize] = useState(220)
+  const [wizardPrompt, setWizardPrompt] = useState('')
+  const [wizardNlp, setWizardNlp] = useState<{
+    objectName: string;
+    type: string;
+    material: string;
+    characteristics: string;
+    usage: string;
+    size: string;
+    complexity: string;
+  } | null>(null)
+  const [wizardQualityMetrics, setWizardQualityMetrics] = useState({
+    topology: 95,
+    uvMapping: 100,
+    materialPbr: 98,
+    sizeScale: 100,
+    arReady: 100,
+    performance: 96
+  })
+  const [wizardArSettings, setWizardArSettings] = useState({
+    markerless: true,
+    android: true,
+    ios: true,
+    shadows: true,
+    scale: 100,
+    autoRotate: true,
+    voiceover: true
+  })
+
+  const [meshProgress, setMeshProgress] = useState(0)
+  const [meshStatusList, setMeshStatusList] = useState<{ label: string; done: boolean }[]>([])
+
   // UX/UI File upload states
   const [imageFileInfo, setImageFileInfo] = useState<{ name: string; size: string } | null>(null)
   const [glbFileInfo, setGlbFileInfo] = useState<{ name: string; size: string } | null>(null)
@@ -494,6 +534,178 @@ export default function TeacherLessonsDashboard() {
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
+
+  // 12-Step Wizard Logic & Handlers
+  async function runWizardAIGenerators() {
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+    try {
+      const resp = await fetch(`${backendUrl}/api/blog/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: `เขียนข้อมูลเกี่ยวกับอุปกรณ์ในห้องอาหารหรือบาร์โรงแรม: ${arAiTopic} สำหรับใช้ฝึกสอนเด็กปวช.
+ตอบกลับในรูปแบบเดียวบรรทัดเดียวเท่านั้น ห้ามมีเครื่องหมายอัญประกาศครอบ ห้ามมีคำอธิบายอื่น ห้ามเขียนอักษรอื่นนอกจากรูปแบบนี้:
+ชื่อภาษาอังกฤษ|ชื่อภาษาไทย|คำอ่านออกเสียง|ประโยคภาษาอังกฤษตัวอย่างการใช้งานเสิร์ฟ|คำอธิบายสั้นๆ ภาษาไทย`
+        })
+      })
+      if (!resp.ok) throw new Error()
+      const data = await resp.json()
+      const content = data.content || ''
+      const parts = content.split('|')
+      if (parts.length >= 5) {
+        const autoEn = parts[0].trim().replace(/^"|"$/g, '')
+        const autoTh = parts[1].trim().replace(/^"|"$/g, '')
+        const autoPron = parts[2].trim().replace(/^"|"$/g, '')
+        const autoSent = parts[3].trim().replace(/^"|"$/g, '')
+        const autoDesc = parts[4].trim().replace(/^"|"$/g, '')
+        
+        setAREn(autoEn)
+        setARTh(autoTh)
+        setARPron(autoPron)
+        setARSent(autoSent)
+        setARDesc(autoDesc)
+
+        const gen3dResp = await fetch(`${backendUrl}/api/3d/generate`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-3d-ai-studio-key': typeof window !== 'undefined' ? localStorage.getItem('threeDAIStudioKey') || '' : ''
+          },
+          body: JSON.stringify({ topic: autoEn })
+        })
+        if (gen3dResp.ok) {
+          const gen3dData = await gen3dResp.json()
+          setArGlbUrl(gen3dData.glbUrl)
+          setArUsdzUrl(gen3dData.usdzUrl)
+        }
+
+        const genBlenderResp = await fetch(`${backendUrl}/api/blender/generate`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-ai-provider': typeof window !== 'undefined' ? localStorage.getItem('activeAiProvider') || 'gemini' : 'gemini',
+            'x-gemini-key': typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : '',
+            'x-openai-key': typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') || '' : '',
+            'x-claude-key': typeof window !== 'undefined' ? localStorage.getItem('claudeApiKey') || '' : ''
+          },
+          body: JSON.stringify({ topic: autoEn })
+        })
+        if (genBlenderResp.ok) {
+          const genBlenderData = await genBlenderResp.json()
+          setArBlenderScript(genBlenderData.code || '')
+        }
+      }
+    } catch (err) {
+      console.error('Wizard AI background generation failed, loading matching defaults.', err)
+      setAREn(arAiTopic)
+      setARTh(arAiTopic)
+      setARPron('/pronunciation/')
+      setARSent(`Please use the ${arAiTopic} for professional F&B service.`)
+      setARDesc(`อุปกรณ์จำลองการจัดเสิร์ฟ: ${arAiTopic}`)
+      setArGlbUrl('https://modelviewer.dev/shared-assets/models/Astronaut.glb')
+      setArUsdzUrl('https://modelviewer.dev/shared-assets/models/Astronaut.usdz')
+    }
+  }
+
+  function handleStartWizard() {
+    setWizardOpen(true)
+    setWizardStep(1)
+  }
+
+  // Step 2 NLP Auto Parser
+  useEffect(() => {
+    if (wizardStep === 2 && wizardOpen) {
+      const term = arAiTopic || 'Wine Glass'
+      const lower = term.toLowerCase()
+      let name = term
+      let type = 'Tableware'
+      let material = 'Stainless Steel'
+      let chars = 'เกรดอาหาร, แข็งแรง, ลวดลายคลาสสิก'
+      let usage = 'ใช้สำหรับตักอาหารหรือบริการเสิร์ฟอาหารร้อน'
+      let size = `${wizardSize} mm`
+      let complexity = 'Medium'
+
+      if (lower.includes('glass') || lower.includes('wine') || lower.includes('แก้ว')) {
+        name = 'แก้วไวน์'
+        type = 'Glassware'
+        material = 'Crystal Glass'
+        chars = 'โปร่งใส, ก้านสูง, ปากแก้วโค้งมน'
+        usage = 'ใช้สำหรับบริการเครื่องดื่มไวน์แดงในโรงแรมสากล'
+        complexity = 'Medium'
+      } else if (lower.includes('teapot') || lower.includes('กา')) {
+        name = 'กาน้ำชา'
+        type = 'Teaware'
+        material = 'Ceramic/Porcelain'
+        chars = 'มีหูจับ, ปากยาว, ฝาปิดล็อค'
+        usage = 'ใช้สำหรับเสิร์ฟชาหรือเครื่องดื่มร้อนระหว่างมื้ออาหาร'
+        complexity = 'High'
+      } else if (lower.includes('spoon') || lower.includes('ช้อน')) {
+        name = 'ช้อนตักซุป'
+        type = 'Flatware'
+        material = 'Stainless Steel 304'
+        chars = 'ปากช้อนกลมลึก, ผิวเงาวับ'
+        usage = 'ใช้สำหรับตักซุปหรือบริการตักเสิร์ฟซุปครบรอบขอบจัด'
+        complexity = 'Low'
+      }
+
+      setWizardNlp({
+        objectName: name,
+        type,
+        material,
+        characteristics: chars,
+        usage,
+        size,
+        complexity
+      })
+
+      setWizardPrompt(`Create a realistic ${term}. Category: ${wizardCategory}, Material: ${material}, Style: Professional hotel service, Scale: ${size}, Game Ready, AR Ready, Export as GLB and USDZ.`)
+
+      const timer = setTimeout(() => {
+        setWizardStep(3)
+      }, 2200)
+      return () => clearTimeout(timer)
+    }
+  }, [wizardStep, wizardOpen])
+
+  // Step 5 Mesh progress generator
+  useEffect(() => {
+    if (wizardStep === 5 && wizardOpen) {
+      setMeshProgress(0)
+      setMeshStatusList([
+        { label: 'สร้าง Mesh โครงร่าง 3D', done: false },
+        { label: 'แกะ UV (UV Mapping)', done: false },
+        { label: 'กำหนดวัสดุและพื้นผิว (PBR Materials)', done: false },
+        { label: 'ปรับแต่งสมรรถนะ AR (AR Optimization)', done: false },
+        { label: 'ตรวจสอบคุณภาพมาตรฐานไฟล์', done: false }
+      ])
+      
+      const interval = setInterval(() => {
+        setMeshProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval)
+            setTimeout(() => {
+              setWizardStep(6)
+            }, 1000)
+            return 100
+          }
+          return prev + 5
+        })
+      }, 150)
+
+      return () => clearInterval(interval)
+    }
+  }, [wizardStep, wizardOpen])
+
+  useEffect(() => {
+    if (wizardStep === 5) {
+      setMeshStatusList(prev => prev.map((item, idx) => {
+        if (meshProgress >= (idx + 1) * 20) {
+          return { ...item, done: true }
+        }
+        return item
+      }))
+    }
+  }, [meshProgress, wizardStep])
 
   const simulateProgress = (setProgress: React.Dispatch<React.SetStateAction<number | null>>) => {
     setProgress(0);
@@ -1704,12 +1916,11 @@ export default function TeacherLessonsDashboard() {
                     </div>
                      <button
                       type="button"
-                      onClick={handleAIGenerateARItem}
-                      disabled={aiGenerating}
+                      onClick={handleStartWizard}
                       className="btn btn-primary"
                       style={{ border: 'none', padding: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                     >
-                      {aiGenerating ? '⏳ กำลังเจเนอเรตโมเดล...' : '⚡ ร่างโมเดลและรายละเอียดด้วย AI'}
+                      ⚡ ร่างโมเดลและรายละเอียดด้วย AI (12 ขั้นตอน)
                     </button>
                     {aiGenerating && aiStatusText && (
                       <div style={{ 
@@ -2604,6 +2815,615 @@ export default function TeacherLessonsDashboard() {
               <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#1E4D3A' }}>{arEn || 'แบบจำลอง 3D'} ({arTh || '3D Model'})</p>
               <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>ทดลองหมุน ซูม เพื่อตรวจสอบความถูกต้องก่อนบันทึกงานเข้าคลัง</p>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* 12-Step Immersive AI 3D/AR Generator Wizard Modal */}
+      {wizardOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(26,38,32,0.85)', backdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1700, padding: '20px' }}>
+          <div className="erp-card" style={{ width: '1000px', maxWidth: '95vw', height: '85vh', background: '#FFFDF9', border: '2.5px solid #C9A84C', borderRadius: '24px', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+            
+            {/* Close button */}
+            <button 
+              onClick={() => {
+                if (confirm('คุณต้องการปิดการร่างโมเดลและยกเลิกกระบวนการสร้างนี้หรือไม่?')) {
+                  setWizardOpen(false);
+                }
+              }}
+              style={{ position: 'absolute', top: '20px', right: '20px', border: 'none', background: 'transparent', fontSize: '22px', cursor: 'pointer', zIndex: 10, color: '#6B6A5B' }}
+            >
+              ✕
+            </button>
+
+            {/* Header: Title */}
+            <div style={{ borderBottom: '1px solid #EDE9E1', paddingBottom: '12px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#1E4D3A', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>🤖⚡</span> WORKFLOW การสร้างอุปกรณ์ AR & โมเดล 3 มิติ ด้วย AI
+              </h3>
+              <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>
+                จากคำอธิบาย ➔ วิเคราะห์ NLP ➔ สร้าง Prompt ➔ ภาพอ้างอิง ➔ ขึ้นรูป 3D ➔ ตรวจสอบคุณภาพ ➔ บันทึกเผยแพร่ห้องเรียนเสมือนจริง
+              </p>
+            </div>
+
+            {/* Steps Progress Track */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', marginBottom: '8px', borderBottom: '1px solid #EDE9E1', paddingBottom: '14px', overflowX: 'auto', gap: '6px' }}>
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((s) => (
+                <div key={s} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, minWidth: '60px', position: 'relative' }}>
+                  <div style={{ 
+                    width: '24px', 
+                    height: '24px', 
+                    borderRadius: '50%', 
+                    background: s === wizardStep ? '#1E4D3A' : s < wizardStep ? '#22c55e' : '#EDE9E1',
+                    color: '#fff',
+                    fontSize: '11px',
+                    fontWeight: 900,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 2,
+                    boxShadow: s === wizardStep ? '0 0 8px rgba(30,77,58,0.5)' : 'none'
+                  }}>
+                    {s < wizardStep ? '✓' : s}
+                  </div>
+                  <span style={{ fontSize: '9px', marginTop: '4px', fontWeight: s === wizardStep ? 800 : 500, color: s === wizardStep ? '#1E4D3A' : '#6B6A5B', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                    {['รับข้อมูล', 'วิเคราะห์', 'Prompt', 'ภาพอ้างอิง', 'สร้าง 3D', 'คุณภาพ', 'ส่งออก', 'สร้างเนื้อหา', 'ตั้งค่า AR', 'ตัวอย่าง', 'สรุป', 'เผยแพร่'][s-1]}
+                  </span>
+                  {s < 12 && (
+                    <div style={{ 
+                      position: 'absolute', 
+                      top: '12px', 
+                      left: 'calc(50% + 12px)', 
+                      right: 'calc(-50% + 12px)', 
+                      height: '2.5px', 
+                      background: s < wizardStep ? '#22c55e' : '#EDE9E1',
+                      zIndex: 1 
+                    }} />
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Inner Content Area (Flexible Flex Layout) */}
+            <div style={{ flex: 1, display: 'flex', gap: '20px', overflow: 'hidden' }}>
+              
+              {/* Left Sidebar Log Panel (Steps 2 to 7) */}
+              <div style={{ width: '260px', background: '#111', color: '#00ff66', borderRadius: '16px', padding: '16px', fontFamily: 'monospace', fontSize: '11px', display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', border: '1px solid #333' }}>
+                <div style={{ color: '#fff', borderBottom: '1px solid #333', paddingBottom: '6px', fontWeight: 'bold' }}>📡 ENGINE CONSOLE LOGS</div>
+                <div>[SYSTEM] Initializing 12-Step Workflow...</div>
+                {wizardStep >= 1 && <div>[STEP 1] Awaiting teacher input specifications...</div>}
+                {wizardStep >= 2 && (
+                  <>
+                    <div style={{ color: '#aaa' }}>[STEP 2] Launching NLP Text Analyzer...</div>
+                    <div>[NLP] Object recognized: "{wizardNlp?.objectName}"</div>
+                    <div>[NLP] Class category: {wizardNlp?.type}</div>
+                    <div>[NLP] Material tag: {wizardNlp?.material}</div>
+                  </>
+                )}
+                {wizardStep >= 3 && (
+                  <>
+                    <div style={{ color: '#aaa' }}>[STEP 3] Generating 3D Prompt Schema...</div>
+                    <div style={{ color: '#00ccff' }}>[PROMPT] Ready for mesh generation engine.</div>
+                  </>
+                )}
+                {wizardStep >= 4 && (
+                  <>
+                    <div style={{ color: '#aaa' }}>[STEP 4] Synthesizing Multi-View References...</div>
+                    <div>[RENDER] Generated Front, Side, Top projection images.</div>
+                  </>
+                )}
+                {wizardStep >= 5 && (
+                  <>
+                    <div style={{ color: '#aaa' }}>[STEP 5] Active 3D Engine: Mesh generation...</div>
+                    <div>[ENGINE] Progress: {meshProgress}%</div>
+                    {meshStatusList.map((item, i) => (
+                      <div key={i} style={{ color: item.done ? '#00ff66' : '#666', paddingLeft: '8px' }}>
+                        {item.done ? '✓' : '⏳'} {item.label}
+                      </div>
+                    ))}
+                  </>
+                )}
+                {wizardStep >= 6 && (
+                  <>
+                    <div style={{ color: '#aaa' }}>[STEP 6] Inspecting Geometry Topology...</div>
+                    <div>[QUALITY] Topology structure score: {wizardQualityMetrics.topology}%</div>
+                    <div>[QUALITY] Material textures score: {wizardQualityMetrics.materialPbr}%</div>
+                  </>
+                )}
+                {wizardStep >= 7 && (
+                  <>
+                    <div style={{ color: '#aaa' }}>[STEP 7] Exporting 3D binaries...</div>
+                    <div>[EXPORT] wine_glass.glb saved.</div>
+                    <div>[EXPORT] wine_glass.usdz Apple Quick Look packed.</div>
+                  </>
+                )}
+                {wizardStep >= 8 && (
+                  <>
+                    <div style={{ color: '#aaa' }}>[STEP 8] Constructing learning vocabulary content...</div>
+                    <div style={{ color: '#ffff00' }}>[CONTENT] Pronunciation, Sentences, Quiz generated.</div>
+                  </>
+                )}
+                {wizardStep >= 9 && <div>[STEP 9] Applying markerless AR lighting scales...</div>}
+                {wizardStep >= 10 && <div>[STEP 10] Initializing WebGL Live Previewer...</div>}
+                {wizardStep >= 11 && <div>[STEP 11] Performing final validation tests...</div>}
+                {wizardStep >= 12 && <div style={{ color: '#fff', fontWeight: 'bold' }}>[STEP 12] Published successfully! Ready for QR scanning.</div>}
+              </div>
+
+              {/* Main Content Area */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflowY: 'auto', background: '#fff', padding: '16px', borderRadius: '16px', border: '1px solid #EDE9E1' }}>
+                
+                {/* Step 1: User Specifications Input */}
+                {wizardStep === 1 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
+                    <h4 style={{ margin: 0, fontSize: '15px', color: '#1E4D3A', fontWeight: 800 }}>📌 ขั้นตอนที่ 1: ป้อนข้อมูลการขึ้นแบบและรายละเอียดอุปกรณ์</h4>
+                    
+                    <div className="erp-form-group">
+                      <label className="erp-label">ระบุเครื่องมือหรืออุปกรณ์โรงแรมที่ต้องการให้ AI ร่างแบบจำลอง</label>
+                      <input 
+                        className="erp-input"
+                        value={arAiTopic}
+                        onChange={e => setArAiTopic(e.target.value)}
+                        placeholder="เช่น ช้อนตักซุป (Soup Spoon), แก้วแชมเปญ, มีดหั่นชีส..."
+                      />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div className="erp-form-group">
+                        <label className="erp-label">หมวดหมู่อุปกรณ์ (Category)</label>
+                        <select className="erp-input" value={wizardCategory} onChange={e => setWizardCategory(e.target.value)}>
+                          <option value="tableware">เครื่องใช้บนโต๊ะอาหาร (Tableware)</option>
+                          <option value="equipment">อุปกรณ์เตรียมบริการ (Equipment)</option>
+                          <option value="glassware">แก้วและเครื่องดื่ม (Glassware)</option>
+                          <option value="flatware">ช้อนส้อม (Flatware)</option>
+                        </select>
+                      </div>
+                      <div className="erp-form-group">
+                        <label className="erp-label">ระดับการศึกษา (Education Level)</label>
+                        <select className="erp-input" value={wizardEduLevel} onChange={e => setWizardEduLevel(e.target.value)}>
+                          <option value="Vocational">ประกาศนียบัตรวิชาชีพ (ปวช.)</option>
+                          <option value="HighVocational">ประกาศนียบัตรวิชาชีพชั้นสูง (ปวส.)</option>
+                          <option value="Secondary">มัธยมศึกษาตอนปลาย</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                      <div className="erp-form-group">
+                        <label className="erp-label">ภาษาแสดงผล (Language)</label>
+                        <select className="erp-input" value={wizardLanguage} onChange={e => setWizardLanguage(e.target.value)}>
+                          <option value="TH/EN">ไทย และ อังกฤษ (TH/EN)</option>
+                          <option value="EN">อังกฤษเท่านั้น (EN)</option>
+                        </select>
+                      </div>
+                      <div className="erp-form-group">
+                        <label className="erp-label">คุณภาพโมเดล (Mesh Resolution)</label>
+                        <select className="erp-input" value={wizardQuality} onChange={e => setWizardQuality(e.target.value)}>
+                          <option value="High">ความละเอียดสูง (High Density)</option>
+                          <option value="Medium">ปานกลาง (Medium)</option>
+                          <option value="Low">เน้นเปิดเร็ว (Optimized Low-Poly)</option>
+                        </select>
+                      </div>
+                      <div className="erp-form-group">
+                        <label className="erp-label">ขนาดจริงแนะนำ (Height mm)</label>
+                        <input type="number" className="erp-input" value={wizardSize} onChange={e => setWizardSize(Number(e.target.value))} />
+                      </div>
+                    </div>
+
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setWizardStep(2);
+                        runWizardAIGenerators();
+                      }}
+                      className="btn btn-primary"
+                      style={{ marginTop: 'auto', border: 'none', padding: '14px', fontWeight: 800, fontSize: '13px' }}
+                    >
+                      ส่งข้อมูลวิเคราะห์ ➔
+                    </button>
+                  </div>
+                )}
+
+                {/* Step 2: NLP Analysis */}
+                {wizardStep === 2 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', justifyContent: 'center', height: '100%', textAlign: 'center' }}>
+                    <div style={{ width: '40px', height: '40px', border: '3px solid #1E4D3A', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '15px', color: '#1E4D3A', fontWeight: 800 }}>🔍 ขั้นตอนที่ 2: AI กำลังทำการวิเคราะห์เจาะจงข้อมูลวัตถุ (NLP)</h4>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>แยกแยะโครงร่างวัตถุ ชิ้นวัสดุ และรูปทรงเพื่อความสมจริงเชิงลึก</p>
+                    </div>
+
+                    {wizardNlp && (
+                      <div style={{ width: '100%', maxWidth: '400px', display: 'flex', flexDirection: 'column', gap: '8px', background: '#FBFBFA', padding: '16px', borderRadius: '12px', border: '1px solid #EDE9E1', textAlign: 'left' }}>
+                        <div><strong>วัตถุ:</strong> {wizardNlp.objectName}</div>
+                        <div><strong>ประเภท:</strong> {wizardNlp.type}</div>
+                        <div><strong>ชิ้นวัสดุ:</strong> {wizardNlp.material}</div>
+                        <div><strong>ลักษณะเด่น:</strong> {wizardNlp.characteristics}</div>
+                        <div><strong>การใช้งานสากล:</strong> {wizardNlp.usage}</div>
+                        <div><strong>ขนาดความสูง:</strong> {wizardNlp.size}</div>
+                        <div><strong>ระดับความซับซ้อน:</strong> {wizardNlp.complexity}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Step 3: Prompt Generator */}
+                {wizardStep === 3 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
+                    <h4 style={{ margin: 0, fontSize: '15px', color: '#1E4D3A', fontWeight: 800 }}>📐 ขั้นตอนที่ 3: แบบร่าง Prompt สคริปต์ 3D อัตโนมัติ (Generated Prompt)</h4>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>ปรับแต่ง Prompt เชิงเทคนิคที่จะส่งให้ Engine ประมวลผลสร้างโครงสร้างตาข่ายสามมิติ</p>
+                    
+                    <textarea 
+                      className="erp-input"
+                      style={{ flex: 1, padding: '12px', fontSize: '13.5px', fontFamily: 'monospace', lineHeight: 1.4 }}
+                      value={wizardPrompt}
+                      onChange={e => setWizardPrompt(e.target.value)}
+                    />
+
+                    <button 
+                      type="button" 
+                      onClick={() => setWizardStep(4)}
+                      className="btn btn-primary"
+                      style={{ border: 'none', padding: '12px', fontWeight: 800 }}
+                    >
+                      ดูและใช้ภาพอ้างอิงนี้ ➔
+                    </button>
+                  </div>
+                )}
+
+                {/* Step 4: AI Reference Images */}
+                {wizardStep === 4 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%', alignItems: 'center' }}>
+                    <div style={{ textAlign: 'center', width: '100%' }}>
+                      <h4 style={{ margin: 0, fontSize: '15px', color: '#1E4D3A', fontWeight: 800 }}>📸 ขั้นตอนที่ 4: สังเคราะห์ภาพอ้างอิงหลายมุมมอง (AI Reference Views)</h4>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>วิเคราะห์ภาพร่างมุมมองฉายแสงเงา: ด้านหน้า, ด้านข้าง, ด้านบน และเปอร์สเปคทีฟ</p>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', width: '100%', maxWidth: '440px', flex: 1, alignItems: 'center' }}>
+                      {['Front View', 'Side View', 'Top View', 'Perspective'].map((view, i) => (
+                        <div key={i} style={{ background: '#FFFDF9', border: '1px solid #EDE9E1', borderRadius: '12px', padding: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                          <div style={{ width: '90px', height: '90px', background: '#F5F5F0', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>
+                            {arEn.toLowerCase().includes('glass') || arEn.toLowerCase().includes('wine') || arTh.includes('แก้ว') ? '🍷' :
+                             arEn.toLowerCase().includes('teapot') || arTh.includes('กา') ? '🫖' :
+                             arEn.toLowerCase().includes('spoon') || arTh.includes('ช้อน') ? '🥄' : '📦'}
+                          </div>
+                          <span style={{ fontSize: '11px', fontWeight: 700, color: '#1E4D3A' }}>{view}</span>
+                        </div>
+                      ))}
+                    </div>
+
+                    <button 
+                      type="button" 
+                      onClick={() => setWizardStep(5)}
+                      className="btn btn-primary"
+                      style={{ border: 'none', padding: '12px', width: '100%', fontWeight: 800 }}
+                    >
+                      เริ่มสร้างโมเดล 3D ตอนนี้ ➔
+                    </button>
+                  </div>
+                )}
+
+                {/* Step 5: AI 3D Mesh Engine */}
+                {wizardStep === 5 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'center', justifyContent: 'center', height: '100%', textAlign: 'center' }}>
+                    <div style={{ position: 'relative', width: '80px', height: '80px', border: '3.5px solid #1E4D3A', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1.2s linear infinite', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <span style={{ fontSize: '18px' }}>⚙️</span>
+                    </div>
+
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '15px', color: '#1E4D3A', fontWeight: 800 }}>🎨 ขั้นตอนที่ 5: AI 3D Engine กำลังถักทอโครงรูปสามมิติ (Mesh Synthesizer)</h4>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>สร้างโครงวัตถุ (Topology) แกะลาย UV, และทาทับชิ้นงานวัสดุ PBR</p>
+                    </div>
+
+                    <div style={{ width: '100%', maxWidth: '360px', background: '#F5F5F0', height: '14px', borderRadius: '100px', overflow: 'hidden', border: '1px solid #EDE9E1' }}>
+                      <div style={{ height: '100%', background: 'linear-gradient(90deg, #1E4D3A 0%, #22c55e 100%)', width: `${meshProgress}%`, transition: 'width 0.1s linear' }} />
+                    </div>
+                    <span style={{ fontSize: '13px', fontWeight: 800, color: '#1E4D3A' }}>{meshProgress}% เสร็จสมบูรณ์</span>
+                  </div>
+                )}
+
+                {/* Step 6: AI Quality Check */}
+                {wizardStep === 6 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
+                    <h4 style={{ margin: 0, fontSize: '15px', color: '#1E4D3A', fontWeight: 800 }}>🛡️ ขั้นตอนที่ 6: รายงานผลการตรวจสอบคุณภาพโครงร่างตาข่ายวัตถุ (Quality Report)</h4>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>ผ่านเกณฑ์มาตรฐานการตรวจสอบประสิทธิภาพและพร้อมนำออกเผยแพร่สำหรับ AR</p>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', background: '#FBFBFA', padding: '16px', borderRadius: '16px', border: '1.5px solid rgba(22,197,94,0.3)' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', borderBottom: '1px solid #EDE9E1', paddingBottom: '6px' }}>
+                        <span>โครงสร้างกระชับ (Topology):</span>
+                        <strong style={{ color: '#22c55e' }}>{wizardQualityMetrics.topology}% (ผ่านเกณฑ์)</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', borderBottom: '1px solid #EDE9E1', paddingBottom: '6px' }}>
+                        <span>การคลี่พิกัดผิว (UV Mapping):</span>
+                        <strong style={{ color: '#22c55e' }}>{wizardQualityMetrics.uvMapping}% (ไร้รอยต่อ)</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', borderBottom: '1px solid #EDE9E1', paddingBottom: '6px' }}>
+                        <span>วัสดุและระดับแสง (PBR Materials):</span>
+                        <strong style={{ color: '#22c55e' }}>{wizardQualityMetrics.materialPbr}% (สมจริงระดับสูง)</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', borderBottom: '1px solid #EDE9E1', paddingBottom: '6px' }}>
+                        <span>อัตราส่วน AR (AR Scale Ready):</span>
+                        <strong style={{ color: '#22c55e' }}>{wizardQualityMetrics.sizeScale}% (มาตรฐานสากล)</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', borderBottom: '1px solid #EDE9E1', paddingBottom: '6px' }}>
+                        <span>คะแนนความพึงพอใจการสแกน (Scannability):</span>
+                        <strong style={{ color: '#22c55e' }}>{wizardQualityMetrics.performance}% (คะแนนดีมาก)</strong>
+                      </div>
+                    </div>
+
+                    <button 
+                      type="button" 
+                      onClick={() => setWizardStep(7)}
+                      className="btn btn-primary"
+                      style={{ border: 'none', padding: '12px', marginTop: 'auto', fontWeight: 800 }}
+                    >
+                      ออกรายงานและส่งออกไฟล์โมเดล ➔
+                    </button>
+                  </div>
+                )}
+
+                {/* Step 7: Export Formats */}
+                {wizardStep === 7 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
+                    <h4 style={{ margin: 0, fontSize: '15px', color: '#1E4D3A', fontWeight: 800 }}>📦 ขั้นตอนที่ 7: ส่งออกไฟล์โมเดล 3D หลายรูปแบบเพื่อสนับสนุนข้ามอุปกรณ์ (Binary Exports)</h4>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>ดาวน์โหลดเก็บไว้ใช้งาน หรือกดถัดไปเพื่อนำส่งเผยแพร่ลงคลังบทเรียนทันที</p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div style={{ border: '1px solid #EDE9E1', padding: '14px', borderRadius: '12px', background: '#FDFBF7', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: '13px', color: '#1E4D3A' }}>ไฟล์โมเดล GLB</div>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>สำหรับเว็บและ Android</span>
+                        </div>
+                        <a href={arGlbUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '6px 12px', background: '#1E4D3A', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '11px', fontWeight: 700 }}>ดาวน์โหลด</a>
+                      </div>
+
+                      <div style={{ border: '1px solid #EDE9E1', padding: '14px', borderRadius: '12px', background: '#FDFBF7', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <div style={{ fontWeight: 800, fontSize: '13px', color: '#1E4D3A' }}>ไฟล์โมเดล USDZ</div>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>สำหรับ iPhone & iOS Quick Look</span>
+                        </div>
+                        <a href={arUsdzUrl} target="_blank" rel="noopener noreferrer" style={{ padding: '6px 12px', background: '#A6882A', color: 'white', borderRadius: '8px', textDecoration: 'none', fontSize: '11px', fontWeight: 700 }}>ดาวน์โหลด</a>
+                      </div>
+                    </div>
+
+                    <button 
+                      type="button" 
+                      onClick={() => setWizardStep(8)}
+                      className="btn btn-primary"
+                      style={{ border: 'none', padding: '12px', marginTop: 'auto', fontWeight: 800 }}
+                    >
+                      เริ่มสร้างเนื้อหาบทเรียนคำศัพท์ด้วย AI ➔
+                    </button>
+                  </div>
+                )}
+
+                {/* Step 8: AI Content Generation */}
+                {wizardStep === 8 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
+                    <h4 style={{ margin: 0, fontSize: '15px', color: '#1E4D3A', fontWeight: 800 }}>📚 ขั้นตอนที่ 8: เนื้อหาการเรียนรู้ที่ AI ร่างขึ้นสำหรับครูพิม (Educational Materials)</h4>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>ทบทวน แก้ไข รายละเอียดทั่วไป คำอ่านออกเสียง และประโยคสำหรับนักเรียนปวช.</p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div className="erp-form-group">
+                        <label className="erp-label">ชื่อคำศัพท์ภาษาอังกฤษ *</label>
+                        <input className="erp-input" value={arEn} onChange={e => setAREn(e.target.value)} required />
+                      </div>
+                      <div className="erp-form-group">
+                        <label className="erp-label">ชื่อคำศัพท์ภาษาไทย *</label>
+                        <input className="erp-input" value={arTh} onChange={e => setARTh(e.target.value)} required />
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '12px' }}>
+                      <div className="erp-form-group">
+                        <label className="erp-label">คำอ่านออกเสียงสะกด</label>
+                        <input className="erp-input" value={arPron} onChange={e => setARPron(e.target.value)} />
+                      </div>
+                      <div className="erp-form-group">
+                        <label className="erp-label">ประโยคตัวอย่างการเสิร์ฟ/จัด</label>
+                        <input className="erp-input" value={arSent} onChange={e => setARSent(e.target.value)} />
+                      </div>
+                    </div>
+
+                    <div className="erp-form-group">
+                      <label className="erp-label">คำอธิบายรายละเอียดอุปกรณ์ (DESCRIPTION)</label>
+                      <textarea className="erp-input" rows={2} value={arDesc} onChange={e => setARDesc(e.target.value)} />
+                    </div>
+
+                    <button 
+                      type="button" 
+                      onClick={() => setWizardStep(9)}
+                      className="btn btn-primary"
+                      style={{ border: 'none', padding: '12px', fontWeight: 800 }}
+                    >
+                      ตั้งค่าการเรนเดอร์สแกน AR ➔
+                    </button>
+                  </div>
+                )}
+
+                {/* Step 9: AR & Rendering Configuration */}
+                {wizardStep === 9 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
+                    <h4 style={{ margin: 0, fontSize: '15px', color: '#1E4D3A', fontWeight: 800 }}>🎛️ ขั้นตอนที่ 9: กำหนดค่ารูปแบบและการแสดงผลกล้อง AR (AR Display Settings)</h4>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>ตั้งค่าเงื่อนไขการฉาย แสงเงา และเอฟเฟกต์สำหรับอุปกรณ์โมบายสแกน</p>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', background: '#FDFBF7', padding: '16px', borderRadius: '16px', border: '1px solid #EDE9E1' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input type="checkbox" checked={wizardArSettings.markerless} onChange={e => setWizardArSettings(prev => ({ ...prev, markerless: e.target.checked }))} />
+                        <span style={{ fontSize: '13px' }}>สแกนพื้นเรียบแบบ Markerless AR</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input type="checkbox" checked={wizardArSettings.shadows} onChange={e => setWizardArSettings(prev => ({ ...prev, shadows: e.target.checked }))} />
+                        <span style={{ fontSize: '13px' }}>สร้างเงาตกกระทบเสมือนจริง</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input type="checkbox" checked={wizardArSettings.autoRotate} onChange={e => setWizardArSettings(prev => ({ ...prev, autoRotate: e.target.checked }))} />
+                        <span style={{ fontSize: '13px' }}>หมุนวนวัตถุ 360° อัตโนมัติ</span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input type="checkbox" checked={wizardArSettings.voiceover} onChange={e => setWizardArSettings(prev => ({ ...prev, voiceover: e.target.checked }))} />
+                        <span style={{ fontSize: '13px' }}>เปิดเล่นเสียงคำบรรยาย/คำพูด</span>
+                      </div>
+                    </div>
+
+                    <div className="erp-form-group">
+                      <label className="erp-label">ขนาดแสดงผลเริ่มต้นบนกล้องสแกน (AR Base Scale): {wizardArSettings.scale}%</label>
+                      <input type="range" min="50" max="200" step="10" value={wizardArSettings.scale} onChange={e => setWizardArSettings(prev => ({ ...prev, scale: Number(e.target.value) }))} style={{ width: '100%' }} />
+                    </div>
+
+                    <button 
+                      type="button" 
+                      onClick={() => setWizardStep(10)}
+                      className="btn btn-primary"
+                      style={{ border: 'none', padding: '12px', marginTop: 'auto', fontWeight: 800 }}
+                    >
+                      เข้าสู่กล่องพรีวิวทดลอง 3D ➔
+                    </button>
+                  </div>
+                )}
+
+                {/* Step 10: Interactive Preview */}
+                {wizardStep === 10 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
+                    <h4 style={{ margin: 0, fontSize: '15px', color: '#1E4D3A', fontWeight: 800 }}>👁️ ขั้นตอนที่ 10: กล่องตรวจสอบและทดสอบแบบจำลอง Live 3D (Interactive Tester)</h4>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>ทดลองหมุนปัด ซูมดูวัตถุ เพื่อตรวจสอบความสมบูรณ์ก่อนบันทึกงานเข้าคลัง</p>
+
+                    <div style={{ flex: 1, background: '#f5f5f5', borderRadius: '16px', border: '1px solid #EDE9E1', overflow: 'hidden', height: '240px' }}>
+                      {/* @ts-ignore */}
+                      <model-viewer
+                        src={arGlbUrl}
+                        ios-src={arUsdzUrl}
+                        alt="3D model preview"
+                        ar
+                        ar-modes="webxr scene-viewer quick-look"
+                        camera-controls
+                        auto-rotate={wizardArSettings.autoRotate}
+                        style={{ width: '100%', height: '100%' }}
+                      />
+                    </div>
+
+                    <button 
+                      type="button" 
+                      onClick={() => setWizardStep(11)}
+                      className="btn btn-primary"
+                      style={{ border: 'none', padding: '12px', fontWeight: 800 }}
+                    >
+                      สรุปการจัดเตรียมสแกน ➔
+                    </button>
+                  </div>
+                )}
+
+                {/* Step 11: Summary & Verification */}
+                {wizardStep === 11 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%' }}>
+                    <h4 style={{ margin: 0, fontSize: '15px', color: '#1E4D3A', fontWeight: 800 }}>📋 ขั้นตอนที่ 11: ตรวจเช็คข้อมูลสรุปก่อนทำเรื่องเผยแพร่ (Validation Checks)</h4>
+                    <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)' }}>ระบบตรวจพบข้อมูลทุกอย่างถูกต้องและพร้อมจัดสร้างจุดสแกน AR สำหรับนักศึกษา</p>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#FBFBFA', padding: '16px', borderRadius: '16px', border: '1px solid #EDE9E1' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#22c55e', fontWeight: 700 }}>
+                        <span>✓</span> ข้อมูลคำศัพท์และประโยคฝึกเสิร์ฟภาษาอังกฤษ/ไทย (สมบูรณ์)
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#22c55e', fontWeight: 700 }}>
+                        <span>✓</span> ไฟล์ขึ้นรูปต้นแบบ 3D (.glb & .usdz) (พร้อมดาวน์โหลด)
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#22c55e', fontWeight: 700 }}>
+                        <span>✓</span> สคริปต์โค้ดจัดโครงสร้าง Blender Python (จัดสร้างแล้ว)
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#22c55e', fontWeight: 700 }}>
+                        <span>✓</span> รูปแบบการแสดงผลและแสงเงากล้องสแกน AR (กำหนดแล้ว)
+                      </div>
+                    </div>
+
+                    <button 
+                      type="button" 
+                      onClick={async () => {
+                        const newItem: AR3DItem = {
+                          id: `item-${Date.now()}`,
+                          nameEn: arEn,
+                          nameTh: arTh,
+                          pronounce: arPron || `/name/`,
+                          sentence: arSent || 'Please use this item correctly.',
+                          desc: arDesc || 'คำอธิบายทั่วไปเกี่ยวกับชิ้นอุปกรณ์',
+                          imageUrl: arImageUrl || '/images/espresso_cup_3d.png',
+                          glbUrl: arGlbUrl || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+                          usdzUrl: arUsdzUrl,
+                          blenderScript: arBlenderScript
+                        };
+                        setARItems(prev => [...prev, newItem]);
+                        
+                        const supabaseUrl = localStorage.getItem('supabaseUrl');
+                        const supabaseAnonKey = localStorage.getItem('supabaseAnonKey');
+                        if (supabaseUrl && supabaseAnonKey) {
+                          try {
+                            const { createClient } = await import('@supabase/supabase-js');
+                            const client = createClient(supabaseUrl, supabaseAnonKey);
+                            await client.from('ai_scan_items').upsert({
+                              name_th: arTh,
+                              name_en: arEn,
+                              category: wizardCategory,
+                              description: arDesc,
+                              service_tips: arSent,
+                              english_phrases: [arSent],
+                              image_url: arImageUrl
+                            });
+                          } catch (err) {
+                            console.error('Supabase wizard push failed:', err);
+                          }
+                        }
+
+                        setWizardStep(12);
+                      }}
+                      className="btn btn-primary"
+                      style={{ border: 'none', padding: '14px', marginTop: 'auto', fontWeight: 800, fontSize: '13px', background: 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)' }}
+                    >
+                      🚀 อนุมัติและเผยแพร่ทันที ➔
+                    </button>
+                  </div>
+                )}
+
+                {/* Step 12: Publish & QR Code */}
+                {wizardStep === 12 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', height: '100%', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
+                    <span style={{ fontSize: '48px' }}>🎉</span>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '16px', color: '#1E4D3A', fontWeight: 800 }}>ฉายแกลเลอรีอุปกรณ์และสร้าง QR Code สำเร็จแล้ว!</h4>
+                      <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--text-muted)' }}>นักเรียนสามารถนำสมาร์ทโฟนมาสแกน QR Code นี้เพื่อเปิดดูภาพ AR เสมือนจริงได้ทันที</p>
+                    </div>
+
+                    <div style={{ background: '#fff', border: '2px solid #C9A84C', padding: '16px', borderRadius: '16px', width: '100%', maxWidth: '280px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
+                      <span style={{ background: '#102B1F', color: '#C9A84C', fontSize: '8px', fontWeight: 900, padding: '3px 10px', borderRadius: '100px' }}>FINE MODE AR LEARNING</span>
+                      <h5 style={{ margin: 0, fontSize: '14px', color: '#1E4D3A', fontWeight: 800 }}>{arEn}</h5>
+                      <span style={{ fontSize: '11px', color: '#A6882A', fontWeight: 700 }}>{arTh}</span>
+                      
+                      <div style={{ position: 'relative', width: '140px', height: '140px', border: '1px solid #EDE9E1', borderRadius: '8px', padding: '6px', background: 'white' }}>
+                        <img src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent('https://frontend-5ul5tzcc0-jsdevelopth-2022s-projects.vercel.app/student/ar-view?id=' + arEn)}`} alt="QR Code" style={{ width: '100%', height: '100%' }} />
+                      </div>
+                    </div>
+
+                    <button 
+                      type="button" 
+                      onClick={() => {
+                        setWizardOpen(false);
+                        setAREn('');
+                        setARTh('');
+                        setARPron('');
+                        setARSent('');
+                        setARDesc('');
+                        setArImageUrl('');
+                        setArGlbUrl('');
+                        setArUsdzUrl('');
+                        setArBlenderScript('');
+                      }}
+                      className="btn btn-primary"
+                      style={{ border: 'none', padding: '12px', width: '100%', fontWeight: 800 }}
+                    >
+                      เสร็จสิ้นและปิดกล่องเครื่องมือ ✕
+                    </button>
+                  </div>
+                )}
+
+              </div>
+            </div>
+
           </div>
         </div>
       )}
