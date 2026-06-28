@@ -101,7 +101,7 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
     const sidebarMenu = isAdmin ? [
       { href: '/admin/dashboard', icon: '📊', label: 'Dashboard' },
       { href: '/admin/users', icon: '👥', label: 'จัดการผู้ใช้' },
-      { href: '/admin/blog', icon: '✍️', label: 'AI เขียนบล็อก' },
+      { href: '/admin/blog', icon: '📢', label: 'แจ้งข่าวและกิจกรรม' },
       { href: '/admin/analytics', icon: '📈', label: 'รายงานวิเคราะห์' },
       { href: '/admin/settings', icon: '⚙️', label: 'ตั้งค่าระบบ' },
     ] : [
