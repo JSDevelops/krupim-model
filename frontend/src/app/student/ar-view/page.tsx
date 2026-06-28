@@ -38,6 +38,14 @@ function ARViewerContent() {
   useEffect(() => {
     if (typeof window !== 'undefined' && id) {
       async function loadModel() {
+        const defaultModelGlbUrls: Record<string, string> = {
+          'item-001': 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+          'item-002': 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+          'item-003': 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WineGlass/glTF-Binary/WineGlass.glb',
+          'item-004': 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+          'item-005': 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+        }
+
         // 1. Try to fetch from Supabase 'ar-items-store'
         try {
           const { data, error } = await supabase
@@ -50,9 +58,10 @@ function ARViewerContent() {
             const items = data.vocabulary as any[]
             const found = items.find(m => m.id === id)
             if (found) {
+              const defaultUrl = defaultModelGlbUrls[id] || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
               setModel({
                 ...found,
-                glbUrl: found.glbUrl || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
+                glbUrl: found.glbUrl || defaultUrl
               })
               setLoading(false)
               return
@@ -73,12 +82,13 @@ function ARViewerContent() {
         const qImageUrl = searchParams.get('imageUrl')
 
         if (qNameEn) {
+          const defaultUrl = defaultModelGlbUrls[id] || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
           setModel({
             id: id || '',
             nameEn: qNameEn,
             nameTh: qNameTh || '',
             desc: qDesc || '',
-            glbUrl: qGlbUrl || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+            glbUrl: qGlbUrl || defaultUrl,
             usdzUrl: qUsdzUrl || '',
             pronounce: qPronounce || '',
             sentence: qSentence || '',
@@ -95,9 +105,10 @@ function ARViewerContent() {
             const parsed = JSON.parse(storedModels)
             const found = parsed.find((m: any) => m.id === id)
             if (found) {
+              const defaultUrl = defaultModelGlbUrls[id] || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
               setModel({
                 ...found,
-                glbUrl: found.glbUrl || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
+                glbUrl: found.glbUrl || defaultUrl
               })
             }
           } catch (e) {}
