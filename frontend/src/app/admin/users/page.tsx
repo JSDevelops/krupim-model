@@ -11,6 +11,8 @@ interface UserItem {
   status?: 'active' | 'inactive' | 'pending'
   avatar: string
   lastLogin?: string
+  requestDate?: string
+  docs?: string
 }
 
 export default function AdminUsersPage() {
