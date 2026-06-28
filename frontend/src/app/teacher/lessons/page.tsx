@@ -927,7 +927,10 @@ export default function TeacherLessonsDashboard() {
         try {
           const gen3dResp = await fetch(`${backendUrl}/api/3d/generate`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-3d-ai-studio-key': typeof window !== 'undefined' ? localStorage.getItem('threeDAIStudioKey') || '' : ''
+            },
             body: JSON.stringify({ topic: autoEn })
           })
           if (gen3dResp.ok) {
@@ -976,7 +979,10 @@ export default function TeacherLessonsDashboard() {
       try {
         const gen3dResp = await fetch(`${backendUrl}/api/3d/generate`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-3d-ai-studio-key': typeof window !== 'undefined' ? localStorage.getItem('threeDAIStudioKey') || '' : ''
+          },
           body: JSON.stringify({ topic: arAiTopic })
         })
         if (gen3dResp.ok) {

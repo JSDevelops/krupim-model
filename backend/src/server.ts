@@ -419,7 +419,7 @@ app.post('/api/3d/generate', async (req, res) => {
       return res.status(400).json({ error: 'Topic is required' })
     }
 
-    const apiKey = process.env.THREE_D_AI_STUDIO_API_KEY || ''
+    const apiKey = (req.headers['x-3d-ai-studio-key'] as string) || process.env.THREE_D_AI_STUDIO_API_KEY || ''
     console.log(`Generating 3D model via 3D AI Studio for: ${topic}`)
 
     let glbUrl = ''
@@ -441,7 +441,7 @@ app.post('/api/3d/generate', async (req, res) => {
           })
         })
         if (response.ok) {
-          const result = await response.json()
+          const result = (await response.json()) as any
           if (result.glb_url) {
             glbUrl = result.glb_url
             usdzUrl = result.usdz_url || ''
