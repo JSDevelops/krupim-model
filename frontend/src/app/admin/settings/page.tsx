@@ -10,6 +10,13 @@ export default function AdminSettingsPage() {
   const [dbKey, setDbKey] = useState('')
   const [schoolName, setSchoolName] = useState('วิทยาลัยอาชีวศึกษากรุงเทพ')
   const [maintenance, setMaintenance] = useState(false)
+  
+  // UX/UI Customization States
+  const [themeMode, setThemeMode] = useState('forest-gold')
+  const [textSize, setTextSize] = useState('normal')
+  const [enableAnimations, setEnableAnimations] = useState(true)
+  const [showArHelp, setShowArHelp] = useState(true)
+
   const [isSaved, setIsSaved] = useState(false)
   
   // Key visibility states
@@ -28,6 +35,12 @@ export default function AdminSettingsPage() {
       setDbKey(localStorage.getItem('supabaseAnonKey') || '')
       setSchoolName(localStorage.getItem('schoolName') || 'วิทยาลัยอาชีวศึกษากรุงเทพ')
       setMaintenance(localStorage.getItem('maintenanceMode') === 'true')
+
+      // UX/UI
+      setThemeMode(localStorage.getItem('uxThemeMode') || 'forest-gold')
+      setTextSize(localStorage.getItem('uxTextSize') || 'normal')
+      setEnableAnimations(localStorage.getItem('uxEnableAnimations') !== 'false')
+      setShowArHelp(localStorage.getItem('uxShowArHelp') !== 'false')
     }
   }, [])
 
@@ -43,6 +56,22 @@ export default function AdminSettingsPage() {
       localStorage.setItem('schoolName', schoolName.trim())
       localStorage.setItem('maintenanceMode', maintenance.toString())
       
+      // UX/UI Settings Saving
+      localStorage.setItem('uxThemeMode', themeMode)
+      localStorage.setItem('uxTextSize', textSize)
+      localStorage.setItem('uxEnableAnimations', enableAnimations.toString())
+      localStorage.setItem('uxShowArHelp', showArHelp.toString())
+
+      // Dynamically apply classes to document root body for instant feedback
+      if (typeof document !== 'undefined') {
+        document.body.className = document.body.className
+          .split(' ')
+          .filter(c => !c.startsWith('theme-') && !c.startsWith('font-'))
+          .join(' ')
+        document.body.classList.add(`theme-${themeMode}`)
+        document.body.classList.add(`font-${textSize}`)
+      }
+
       // Also update window public variables (local scope fallback)
       if (dbUrl) (window as any).NEXT_PUBLIC_SUPABASE_URL = dbUrl.trim()
       if (dbKey) (window as any).NEXT_PUBLIC_SUPABASE_ANON_KEY = dbKey.trim()
@@ -58,13 +87,13 @@ export default function AdminSettingsPage() {
       <div className="erp-card" style={{ background: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #EDE9E1' }}>
         <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#1E4D3A' }}>⚙️ ตั้งค่าความปลอดภัยและเชื่อมโยงระบบ (System Config)</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '4px' }}>
-          จัดการตัวเลือกผู้ให้บริการค่าย AI แบบแยกคีย์อิสระ, ตรวจสอบตำแหน่งฐานข้อมูล Supabase และตั้งค่าการบำรุงรักษาระบบ
+          จัดการตัวเลือกผู้ให้บริการค่าย AI, สถานะฐานข้อมูล Supabase รวมถึงส่วนติดต่อผู้ใช้งาน UX/UI ประสบการณ์แอปพลิเคชัน
         </p>
       </div>
 
       {isSaved && (
         <div style={{ padding: '16px', background: '#EAF3EE', border: '1.5px solid #22c55e', color: '#1E4D3A', borderRadius: '12px', fontWeight: 700 }}>
-          ✓ บันทึกการเปลี่ยนแปลงข้อมูลระบบสำเร็จ! ระบบออนไลน์จะเริ่มใช้งานผู้ให้บริการค่าย AI ที่ระบุทันที
+          ✓ บันทึกการเปลี่ยนแปลงข้อมูลระบบและหน้าจอ UX/UI สำเร็จ! ระบบได้เริ่มใช้พารามิเตอร์ใหม่แล้ว
         </div>
       )}
 
@@ -166,6 +195,71 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
+        {/* 🎨 UX/UI CUSTOMIZATION SECTION */}
+        <div style={{ borderTop: '1px solid #EDE9E1', paddingTop: '20px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px', color: '#1E4D3A' }}>🎨 ปรับแต่งอินเตอร์เฟสผู้ใช้งาน (UX/UI Preferences)</h3>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '14px' }}>
+            
+            <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label className="erp-label" style={{ fontWeight: 700, fontSize: '13px' }}>โทนสีของระบบ (Visual Theme)</label>
+              <select
+                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1', fontSize: '13px', background: '#fff', cursor: 'pointer' }}
+                value={themeMode}
+                onChange={e => setThemeMode(e.target.value)}
+              >
+                <option value="forest-gold">Forest Gold (สีเขียว-ทองป่าฝนดั้งเดิม)</option>
+                <option value="dark-night">Dark Night (สีเทา-ดำโหมดกลางคืน)</option>
+                <option value="royal-blue">Royal Blue (สีน้ำเงินราชการภูมิฐาน)</option>
+              </select>
+            </div>
+
+            <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label className="erp-label" style={{ fontWeight: 700, fontSize: '13px' }}>ขนาดตัวอักษรเนื้อหา (Text Font Size)</label>
+              <select
+                style={{ padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1', fontSize: '13px', background: '#fff', cursor: 'pointer' }}
+                value={textSize}
+                onChange={e => setTextSize(e.target.value)}
+              >
+                <option value="normal">Normal (ขนาดมาตรฐาน 100%)</option>
+                <option value="large">Large (ขนาดใหญ่ 115% - อ่านง่าย)</option>
+              </select>
+            </div>
+
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', background: '#FDFBF7', padding: '14px', borderRadius: '10px', border: '1px solid #EDE9E1' }}>
+            
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#4A4138' }}>เปิดใช้งานแอนิเมชันเปลี่ยนหน้า (Page Transitions)</span>
+                <div style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>ลดการกระตุกบนอุปกรณ์คอมพิวเตอร์สเปกเริ่มต้น</div>
+              </div>
+              <input
+                type="checkbox"
+                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                checked={enableAnimations}
+                onChange={e => setEnableAnimations(e.target.checked)}
+              />
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #EDE9E1', paddingTop: '10px' }}>
+              <div>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#4A4138' }}>ตัวช่วยนำทางการสแกน AR (3D Guidelines Overlay)</span>
+                <div style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>แสดงแถบคำแนะนำในการหมุนและขยายกล้องครั้งแรก</div>
+              </div>
+              <input
+                type="checkbox"
+                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                checked={showArHelp}
+                onChange={e => setShowArHelp(e.target.checked)}
+              />
+            </div>
+
+          </div>
+        </div>
+
+        {/* Database Connection */}
         <div style={{ borderTop: '1px solid #EDE9E1', paddingTop: '20px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px', color: '#1E4D3A' }}>🗄️ การเชื่อมต่อฐานข้อมูล (Database Connection)</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
@@ -193,6 +287,7 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
+        {/* Organization Profile */}
         <div style={{ borderTop: '1px solid #EDE9E1', paddingTop: '20px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px', color: '#1E4D3A' }}>🏫 ข้อมูลทั่วไปขององค์กร (Organization Profile)</h3>
           <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -206,6 +301,7 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
+        {/* System Operations */}
         <div style={{ borderTop: '1px solid #EDE9E1', paddingTop: '20px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700, marginBottom: '12px', color: '#1E4D3A' }}>🔒 ความปลอดภัยและการตรวจสอบ (System Operations)</h3>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: '#FBF6E9', borderRadius: '12px', border: '1px solid rgba(201,168,76,0.3)' }}>
