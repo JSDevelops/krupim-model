@@ -490,6 +490,64 @@ app.post('/api/3d/generate', async (req, res) => {
   }
 })
 
+// Blender Python Script Generator API
+app.post('/api/blender/generate', async (req, res) => {
+  try {
+    const { topic } = req.body
+    if (!topic) {
+      return res.status(400).json({ error: 'Topic is required' })
+    }
+    const provider = getActiveProvider(req)
+
+    const prompt = `You are a Blender Python scripting expert.
+Write a clean, functional Python script using Blender's 'bpy' module to programmatically generate a 3D model of a "${topic}" (for F&B/tableware context).
+The script must:
+1. Clear existing mesh objects.
+2. Build the mesh (e.g. using primitives, extrusion, scaling, or subdivision modifier).
+3. Assign a basic material (e.g., glass shader, metal shiny shader, or ceramic white).
+4. Do not include any explanation. Output ONLY the raw python code inside a markdown code block starting with \`\`\`python and ending with \`\`\`.`
+
+    let text = ''
+
+    if (provider === 'openai') {
+      const client = getOpenAI(req)
+      const completion = await client.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: prompt }]
+      })
+      text = completion.choices[0].message.content || ''
+    } else if (provider === 'claude') {
+      const client = getAnthropic(req)
+      const completion = await client.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 2000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+      text = completion.content[0].type === 'text' ? completion.content[0].text : ''
+    } else {
+      // Default: Gemini
+      const genAI = getGemini(req)
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+      const result = await model.generateContent(prompt)
+      text = result.response.text()
+    }
+
+    // Extract code block
+    let code = text
+    const codeMatch = text.match(/```python([\s\S]*?)```/)
+    if (codeMatch) {
+      code = codeMatch[1].trim()
+    } else {
+      code = text.replace(/```/g, '').trim()
+    }
+
+    res.json({ success: true, topic, code })
+  } catch (error: any) {
+    console.error('Blender Script Generation Error:', error)
+    res.status(500).json({ error: error.message || 'Failed to generate Blender script' })
+  }
+})
+
 // Connection Health Ping Monitor API
 app.get('/api/ping-all', async (req, res) => {
   try {

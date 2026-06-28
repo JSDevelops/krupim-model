@@ -51,6 +51,7 @@ interface AR3DItem {
   imageUrl?: string
   glbUrl?: string
   usdzUrl?: string
+  blenderScript?: string
 }
 
 interface Student {
@@ -467,6 +468,7 @@ export default function TeacherLessonsDashboard() {
   const [arImageUrl, setArImageUrl] = useState('')
   const [arGlbUrl, setArGlbUrl] = useState('')
   const [arUsdzUrl, setArUsdzUrl] = useState('')
+  const [arBlenderScript, setArBlenderScript] = useState('')
   const [arCreationMode, setArCreationMode] = useState<'manual' | 'ai'>('manual')
   const [arAiTopic, setArAiTopic] = useState('แก้วไวน์แดงคริสตัล (Crystal Wine Glass)')
   const [aiGenerating, setAiGenerating] = useState(false)
@@ -942,6 +944,27 @@ export default function TeacherLessonsDashboard() {
           console.error('Failed to generate 3D model from backend:', err3d)
         }
 
+        // Call the Blender Python script generator endpoint
+        try {
+          const genBlenderResp = await fetch(`${backendUrl}/api/blender/generate`, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'x-ai-provider': typeof window !== 'undefined' ? localStorage.getItem('activeAiProvider') || 'gemini' : 'gemini',
+              'x-gemini-key': typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : '',
+              'x-openai-key': typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') || '' : '',
+              'x-claude-key': typeof window !== 'undefined' ? localStorage.getItem('claudeApiKey') || '' : ''
+            },
+            body: JSON.stringify({ topic: autoEn })
+          })
+          if (genBlenderResp.ok) {
+            const genBlenderData = await genBlenderResp.json()
+            setArBlenderScript(genBlenderData.code || '')
+          }
+        } catch (errBlender) {
+          console.error('Failed to generate Blender script:', errBlender)
+        }
+
         if (lowerEn.includes('glass') || lowerEn.includes('wine') || lowerEn.includes('champagne') || lowerEn.includes('goblet') || lowerTh.includes('แก้ว')) {
           autoImg = '/images/wine_glass_3d.png'
         } else if (lowerEn.includes('teapot') || lowerEn.includes('tea pot') || lowerEn.includes('kettle') || lowerTh.includes('น้ำชา') || lowerTh.includes('กา')) {
@@ -994,6 +1017,27 @@ export default function TeacherLessonsDashboard() {
         console.error('Failed to generate 3D model from backend:', err3d)
       }
 
+      // Call the Blender Python script generator endpoint
+      try {
+        const genBlenderResp = await fetch(`${backendUrl}/api/blender/generate`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-ai-provider': typeof window !== 'undefined' ? localStorage.getItem('activeAiProvider') || 'gemini' : 'gemini',
+            'x-gemini-key': typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : '',
+            'x-openai-key': typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') || '' : '',
+            'x-claude-key': typeof window !== 'undefined' ? localStorage.getItem('claudeApiKey') || '' : ''
+          },
+          body: JSON.stringify({ topic: arAiTopic })
+        })
+        if (genBlenderResp.ok) {
+          const genBlenderData = await genBlenderResp.json()
+          setArBlenderScript(genBlenderData.code || '')
+        }
+      } catch (errBlender) {
+        console.error('Failed to generate Blender script:', errBlender)
+      }
+
       if (lowerEn.includes('glass') || lowerEn.includes('wine') || lowerEn.includes('champagne') || lowerEn.includes('goblet')) {
         autoImg = '/images/wine_glass_3d.png'
       } else if (lowerEn.includes('teapot') || lowerEn.includes('tea pot') || lowerEn.includes('kettle')) {
@@ -1031,7 +1075,8 @@ export default function TeacherLessonsDashboard() {
       desc: arDesc || 'คำอธิบายทั่วไปเกี่ยวกับชิ้นอุปกรณ์',
       imageUrl: arImageUrl || '/images/espresso_cup_3d.png',
       glbUrl: arGlbUrl || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
-      usdzUrl: arUsdzUrl
+      usdzUrl: arUsdzUrl,
+      blenderScript: arBlenderScript
     }
 
     setARItems(prev => [...prev, newItem])
@@ -1043,6 +1088,7 @@ export default function TeacherLessonsDashboard() {
     setArImageUrl('')
     setArGlbUrl('')
     setArUsdzUrl('')
+    setArBlenderScript('')
     alert('เพิ่มโมเดล 3 มิติ และสแกนอุปกรณ์เข้าคลังสำเร็จ!')
   }
 
@@ -1725,6 +1771,32 @@ export default function TeacherLessonsDashboard() {
                       <label className="erp-label">คำอธิบายอุปกรณ์ (DESCRIPTION)</label>
                       <textarea className="erp-input" rows={2} value={arDesc} onChange={e => setARDesc(e.target.value)} placeholder="อธิบายการใช้งานอุปกรณ์หรืองานบริการอาหาร..." />
                     </div>
+
+                    {arBlenderScript && (
+                      <div className="erp-card" style={{ background: '#FFFDF9', padding: '16px', borderRadius: '12px', border: '1.5px dashed rgba(201,168,76,0.5)', marginTop: '8px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                          <h4 style={{ margin: 0, fontSize: '13px', fontWeight: 800, color: '#1E4D3A', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span>🐍</span> Blender Python Script (สำหรับเปิดโปรแกรมขึ้นรูป 3D ใน Blender)
+                          </h4>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(arBlenderScript)
+                              alert('📋 คัดลอกสคริปต์ Blender Python เรียบร้อยแล้ว! สามารถนำไปรันในช่อง Scripting ของโปรแกรม Blender ได้ทันที')
+                            }}
+                            style={{ background: '#1E4D3A', color: '#fff', border: 'none', padding: '5px 12px', borderRadius: '8px', fontSize: '11px', fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                          >
+                            📋 คัดลอกโค้ด
+                          </button>
+                        </div>
+                        <p style={{ margin: '0 0 8px', fontSize: '11px', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                          คัดลอกสคริปต์นี้ไปป้อนในหน้าต่าง <strong>Scripting</strong> ของโปรแกรม Blender แล้วกด Run Script เพื่อขึ้นโมเดล 3D ได้ทันที
+                        </p>
+                        <pre style={{ margin: 0, background: '#1e1e1e', color: '#d4d4d4', padding: '12px', borderRadius: '8px', overflowX: 'auto', fontSize: '11px', maxHeight: '180px', fontFamily: 'monospace' }}>
+                          <code>{arBlenderScript}</code>
+                        </pre>
+                      </div>
+                    )}
 
                     <h3 style={{ fontSize: '14px', fontWeight: 700, color: '#1E4D3A', borderBottom: '1px solid #EDE9E1', paddingBottom: '8px', marginTop: '10px', margin: '10px 0 0 0' }}>
                       🎨 พรีวิวและอัปโหลดภาพโมเดล 3 มิติ
