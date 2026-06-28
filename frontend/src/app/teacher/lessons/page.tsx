@@ -1607,11 +1607,44 @@ export default function TeacherLessonsDashboard() {
                 {arCreationMode === 'ai' ? (
                   // AI Auto generation form
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.3)', padding: '10px 14px', borderRadius: '10px' }}>
-                      <span style={{ fontSize: '16px' }}>🔌</span>
-                      <span style={{ fontSize: '11px', color: '#A6882A', fontWeight: 700, lineHeight: 1.4 }}>
-                        ขับเคลื่อนด้วยระบบ: <strong>3D AI Studio API Integration</strong> (เจเนอเรตโมเดลตาข่ายโครงสร้าง 3D ในฟอร์แมต .glb และ .usdz อัตโนมัติในคลิกเดียว)
-                      </span>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.3)', padding: '10px 14px', borderRadius: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '16px' }}>🔌</span>
+                        <span style={{ fontSize: '11px', color: '#A6882A', fontWeight: 700, lineHeight: 1.4 }}>
+                          ขับเคลื่อนด้วยระบบ: <strong>3D AI Studio API Integration</strong> (เจเนอเรตโมเดลตาข่ายโครงสร้าง 3D ในฟอร์แมต .glb และ .usdz อัตโนมัติในคลิกเดียว)
+                        </span>
+                      </div>
+                      <a 
+                        href="https://3daistudio.com" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        style={{ 
+                          flexShrink: 0,
+                          background: '#fff', 
+                          border: '1.5px solid #A6882A', 
+                          color: '#A6882A', 
+                          padding: '6px 12px', 
+                          borderRadius: '8px', 
+                          fontSize: '11px', 
+                          fontWeight: 700, 
+                          textDecoration: 'none',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = '#A6882A'
+                          e.currentTarget.style.color = '#fff'
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = '#fff'
+                          e.currentTarget.style.color = '#A6882A'
+                        }}
+                      >
+                        🚀 เปิดเว็บ 3D AI Studio
+                      </a>
                     </div>
 
                     <div className="erp-form-group">
