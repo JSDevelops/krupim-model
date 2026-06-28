@@ -370,7 +370,7 @@ export default function ExplorePage() {
         {activeTab === 'qr' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {/* QR Scanner Visual */}
-            <Link href="/ar-3d" style={{ textDecoration: 'none' }}>
+            <Link href="/student/scanner" style={{ textDecoration: 'none' }}>
               <div style={{
                 background: 'linear-gradient(135deg, #102B1F 0%, #1E4D3A 100%)',
                 borderRadius: 22, padding: '24px 20px',
