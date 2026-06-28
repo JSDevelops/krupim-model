@@ -569,7 +569,8 @@ export default function TeacherLessonsDashboard() {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
-            'x-3d-ai-studio-key': typeof window !== 'undefined' ? localStorage.getItem('threeDAIStudioKey') || '' : ''
+            'x-3d-ai-studio-key': typeof window !== 'undefined' ? localStorage.getItem('threeDAIStudioKey') || '' : '',
+            'x-tripo-key': typeof window !== 'undefined' ? localStorage.getItem('tripoApiKey') || '' : ''
           },
           body: JSON.stringify({ topic: autoEn })
         })
@@ -1143,7 +1144,8 @@ export default function TeacherLessonsDashboard() {
             method: 'POST',
             headers: { 
               'Content-Type': 'application/json',
-              'x-3d-ai-studio-key': typeof window !== 'undefined' ? localStorage.getItem('threeDAIStudioKey') || '' : ''
+              'x-3d-ai-studio-key': typeof window !== 'undefined' ? localStorage.getItem('threeDAIStudioKey') || '' : '',
+              'x-tripo-key': typeof window !== 'undefined' ? localStorage.getItem('tripoApiKey') || '' : ''
             },
             body: JSON.stringify({ topic: autoEn })
           })
@@ -1216,7 +1218,8 @@ export default function TeacherLessonsDashboard() {
           method: 'POST',
           headers: { 
             'Content-Type': 'application/json',
-            'x-3d-ai-studio-key': typeof window !== 'undefined' ? localStorage.getItem('threeDAIStudioKey') || '' : ''
+            'x-3d-ai-studio-key': typeof window !== 'undefined' ? localStorage.getItem('threeDAIStudioKey') || '' : '',
+            'x-tripo-key': typeof window !== 'undefined' ? localStorage.getItem('tripoApiKey') || '' : ''
           },
           body: JSON.stringify({ topic: arAiTopic })
         })

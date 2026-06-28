@@ -20,6 +20,8 @@ export default function AdminSettingsPage() {
   const [showClaude, setShowClaude] = useState(false)
   const [threeDAIStudioKey, setThreeDAIStudioKey] = useState('')
   const [showThreeDAIStudio, setShowThreeDAIStudio] = useState(false)
+  const [tripoApiKey, setTripoApiKey] = useState('')
+  const [showTripo, setShowTripo] = useState(false)
 
   // 🎨 2. UX/UI Preferences States (เวอร์ชันเต็มสมบูรณ์ที่สุด)
   const [themeMode, setThemeMode] = useState('forest-gold')
@@ -40,6 +42,7 @@ export default function AdminSettingsPage() {
       setOpenaiKey(localStorage.getItem('openaiApiKey') || '')
       setClaudeKey(localStorage.getItem('claudeApiKey') || '')
       setThreeDAIStudioKey(localStorage.getItem('threeDAIStudioKey') || '')
+      setTripoApiKey(localStorage.getItem('tripoApiKey') || '')
       setDbUrl(localStorage.getItem('supabaseUrl') || 'https://zzkgzbdvyeansjxsylgw.supabase.co')
       setDbKey(localStorage.getItem('supabaseAnonKey') || '')
       setSchoolName(localStorage.getItem('schoolName') || 'วิทยาลัยอาชีวศึกษากรุงเทพ')
@@ -65,6 +68,7 @@ export default function AdminSettingsPage() {
       localStorage.setItem('openaiApiKey', openaiKey.trim())
       localStorage.setItem('claudeApiKey', claudeKey.trim())
       localStorage.setItem('threeDAIStudioKey', threeDAIStudioKey.trim())
+      localStorage.setItem('tripoApiKey', tripoApiKey.trim())
       localStorage.setItem('supabaseUrl', dbUrl.trim())
       localStorage.setItem('supabaseAnonKey', dbKey.trim())
       localStorage.setItem('schoolName', schoolName.trim())
@@ -132,6 +136,7 @@ export default function AdminSettingsPage() {
             'openaiApiKey',
             'claudeApiKey',
             'threeDAIStudioKey',
+            'tripoApiKey',
             'classroomStudents',
             'uxThemeMode',
             'uxFontFamily',
@@ -313,6 +318,26 @@ export default function AdminSettingsPage() {
                   />
                   <button type="button" onClick={() => setShowThreeDAIStudio(!showThreeDAIStudio)} style={{ padding: '0 12px', background: '#F5F5F0', border: '1px solid #EDE9E1', borderRadius: '8px', cursor: 'pointer', fontSize: '12px' }}>
                     {showThreeDAIStudio ? 'ซ่อน' : 'แสดง'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Tripo3D API Key */}
+              <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <label className="erp-label" style={{ fontWeight: 700, fontSize: '12px', color: '#c9a84c' }}>
+                  5. Tripo3D API Key 🟢 (เชื่อมโยงสำหรับการเจนโมเดล .glb ความเร็วสูงด้วย AI)
+                </label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <input
+                    type={showTripo ? 'text' : 'password'}
+                    className="erp-input"
+                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1', fontSize: '13px' }}
+                    value={tripoApiKey}
+                    onChange={e => setTripoApiKey(e.target.value)}
+                    placeholder="กรอก API Key จาก tripo3d.ai..."
+                  />
+                  <button type="button" onClick={() => setShowTripo(!showTripo)} style={{ padding: '0 12px', background: '#F5F5F0', border: '1px solid #EDE9E1', borderRadius: '8px', cursor: 'pointer', fontSize: '12px' }}>
+                    {showTripo ? 'ซ่อน' : 'แสดง'}
                   </button>
                 </div>
               </div>

@@ -420,13 +420,69 @@ app.post('/api/3d/generate', async (req, res) => {
     }
 
     const apiKey = (req.headers['x-3d-ai-studio-key'] as string) || process.env.THREE_D_AI_STUDIO_API_KEY || ''
-    console.log(`Generating 3D model via 3D AI Studio for: ${topic}`)
+    const tripoKey = (req.headers['x-tripo-key'] as string) || process.env.TRIPO_API_KEY || ''
+    console.log(`Generating 3D model for: ${topic}`)
 
     let glbUrl = ''
     let usdzUrl = ''
     let isMocked = true
 
-    if (apiKey && apiKey !== 'your_3d_ai_studio_api_key_here') {
+    // 1. Try Tripo3D API if tripoKey is available
+    if (tripoKey && tripoKey !== 'your_tripo_api_key_here') {
+      try {
+        console.log(`Submitting Tripo3D task for: ${topic}`)
+        const tripoResp = await fetch('https://api.tripo3d.ai/v2/openapi/task', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${tripoKey}`
+          },
+          body: JSON.stringify({
+            type: 'text_to_model',
+            prompt: topic
+          })
+        })
+        if (tripoResp.ok) {
+          const tripoData = (await tripoResp.json()) as any
+          if (tripoData.code === 0 && tripoData.data && tripoData.data.task_id) {
+            const taskId = tripoData.data.task_id
+            console.log(`Tripo3D task submitted successfully, taskId: ${taskId}`)
+            
+            // Poll for status (max 6 attempts, 3s interval)
+            for (let i = 0; i < 6; i++) {
+              await new Promise(resolve => setTimeout(resolve, 3000))
+              const pollResp = await fetch(`https://api.tripo3d.ai/v2/openapi/task/${taskId}`, {
+                method: 'GET',
+                headers: {
+                  'Authorization': `Bearer ${tripoKey}`
+                }
+              })
+              if (pollResp.ok) {
+                const pollData = (await pollResp.json()) as any
+                if (pollData.code === 0 && pollData.data) {
+                  const status = pollData.data.status
+                  console.log(`Tripo3D task ${taskId} status: ${status}`)
+                  if (status === 'success') {
+                    glbUrl = pollData.data.result?.model?.glb || ''
+                    usdzUrl = glbUrl
+                    isMocked = false
+                    break
+                  } else if (status === 'failed') {
+                    console.error('Tripo3D task failed')
+                    break
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to communicate with Tripo3D API:', err)
+      }
+    }
+
+    // 2. Try 3D AI Studio API as fallback/alternative if tripoKey failed or is missing
+    if (isMocked && apiKey && apiKey !== 'your_3d_ai_studio_api_key_here') {
       try {
         const response = await fetch('https://3daistudio.com/api/v1/generate', {
           method: 'POST',
