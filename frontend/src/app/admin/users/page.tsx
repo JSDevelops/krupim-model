@@ -8,7 +8,7 @@ interface UserItem {
   password?: string
   role: string
   school: string
-  status?: 'active' | 'inactive'
+  status?: 'active' | 'inactive' | 'pending'
   avatar: string
   lastLogin?: string
 }
