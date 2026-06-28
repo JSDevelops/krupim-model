@@ -1,7 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { OpenAI } from 'openai'
 import { createClient } from '@supabase/supabase-js'
 
 dotenv.config()
@@ -17,50 +17,58 @@ const supabaseUrl = process.env.SUPABASE_URL || ''
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || ''
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-// Fallback Default Gemini Client
-const defaultGenAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+// Initialize Default OpenAI Client
+const defaultOpenAI = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY || ''
+})
 
-// Helper function to extract user's API Key from request headers dynamically
-function getGenAI(req: express.Request): GoogleGenerativeAI {
-  const customKey = req.headers['x-gemini-key'] as string
-  if (customKey && customKey.trim().length > 10) {
-    return new GoogleGenerativeAI(customKey.trim())
+// Helper function to extract user's API Key from request headers dynamically (fallback to default)
+function getOpenAI(req: express.Request): OpenAI {
+  const customKey = req.headers['x-gemini-key'] as string || req.headers['x-openai-key'] as string
+  if (customKey && customKey.trim().startsWith('sk-')) {
+    return new OpenAI({ apiKey: customKey.trim() })
   }
-  return defaultGenAI
+  return defaultOpenAI
 }
 
 // System status endpoint
 app.get('/api/status', (req, res) => {
-  const customKey = req.headers['x-gemini-key'] as string
-  const hasKey = (customKey && customKey.trim().length > 10) || !!process.env.GEMINI_API_KEY
+  const customKey = req.headers['x-gemini-key'] as string || req.headers['x-openai-key'] as string
+  const hasKey = (customKey && customKey.trim().startsWith('sk-')) || !!process.env.OPENAI_API_KEY
   
   res.json({
     status: 'online',
     supabaseConnected: !!supabaseUrl,
-    geminiInitialized: hasKey,
-    usingCustomKey: !!(customKey && customKey.trim().length > 10),
+    openaiInitialized: hasKey,
+    usingCustomKey: !!(customKey && customKey.trim().startsWith('sk-')),
     timestamp: new Date().toISOString()
   })
 })
 
-// Gemini Chat API
+// OpenAI Chat API (Replaces Gemini Chat)
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, history, student_id, session_type, topic, session_id } = req.body
-    const genAI = getGenAI(req)
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      systemInstruction: 'คุณคือผู้ช่วยสอนอัจฉริยะในแพลตฟอร์ม FINE MODE ที่เชี่ยวชาญด้านศิลปะการบริการอาหารและเครื่องดื่ม การจัดโต๊ะอาหาร (Table Setting) และคำศัพท์ภาษาอังกฤษที่ใช้ในวิชาชีพนี้ ตอบผู้เรียนด้วยความสุภาพ กระชับ สนับสนุนการเรียนรู้ และมีตัวอย่างสถานการณ์จริงเสมอ'
+    const client = getOpenAI(req)
+
+    const systemPrompt = 'คุณคือผู้ช่วยสอนอัจฉริยะในแพลตฟอร์ม FINE MODE ที่เชี่ยวชาญด้านศิลปะการบริการอาหารและเครื่องดื่ม การจัดโต๊ะอาหาร (Table Setting) และคำศัพท์ภาษาอังกฤษที่ใช้ในวิชาชีพนี้ ตอบผู้เรียนด้วยความสุภาพ กระชับ สนับสนุนการเรียนรู้ และมีตัวอย่างสถานการณ์จริงเสมอ'
+    
+    const messages = [
+      { role: 'system' as const, content: systemPrompt },
+      ...(history || []).map((h: any) => ({
+        role: h.role === 'user' ? ('user' as const) : ('assistant' as const),
+        content: h.text
+      })),
+      { role: 'user' as const, content: message }
+    ]
+
+    const completion = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages,
+      temperature: 0.7
     })
-
-    const formattedHistory = (history || []).map((h: any) => ({
-      role: h.role === 'user' ? 'user' : 'model',
-      parts: [{ text: h.text }]
-    }))
-
-    const chat = model.startChat({ history: formattedHistory })
-    const result = await chat.sendMessage(message)
-    const text = result.response.text()
+    
+    const text = completion.choices[0].message.content || ''
 
     // Save to Supabase if student_id is provided
     let savedSessionId = session_id
@@ -75,7 +83,7 @@ app.post('/api/chat', async (req, res) => {
         } else {
           const { data, error } = await supabase.from('chat_sessions').insert({
             student_id,
-            session_type: session_type || 'gemini_chat',
+            session_type: session_type || 'gemini_chat', // Keep enum type compatibility
             topic: topic || 'General Conversation',
             messages_json: fullMessages
           }).select('id').single()
@@ -96,15 +104,14 @@ app.post('/api/chat', async (req, res) => {
   }
 })
 
-// Gemini Vision Scan API
+// OpenAI Vision Scan API (Replaces Gemini Vision Scan)
 app.post('/api/scan', async (req, res) => {
   try {
     const { imageBase64, mimeType } = req.body
-    const genAI = getGenAI(req)
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+    const client = getOpenAI(req)
 
-    const prompt = `คุณเป็นผู้เชี่ยวชาญด้านอาหาร เครื่องดื่ม และอุปกรณ์ในห้องอาหารระดับโรงแรมห้าดาว
-วิเคราะห์ภาพชิ้นวัตถุหรืออุปกรณ์จัดโต๊ะนี้ และส่งค่ากลับมาเป็นรูปแบบ JSON เท่านั้น (ห้ามมี markdown codeblock ครอบ JSON):
+    const systemPrompt = `คุณเป็นผู้เชี่ยวชาญด้านอาหาร เครื่องดื่ม และอุปกรณ์ในห้องอาหารระดับโรงแรมห้าดาว
+วิเคราะห์ภาพชิ้นวัตถุหรืออุปกรณ์จัดโต๊ะนี้ และส่งค่ากลับมาเป็นรูปแบบ JSON เท่านั้น:
 {
   "name_th": "ชื่อภาษาไทยอย่างเป็นทางการของอุปกรณ์ เช่น แก้วไวน์แดง, มีดตัดเนื้อหลัก",
   "name_en": "ชื่อภาษาอังกฤษอย่างเป็นทางการ เช่น Red Wine Glass, Dinner Knife",
@@ -117,18 +124,27 @@ app.post('/api/scan', async (req, res) => {
   "confidence": ตัวเลขระดับความมั่นใจ 0-100
 }`
 
-    const imagePart = {
-      inlineData: { data: imageBase64, mimeType: mimeType || 'image/jpeg' }
-    }
+    const completion = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      response_format: { type: 'json_object' },
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: systemPrompt },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:${mimeType || 'image/jpeg'};base64,${imageBase64}`
+              }
+            }
+          ]
+        }
+      ]
+    })
 
-    const result = await model.generateContent([prompt, imagePart])
-    const text = result.response.text()
-
-    // Parse JSON
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) throw new Error('No JSON output from Gemini')
-    
-    const parsedData = JSON.parse(jsonMatch[0])
+    const text = completion.choices[0].message.content || ''
+    const parsedData = JSON.parse(text)
 
     // Save to Supabase DB (Upsert on name_en to keep it updated)
     if (supabase) {
@@ -155,12 +171,11 @@ app.post('/api/scan', async (req, res) => {
   }
 })
 
-// Simulation Evaluation API
+// OpenAI Simulation Evaluation API
 app.post('/api/simulation/evaluate', async (req, res) => {
   try {
     const { messages, score, student_id, scenario_id } = req.body
-    const genAI = getGenAI(req)
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+    const client = getOpenAI(req)
 
     const chatContent = messages.map((m: any) => `${m.role === 'user' ? 'บริกร' : 'ลูกค้า'}: ${m.text}`).join('\n')
 
@@ -174,13 +189,16 @@ ${chatContent}
   "suggestions": ["คำแนะนำข้อที่ 1", "คำแนะนำข้อที่ 2"]
 }`
 
-    const result = await model.generateContent(prompt)
-    const text = result.response.text()
-
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) throw new Error('No JSON output from Gemini')
+    const completion = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'user', content: prompt }
+      ]
+    })
     
-    const parsed = JSON.parse(jsonMatch[0])
+    const text = completion.choices[0].message.content || ''
+    const parsed = JSON.parse(text)
 
     // Save to Supabase simulation_sessions if student_id and scenario_id are provided
     if (supabase && student_id && scenario_id) {
@@ -205,12 +223,11 @@ ${chatContent}
   }
 })
 
-// AI Blog Generation API
+// OpenAI AI Blog Generation API
 app.post('/api/blog/generate', async (req, res) => {
   try {
     const { topic, category, tone, keywords } = req.body
-    const genAI = getGenAI(req)
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+    const client = getOpenAI(req)
 
     const prompt = `คุณเป็นบล็อกเกอร์ผู้เชี่ยวชาญด้านอาหาร เครื่องดื่ม และการโรงแรม
 เขียนบทความการศึกษาภาษาไทยหัวข้อ: "${topic}"
@@ -219,7 +236,7 @@ app.post('/api/blog/generate', async (req, res) => {
 - คำค้นหา (Keywords) ที่ควรครอบคลุม: ${keywords || 'การบริการ, ร้านอาหาร'}
 
 ช่วยวิเคราะห์และเรียบเรียงบทความเต็มรูปแบบเป็นภาษาไทยอย่างสละสลวย จัดแต่งในรูปแบบ Markdown ที่สวยงาม (มีหัวข้อหลัก หัวข้อย่อย รายการหัวข้อ และคำแนะนำเด่น)
-ส่งค่ากลับมาเป็นรูปแบบ JSON เท่านั้น (ห้ามมี markdown codeblock ครอบ JSON):
+ส่งค่ากลับมาเป็นรูปแบบ JSON เท่านั้น:
 {
   "title": "หัวข้อบทความที่น่าสนใจดึงดูดใจสะกดอารมณ์ผู้รับบริการ",
   "content": "เนื้อหาบทความแบบ Markdown ยาว 3-4 ย่อหน้าที่มีเนื้อหาลึกซึ้งและอิงหลักวิชาการ",
@@ -228,14 +245,16 @@ app.post('/api/blog/generate', async (req, res) => {
   "tags": ["tag1", "tag2", "tag3"]
 }`
 
-    const result = await model.generateContent(prompt)
-    let text = result.response.text()
-
-    // Clean markdown code blocks if the model outputs them
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
-    if (!jsonMatch) throw new Error('No JSON output from Gemini')
+    const completion = await client.chat.completions.create({
+      model: 'gpt-4o-mini',
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'user', content: prompt }
+      ]
+    })
     
-    const parsed = JSON.parse(jsonMatch[0])
+    const text = completion.choices[0].message.content || ''
+    const parsed = JSON.parse(text)
     res.json(parsed)
   } catch (error: any) {
     console.error('Blog Generation Error:', error)
@@ -265,27 +284,30 @@ app.get('/api/ping-all', async (req, res) => {
       dbLatency = Date.now() - startDb
     }
 
-    // Check Gemini API
-    const startGemini = Date.now()
-    let geminiStatus = 'offline'
-    let geminiLatency = 0
+    // Check OpenAI API
+    const startAI = Date.now()
+    let aiStatus = 'offline'
+    let aiLatency = 0
     try {
-      const genAI = getGenAI(req)
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
-      const result = await model.generateContent("ping")
-      if (result.response.text()) {
-        geminiStatus = 'online'
-        geminiLatency = Date.now() - startGemini
+      const client = getOpenAI(req)
+      const completion = await client.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [{ role: 'user', content: 'ping' }],
+        max_tokens: 5
+      })
+      if (completion.choices[0].message.content) {
+        aiStatus = 'online'
+        aiLatency = Date.now() - startAI
       }
     } catch (e) {
-      console.error('Gemini ping check failed:', e)
+      console.error('OpenAI ping check failed:', e)
     }
 
     res.json({
       timestamp: new Date().toISOString(),
       services: {
         database: { status: dbStatus, latency: `${dbLatency}ms` },
-        gemini: { status: geminiStatus, latency: `${geminiLatency}ms` },
+        gemini: { status: aiStatus, latency: `${aiLatency}ms` }, // Keep key name compatible with UI ping dashboard
         backend: { status: 'online', latency: '1ms' }
       }
     })
