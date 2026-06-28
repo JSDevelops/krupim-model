@@ -18,12 +18,20 @@ export default function QRScannerPage() {
     const value = detectedCodes[0].rawValue
     if (value) {
       setScanned(true)
-      // Assuming the QR code contains a URL like http://localhost:3000/student/ar-view?id=xyz
-      // We will parse it and redirect
       try {
-        const url = new URL(value)
-        if (url.pathname.includes('/student/ar-view')) {
-          router.push(url.pathname + url.search)
+        let targetPath = ''
+        if (value.startsWith('http://') || value.startsWith('https://')) {
+          const url = new URL(value)
+          targetPath = url.pathname + url.search
+        } else if (value.startsWith('/')) {
+          targetPath = value
+        } else if (value.includes('/student/ar-view')) {
+          const index = value.indexOf('/student/ar-view')
+          targetPath = value.substring(index)
+        }
+
+        if (targetPath && targetPath.includes('/student/ar-view')) {
+          router.push(targetPath)
         } else {
           setError('QR Code นี้ไม่ใช่ QR Code สำหรับเรียนรู้ AR ของระบบ FINE MODEL')
           setTimeout(() => setScanned(false), 3000)
