@@ -1,6 +1,6 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { QRCodeSVG } from 'qrcode.react'
+import QRCode from 'react-qr-code'
 
 interface ARModel {
   id: string
@@ -196,11 +196,10 @@ export default function ARModelsPage() {
             <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#1E4D3A', margin: '0 0 20px 0' }}>{showQRModal.title}</h3>
             
             <div style={{ padding: '20px', background: '#FFF', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', display: 'inline-block' }}>
-              <QRCodeSVG 
+              <QRCode 
                 value={`${getBaseUrl()}/student/ar-view?id=${showQRModal.id}`} 
                 size={200}
                 level="M"
-                includeMargin={true}
               />
             </div>
             
