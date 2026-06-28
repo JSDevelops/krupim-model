@@ -111,6 +111,50 @@ export default function AdminSettingsPage() {
     setTimeout(() => setIsSaved(false), 3000)
   }
 
+  const [clearing, setClearing] = useState(false)
+
+  function handleClearCache() {
+    if (confirm('คุณต้องการล้างแคชไฟล์ขยะ ข้อมูลการจำลองสถานการณ์ชั่วคราว และประวัติบันทึกความหน่วง API Ping บนเบราว์เซอร์เพื่อคืนพื้นที่ความจำหรือไม่? (ข้อมูลบัญชีผู้ใช้ คะแนนสมรรถนะนักเรียน และคีย์ AI จะถูกเก็บรักษาอย่างปลอดภัย)')) {
+      setClearing(true)
+      setTimeout(() => {
+        if (typeof window !== 'undefined') {
+          const savedKeys = [
+            'registeredUsers',
+            'schoolName',
+            'supabaseUrl',
+            'supabaseAnonKey',
+            'activeAiProvider',
+            'geminiApiKey',
+            'openaiApiKey',
+            'claudeApiKey',
+            'classroomStudents',
+            'uxThemeMode',
+            'uxFontFamily',
+            'uxTextSize',
+            'uxTransitionStyle',
+            'uxLayoutDensity',
+            'uxArQuality',
+            'uxShowArHelp',
+            'uxMicroInteractions',
+            'systemNews'
+          ]
+          
+          const keysToDelete: string[] = []
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i)
+            if (key && !savedKeys.includes(key)) {
+              keysToDelete.push(key)
+            }
+          }
+          keysToDelete.forEach(k => localStorage.removeItem(k))
+          sessionStorage.clear()
+        }
+        setClearing(false)
+        alert('🧹 ล้างข้อมูลแคชขยะชั่วคราวสำเร็จ! (กู้คืนพื้นที่เบราว์เซอร์และหน่วยความจำโมเดล 3D ได้ลื่นไหลขึ้น)')
+      }, 1200)
+    }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '850px', padding: '16px' }}>
       
@@ -430,6 +474,40 @@ export default function AdminSettingsPage() {
                 </select>
               </div>
 
+            </div>
+          </div>
+
+          {/* Section 5: Cache Cleaner */}
+          <div style={{ borderTop: '1px solid #EDE9E1', paddingTop: '20px' }}>
+            <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#1E4D3A', borderBottom: '1.5px solid #EDE9E1', paddingBottom: '8px', marginBottom: '14px' }}>
+              🧹 การบำรุงรักษาเครื่องผู้ใช้ (Client-Side Cache Cleaning)
+            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: '#FFFDF6', border: '1.5px solid #C9A84C', borderRadius: '12px' }}>
+              <div style={{ flex: 1, paddingRight: '16px' }}>
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#A6882A' }}>ล้างไฟล์ขยะ แคชจำลองสถานการณ์ และเซสชันชั่วคราว</span>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', lineHeight: 1.5 }}>
+                  ล้างความหน่วงทดสอบ Latency, แคชโมเดล AR ค้างหน้าจอ, และประวัติการกดคำแนะนำ เพื่อเพิ่มพื้นที่ความจำและช่วยลดความหน่วงสะสมของเบราว์เซอร์ (ข้อมูลบัญชี คะแนนนักเรียน และกุญแจ AI ปลอดภัย 100%)
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleClearCache}
+                disabled={clearing}
+                style={{
+                  padding: '12px 20px',
+                  background: '#8B2635',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  fontSize: '12.5px',
+                  cursor: clearing ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 10px rgba(139,38,53,0.15)',
+                  flexShrink: 0
+                }}
+              >
+                {clearing ? 'กำลังล้างแคช...' : '🧹 ล้างแคชขยะความจำ'}
+              </button>
             </div>
           </div>
 
