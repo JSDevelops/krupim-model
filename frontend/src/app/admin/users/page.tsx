@@ -511,12 +511,19 @@ export default function AdminUsersPage() {
               <div>
                 <h4 style={{ fontSize: '12.5px', fontWeight: 800, color: '#A6882A', margin: '0 0 8px 0' }}>👨‍🎓 นักเรียนในห้องเรียนหลักของคุณครู (Classroom Roster Preview)</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '120px', overflowY: 'auto', background: '#fff', padding: '8px', borderRadius: '10px', border: '1px solid #EDE9E1' }}>
-                  {stats.studentList.map((s: any) => (
-                    <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '6px 8px', borderBottom: '1px solid #F5F5F0', alignItems: 'center' }}>
-                      <span style={{ fontWeight: 600, color: '#4A4138' }}>👨‍🎓 {s.name} ({s.class})</span>
-                      <span style={{ color: 'var(--text-muted)' }}>สะสม {s.sessions} sessions · คะแนนรวม {Math.round((s.ksa.K*0.2)+(s.ksa.S*0.3)+(s.ksa.A*0.1)+(s.ksa.C*0.4))}%</span>
-                    </div>
-                  ))}
+                  {stats.studentList.map((s: any) => {
+                    const kVal = s.ksa?.K ?? 0;
+                    const sVal = s.ksa?.S ?? 0;
+                    const aVal = s.ksa?.A ?? 0;
+                    const cVal = s.ksa?.C ?? 0;
+                    const totalScore = Math.round((kVal * 0.2) + (sVal * 0.3) + (aVal * 0.1) + (cVal * 0.4));
+                    return (
+                      <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '6px 8px', borderBottom: '1px solid #F5F5F0', alignItems: 'center' }}>
+                        <span style={{ fontWeight: 600, color: '#4A4138' }}>👨‍🎓 {s.name} ({s.class})</span>
+                        <span style={{ color: 'var(--text-muted)' }}>สะสม {s.sessions || 0} sessions · คะแนนรวม {totalScore}%</span>
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
 
