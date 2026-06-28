@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRole } from '@/context/RoleContext'
+import { supabase } from '@/lib/supabase'
 
 interface LessonPlan {
   id: string
@@ -85,22 +86,41 @@ export default function StudentLearnPage() {
   const { user } = useRole()
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('lessonPlans')
-      let list: LessonPlan[] = []
-      if (stored) {
-        try {
-          list = JSON.parse(stored)
-        } catch (e) {}
-      }
+    async function fetchPlans() {
+      const studentTeacher = user?.teacherName || 'ครูสมหญิง รักเรียน'
       
-      if (!list || list.length === 0) {
+      const { data } = await supabase.from('fine_lesson_plans').select('*')
+      let list: LessonPlan[] = []
+      
+      if (data && data.length > 0) {
+        list = data.map((dbPlan: any) => ({
+          id: dbPlan.id,
+          title: dbPlan.title,
+          subject: dbPlan.subject,
+          level: dbPlan.level,
+          term: dbPlan.term,
+          duration: dbPlan.duration,
+          targetClass: dbPlan.target_class,
+          weeks: dbPlan.weeks,
+          concept: dbPlan.concept,
+          objectivesK: dbPlan.objectives_k || [],
+          objectivesS: dbPlan.objectives_s || [],
+          objectivesA: dbPlan.objectives_a || [],
+          objectivesAP: dbPlan.objectives_ap || [],
+          vocabulary: dbPlan.vocabulary || [],
+          sentences: dbPlan.sentences || [],
+          activitiesLead: dbPlan.activities_lead,
+          activitiesF: dbPlan.activities_f,
+          activitiesI: dbPlan.activities_i,
+          activitiesN: dbPlan.activities_n,
+          activitiesE: dbPlan.activities_e,
+          activitiesWrap: dbPlan.activities_wrap,
+          teacherName: dbPlan.teacher_name,
+          teacherEmail: dbPlan.teacher_email
+        }))
+      } else {
         list = fallbackPlans
       }
-
-      // Filter: only show plans matching the student's registered teacher
-      // If student registered via invitation link, user.teacherName holds the teacher
-      const studentTeacher = user?.teacherName || 'ครูสมหญิง รักเรียน'
 
       const filtered = list.filter(p => {
         const planTeacher = p.teacherName || 'ครูสมหญิง รักเรียน'
@@ -113,6 +133,10 @@ export default function StudentLearnPage() {
       } else {
         setExpandedPlanId(null)
       }
+    }
+    
+    if (typeof window !== 'undefined') {
+      fetchPlans()
     }
   }, [user])
 

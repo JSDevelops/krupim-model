@@ -13,15 +13,9 @@ interface UserItem {
   lastLogin?: string
 }
 
-const initialPendingTeachers = [
-  { id: 'pend-001', name: 'ครูสมศักดิ์ เรียนรู้', email: 'somsak.t@school.ac.th', school: 'วิทยาลัยอาชีวศึกษาสุราษฎร์ธานี', requestDate: 'วันนี้, 10:20 น.', docs: 'ใบประกอบวิชาชีพครู.pdf' },
-  { id: 'pend-002', name: 'ครูอัญชลี ขยันยิ่ง', email: 'anchalee.k@school.ac.th', school: 'วิทยาลัยอาชีวศึกษาเชียงราย', requestDate: 'เมื่อวานนี้, 16:45 น.', docs: 'ใบประกอบวิชาชีพครู_อัญชลี.pdf' },
-]
-
 export default function AdminUsersPage() {
   const [users, setUsers] = useState<UserItem[]>([])
-  const [pendingTeachers, setPendingTeachers] = useState(initialPendingTeachers)
-  const [activeTab, setActiveTab] = useState<'teachers' | 'pending'>('teachers')
+  const [activeTab, setActiveTab] = useState<'teachers' | 'pending' | 'students'>('teachers')
   const [search, setSearch] = useState('')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newUserName, setNewUserName] = useState('')
@@ -58,10 +52,17 @@ export default function AdminUsersPage() {
     }
   }
 
-  // Admin manages ONLY Teachers (students are managed by teachers)
-  const teacherUsers = users.filter(u => u.role === 'teacher')
+  // Computed lists
+  const pendingTeachers = users.filter(u => u.role === 'teacher' && u.status === 'pending')
+  const teacherUsers = users.filter(u => u.role === 'teacher' && u.status !== 'pending')
+  const studentUsers = users.filter(u => u.role === 'student')
 
   const filteredTeachers = teacherUsers.filter(u => {
+    const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase())
+    return matchSearch
+  })
+  
+  const filteredStudents = studentUsers.filter(u => {
     const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase())
     return matchSearch
   })
@@ -112,27 +113,21 @@ export default function AdminUsersPage() {
     }
   }
 
-  function handleApprove(teacher: typeof initialPendingTeachers[0]) {
-    const newUser: UserItem = {
-      id: `usr-${Date.now()}`,
-      name: teacher.name,
-      email: teacher.email,
-      password: 'teacher1234',
-      role: 'teacher',
-      school: teacher.school,
-      status: 'active',
-      avatar: '👩‍🏫',
-      lastLogin: 'เพิ่งได้รับการอนุมัติ'
-    }
-
-    saveUsersToStorage([newUser, ...users])
-    setPendingTeachers(prev => prev.filter(t => t.id !== teacher.id))
+  function handleApprove(teacher: UserItem) {
+    const updated = users.map(u => {
+      if (u.id === teacher.id) {
+        return { ...u, status: 'active', lastLogin: 'เพิ่งได้รับการอนุมัติ' } as UserItem
+      }
+      return u
+    })
+    saveUsersToStorage(updated)
     alert(`อนุมัติและเปิดสิทธิ์ครูผู้สอนให้ ${teacher.name} สำเร็จ!`)
   }
 
   function handleReject(id: string, name: string) {
     if (confirm(`คุณต้องการปฏิเสธคำขอการเปิดสิทธิ์ของ ${name} หรือไม่?`)) {
-      setPendingTeachers(prev => prev.filter(t => t.id !== id))
+      const updated = users.filter(u => u.id !== id)
+      saveUsersToStorage(updated)
     }
   }
 
@@ -167,7 +162,7 @@ export default function AdminUsersPage() {
       {/* Header card */}
       <div className="erp-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#1E4D3A' }}>👥 ระบบบริหารจัดการครูผู้สอน (Teacher Management)</h2>
+          <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#1E4D3A' }}>👥 ระบบบริหารจัดการบัญชีผู้ใช้ (User Management)</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '4px' }}>
             [ผู้ดูแลระบบ] บริหารจัดการสิทธิ์ครูผู้สอน (คลิกที่ชื่อของคุณครูเพื่อตรวจสอบ **แดชบอร์ดชั้นเรียน** ของครูท่านนั้น)
           </p>
@@ -203,6 +198,16 @@ export default function AdminUsersPage() {
               {pendingTeachers.length}
             </span>
           )}
+        </button>
+        <button
+          onClick={() => setActiveTab('students')}
+          style={{
+            background: 'transparent', border: 'none', fontSize: '14px', fontWeight: activeTab === 'students' ? 700 : 500,
+            color: activeTab === 'students' ? '#1E4D3A' : 'var(--text-muted)', cursor: 'pointer', padding: '10px 20px',
+            borderBottom: activeTab === 'students' ? '3px solid #1E4D3A' : 'none'
+          }}
+        >
+          👨‍🎓 นักเรียนในระบบ ({studentUsers.length})
         </button>
       </div>
 
@@ -286,8 +291,7 @@ export default function AdminUsersPage() {
                         <td>{u.school}</td>
                         <td style={{ color: 'var(--text-muted)' }}>{u.lastLogin || 'ยังไม่ได้ระบุ'}</td>
                         <td>
-                          <span onClick={() => toggleStatus(u.id)} style={{
-                            cursor: 'pointer',
+                          <span style={{
                             background: u.status === 'active' || !u.status ? '#EAF3EE' : '#FAE8EB',
                             color: u.status === 'active' || !u.status ? '#1E4D3A' : '#8B2635',
                             fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '20px'
@@ -297,6 +301,9 @@ export default function AdminUsersPage() {
                         </td>
                         <td style={{ textAlign: 'center' }}>
                           <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                            <button onClick={() => toggleStatus(u.id)} className={`btn ${u.status === 'active' || !u.status ? 'btn-outline' : 'btn-primary'} btn-sm`} style={{ padding: '6px 12px', fontSize: '12px', borderColor: u.status === 'active' || !u.status ? '#B03A4A' : '', color: u.status === 'active' || !u.status ? '#8B2635' : '' }}>
+                              {u.status === 'active' || !u.status ? 'ระงับสิทธิ์' : 'เปิดใช้งาน'}
+                            </button>
                             <button onClick={() => {
                               const newPass = prompt(`ตั้งค่ารหัสผ่านใหม่สำหรับคุณครู ${u.name}:`, u.password || '')
                               if (newPass !== null) {
@@ -371,6 +378,89 @@ export default function AdminUsersPage() {
             </div>
           )}
         </div>
+      )}
+
+      {activeTab === 'students' && (
+        <>
+          {/* Filter and Search controls */}
+          <div className="erp-card" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <div style={{ flex: 1 }}>
+              <input
+                className="erp-input"
+                placeholder="ค้นหานักเรียน ตามชื่อ หรือ อีเมล..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+              />
+            </div>
+            <div style={{ padding: '8px 16px', background: '#F5F0E6', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#4A4138' }}>
+              บทบาทที่จัดการ: นักเรียน (Student)
+            </div>
+          </div>
+
+          {/* Users Table */}
+          <div className="erp-card" style={{ padding: 0, overflow: 'hidden' }}>
+            {filteredStudents.length === 0 ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                ไม่พบข้อมูลนักเรียนที่ค้นหา
+              </div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: '#F5F0E6', borderBottom: '2px solid #EDE9E1' }}>
+                    <th style={{ padding: '12px 16px', fontSize: '12px', color: '#4A4138', width: '35%' }}>นักเรียน</th>
+                    <th style={{ padding: '12px 16px', fontSize: '12px', color: '#4A4138', width: '25%' }}>สถานศึกษา / ครูผู้สอน</th>
+                    <th style={{ padding: '12px 16px', fontSize: '12px', color: '#4A4138', width: '15%' }}>สถานะ</th>
+                    <th style={{ padding: '12px 16px', fontSize: '12px', color: '#4A4138', width: '25%', textAlign: 'center' }}>การจัดการ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredStudents.map((u, i) => (
+                    <tr key={u.id} style={{ borderBottom: '1px solid #EDE9E1', background: i % 2 === 0 ? '#FDFAF4' : '#fff' }}>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ width: 36, height: 36, background: '#FBF6E9', border: '1px solid rgba(201,168,76,0.3)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+                            {u.avatar || '👨‍🎓'}
+                          </div>
+                          <div>
+                            <div style={{ fontSize: '14px', fontWeight: 700, color: '#1A1410' }}>
+                              {u.name}
+                            </div>
+                            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '2px' }}>{u.email}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 600, color: '#1A1410' }}>{u.school || '-'}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>ครู: {(u as any).teacherName || '-'} / ห้อง: {(u as any).enrolledClass || '-'}</div>
+                      </td>
+                      <td style={{ padding: '12px 16px' }}>
+                        {u.status === 'active' ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#EAF3EE', color: '#1E4D3A', padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, border: '1px solid rgba(30,77,58,0.2)' }}>
+                            <span style={{ width: 6, height: 6, background: '#1E4D3A', borderRadius: '50%' }}></span> Active
+                          </span>
+                        ) : (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#F5F0E6', color: '#8A7A60', padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: 700, border: '1px solid rgba(138,122,96,0.2)' }}>
+                            <span style={{ width: 6, height: 6, background: '#8A7A60', borderRadius: '50%' }}></span> Inactive / Pending
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: '12px 16px', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                          <button onClick={() => toggleStatus(u.id)} className={`btn ${u.status === 'active' ? 'btn-outline' : 'btn-primary'} btn-sm`} style={{ padding: '6px 12px', borderColor: u.status === 'active' ? '#B03A4A' : '', color: u.status === 'active' ? '#8B2635' : '' }}>
+                            {u.status === 'active' ? 'ระงับสิทธิ์' : 'เปิดใช้งาน'}
+                          </button>
+                          <button onClick={() => handleDeleteUser(u.id)} className="btn btn-outline btn-sm" style={{ padding: '6px 12px', borderColor: 'transparent', color: 'var(--text-muted)' }}>
+                            🗑️
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </>
       )}
 
       {/* Create User Modal */}

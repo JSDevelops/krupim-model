@@ -2,6 +2,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { supabase } from '@/lib/supabase'
 
 function RegisterForm() {
   const router = useRouter()
@@ -17,18 +18,38 @@ function RegisterForm() {
   const [success, setSuccess] = useState(false)
 
   // Class Invite Params
-  const classParam = searchParams.get('class')
-  const teacherParam = searchParams.get('teacher')
-  const schoolParam = searchParams.get('school')
+  const codeParam = searchParams.get('code')
+  const [invitedClass, setInvitedClass] = useState('')
+  const [invitedTeacher, setInvitedTeacher] = useState('')
 
   useEffect(() => {
-    if (schoolParam) {
-      setSchool(schoolParam)
+    async function fetchInvite() {
+      if (codeParam) {
+        const { data } = await supabase.from('class_invites').select('*').eq('short_code', codeParam).single()
+        if (data) {
+          if (data.school_name) setSchool(data.school_name)
+          if (data.target_class) setInvitedClass(data.target_class)
+          if (data.teacher_name) setInvitedTeacher(data.teacher_name)
+          setRole('student')
+        }
+      }
     }
+    fetchInvite()
+  }, [codeParam])
+
+  useEffect(() => {
+    const classParam = searchParams.get('class')
+    const teacherParam = searchParams.get('teacher')
+    const schoolParam = searchParams.get('school')
+
+    if (schoolParam) setSchool(schoolParam)
+    if (classParam) setInvitedClass(classParam)
+    if (teacherParam) setInvitedTeacher(teacherParam)
+
     if (classParam || teacherParam) {
-      setRole('student') // Auto set to student if registering from class link
+      setRole('student')
     }
-  }, [schoolParam, classParam, teacherParam])
+  }, [searchParams])
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
@@ -53,6 +74,24 @@ function RegisterForm() {
         return
       }
 
+      let initialStatus = role === 'student' ? 'pending' : 'active'
+      
+      if (role === 'student') {
+        const classRosterRaw = localStorage.getItem('classroomStudents')
+        if (classRosterRaw) {
+          try {
+            const roster = JSON.parse(classRosterRaw)
+            const isMatch = roster.some((s: any) => 
+              (s.email && s.email.toLowerCase() === email.trim().toLowerCase()) || 
+              (s.name && s.name.toLowerCase() === name.trim().toLowerCase())
+            )
+            if (isMatch) {
+              initialStatus = 'active' // Auto-approve if they are in the teacher's roster
+            }
+          } catch (e) {}
+        }
+      }
+
       const newUser = {
         name,
         email,
@@ -61,9 +100,9 @@ function RegisterForm() {
         role,
         avatar: role === 'teacher' ? '👩‍🏫' : '👨‍🎓',
         id: `usr-${Date.now()}`,
-        // Store linked class & teacher if registered via link
-        enrolledClass: classParam || 'ปวช.1/1',
-        teacherName: teacherParam || 'ครูสมหญิง รักเรียน'
+        enrolledClass: invitedClass || 'ปวช.1/1',
+        teacherName: invitedTeacher || 'ครูสมหญิง รักเรียน',
+        status: initialStatus
       }
 
       existingUsers.push(newUser)
@@ -72,24 +111,29 @@ function RegisterForm() {
       setSuccess(true)
       setLoading(false)
 
-      // Auto login
+      // Auto login or redirect to login
       setTimeout(() => {
-        localStorage.setItem('userRole', role)
-        localStorage.setItem('userInfo', JSON.stringify(newUser))
-        router.push(role === 'teacher' ? '/teacher/dashboard' : '/student/explore')
+        if (newUser.role === 'student' && newUser.status === 'pending') {
+          // Redirect to login page to show pending message
+          router.push('/')
+        } else {
+          localStorage.setItem('userRole', role)
+          localStorage.setItem('userInfo', JSON.stringify(newUser))
+          router.push(role === 'teacher' ? '/teacher/dashboard' : '/student/explore')
+        }
       }, 1500)
     }, 1200)
   }
 
   return (
     <div className="login-card animate-slide-up" style={{ padding: '30px var(--space-5)' }}>
-      {classParam && teacherParam ? (
+      {invitedClass && invitedTeacher ? (
         <div style={{
           padding: '12px', background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.40)',
           borderRadius: '12px', marginBottom: '20px', textAlign: 'center', fontSize: '13px', color: '#A6882A', fontWeight: 600
         }}>
-          ✦ สมัครเข้าร่วมชั้นเรียน: <span style={{ color: '#1E4D3A', fontWeight: 700 }}>{classParam}</span><br />
-          ของคุณครู: <span style={{ color: '#1E4D3A', fontWeight: 700 }}>{teacherParam}</span> ✦
+          ✦ สมัครเข้าร่วมชั้นเรียน: <span style={{ color: '#1E4D3A', fontWeight: 700 }}>{invitedClass}</span><br />
+          ของคุณครู: <span style={{ color: '#1E4D3A', fontWeight: 700 }}>{invitedTeacher}</span> ✦
         </div>
       ) : (
         <div className="card-ornament">✦ ลงทะเบียนเข้าใช้งาน ✦</div>
@@ -109,30 +153,7 @@ function RegisterForm() {
 
       <form onSubmit={handleRegister} className="login-form" style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
         
-        {/* Hide role select if registering via class link, since they must be a student */}
-        {!(classParam && teacherParam) && (
-          <div className="form-group">
-            <label className="form-label">บทบาทของคุณ</label>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button
-                type="button"
-                className={`btn ${role === 'student' ? 'btn-primary' : 'btn-outline'}`}
-                style={{ flex: 1, padding: '10px', fontSize: '13px', border: role === 'student' ? 'none' : undefined }}
-                onClick={() => setRole('student')}
-              >
-                👨‍🎓 นักเรียน (Student)
-              </button>
-              <button
-                type="button"
-                className={`btn ${role === 'teacher' ? 'btn-primary' : 'btn-outline'}`}
-                style={{ flex: 1, padding: '10px', fontSize: '13px', border: role === 'teacher' ? 'none' : undefined }}
-                onClick={() => setRole('teacher')}
-              >
-                👩‍🏫 ครูผู้สอน (Teacher)
-              </button>
-            </div>
-          </div>
-        )}
+        {/* Role is hardcoded to student for this page */}
 
         <div className="form-group">
           <label className="form-label">ชื่อ-นามสกุล</label>
@@ -178,13 +199,13 @@ function RegisterForm() {
         </div>
 
         <div className="form-group">
-          <label className="form-label">รหัสผ่าน</label>
+          <label className="form-label">รหัสประจำตัวนักเรียน/นักศึกษา (รหัสผ่าน)</label>
           <div className="input-wrap">
             <span className="input-icon">⊛</span>
             <input
               className="form-input with-icon"
               type="password"
-              placeholder="รหัสผ่านของคุณ (ขั้นต่ำ 6 ตัว)"
+              placeholder="เช่น 6400010001"
               value={password}
               onChange={e => setPassword(e.target.value)}
               minLength={6}

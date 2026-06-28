@@ -61,6 +61,15 @@ export default function LoginPage() {
       const foundUser = existingUsers.find((u: any) => u.email === email && u.password === password)
 
       if (foundUser) {
+        if (foundUser.status === 'pending') {
+          if (foundUser.role === 'student') {
+            setError('รอการอนุมัติจากครูผู้สอนเพื่อเข้าชั้นเรียน')
+          } else if (foundUser.role === 'teacher') {
+            setError('รอการอนุมัติสิทธิ์จากผู้ดูแลระบบ')
+          }
+          setLoading(false)
+          return
+        }
         localStorage.setItem('userRole', foundUser.role)
         localStorage.setItem('userInfo', JSON.stringify(foundUser))
         setLoading(false)
@@ -124,7 +133,7 @@ export default function LoginPage() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">รหัสผ่าน</label>
+            <label className="form-label">รหัสผ่าน (นักเรียน: ใช้รหัสนักศึกษา)</label>
             <div className="input-wrap">
               <span className="input-icon">⊛</span>
               <input

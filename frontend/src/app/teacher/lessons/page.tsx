@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { useRole } from '@/context/RoleContext'
+import { supabase } from '@/lib/supabase'
 
 // Detailed Lesson Plan Interface matching PDF structure
 interface LessonPlan {
@@ -213,26 +214,75 @@ export default function TeacherLessonsDashboard() {
   const [activeTab, setActiveTab] = useState<'4.1' | '4.2' | '4.3' | '4.4' | '4.5'>('4.1')
 
   const [plans, setPlans] = useState<LessonPlan[]>([])
+  const [inviteShortCode, setInviteShortCode] = useState<string | null>(null)
 
   // Load plans on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('lessonPlans')
-      if (stored) {
-        try {
-          setPlans(JSON.parse(stored))
-          return
-        } catch (e) {}
+    async function loadPlans() {
+      const { data, error } = await supabase.from('fine_lesson_plans').select('*')
+      if (data && data.length > 0) {
+        const mappedPlans = data.map(dbPlan => ({
+          id: dbPlan.id,
+          title: dbPlan.title,
+          subject: dbPlan.subject,
+          level: dbPlan.level,
+          term: dbPlan.term,
+          duration: dbPlan.duration,
+          targetClass: dbPlan.target_class,
+          weeks: dbPlan.weeks,
+          concept: dbPlan.concept,
+          objectivesK: dbPlan.objectives_k || [],
+          objectivesS: dbPlan.objectives_s || [],
+          objectivesA: dbPlan.objectives_a || [],
+          objectivesAP: dbPlan.objectives_ap || [],
+          vocabulary: dbPlan.vocabulary || [],
+          sentences: dbPlan.sentences || [],
+          activitiesLead: dbPlan.activities_lead,
+          activitiesF: dbPlan.activities_f,
+          activitiesI: dbPlan.activities_i,
+          activitiesN: dbPlan.activities_n,
+          activitiesE: dbPlan.activities_e,
+          activitiesWrap: dbPlan.activities_wrap,
+          teacherName: dbPlan.teacher_name,
+          teacherEmail: dbPlan.teacher_email
+        }))
+        setPlans(mappedPlans)
+      } else {
+        setPlans(initialPlans)
       }
-      setPlans(initialPlans)
-      localStorage.setItem('lessonPlans', JSON.stringify(initialPlans))
     }
+    loadPlans()
   }, [])
 
-  // Sync plans to localStorage when changed
+  // Sync plans to Supabase when changed
   useEffect(() => {
     if (typeof window !== 'undefined' && plans.length > 0) {
-      localStorage.setItem('lessonPlans', JSON.stringify(plans))
+      const dbPlans = plans.map(p => ({
+        id: p.id,
+        title: p.title,
+        subject: p.subject,
+        level: p.level,
+        term: p.term,
+        duration: p.duration,
+        target_class: p.targetClass,
+        weeks: p.weeks,
+        concept: p.concept,
+        objectives_k: p.objectivesK,
+        objectives_s: p.objectivesS,
+        objectives_a: p.objectivesA,
+        objectives_ap: p.objectivesAP,
+        vocabulary: p.vocabulary,
+        sentences: p.sentences,
+        activities_lead: p.activitiesLead,
+        activities_f: p.activitiesF,
+        activities_i: p.activitiesI,
+        activities_n: p.activitiesN,
+        activities_e: p.activitiesE,
+        activities_wrap: p.activitiesWrap,
+        teacher_name: p.teacherName,
+        teacher_email: p.teacherEmail
+      }))
+      supabase.from('fine_lesson_plans').upsert(dbPlans).then()
     }
   }, [plans])
 
@@ -489,6 +539,7 @@ export default function TeacherLessonsDashboard() {
   function handleDeletePlan(id: string) {
     if (confirm('คุณต้องการลบแผนการจัดการเรียนรู้นี้หรือไม่?')) {
       setPlans(prev => prev.filter(p => p.id !== id))
+      supabase.from('fine_lesson_plans').delete().eq('id', id).then()
     }
   }
 
@@ -496,10 +547,23 @@ export default function TeacherLessonsDashboard() {
     setActiveInvitePlan(plan)
     const teacherName = user?.name || 'ครูผู้สอน'
     const schoolName = user?.school || 'วิทยาลัยอาชีวศึกษา'
+    
+    const shortCode = Math.random().toString(36).substring(2, 8).toUpperCase()
+    setInviteShortCode(shortCode)
+    
+    supabase.from('class_invites').insert({
+      short_code: shortCode,
+      target_class: plan.targetClass,
+      teacher_name: teacherName,
+      school_name: schoolName,
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    }).then()
+
     const origin = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
       ? window.location.origin
       : 'https://krupim-finemodel3d-ar.com'
-    const url = `${origin}/register?class=${encodeURIComponent(plan.targetClass)}&teacher=${encodeURIComponent(teacherName)}&school=${encodeURIComponent(schoolName)}`
+    const url = `${origin}/register-student?code=${shortCode}`
+    
     navigator.clipboard.writeText(url)
     setCopiedId(plan.id)
     setTimeout(() => setCopiedId(null), 3000)
@@ -1684,7 +1748,7 @@ export default function TeacherLessonsDashboard() {
         const origin = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
           ? window.location.origin
           : 'https://krupim-finemodel3d-ar.com'
-        const url = `${origin}/register?class=${encodeURIComponent(activeInvitePlan.targetClass)}&teacher=${encodeURIComponent(teacherName)}&school=${encodeURIComponent(schoolName)}`
+        const url = `${origin}/register-student?code=${inviteShortCode || ''}`
         const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`
 
         return (

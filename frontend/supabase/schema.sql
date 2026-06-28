@@ -372,3 +372,52 @@ INSERT INTO simulation_scenarios (id, unit_id, title, description, scenario_type
      {"name": "ภาษาอังกฤษ", "max_score": 20, "description": "ใช้ภาษาอังกฤษได้ถูกต้องและคล่อง"},
      {"name": "มารยาท", "max_score": 10, "description": "มีมารยาทและบุคลิกภาพที่ดี"}
    ]}');
+
+-- ============================================
+-- FINE LESSON PLANS & CLASS INVITES (Real-Time & QR Code)
+-- ============================================
+CREATE TABLE fine_lesson_plans (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  subject TEXT,
+  level TEXT,
+  term TEXT,
+  duration TEXT,
+  target_class TEXT,
+  weeks TEXT,
+  concept TEXT,
+  objectives_k JSONB DEFAULT '[]',
+  objectives_s JSONB DEFAULT '[]',
+  objectives_a JSONB DEFAULT '[]',
+  objectives_ap JSONB DEFAULT '[]',
+  vocabulary JSONB DEFAULT '[]',
+  sentences JSONB DEFAULT '[]',
+  activities_lead TEXT,
+  activities_f TEXT,
+  activities_i TEXT,
+  activities_n TEXT,
+  activities_e TEXT,
+  activities_wrap TEXT,
+  teacher_name TEXT,
+  teacher_email TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE class_invites (
+  short_code TEXT PRIMARY KEY,
+  target_class TEXT NOT NULL,
+  teacher_name TEXT,
+  school_name TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ
+);
+
+ALTER TABLE fine_lesson_plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE class_invites ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read fine_lesson_plans" ON fine_lesson_plans FOR SELECT USING (true);
+CREATE POLICY "Allow public all fine_lesson_plans" ON fine_lesson_plans FOR ALL USING (true);
+
+CREATE POLICY "Allow public read class_invites" ON class_invites FOR SELECT USING (true);
+CREATE POLICY "Allow public all class_invites" ON class_invites FOR ALL USING (true);

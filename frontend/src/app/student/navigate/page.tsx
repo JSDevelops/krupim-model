@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import StudentFINENav from '@/components/StudentFINENav'
+import { supabase } from '@/lib/supabase'
 
 interface Scenario {
   id: string
@@ -117,35 +118,37 @@ export default function NavigatePage() {
   }
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('lessonPlans')
-      if (stored) {
-        try {
-          const plans = JSON.parse(stored)
-          if (Array.isArray(plans) && plans.length > 0) {
-            const mapped = plans.map((p: any, idx: number) => ({
-              id: `plan-${idx}`,
-              title: p.title || 'Lesson Challenge',
-              titleTh: 'สถานการณ์จำลองตามแผนการสอน',
-              role: 'F&B Service Staff',
-              desc: p.objective || 'ฝึกทักษะการบริการอาหารตามแผนการเรียนรู้ของคุณครู',
-              vocab: (p.vocabulary || []).map((v: any) => ({
-                word: v.nameEn,
-                ph: '/pronunciation/',
-                meaning: v.name,
-                emoji: v.emoji || '🍽️'
-              })),
-              sentences: p.practiceSentences || [
-                'Welcome to our 6-star dining room.',
-                'May I take your order, please?',
-                'Certainly, I will be right back with your drinks.'
-              ]
-            }))
-            setScenarios(mapped)
-          }
-        } catch (e) {}
+    async function loadScenarios() {
+      const { data } = await supabase.from('fine_lesson_plans').select('*')
+      if (data && data.length > 0) {
+        const mapped = data.map((p: any, idx: number) => ({
+          id: `plan-${idx}`,
+          title: p.title || 'Lesson Challenge',
+          titleTh: 'สถานการณ์จำลองตามแผนการสอน',
+          role: 'F&B Service Staff',
+          desc: p.concept || 'ฝึกทักษะการบริการอาหารตามแผนการเรียนรู้ของคุณครู',
+          vocab: (p.vocabulary || []).map((v: any) => {
+            if (typeof v === 'string') {
+              return { word: v, ph: '/pronunciation/', meaning: v, emoji: '🍽️' }
+            }
+            return {
+              word: v.nameEn || v.word || '',
+              ph: '/pronunciation/',
+              meaning: v.name || v.meaning || '',
+              emoji: v.emoji || '🍽️'
+            }
+          }),
+          sentences: p.sentences && p.sentences.length > 0 ? p.sentences : [
+            'Welcome to our 6-star dining room.',
+            'May I take your order, please?'
+          ]
+        }))
+        setScenarios(mapped)
+      } else {
+        setScenarios(defaultScenarios)
       }
     }
+    loadScenarios()
   }, [])
 
   function speak(text: string, id: string) {

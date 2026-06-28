@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { useRole } from '@/context/RoleContext'
 
 interface Student {
   id: string
@@ -7,7 +8,7 @@ interface Student {
   class: string
   email: string
   password?: string
-  status?: 'active' | 'inactive'
+  status?: 'active' | 'inactive' | 'pending'
   ksa: {
     K: number // Knowledge (20%)
     S: number // Skill (30%)
@@ -15,6 +16,7 @@ interface Student {
     C: number // Competency (40%)
   }
   sessions: number
+  teacherName?: string
 }
 
 const initialStudents: Student[] = [
@@ -26,8 +28,10 @@ const initialStudents: Student[] = [
 ]
 
 export default function TeacherStudentsPage() {
+  const { user } = useRole()
   const [students, setStudents] = useState<Student[]>([])
   const [classFilter, setClassFilter] = useState('all')
+  const [activeTab, setActiveTab] = useState<'active' | 'pending'>('active')
 
   // Modals state
   const [showAddEdit, setShowAddEdit] = useState(false)
@@ -38,7 +42,7 @@ export default function TeacherStudentsPage() {
   const [name, setName] = useState('')
   const [studentClass, setStudentClass] = useState('ปวช.1/1')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('student1234')
+  const [password, setPassword] = useState('')
   const [kScore, setKScore] = useState(0)
   const [sScore, setSScore] = useState(0)
   const [aScore, setAScore] = useState(0)
@@ -48,23 +52,64 @@ export default function TeacherStudentsPage() {
   // Load from localStorage on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      let globalStudents: Student[] = []
+      let loadedStudents: Student[] = []
       const stored = localStorage.getItem('classroomStudents')
       if (stored) {
         try {
-          setStudents(JSON.parse(stored))
-          return
+          globalStudents = JSON.parse(stored)
+        } catch (e) {}
+      } else {
+        globalStudents = initialStudents.map(s => ({...s, teacherName: 'ครูสมหญิง รักเรียน'}))
+        localStorage.setItem('classroomStudents', JSON.stringify(globalStudents))
+      }
+      
+      loadedStudents = globalStudents.filter((s: any) => !user?.name || s.teacherName === user.name)
+
+      // Merge pending students from registeredUsers
+      const registered = localStorage.getItem('registeredUsers')
+      if (registered) {
+        try {
+          const regUsers = JSON.parse(registered)
+          const pending = regUsers.filter((u: any) => u.role === 'student' && u.status === 'pending' && (!user?.name || u.teacherName === user.name))
+          
+          pending.forEach((p: any) => {
+            if (!loadedStudents.some(s => s.email === p.email)) {
+              loadedStudents.push({
+                id: p.id,
+                name: p.name,
+                class: p.enrolledClass || 'ปวช.1/1',
+                email: p.email,
+                password: p.password,
+                status: 'pending',
+                ksa: { K: 0, S: 0, A: 0, C: 0 },
+                sessions: 0
+              })
+            }
+          })
         } catch (e) {}
       }
-      setStudents(initialStudents)
-      localStorage.setItem('classroomStudents', JSON.stringify(initialStudents))
+      setStudents(loadedStudents)
     }
-  }, [])
+  }, [user?.name])
 
   // Sync to both classroomStudents (KSA database) and registeredUsers (login database)
   const saveStudentsAndSyncAuth = (updatedList: Student[]) => {
     setStudents(updatedList)
     if (typeof window !== 'undefined') {
-      localStorage.setItem('classroomStudents', JSON.stringify(updatedList))
+      const stored = localStorage.getItem('classroomStudents')
+      let globalList = stored ? JSON.parse(stored) : []
+      const currentTeacherName = user?.name || 'ครูสมหญิง รักเรียน'
+      
+      // Remove current teacher's students from global list
+      globalList = globalList.filter((s: any) => s.teacherName !== currentTeacherName)
+      
+      // Inject teacherName before saving
+      const studentsWithTeacher = updatedList.map(s => ({...s, teacherName: currentTeacherName}))
+      
+      // Merge
+      const newGlobal = [...globalList, ...studentsWithTeacher]
+      localStorage.setItem('classroomStudents', JSON.stringify(newGlobal))
       
       // Sync to registeredUsers for login check
       const rawUsers = localStorage.getItem('registeredUsers')
@@ -76,7 +121,7 @@ export default function TeacherStudentsPage() {
           id: s.id,
           name: s.name,
           email: s.email,
-          password: s.password || 'student1234',
+          password: s.password || '',
           role: 'student',
           school: 'วิทยาลัยอาชีวศึกษากรุงเทพ',
           status: s.status || 'active',
@@ -102,9 +147,14 @@ export default function TeacherStudentsPage() {
     }
   }
 
-  const filtered = students.filter(s =>
+  const filteredByClass = students.filter(s =>
     classFilter === 'all' || s.class === classFilter
   )
+
+  const activeStudents = filteredByClass.filter(s => s.status !== 'pending')
+  const pendingStudents = filteredByClass.filter(s => s.status === 'pending')
+
+  const displayedStudents = activeTab === 'active' ? activeStudents : pendingStudents
 
   function evaluateCompetency(ksa: Student['ksa']) {
     const kVal = ksa?.K ?? 0
@@ -134,7 +184,7 @@ export default function TeacherStudentsPage() {
     setName('')
     setStudentClass('ปวช.1/1')
     setEmail('')
-    setPassword('student1234')
+    setPassword('')
     setKScore(0)
     setSScore(0)
     setAScore(0)
@@ -148,7 +198,7 @@ export default function TeacherStudentsPage() {
     setName(s.name)
     setStudentClass(s.class)
     setEmail(s.email || '')
-    setPassword(s.password || 'student1234')
+    setPassword(s.password || '')
     setKScore(s.ksa?.K ?? 0)
     setSScore(s.ksa?.S ?? 0)
     setAScore(s.ksa?.A ?? 0)
@@ -210,6 +260,7 @@ export default function TeacherStudentsPage() {
   }
 
   function toggleStudentStatus(s: Student) {
+    if (s.status === 'pending') return; // Cannot toggle pending via click
     const updated = students.map(item => {
       if (item.id === s.id) {
         return { ...item, status: item.status === 'active' || !item.status ? 'inactive' : 'active' } as Student
@@ -217,6 +268,17 @@ export default function TeacherStudentsPage() {
       return item
     })
     saveStudentsAndSyncAuth(updated)
+  }
+
+  function handleApproveStudent(s: Student) {
+    const updated = students.map(item => {
+      if (item.id === s.id) {
+        return { ...item, status: 'active' } as Student
+      }
+      return item
+    })
+    saveStudentsAndSyncAuth(updated)
+    alert(`อนุมัติ ${s.name} เข้าชั้นเรียนเรียบร้อย!`)
   }
 
   return (
@@ -230,9 +292,31 @@ export default function TeacherStudentsPage() {
             [อาจารย์ผู้สอน] บริหารจัดการสิทธิ์การเข้าใช้งาน, รหัสผ่าน, พร้อมประเมินสมรรถนะ KSA-C ของผู้เรียน
           </p>
         </div>
-        <button onClick={handleOpenAdd} className="btn btn-primary" style={{ border: 'none', borderRadius: '10px', padding: '10px 20px', fontWeight: 700 }}>
-          ➕ ลงทะเบียนนักเรียน & อนุมัติสิทธิ์เข้าเรียน
-        </button>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button 
+            onClick={() => setActiveTab('active')} 
+            className={`btn ${activeTab === 'active' ? 'btn-primary' : 'btn-outline'}`} 
+            style={{ borderRadius: '10px', padding: '10px 16px', fontWeight: 700, borderColor: activeTab === 'active' ? '' : '#EDE9E1', color: activeTab === 'active' ? '' : '#4A4138' }}
+          >
+            👨‍🎓 นักเรียนในชั้นเรียน ({activeStudents.length})
+          </button>
+          <button 
+            onClick={() => setActiveTab('pending')} 
+            className={`btn ${activeTab === 'pending' ? 'btn-primary' : 'btn-outline'}`} 
+            style={{ borderRadius: '10px', padding: '10px 16px', fontWeight: 700, borderColor: activeTab === 'pending' ? '' : '#EDE9E1', color: activeTab === 'pending' ? '' : '#4A4138', position: 'relative' }}
+          >
+            ⏳ รออนุมัติสิทธิ์เข้าเรียน
+            {pendingStudents.length > 0 && (
+              <span style={{ position: 'absolute', top: '-8px', right: '-8px', background: '#C9A84C', color: '#1A1410', padding: '2px 6px', borderRadius: '10px', fontSize: '11px' }}>
+                {pendingStudents.length}
+              </span>
+            )}
+          </button>
+          <div style={{ width: '1px', height: '30px', background: '#EDE9E1', margin: '0 4px' }}></div>
+          <button onClick={handleOpenAdd} className="btn btn-primary" style={{ border: 'none', borderRadius: '10px', padding: '10px 20px', fontWeight: 700, background: '#A6882A', color: '#FFF' }}>
+            ➕ ลงทะเบียนนักเรียน
+          </button>
+        </div>
       </div>
 
       {/* Class filter controls */}
@@ -275,25 +359,60 @@ export default function TeacherStudentsPage() {
               </tr>
             </thead>
             <tbody>
-              {filtered.map(s => {
-                const evalResult = evaluateCompetency(s.ksa)
+              {displayedStudents.length === 0 ? (
+                <tr>
+                  <td colSpan={11} style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                    ไม่พบข้อมูลนักเรียน
+                  </td>
+                </tr>
+              ) : (
+                displayedStudents.map(s => {
+                  const evalResult = evaluateCompetency(s.ksa)
                 return (
                   <tr key={s.id}>
                     <td style={{ fontWeight: 700 }}>👨‍🎓 {s.name}</td>
                     <td style={{ fontSize: '12.5px', color: 'var(--text-muted)' }}>{s.email}</td>
                     <td>{s.class}</td>
                     <td>
-                      <span 
-                        onClick={() => toggleStudentStatus(s)}
-                        style={{
-                          cursor: 'pointer',
-                          background: s.status === 'active' || !s.status ? '#EAF3EE' : '#FAE8EB',
-                          color: s.status === 'active' || !s.status ? '#1E4D3A' : '#8B2635',
+                      {s.status === 'pending' ? (
+                        <span style={{
+                          background: '#FFF4E5', color: '#B87503',
                           fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '20px'
-                        }}
-                      >
-                        ● {s.status === 'active' || !s.status ? 'Active (มีสิทธิ์)' : 'Suspended (ระงับ)'}
-                      </span>
+                        }}>
+                          ● รออนุมัติ
+                        </span>
+                      ) : (
+                        <div 
+                          onClick={() => toggleStudentStatus(s)}
+                          style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer',
+                            background: s.status === 'active' || !s.status ? '#EAF3EE' : '#FAE8EB',
+                            padding: '4px 10px', borderRadius: '20px',
+                            border: `1px solid ${s.status === 'active' || !s.status ? 'rgba(30,77,58,0.2)' : 'rgba(139,38,53,0.2)'}`
+                          }}
+                        >
+                          <div style={{
+                            width: '28px', height: '16px', 
+                            background: s.status === 'active' || !s.status ? '#1E4D3A' : '#8B2635',
+                            borderRadius: '20px', position: 'relative',
+                            transition: 'background 0.3s'
+                          }}>
+                            <div style={{
+                              width: '12px', height: '12px', background: '#FFF', borderRadius: '50%',
+                              position: 'absolute', top: '2px', 
+                              left: s.status === 'active' || !s.status ? '14px' : '2px',
+                              transition: 'left 0.3s',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                            }} />
+                          </div>
+                          <span style={{ 
+                            fontSize: '11px', fontWeight: 700, 
+                            color: s.status === 'active' || !s.status ? '#1E4D3A' : '#8B2635'
+                          }}>
+                            {s.status === 'active' || !s.status ? 'Active (มีสิทธิ์)' : 'Suspended (ระงับ)'}
+                          </span>
+                        </div>
+                      )}
                     </td>
                     
                     {/* KSA-C columns */}
@@ -328,27 +447,46 @@ export default function TeacherStudentsPage() {
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                        <button
-                          onClick={() => setShowEvidence(s)}
-                          className="btn btn-outline btn-sm"
-                          style={{ padding: '4px 8px', fontSize: '11px', borderColor: 'rgba(201,168,76,0.5)', color: '#A6882A' }}
-                        >
-                          📜 แฟ้มผลงาน
-                        </button>
-                        <button
-                          onClick={() => handleOpenEdit(s)}
-                          className="btn btn-outline btn-sm"
-                          style={{ padding: '4px 8px', fontSize: '11px', borderColor: '#EDE9E1', color: '#554D41' }}
-                        >
-                          ✏️ แก้ไข
-                        </button>
-                        <button
-                          onClick={() => handleDeleteStudent(s.id)}
-                          className="btn btn-outline btn-sm"
-                          style={{ padding: '4px 8px', fontSize: '11px', borderColor: '#FAE8EB', color: '#8B2635' }}
-                        >
-                          🗑️
-                        </button>
+                        {s.status === 'pending' ? (
+                          <button
+                            onClick={() => handleApproveStudent(s)}
+                            className="btn btn-primary btn-sm"
+                            style={{ padding: '4px 10px', fontSize: '11px', fontWeight: 700 }}
+                          >
+                            ✅ อนุมัติ
+                          </button>
+                        ) : (
+                          <>
+                            <button
+                              onClick={() => toggleStudentStatus(s)}
+                              className={`btn ${s.status === 'active' || !s.status ? 'btn-outline' : 'btn-primary'} btn-sm`}
+                              style={{ padding: '4px 8px', fontSize: '11px', borderColor: s.status === 'active' || !s.status ? '#B03A4A' : '', color: s.status === 'active' || !s.status ? '#8B2635' : '' }}
+                            >
+                              {s.status === 'active' || !s.status ? 'ระงับสิทธิ์' : 'เปิดใช้งาน'}
+                            </button>
+                            <button
+                              onClick={() => setShowEvidence(s)}
+                              className="btn btn-outline btn-sm"
+                              style={{ padding: '4px 8px', fontSize: '11px', borderColor: 'rgba(201,168,76,0.5)', color: '#A6882A' }}
+                            >
+                              📜 แฟ้มผลงาน
+                            </button>
+                            <button
+                              onClick={() => handleOpenEdit(s)}
+                              className="btn btn-outline btn-sm"
+                              style={{ padding: '4px 8px', fontSize: '11px', borderColor: '#EDE9E1', color: '#554D41' }}
+                            >
+                              ✏️ แก้ไข
+                            </button>
+                            <button
+                              onClick={() => handleDeleteStudent(s.id)}
+                              className="btn btn-outline btn-sm"
+                              style={{ padding: '4px 8px', fontSize: '11px', borderColor: '#FAE8EB', color: '#8B2635' }}
+                            >
+                              🗑️
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -394,10 +532,11 @@ export default function TeacherStudentsPage() {
                   />
                 </div>
                 <div className="erp-form-group">
-                  <label className="erp-label">กำหนดรหัสผ่านเบื้องต้น</label>
+                  <label className="erp-label">รหัสนักศึกษา (ใช้เป็นรหัสผ่าน)*</label>
                   <input
                     type="text"
                     className="erp-input"
+                    placeholder="เช่น 6400010001"
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     required

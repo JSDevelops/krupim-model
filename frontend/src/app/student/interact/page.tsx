@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import StudentFINENav from '@/components/StudentFINENav'
+import { supabase } from '@/lib/supabase'
 
 interface Prompt {
   en: string
@@ -33,25 +34,21 @@ export default function IInteractPage() {
   const [spokenTranscript, setSpokenTranscript] = useState('')
 
   useEffect(() => {
-    const stored = localStorage.getItem('lessonPlans')
-    if (stored) {
-      try {
-        const plans = JSON.parse(stored)
-        if (Array.isArray(plans) && plans.length > 0) {
-          const sentences = plans[0].sentences || []
-          if (sentences.length > 0) {
-            const parsed: Prompt[] = sentences.map((s: string) => ({
-              en: s,
-              th: 'ประโยคฝึกจากแผนการสอน',
-              context: 'จากแผนการสอนของครู',
-            }))
-            setPrompts(parsed)
-            return
-          }
-        }
-      } catch (e) {}
+    async function loadPrompts() {
+      const { data } = await supabase.from('fine_lesson_plans').select('sentences').limit(1)
+      if (data && data.length > 0 && data[0].sentences && data[0].sentences.length > 0) {
+        const sentences = data[0].sentences
+        const parsed: Prompt[] = sentences.map((s: string) => ({
+          en: s,
+          th: 'ประโยคฝึกจากแผนการสอน',
+          context: 'จากแผนการสอนของครู',
+        }))
+        setPrompts(parsed)
+      } else {
+        setPrompts(defaultPrompts)
+      }
     }
-    setPrompts(defaultPrompts)
+    loadPrompts()
   }, [])
 
   const current = prompts[currentIdx]
