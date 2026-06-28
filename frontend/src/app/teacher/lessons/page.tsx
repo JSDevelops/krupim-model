@@ -1601,6 +1601,13 @@ export default function TeacherLessonsDashboard() {
                 {arCreationMode === 'ai' ? (
                   // AI Auto generation form
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.3)', padding: '10px 14px', borderRadius: '10px' }}>
+                      <span style={{ fontSize: '16px' }}>🔌</span>
+                      <span style={{ fontSize: '11px', color: '#A6882A', fontWeight: 700, lineHeight: 1.4 }}>
+                        ขับเคลื่อนด้วยระบบ: <strong>3D AI Studio API Integration</strong> (เจเนอเรตโมเดลตาข่ายโครงสร้าง 3D ในฟอร์แมต .glb และ .usdz อัตโนมัติในคลิกเดียว)
+                      </span>
+                    </div>
+
                     <div className="erp-form-group">
                       <label className="erp-label">ระบุเครื่องมือหรืออุปกรณ์โรงแรมที่ต้องการให้ AI ร่างแบบจำลอง</label>
                       <input
