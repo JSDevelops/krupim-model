@@ -129,6 +129,10 @@ CREATE TABLE ai_scan_items (
   service_tips TEXT,
   english_phrases TEXT[],
   image_url TEXT,
+  glb_url TEXT,           -- URL ไฟล์โมเดล 3D (.glb) สำหรับ AR บนมือถือ
+  usdz_url TEXT,          -- URL ไฟล์โมเดล 3D (.usdz) สำหรับ iOS AR QuickLook
+  pronounce TEXT,         -- การออกเสียงสำเนียง เช่น "/kraɪ.stəl waɪn ɡlæs/"
+  blender_script TEXT,    -- Blender Python Script สำหรับสร้างโมเดล
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 

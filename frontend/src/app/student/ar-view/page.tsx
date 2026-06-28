@@ -38,40 +38,60 @@ function ARViewerContent() {
   useEffect(() => {
     if (typeof window !== 'undefined' && id) {
       async function loadModel() {
-        const defaultModelGlbUrls: Record<string, string> = {
-          'item-001': 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb',
-          'item-002': 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/WaterBottle/glTF-Binary/WaterBottle.glb',
-          'item-003': 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WineGlass/glTF-Binary/WineGlass.glb',
-          'item-004': 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Cake/glTF-Binary/Cake.glb',
-          'item-005': 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Apple/glTF-Binary/Apple.glb',
+        const fallbackGlb = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
+
+        // ─── 1. Try ai_scan_items table (primary — teacher-created items) ───
+        try {
+          const { data, error } = await supabase
+            .from('ai_scan_items')
+            .select('id, name_th, name_en, description, service_tips, image_url, glb_url, usdz_url, pronounce')
+            .eq('id', id)
+            .single()
+
+          if (data && !error) {
+            setModel({
+              id: data.id,
+              nameEn: data.name_en || '',
+              nameTh: data.name_th || '',
+              desc: data.description || '',
+              glbUrl: (data as any).glb_url || fallbackGlb,
+              usdzUrl: (data as any).usdz_url || '',
+              pronounce: (data as any).pronounce || '',
+              sentence: data.service_tips || '',
+              imageUrl: data.image_url || ''
+            })
+            setLoading(false)
+            return
+          }
+        } catch (e) {
+          console.warn('ai_scan_items fetch failed, trying legacy store:', e)
         }
 
-        // 1. Try to fetch from Supabase 'ar-items-store'
+        // ─── 2. Legacy: fine_lesson_plans 'ar-items-store' ───
         try {
           const { data, error } = await supabase
             .from('fine_lesson_plans')
             .select('vocabulary')
             .eq('id', 'ar-items-store')
             .single()
-          
+
           if (data && data.vocabulary) {
             const items = data.vocabulary as any[]
             const found = items.find(m => m.id === id)
             if (found) {
-              const defaultUrl = defaultModelGlbUrls[id as string] || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
               setModel({
                 ...found,
-                glbUrl: found.glbUrl || defaultUrl
+                glbUrl: found.glbUrl || fallbackGlb
               })
               setLoading(false)
               return
             }
           }
         } catch (e) {
-          console.error('Error fetching model from Supabase:', e)
+          console.warn('fine_lesson_plans fetch failed:', e)
         }
 
-        // 2. Fallback to URL search parameters (for older QR codes)
+        // ─── 3. URL search parameters (for QR codes with embedded data) ───
         const qNameEn = searchParams.get('nameEn')
         const qNameTh = searchParams.get('nameTh')
         const qDesc = searchParams.get('desc')
@@ -82,13 +102,12 @@ function ARViewerContent() {
         const qImageUrl = searchParams.get('imageUrl')
 
         if (qNameEn) {
-          const defaultUrl = defaultModelGlbUrls[id as string] || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
           setModel({
             id: id || '',
             nameEn: qNameEn,
             nameTh: qNameTh || '',
             desc: qDesc || '',
-            glbUrl: qGlbUrl || defaultUrl,
+            glbUrl: qGlbUrl || fallbackGlb,
             usdzUrl: qUsdzUrl || '',
             pronounce: qPronounce || '',
             sentence: qSentence || '',
@@ -98,21 +117,20 @@ function ARViewerContent() {
           return
         }
 
-        // 3. Fallback to localStorage
+        // ─── 4. localStorage fallback ───
         const storedModels = localStorage.getItem('arItems')
         if (storedModels) {
           try {
             const parsed = JSON.parse(storedModels)
             const found = parsed.find((m: any) => m.id === id)
             if (found) {
-              const defaultUrl = defaultModelGlbUrls[id as string] || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
-              setModel({
-                ...found,
-                glbUrl: found.glbUrl || defaultUrl
-              })
+              setModel({ ...found, glbUrl: found.glbUrl || fallbackGlb })
+              setLoading(false)
+              return
             }
           } catch (e) {}
         }
+
         setLoading(false)
       }
       loadModel()
