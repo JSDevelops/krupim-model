@@ -518,38 +518,8 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
                   />
                 </div>
 
-                <h4 style={{ fontSize: '12px', fontWeight: 800, color: '#A6882A', margin: '8px 0 0 0', borderBottom: '1px solid #EDE9E1', paddingBottom: '4px' }}>
-                  🔑 การตั้งค่ากุญแจ AI API Key
-                </h4>
-
-                <div className="erp-form-group">
-                  <label className="erp-label">Gemini API Key (กุญแจของท่าน)</label>
-                  <input
-                    type="password"
-                    className="erp-input"
-                    value={apiKey}
-                    onChange={e => setApiKey(e.target.value)}
-                    placeholder="AI_KEY_XXXXXXXXXXXXXXXXXXXX"
-                  />
-                </div>
-
-                <div className="erp-form-group">
-                  <label className="erp-label">เลือกโมเดล AI (Select AI Model Engine)</label>
-                  <select
-                    className="erp-input"
-                    value={selectedModel}
-                    onChange={e => setSelectedModel(e.target.value)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <option value="gemini-1.5-flash">Gemini 1.5 Flash (โมเดลเสถียรความเร็วสูง - แนะนำ)</option>
-                    <option value="gemini-1.5-pro">Gemini 1.5 Pro (โมเดลวิเคราะห์ทักษะสมรรถนะเชิงลึก)</option>
-                    <option value="gemini-2.0-flash">Gemini 2.0 Flash (โมเดลอัจฉริยะรุ่นใหม่ล่าสุด)</option>
-                    <option value="gemini-pro-experimental">Gemini Pro Experimental (โมเดลการเรียนรู้ขั้นสูง)</option>
-                  </select>
-                </div>
-
-                <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '12px', border: 'none', fontWeight: 700, marginTop: '6px' }}>
-                  บันทึกข้อมูลและ API Key
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '12px', border: 'none', fontWeight: 700, marginTop: '16px' }}>
+                  บันทึกข้อมูลโปรไฟล์
                 </button>
               </form>
             </div>
