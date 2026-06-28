@@ -74,7 +74,7 @@ function ARViewerContent() {
 
         if (qNameEn) {
           setModel({
-            id,
+            id: id || '',
             nameEn: qNameEn,
             nameTh: qNameTh || '',
             desc: qDesc || '',
