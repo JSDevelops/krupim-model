@@ -384,7 +384,7 @@ export default function TeacherDashboard() {
                       <th style={{ whiteSpace: 'nowrap' }}>ห้องเรียน</th>
                       <th>ประเภทกิจกรรม (FINE)</th>
                       <th style={{ whiteSpace: 'nowrap' }}>ส่งเมื่อ</th>
-                      <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>คะแนน</th>
+                      <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>เกณฑ์ประเมิน</th>
                     </tr>
                   </thead>
                   <tbody>
