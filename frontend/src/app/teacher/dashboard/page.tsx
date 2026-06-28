@@ -111,22 +111,30 @@ export default function TeacherDashboard() {
   const totalStudents = filteredStudents.length
   const totalSessions = filteredStudents.reduce((acc, curr) => acc + curr.sessions, 0)
   
-  const avgK = totalStudents ? Math.round(filteredStudents.reduce((acc, curr) => acc + curr.ksa.K, 0) / totalStudents) : 0
-  const avgS = totalStudents ? Math.round(filteredStudents.reduce((acc, curr) => acc + curr.ksa.S, 0) / totalStudents) : 0
-  const avgA = totalStudents ? Math.round(filteredStudents.reduce((acc, curr) => acc + curr.ksa.A, 0) / totalStudents) : 0
-  const avgC = totalStudents ? Math.round(filteredStudents.reduce((acc, curr) => acc + curr.ksa.C, 0) / totalStudents) : 0
+  const avgK = totalStudents ? Math.round(filteredStudents.reduce((acc, curr) => acc + (curr.ksa?.K || 0), 0) / totalStudents) : 0
+  const avgS = totalStudents ? Math.round(filteredStudents.reduce((acc, curr) => acc + (curr.ksa?.S || 0), 0) / totalStudents) : 0
+  const avgA = totalStudents ? Math.round(filteredStudents.reduce((acc, curr) => acc + (curr.ksa?.A || 0), 0) / totalStudents) : 0
+  const avgC = totalStudents ? Math.round(filteredStudents.reduce((acc, curr) => acc + (curr.ksa?.C || 0), 0) / totalStudents) : 0
   const classAvgProgress = Math.round((avgK * 0.2) + (avgS * 0.3) + (avgA * 0.1) + (avgC * 0.4))
 
   // Students needing attention (score < 70%)
   const needHelpList = filteredStudents.filter(s => {
-    const avg = Math.round((s.ksa.K * 0.2) + (s.ksa.S * 0.3) + (s.ksa.A * 0.1) + (s.ksa.C * 0.4))
+    const kVal = s.ksa?.K ?? 0
+    const sVal = s.ksa?.S ?? 0
+    const aVal = s.ksa?.A ?? 0
+    const cVal = s.ksa?.C ?? 0
+    const avg = Math.round((kVal * 0.2) + (sVal * 0.3) + (aVal * 0.1) + (cVal * 0.4))
     return avg < 70
   }).map(s => {
-    const avg = Math.round((s.ksa.K * 0.2) + (s.ksa.S * 0.3) + (s.ksa.A * 0.1) + (s.ksa.C * 0.4))
+    const kVal = s.ksa?.K ?? 0
+    const sVal = s.ksa?.S ?? 0
+    const aVal = s.ksa?.A ?? 0
+    const cVal = s.ksa?.C ?? 0
+    const avg = Math.round((kVal * 0.2) + (sVal * 0.3) + (aVal * 0.1) + (cVal * 0.4))
     let issue = ''
-    if (s.ksa.K < 65) issue = 'คะแนน Knowledge (K) ต่ำกว่าเกณฑ์ประเมิน'
-    else if (s.ksa.S < 65) issue = 'ไม่ผ่านทักษะสนทนาภาษาอังกฤษ (S)'
-    else if (s.ksa.C < 65) issue = 'คะแนนความเข้าใจงานบริการ (C) น้อย'
+    if (kVal < 65) issue = 'คะแนน Knowledge (K) ต่ำกว่าเกณฑ์ประเมิน'
+    else if (sVal < 65) issue = 'ไม่ผ่านทักษะสนทนาภาษาอังกฤษ (S)'
+    else if (cVal < 65) issue = 'คะแนนความเข้าใจงานบริการ (C) น้อย'
     else issue = 'ชั่วโมงฝึกทักษะสะสมต่ำกว่าเกณฑ์'
     
     return { name: s.name, class: s.class, score: avg, issue, avatar: s.avatar }
@@ -138,10 +146,10 @@ export default function TeacherDashboard() {
     // Find matching student if exists to preload scores
     const match = students.find(s => s.id === item.studentId)
     if (match) {
-      setScoreK(match.ksa.K)
-      setScoreS(match.ksa.S)
-      setScoreA(match.ksa.A)
-      setScoreC(match.ksa.C)
+      setScoreK(match.ksa?.K ?? 80)
+      setScoreS(match.ksa?.S ?? 75)
+      setScoreA(match.ksa?.A ?? 85)
+      setScoreC(match.ksa?.C ?? 70)
     } else {
       setScoreK(80)
       setScoreS(75)
