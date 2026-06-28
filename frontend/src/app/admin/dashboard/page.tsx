@@ -30,7 +30,19 @@ export default function AdminDashboard() {
     setPinging(true)
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
-      const resp = await fetch(`${backendUrl}/api/ping-all`)
+      const activeProvider = typeof window !== 'undefined' ? localStorage.getItem('activeAiProvider') || 'gemini' : 'gemini'
+      const geminiKey = typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : ''
+      const openaiKey = typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') || '' : ''
+      const claudeKey = typeof window !== 'undefined' ? localStorage.getItem('claudeApiKey') || '' : ''
+
+      const resp = await fetch(`${backendUrl}/api/ping-all`, {
+        headers: {
+          'x-ai-provider': activeProvider,
+          'x-gemini-key': geminiKey,
+          'x-openai-key': openaiKey,
+          'x-claude-key': claudeKey
+        }
+      })
       if (resp.ok) {
         const data = await resp.json()
         setPingData(data.services)

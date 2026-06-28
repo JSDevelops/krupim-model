@@ -14,6 +14,32 @@ export const FINE_SYSTEM_PROMPT = `คุณคือ AI ผู้ช่วย�
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
 
+// Helper to get active AI headers from localStorage
+export function getAIHeaders(): Record<string, string> {
+  if (typeof window === 'undefined') {
+    return { 
+      'Content-Type': 'application/json',
+      'x-ai-provider': 'gemini',
+      'x-gemini-key': '',
+      'x-openai-key': '',
+      'x-claude-key': ''
+    }
+  }
+  
+  const activeProvider = localStorage.getItem('activeAiProvider') || 'gemini'
+  const geminiKey = localStorage.getItem('geminiApiKey') || ''
+  const openaiKey = localStorage.getItem('openaiApiKey') || ''
+  const claudeKey = localStorage.getItem('claudeApiKey') || ''
+
+  return {
+    'Content-Type': 'application/json',
+    'x-ai-provider': activeProvider,
+    'x-gemini-key': geminiKey,
+    'x-openai-key': openaiKey,
+    'x-claude-key': claudeKey
+  }
+}
+
 // Chat with context (Routes via backend)
 export async function chatWithGemini(
   messages: { role: 'user' | 'model'; text: string }[],
@@ -23,13 +49,9 @@ export async function chatWithGemini(
   topic?: string,
   sessionId?: string
 ) {
-  const storedApiKey = typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : ''
   const response = await fetch(`${BACKEND_URL}/api/chat`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-gemini-key': storedApiKey
-    },
+    headers: getAIHeaders(),
     body: JSON.stringify({
       message: userMessage,
       history: messages,
@@ -49,13 +71,9 @@ export async function chatWithGemini(
 
 // AI Scan - analyze image (Routes via backend)
 export async function analyzeImage(imageBase64: string, mimeType: string = 'image/jpeg') {
-  const storedApiKey = typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : ''
   const response = await fetch(`${BACKEND_URL}/api/scan`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-gemini-key': storedApiKey
-    },
+    headers: getAIHeaders(),
     body: JSON.stringify({
       imageBase64,
       mimeType
@@ -75,13 +93,9 @@ export async function generateSimulationFeedback(
   studentId?: string,
   scenarioId?: string
 ) {
-  const storedApiKey = typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : ''
   const response = await fetch(`${BACKEND_URL}/api/simulation/evaluate`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-gemini-key': storedApiKey
-    },
+    headers: getAIHeaders(),
     body: JSON.stringify({
       messages,
       score,

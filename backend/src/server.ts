@@ -1,7 +1,9 @@
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 import { OpenAI } from 'openai'
+import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@supabase/supabase-js'
 
 dotenv.config()
@@ -17,58 +19,125 @@ const supabaseUrl = process.env.SUPABASE_URL || ''
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || ''
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-// Initialize Default OpenAI Client
-const defaultOpenAI = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || ''
-})
+// Initialize Default AI Clients
+const defaultGenAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
+const defaultOpenAI = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' })
+const defaultAnthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' })
+
+// Helper to get dynamic active provider
+function getActiveProvider(req: express.Request): 'gemini' | 'openai' | 'claude' {
+  const provider = req.headers['x-ai-provider'] as string
+  if (provider === 'openai' || provider === 'claude') {
+    return provider
+  }
+  return 'gemini' // default
+}
 
 // Helper function to extract user's API Key from request headers dynamically (fallback to default)
+function getGemini(req: express.Request): GoogleGenerativeAI {
+  const customKey = req.headers['x-gemini-key'] as string
+  if (customKey && customKey.trim().startsWith('AIzaSy')) {
+    return new GoogleGenerativeAI(customKey.trim())
+  }
+  return defaultGenAI
+}
+
 function getOpenAI(req: express.Request): OpenAI {
-  const customKey = req.headers['x-gemini-key'] as string || req.headers['x-openai-key'] as string
+  const customKey = req.headers['x-openai-key'] as string
   if (customKey && customKey.trim().startsWith('sk-')) {
     return new OpenAI({ apiKey: customKey.trim() })
   }
   return defaultOpenAI
 }
 
+function getAnthropic(req: express.Request): Anthropic {
+  const customKey = req.headers['x-claude-key'] as string
+  if (customKey && customKey.trim().startsWith('sk-ant-')) {
+    return new Anthropic({ apiKey: customKey.trim() })
+  }
+  return defaultAnthropic
+}
+
 // System status endpoint
 app.get('/api/status', (req, res) => {
-  const customKey = req.headers['x-gemini-key'] as string || req.headers['x-openai-key'] as string
-  const hasKey = (customKey && customKey.trim().startsWith('sk-')) || !!process.env.OPENAI_API_KEY
+  const provider = getActiveProvider(req)
+  let initialized = false
+  
+  if (provider === 'openai') {
+    const customKey = req.headers['x-openai-key'] as string
+    initialized = (customKey && customKey.trim().startsWith('sk-')) || !!process.env.OPENAI_API_KEY
+  } else if (provider === 'claude') {
+    const customKey = req.headers['x-claude-key'] as string
+    initialized = (customKey && customKey.trim().startsWith('sk-ant-')) || !!process.env.ANTHROPIC_API_KEY
+  } else {
+    const customKey = req.headers['x-gemini-key'] as string
+    initialized = (customKey && customKey.trim().startsWith('AIzaSy')) || !!process.env.GEMINI_API_KEY
+  }
   
   res.json({
     status: 'online',
     supabaseConnected: !!supabaseUrl,
-    openaiInitialized: hasKey,
-    usingCustomKey: !!(customKey && customKey.trim().startsWith('sk-')),
+    activeProvider: provider,
+    aiInitialized: initialized,
     timestamp: new Date().toISOString()
   })
 })
 
-// OpenAI Chat API (Replaces Gemini Chat)
+// Unified Multi-LLM Chat API
 app.post('/api/chat', async (req, res) => {
   try {
     const { message, history, student_id, session_type, topic, session_id } = req.body
-    const client = getOpenAI(req)
-
+    const provider = getActiveProvider(req)
     const systemPrompt = 'คุณคือผู้ช่วยสอนอัจฉริยะในแพลตฟอร์ม FINE MODE ที่เชี่ยวชาญด้านศิลปะการบริการอาหารและเครื่องดื่ม การจัดโต๊ะอาหาร (Table Setting) และคำศัพท์ภาษาอังกฤษที่ใช้ในวิชาชีพนี้ ตอบผู้เรียนด้วยความสุภาพ กระชับ สนับสนุนการเรียนรู้ และมีตัวอย่างสถานการณ์จริงเสมอ'
     
-    const messages = [
-      { role: 'system' as const, content: systemPrompt },
-      ...(history || []).map((h: any) => ({
+    let text = ''
+
+    if (provider === 'openai') {
+      const client = getOpenAI(req)
+      const messages = [
+        { role: 'system' as const, content: systemPrompt },
+        ...(history || []).map((h: any) => ({
+          role: h.role === 'user' ? ('user' as const) : ('assistant' as const),
+          content: h.text
+        })),
+        { role: 'user' as const, content: message }
+      ]
+      const completion = await client.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages,
+        temperature: 0.7
+      })
+      text = completion.choices[0].message.content || ''
+    } else if (provider === 'claude') {
+      const client = getAnthropic(req)
+      const messages = (history || []).map((h: any) => ({
         role: h.role === 'user' ? ('user' as const) : ('assistant' as const),
         content: h.text
-      })),
-      { role: 'user' as const, content: message }
-    ]
+      }))
+      messages.push({ role: 'user' as const, content: message })
 
-    const completion = await client.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages,
-      temperature: 0.7
-    })
-    
-    const text = completion.choices[0].message.content || ''
+      const completion = await client.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages
+      })
+      text = completion.content[0].type === 'text' ? completion.content[0].text : ''
+    } else {
+      // Default: Google Gemini
+      const genAI = getGemini(req)
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-2.0-flash',
+        systemInstruction: systemPrompt
+      })
+      const formattedHistory = (history || []).map((h: any) => ({
+        role: h.role === 'user' ? 'user' : 'model',
+        parts: [{ text: h.text }]
+      }))
+      const chat = model.startChat({ history: formattedHistory })
+      const result = await chat.sendMessage(message)
+      text = result.response.text()
+    }
 
     // Save to Supabase if student_id is provided
     let savedSessionId = session_id
@@ -83,7 +152,7 @@ app.post('/api/chat', async (req, res) => {
         } else {
           const { data, error } = await supabase.from('chat_sessions').insert({
             student_id,
-            session_type: session_type || 'gemini_chat', // Keep enum type compatibility
+            session_type: session_type || 'gemini_chat',
             topic: topic || 'General Conversation',
             messages_json: fullMessages
           }).select('id').single()
@@ -104,14 +173,14 @@ app.post('/api/chat', async (req, res) => {
   }
 })
 
-// OpenAI Vision Scan API (Replaces Gemini Vision Scan)
+// Unified Multi-LLM Vision Scan API
 app.post('/api/scan', async (req, res) => {
   try {
     const { imageBase64, mimeType } = req.body
-    const client = getOpenAI(req)
+    const provider = getActiveProvider(req)
 
     const systemPrompt = `คุณเป็นผู้เชี่ยวชาญด้านอาหาร เครื่องดื่ม และอุปกรณ์ในห้องอาหารระดับโรงแรมห้าดาว
-วิเคราะห์ภาพชิ้นวัตถุหรืออุปกรณ์จัดโต๊ะนี้ และส่งค่ากลับมาเป็นรูปแบบ JSON เท่านั้น:
+วิเคราะห์ภาพชิ้นวัตถุหรืออุปกรณ์จัดโต๊ะนี้ และส่งค่ากลับมาเป็นรูปแบบ JSON เท่านั้น (ห้ามเขียนข้อความเกริ่นนำหรือปิดท้ายใดๆ นอกเหนือจาก JSON):
 {
   "name_th": "ชื่อภาษาไทยอย่างเป็นทางการของอุปกรณ์ เช่น แก้วไวน์แดง, มีดตัดเนื้อหลัก",
   "name_en": "ชื่อภาษาอังกฤษอย่างเป็นทางการ เช่น Red Wine Glass, Dinner Knife",
@@ -124,29 +193,72 @@ app.post('/api/scan', async (req, res) => {
   "confidence": ตัวเลขระดับความมั่นใจ 0-100
 }`
 
-    const completion = await client.chat.completions.create({
-      model: 'gpt-4o-mini',
-      response_format: { type: 'json_object' },
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: systemPrompt },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:${mimeType || 'image/jpeg'};base64,${imageBase64}`
+    let text = ''
+
+    if (provider === 'openai') {
+      const client = getOpenAI(req)
+      const completion = await client.chat.completions.create({
+        model: 'gpt-4o-mini',
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: systemPrompt },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:${mimeType || 'image/jpeg'};base64,${imageBase64}`
+                }
               }
-            }
-          ]
-        }
-      ]
-    })
+            ]
+          }
+        ]
+      })
+      text = completion.choices[0].message.content || ''
+    } else if (provider === 'claude') {
+      const client = getAnthropic(req)
+      const completion = await client.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 2000,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: mimeType || 'image/jpeg',
+                  data: imageBase64
+                }
+              },
+              {
+                type: 'text',
+                text: systemPrompt
+              }
+            ]
+          }
+        ]
+      })
+      text = completion.content[0].type === 'text' ? completion.content[0].text : ''
+    } else {
+      // Default: Gemini
+      const genAI = getGemini(req)
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+      const imagePart = {
+        inlineData: { data: imageBase64, mimeType: mimeType || 'image/jpeg' }
+      }
+      const result = await model.generateContent([systemPrompt, imagePart])
+      text = result.response.text()
+    }
 
-    const text = completion.choices[0].message.content || ''
-    const parsedData = JSON.parse(text)
+    // Parse JSON
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) throw new Error('No JSON output from AI')
+    const parsedData = JSON.parse(jsonMatch[0])
 
-    // Save to Supabase DB (Upsert on name_en to keep it updated)
+    // Save to Supabase DB
     if (supabase) {
       try {
         await supabase.from('ai_scan_items').upsert({
@@ -171,12 +283,11 @@ app.post('/api/scan', async (req, res) => {
   }
 })
 
-// OpenAI Simulation Evaluation API
+// Unified Simulation Evaluation API
 app.post('/api/simulation/evaluate', async (req, res) => {
   try {
     const { messages, score, student_id, scenario_id } = req.body
-    const client = getOpenAI(req)
-
+    const provider = getActiveProvider(req)
     const chatContent = messages.map((m: any) => `${m.role === 'user' ? 'บริกร' : 'ลูกค้า'}: ${m.text}`).join('\n')
 
     const prompt = `คุณเป็นผู้เชี่ยวชาญประเมินการบริการในร้านอาหาร
@@ -189,18 +300,37 @@ ${chatContent}
   "suggestions": ["คำแนะนำข้อที่ 1", "คำแนะนำข้อที่ 2"]
 }`
 
-    const completion = await client.chat.completions.create({
-      model: 'gpt-4o-mini',
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'user', content: prompt }
-      ]
-    })
-    
-    const text = completion.choices[0].message.content || ''
-    const parsed = JSON.parse(text)
+    let text = ''
 
-    // Save to Supabase simulation_sessions if student_id and scenario_id are provided
+    if (provider === 'openai') {
+      const client = getOpenAI(req)
+      const completion = await client.chat.completions.create({
+        model: 'gpt-4o-mini',
+        response_format: { type: 'json_object' },
+        messages: [{ role: 'user', content: prompt }]
+      })
+      text = completion.choices[0].message.content || ''
+    } else if (provider === 'claude') {
+      const client = getAnthropic(req)
+      const completion = await client.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 1000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+      text = completion.content[0].type === 'text' ? completion.content[0].text : ''
+    } else {
+      // Default: Gemini
+      const genAI = getGemini(req)
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+      const result = await model.generateContent(prompt)
+      text = result.response.text()
+    }
+
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) throw new Error('No JSON output from AI')
+    const parsed = JSON.parse(jsonMatch[0])
+
+    // Save to Supabase
     if (supabase && student_id && scenario_id) {
       try {
         await supabase.from('simulation_sessions').insert({
@@ -223,11 +353,11 @@ ${chatContent}
   }
 })
 
-// OpenAI AI Blog Generation API
+// Unified AI Blog Generation API
 app.post('/api/blog/generate', async (req, res) => {
   try {
     const { topic, category, tone, keywords } = req.body
-    const client = getOpenAI(req)
+    const provider = getActiveProvider(req)
 
     const prompt = `คุณเป็นบล็อกเกอร์ผู้เชี่ยวชาญด้านอาหาร เครื่องดื่ม และการโรงแรม
 เขียนบทความการศึกษาภาษาไทยหัวข้อ: "${topic}"
@@ -245,16 +375,35 @@ app.post('/api/blog/generate', async (req, res) => {
   "tags": ["tag1", "tag2", "tag3"]
 }`
 
-    const completion = await client.chat.completions.create({
-      model: 'gpt-4o-mini',
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'user', content: prompt }
-      ]
-    })
-    
-    const text = completion.choices[0].message.content || ''
-    const parsed = JSON.parse(text)
+    let text = ''
+
+    if (provider === 'openai') {
+      const client = getOpenAI(req)
+      const completion = await client.chat.completions.create({
+        model: 'gpt-4o-mini',
+        response_format: { type: 'json_object' },
+        messages: [{ role: 'user', content: prompt }]
+      })
+      text = completion.choices[0].message.content || ''
+    } else if (provider === 'claude') {
+      const client = getAnthropic(req)
+      const completion = await client.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 3000,
+        messages: [{ role: 'user', content: prompt }]
+      })
+      text = completion.content[0].type === 'text' ? completion.content[0].text : ''
+    } else {
+      // Default: Gemini
+      const genAI = getGemini(req)
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+      const result = await model.generateContent(prompt)
+      text = result.response.text()
+    }
+
+    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    if (!jsonMatch) throw new Error('No JSON output from AI')
+    const parsed = JSON.parse(jsonMatch[0])
     res.json(parsed)
   } catch (error: any) {
     console.error('Blog Generation Error:', error)
@@ -269,45 +418,55 @@ app.get('/api/ping-all', async (req, res) => {
     let dbStatus = 'offline'
     let dbLatency = 0
     
-    // Check Supabase by selecting from seeded 'schools' table
+    // Check Supabase
     if (supabase && supabaseUrl) {
       try {
         const { data, error } = await supabase.from('schools').select('id').limit(1).maybeSingle()
         if (!error) {
           dbStatus = 'online'
-        } else {
-          console.error('Supabase query error:', error)
         }
-      } catch (e) {
-        console.error('Supabase connection failed:', e)
-      }
+      } catch (e) {}
       dbLatency = Date.now() - startDb
     }
 
-    // Check OpenAI API
-    const startAI = Date.now()
+    // Check Active Provider API status
+    const provider = getActiveProvider(req)
     let aiStatus = 'offline'
     let aiLatency = 0
+    const startAI = Date.now()
     try {
-      const client = getOpenAI(req)
-      const completion = await client.chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: 'ping' }],
-        max_tokens: 5
-      })
-      if (completion.choices[0].message.content) {
+      if (provider === 'openai') {
+        const client = getOpenAI(req)
+        await client.chat.completions.create({
+          model: 'gpt-4o-mini',
+          messages: [{ role: 'user', content: 'ping' }],
+          max_tokens: 5
+        })
         aiStatus = 'online'
-        aiLatency = Date.now() - startAI
+      } else if (provider === 'claude') {
+        const client = getAnthropic(req)
+        await client.messages.create({
+          model: 'claude-3-5-sonnet-20241022',
+          messages: [{ role: 'user', content: 'ping' }],
+          max_tokens: 5
+        })
+        aiStatus = 'online'
+      } else {
+        const genAI = getGemini(req)
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+        await model.generateContent("ping")
+        aiStatus = 'online'
       }
+      aiLatency = Date.now() - startAI
     } catch (e) {
-      console.error('OpenAI ping check failed:', e)
+      console.error('Active AI ping check failed:', e)
     }
 
     res.json({
       timestamp: new Date().toISOString(),
       services: {
         database: { status: dbStatus, latency: `${dbLatency}ms` },
-        gemini: { status: aiStatus, latency: `${aiLatency}ms` }, // Keep key name compatible with UI ping dashboard
+        gemini: { status: aiStatus, latency: `${aiLatency}ms` }, // Compat key
         backend: { status: 'online', latency: '1ms' }
       }
     })

@@ -145,7 +145,10 @@ export default function ChatPage() {
     }
 
     try {
-      const storedApiKey = typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : ''
+      const activeProvider = typeof window !== 'undefined' ? localStorage.getItem('activeAiProvider') || 'gemini' : 'gemini'
+      const geminiKey = typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : ''
+      const openaiKey = typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') || '' : ''
+      const claudeKey = typeof window !== 'undefined' ? localStorage.getItem('claudeApiKey') || '' : ''
       const savedUserInfo = typeof window !== 'undefined' ? localStorage.getItem('userInfo') : null
       let parsedUser: any = null
       try { parsedUser = savedUserInfo ? JSON.parse(savedUserInfo) : null } catch {}
@@ -156,7 +159,10 @@ export default function ChatPage() {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-gemini-key': storedApiKey
+          'x-ai-provider': activeProvider,
+          'x-gemini-key': geminiKey,
+          'x-openai-key': openaiKey,
+          'x-claude-key': claudeKey
         },
         body: JSON.stringify({
           message: msg,
