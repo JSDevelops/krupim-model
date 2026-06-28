@@ -528,6 +528,7 @@ export default function TeacherStudentsPage() {
                       </div>
                     </td>
                   </tr>
+                )
               })
             )}
             </tbody>
