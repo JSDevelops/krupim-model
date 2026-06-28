@@ -39,11 +39,11 @@ function ARViewerContent() {
     if (typeof window !== 'undefined' && id) {
       async function loadModel() {
         const defaultModelGlbUrls: Record<string, string> = {
-          'item-001': 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
-          'item-002': 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+          'item-001': 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb',
+          'item-002': 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/WaterBottle/glTF-Binary/WaterBottle.glb',
           'item-003': 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WineGlass/glTF-Binary/WineGlass.glb',
-          'item-004': 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
-          'item-005': 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+          'item-004': 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Cake/glTF-Binary/Cake.glb',
+          'item-005': 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Apple/glTF-Binary/Apple.glb',
         }
 
         // 1. Try to fetch from Supabase 'ar-items-store'

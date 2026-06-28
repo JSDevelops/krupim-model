@@ -125,11 +125,56 @@ const initialScenarios: AIScenario[] = [
 ]
 
 const initialARItems: AR3DItem[] = [
-  { id: 'item-001', nameEn: 'Espresso Coffee Cup', nameTh: 'แก้วกาแฟเอสเปรสโซ่', pronounce: '/es-pres-oh kup/', sentence: 'Please serve the double espresso in a pre-heated cup.', desc: 'ถ้วยเซรามิกขนาดเล็ก (Demitasse) สำหรับเสิร์ฟกาแฟเอสเปรสโซ่ พร้อมจานรอง', imageUrl: '/images/espresso_cup_3d.png' },
-  { id: 'item-002', nameEn: 'Cocktail Shaker', nameTh: 'กระบอกเขย่าค็อกเทล', pronounce: '/kok-teyl shey-ker/', sentence: 'Pour the ingredients into the cocktail shaker with ice.', desc: 'กระบอกโลหะแฮนด์ทัมเบลอร์สำหรับใช้เขย่าผสมเครื่องดื่มและกรองน้ำแข็งออก', imageUrl: '/images/cocktail_shaker_3d.png' },
-  { id: 'item-003', nameEn: 'Wine Glass', nameTh: 'แก้วไวน์แดง', pronounce: '/wahyn glas/', sentence: 'Hold the wine glass by the stem to prevent warming the wine.', desc: 'แก้วคริสตัลทรงกว้างรูปทรงดอกทิวลิปสำหรับจับเสิร์ฟเครื่องดื่มไวน์แดงเพื่อรับกลิ่นหอม', imageUrl: '/images/wine_glass_3d.png', glbUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WineGlass/glTF-Binary/WineGlass.glb' },
-  { id: 'item-004', nameEn: 'Soup Spoon', nameTh: 'ช้อนตักซุป', pronounce: '/soop spoon/', sentence: 'Place the soup spoon on the right side of the dinner plate.', desc: 'ช้อนตักซุปปลายมนหัวกลมกว้างออกแบบพิเศษสำหรับการรับประทานอาหารประเภทซุปใสหรือซุปข้น', imageUrl: '/images/soup_spoon_3d.png' },
-  { id: 'item-005', nameEn: 'Dinner Plate', nameTh: 'จานอาหารหลัก', pronounce: '/din-er pleyt/', sentence: 'Serve the main course on a warm dinner plate.', desc: 'จานกระเบื้องเซรามิกสีขาวขนาดเส้นผ่านศูนย์กลาง 10-12 นิ้วสำหรับจัดเสิร์ฟอาหารจานหลักหลักสูตรสากล', imageUrl: '/images/plate_3d.png' }
+  { 
+    id: 'item-001', 
+    nameEn: 'Ceramic Teapot', 
+    nameTh: 'กาน้ำชาเซรามิก', 
+    pronounce: '/tee-pot/', 
+    sentence: 'Please fill the teapot with hot water for the guests.', 
+    desc: 'กาน้ำชาทำจากดินเผาหรือเซรามิก สำหรับใช้ชงและเสิร์ฟชาในห้องอาหารและงานจัดเลี้ยง', 
+    imageUrl: '/images/teapot_3d.png',
+    glbUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb'
+  },
+  { 
+    id: 'item-002', 
+    nameEn: 'Stainless Water Bottle', 
+    nameTh: 'ขวดน้ำสแตนเลส', 
+    pronounce: '/waw-ter bot-l/', 
+    sentence: 'We keep a cold water bottle on every guest table.', 
+    desc: 'กระบอกน้ำหรือขวดน้ำเก็บความเย็นทำจากสแตนเลส สำหรับคอยบริการลูกค้าบนโต๊ะอาหาร', 
+    imageUrl: '/images/water_bottle_3d.png',
+    glbUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/WaterBottle/glTF-Binary/WaterBottle.glb'
+  },
+  { 
+    id: 'item-003', 
+    nameEn: 'Wine Glass', 
+    nameTh: 'แก้วไวน์แดงคริสตัล', 
+    pronounce: '/wahyn glas/', 
+    sentence: 'Hold the wine glass by the stem to prevent warming the wine.', 
+    desc: 'แก้วคริสตัลทรงกว้างรูปทรงดอกทิวลิปสำหรับจับเสิร์ฟเครื่องดื่มไวน์แดงเพื่อรับกลิ่นหอมสากล', 
+    imageUrl: '/images/wine_glass_3d.png', 
+    glbUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WineGlass/glTF-Binary/WineGlass.glb' 
+  },
+  { 
+    id: 'item-004', 
+    nameEn: 'Chocolate Cake', 
+    nameTh: 'เค้กช็อกโกแลต', 
+    pronounce: '/chok-luh-t keyk/', 
+    sentence: 'Would you like to order a slice of chocolate cake for dessert?', 
+    desc: 'เค้กช็อกโกแลตตกแต่งสวยงาม สำหรับบริการเป็นเมนูของหวานปิดท้ายมื้ออาหารหรู', 
+    imageUrl: '/images/cake_3d.png',
+    glbUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Cake/glTF-Binary/Cake.glb'
+  },
+  { 
+    id: 'item-005', 
+    nameEn: 'Fresh Apple', 
+    nameTh: 'ผลแอปเปิ้ลสด', 
+    pronounce: '/ap-l/', 
+    sentence: 'A fresh red apple is served on a small dessert plate.', 
+    desc: 'แอปเปิ้ลสดคัดพิเศษสำหรับจัดเสิร์ฟเป็นผลไม้ประกอบมื้อหรือใช้ประดับแต่งจานอาหาร', 
+    imageUrl: '/images/apple_3d.png',
+    glbUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Apple/glTF-Binary/Apple.glb'
+  }
 ]
 
 const initialStudents: Student[] = [
