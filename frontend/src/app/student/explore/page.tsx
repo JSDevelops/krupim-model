@@ -471,35 +471,53 @@ export default function ExplorePage() {
 
               {/* 2. Absolute Floating Header (Top bar) */}
               <div style={{
-                position: 'absolute', top: 14, left: 14, right: 14, zIndex: 10,
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6
+                position: 'absolute', top: 12, left: 12, right: 12, zIndex: 10,
+                display: 'flex', flexDirection: 'column', gap: 10
               }}>
-                {/* Home Badge */}
-                <Link href="/student/dashboard" style={{
-                  background: 'rgba(15, 28, 41, 0.75)',
-                  backdropFilter: 'blur(8px)',
-                  WebkitBackdropFilter: 'blur(8px)',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  color: 'white',
-                  textDecoration: 'none',
-                  padding: '7px 14px',
-                  borderRadius: 100,
-                  fontSize: 11.5,
-                  fontWeight: 800,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  transition: 'all 0.2s',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                }}
-                onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-                onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                >
-                  ← Home
-                </Link>
+                {/* Upper row: Navigation & Status */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 6 }}>
+                  {/* Home Badge */}
+                  <Link href="/student/dashboard" style={{
+                    background: 'rgba(15, 28, 41, 0.75)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    color: 'white',
+                    textDecoration: 'none',
+                    padding: '7px 14px',
+                    borderRadius: 100,
+                    fontSize: 11.5,
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    transition: 'all 0.2s',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                  onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    ← Home
+                  </Link>
 
-                {/* Sub Tab Switcher */}
+                  {/* Live simulation tag */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 5,
+                    background: 'rgba(30, 77, 58, 0.5)',
+                    border: '1.5px solid rgba(34, 197, 94, 0.3)',
+                    padding: '7px 12px',
+                    borderRadius: 100,
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                    flexShrink: 0
+                  }}>
+                    <span style={{ width: 5.5, height: 5.5, borderRadius: '50%', background: '#22c55e', animation: 'pulseMic 1.2s infinite' }} />
+                    <span style={{ color: '#22c55e', fontSize: 8.5, fontWeight: 955, letterSpacing: '0.5px' }}>LIVE AR SIMULATION</span>
+                  </div>
+                </div>
+
+                {/* Lower row: Tab Switcher (Centered) */}
                 <div style={{
+                  alignSelf: 'center',
                   display: 'flex',
                   gap: 3,
                   background: 'rgba(15, 28, 41, 0.75)',
@@ -531,19 +549,6 @@ export default function ExplorePage() {
                   >
                     AI Scanner
                   </button>
-                </div>
-
-                {/* Live simulation tag */}
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  background: 'rgba(30, 77, 58, 0.5)',
-                  border: '1.5px solid rgba(34, 197, 94, 0.3)',
-                  padding: '7px 12px',
-                  borderRadius: 100,
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
-                }}>
-                  <span style={{ width: 5.5, height: 5.5, borderRadius: '50%', background: '#22c55e', animation: 'pulseMic 1.2s infinite' }} />
-                  <span style={{ color: '#22c55e', fontSize: 8.5, fontWeight: 955, letterSpacing: '0.5px' }}>LIVE AR SIMULATION</span>
                 </div>
               </div>
 
