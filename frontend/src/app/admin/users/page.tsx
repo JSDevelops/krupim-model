@@ -28,6 +28,9 @@ export default function AdminUsersPage() {
   const [newUserEmail, setNewUserEmail] = useState('')
   const [newUserPassword, setNewUserPassword] = useState('teacher1234')
   const [newUserSchool, setNewUserSchool] = useState('วิทยาลัยอาชีวศึกษากรุงเทพ')
+  
+  // Teacher Dashboard popup state
+  const [selectedTeacherDashboard, setSelectedTeacherDashboard] = useState<UserItem | null>(null)
 
   // Load from localStorage
   useEffect(() => {
@@ -88,7 +91,7 @@ export default function AdminUsersPage() {
       name: newUserName.trim(),
       email: newUserEmail.trim(),
       password: newUserPassword || 'teacher1234',
-      role: 'teacher', // Locked to teacher for Admin user management
+      role: 'teacher',
       school: newUserSchool.trim(),
       status: 'active',
       avatar: '👩‍🏫',
@@ -133,6 +136,32 @@ export default function AdminUsersPage() {
     }
   }
 
+  // Calculate dynamic classroom metrics for Teacher Dashboard Preview
+  const getTeacherClassroomStats = (schoolName: string) => {
+    const stored = typeof window !== 'undefined' ? localStorage.getItem('classroomStudents') : null
+    let studentList = stored ? JSON.parse(stored) : []
+    
+    if (studentList.length === 0) {
+      studentList = [
+        { id: 'std-001', name: 'นายสมชาย ใจดี', class: 'ปวช.1/1', ksa: { K: 80, S: 75, A: 82, C: 70 }, sessions: 45 },
+        { id: 'std-002', name: 'นางสาวมาลี สวยงาม', class: 'ปวช.1/1', ksa: { K: 95, S: 90, A: 94, C: 88 }, sessions: 62 },
+        { id: 'std-003', name: 'นายพิชัย นักเรียน', class: 'ปวช.1/2', ksa: { K: 50, S: 42, A: 48, C: 38 }, sessions: 18 },
+        { id: 'std-004', name: 'นางสาวกาญจนา ดีใจ', class: 'ปวช.1/2', ksa: { K: 68, S: 62, A: 70, C: 58 }, sessions: 33 },
+        { id: 'std-005', name: 'นายอนันต์ มีใจ', class: 'ปวช.1/1', ksa: { K: 90, S: 85, A: 92, C: 82 }, sessions: 55 },
+      ]
+    }
+
+    const count = studentList.length
+    const totalSessions = studentList.reduce((acc: number, s: any) => acc + (s.sessions || 0), 0)
+    const avgK = Math.round(studentList.reduce((acc: number, s: any) => acc + (s.ksa?.K || 0), 0) / count) || 0
+    const avgS = Math.round(studentList.reduce((acc: number, s: any) => acc + (s.ksa?.S || 0), 0) / count) || 0
+    const avgA = Math.round(studentList.reduce((acc: number, s: any) => acc + (s.ksa?.A || 0), 0) / count) || 0
+    const avgC = Math.round(studentList.reduce((acc: number, s: any) => acc + (s.ksa?.C || 0), 0) / count) || 0
+    const totalAvg = Math.round((avgK * 0.2) + (avgS * 0.3) + (avgA * 0.1) + (avgC * 0.4))
+
+    return { count, totalSessions, avgK, avgS, avgA, avgC, totalAvg, studentList }
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Header card */}
@@ -140,7 +169,7 @@ export default function AdminUsersPage() {
         <div>
           <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#1E4D3A' }}>👥 ระบบบริหารจัดการครูผู้สอน (Teacher Management)</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '4px' }}>
-            [ผู้ดูแลระบบ] บริหารจัดการสิทธิ์เฉพาะบัญชี **ครูผู้สอน (Teacher)** เท่านั้น (ระบบนักเรียนจะได้รับการจัดการโดยคุณครูโดยตรง)
+            [ผู้ดูแลระบบ] บริหารจัดการสิทธิ์ครูผู้สอน (คลิกที่ชื่อของคุณครูเพื่อตรวจสอบ **แดชบอร์ดชั้นเรียน** ของครูท่านนั้น)
           </p>
         </div>
         <button onClick={() => setShowCreateModal(true)} className="btn btn-primary" style={{ border: 'none', borderRadius: '10px', padding: '10px 20px', fontWeight: 700 }}>
@@ -201,7 +230,7 @@ export default function AdminUsersPage() {
                 <thead>
                   <tr>
                     <th style={{ width: '80px' }}>รูปโปรไฟล์</th>
-                    <th>ชื่อผู้ใช้</th>
+                    <th>ชื่อผู้ใช้ (คลิกดูแดชบอร์ดห้องเรียน)</th>
                     <th>อีเมล</th>
                     <th>บทบาทสิทธิ์</th>
                     <th>สถาบันการศึกษา</th>
@@ -225,7 +254,25 @@ export default function AdminUsersPage() {
                             {u.avatar}
                           </div>
                         </td>
-                        <td style={{ fontWeight: 600 }}>{u.name}</td>
+                        <td>
+                          <button
+                            onClick={() => setSelectedTeacherDashboard(u)}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#1E4D3A',
+                              fontWeight: 700,
+                              textDecoration: 'underline',
+                              cursor: 'pointer',
+                              textAlign: 'left',
+                              padding: 0,
+                              fontSize: '13.5px'
+                            }}
+                            title="คลิกเพื่อเปิดรายงานป๊อปอัพแดชบอร์ดคุณครู"
+                          >
+                            👩‍🏫 {u.name}
+                          </button>
+                        </td>
                         <td>{u.email}</td>
                         <td>
                           <span className="badge" style={{
@@ -363,6 +410,141 @@ export default function AdminUsersPage() {
           </div>
         </div>
       )}
+
+      {/* 👩‍🏫 TEACHER DASHBOARD PREVIEW POPUP (เมื่อคลิกที่ชื่อครู) */}
+      {selectedTeacherDashboard && (() => {
+        const stats = getTeacherClassroomStats(selectedTeacherDashboard.school)
+        return (
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: '16px' }}>
+            <div className="erp-card" style={{ width: '600px', maxWidth: '100%', background: '#FDFAF4', display: 'flex', flexDirection: 'column', gap: '18px', textAlign: 'left', borderRadius: '20px', boxShadow: '0 12px 36px rgba(0,0,0,0.25)', border: '1.5px solid #C9A84C' }}>
+              
+              {/* Modal Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1.5px solid #EDE9E1', paddingBottom: '12px' }}>
+                <div>
+                  <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#1E4D3A', margin: 0 }}>👩‍🏫 แดชบอร์ดห้องเรียนของคุณครู (Classroom Insights)</h3>
+                  <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>สแกนตรวจสอบข้อมูลสมรรถนะของครูผู้สอนผ่านหน้า Developer Suite</div>
+                </div>
+                <button onClick={() => setSelectedTeacherDashboard(null)} style={{ background: 'transparent', border: 'none', fontSize: '24px', cursor: 'pointer', color: '#A6882A' }}>✕</button>
+              </div>
+
+              {/* Teacher Profile Card */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', background: '#white', padding: '14px', borderRadius: '12px', border: '1.5px solid #EDE9E1', backgroundColor: '#fff' }}>
+                <div style={{ width: 50, height: 50, background: '#FBF6E9', border: '1px solid rgba(201,168,76,0.3)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '26px' }}>
+                  {selectedTeacherDashboard.avatar}
+                </div>
+                <div>
+                  <div style={{ fontSize: '15px', fontWeight: 800, color: '#1E4D3A' }}>{selectedTeacherDashboard.name}</div>
+                  <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{selectedTeacherDashboard.email} · {selectedTeacherDashboard.school}</div>
+                </div>
+              </div>
+
+              {/* Classroom Key KPIs Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                <div style={{ padding: '12px', background: '#EAF3EE', borderRadius: '10px', textAlign: 'center', border: '1px solid rgba(30,77,58,0.1)' }}>
+                  <div style={{ fontSize: '10px', color: '#1E4D3A', fontWeight: 700, letterSpacing: '0.5px' }}>จำนวนนักเรียนทั้งหมด</div>
+                  <div style={{ fontSize: '22px', fontWeight: 800, color: '#1E4D3A', marginTop: '4px' }}>{stats.count} คน</div>
+                </div>
+                <div style={{ padding: '12px', background: '#FBF6E9', borderRadius: '10px', textAlign: 'center', border: '1px solid rgba(201,168,76,0.2)' }}>
+                  <div style={{ fontSize: '10px', color: '#A6882A', fontWeight: 700, letterSpacing: '0.5px' }}>การเข้าใช้งานสะสม</div>
+                  <div style={{ fontSize: '22px', fontWeight: 800, color: '#A6882A', marginTop: '4px' }}>{stats.totalSessions} ครั้ง</div>
+                </div>
+                <div style={{ padding: '12px', background: '#EAF3EE', borderRadius: '10px', textAlign: 'center', border: '1px solid rgba(30,77,58,0.1)' }}>
+                  <div style={{ fontSize: '10px', color: '#1E4D3A', fontWeight: 700, letterSpacing: '0.5px' }}>ผลสัมฤทธิ์ห้องเรียน</div>
+                  <div style={{ fontSize: '22px', fontWeight: 800, color: '#1E4D3A', marginTop: '4px' }}>{stats.totalAvg}%</div>
+                </div>
+              </div>
+
+              {/* KSA-C Breakdown Bars */}
+              <div>
+                <h4 style={{ fontSize: '12.5px', fontWeight: 800, color: '#A6882A', margin: '0 0 10px 0' }}>📈 ผลสัมฤทธิ์เฉลี่ยห้องเรียนแยกมิติ KSA-C (Class average performance)</h4>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  
+                  {/* Knowledge (K) */}
+                  <div style={{ background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 700, color: '#4A4138' }}>
+                      <span>Knowledge (K) - สาระวิชา</span>
+                      <span style={{ color: '#1E4D3A' }}>{stats.avgK}%</span>
+                    </div>
+                    <div style={{ width: '100%', height: '5px', background: '#F5F5F0', borderRadius: '3px', marginTop: '4px', overflow: 'hidden' }}>
+                      <div style={{ width: `${stats.avgK}%`, height: '100%', background: '#1E4D3A' }} />
+                    </div>
+                  </div>
+
+                  {/* Skill (S) */}
+                  <div style={{ background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 700, color: '#4A4138' }}>
+                      <span>Skill (S) - ทักษะปฏิบัติ</span>
+                      <span style={{ color: '#A6882A' }}>{stats.avgS}%</span>
+                    </div>
+                    <div style={{ width: '100%', height: '5px', background: '#F5F5F0', borderRadius: '3px', marginTop: '4px', overflow: 'hidden' }}>
+                      <div style={{ width: `${stats.avgS}%`, height: '100%', background: '#A6882A' }} />
+                    </div>
+                  </div>
+
+                  {/* Attribute (A) */}
+                  <div style={{ background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 700, color: '#4A4138' }}>
+                      <span>Attribute (A) - คุณลักษณะพฤติกรรม</span>
+                      <span style={{ color: '#C9A84C' }}>{stats.avgA}%</span>
+                    </div>
+                    <div style={{ width: '100%', height: '5px', background: '#F5F5F0', borderRadius: '3px', marginTop: '4px', overflow: 'hidden' }}>
+                      <div style={{ width: `${stats.avgA}%`, height: '100%', background: '#C9A84C' }} />
+                    </div>
+                  </div>
+
+                  {/* Competency (C) */}
+                  <div style={{ background: '#fff', padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', fontWeight: 700, color: '#4A4138' }}>
+                      <span>Competency (C) - ความพร้อมวิชาชีพ</span>
+                      <span style={{ color: '#1E4D3A' }}>{stats.avgC}%</span>
+                    </div>
+                    <div style={{ width: '100%', height: '5px', background: '#F5F5F0', borderRadius: '3px', marginTop: '4px', overflow: 'hidden' }}>
+                      <div style={{ width: `${stats.avgC}%`, height: '100%', background: '#1E4D3A' }} />
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+              {/* Student registry list preview */}
+              <div>
+                <h4 style={{ fontSize: '12.5px', fontWeight: 800, color: '#A6882A', margin: '0 0 8px 0' }}>👨‍🎓 นักเรียนในห้องเรียนหลักของคุณครู (Classroom Roster Preview)</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '120px', overflowY: 'auto', background: '#fff', padding: '8px', borderRadius: '10px', border: '1px solid #EDE9E1' }}>
+                  {stats.studentList.map((s: any) => (
+                    <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '6px 8px', borderBottom: '1px solid #F5F5F0', alignItems: 'center' }}>
+                      <span style={{ fontWeight: 600, color: '#4A4138' }}>👨‍🎓 {s.name} ({s.class})</span>
+                      <span style={{ color: 'var(--text-muted)' }}>สะสม {s.sessions} sessions · คะแนนรวม {Math.round((s.ksa.K*0.2)+(s.ksa.S*0.3)+(s.ksa.A*0.1)+(s.ksa.C*0.4))}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Modal Footer / Actions */}
+              <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid #EDE9E1', paddingTop: '12px', marginTop: '6px' }}>
+                <button
+                  onClick={() => setSelectedTeacherDashboard(null)}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    background: 'linear-gradient(135deg, #1E4D3A 0%, #103024 100%)',
+                    color: 'white',
+                    border: 'none',
+                    fontWeight: 700,
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    textAlign: 'center'
+                  }}
+                >
+                  ปิดรายงานแดชบอร์ด
+                </button>
+              </div>
+
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }
