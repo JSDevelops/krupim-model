@@ -122,10 +122,17 @@ export default function StudentLearnPage() {
         list = fallbackPlans
       }
 
-      const filtered = list.filter(p => {
-        const planTeacher = p.teacherName || 'ครูสมหญิง รักเรียน'
-        return planTeacher.trim().toLowerCase() === studentTeacher.trim().toLowerCase()
-      })
+      // Filter by teacher name if student has an assigned teacher and matching plans exist; otherwise show all plans
+      let filtered = list
+      const tName = user?.teacherName
+      if (tName) {
+        const matched = list.filter(p => 
+          (p.teacherName || '').trim().toLowerCase() === tName.trim().toLowerCase()
+        )
+        if (matched.length > 0) {
+          filtered = matched
+        }
+      }
 
       setPlans(filtered)
       if (filtered.length > 0) {
