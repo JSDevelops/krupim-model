@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
@@ -11,7 +11,7 @@ interface ARModel {
   thumbnail: string
 }
 
-export default function ARViewerPage() {
+function ARViewerContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const id = searchParams.get('id')
@@ -97,5 +97,13 @@ export default function ARViewerPage() {
       </div>
 
     </div>
+  )
+}
+
+export default function ARViewerPage() {
+  return (
+    <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>กำลังโหลดโมเดล 3 มิติ...</div>}>
+      <ARViewerContent />
+    </Suspense>
   )
 }
