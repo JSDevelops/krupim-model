@@ -1,13 +1,17 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
-const initialUsers = [
-  { id: 'usr-001', name: 'ครูสมหญิง รักเรียน', email: 'teacher1@school.ac.th', role: 'teacher', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', status: 'active', avatar: '👩‍🏫', lastLogin: '10 นาทีที่แล้ว' },
-  { id: 'usr-002', name: 'ครูมานะ ดีงาม', email: 'teacher2@school.ac.th', role: 'teacher', school: 'วิทยาลัยอาชีวศึกษานครปฐม', status: 'active', avatar: '👨‍🏫', lastLogin: '1 ชั่วโมงที่แล้ว' },
-  { id: 'usr-003', name: 'นายสมชาย ใจดี', email: 'std001@school.ac.th', role: 'student', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', status: 'active', avatar: '👨‍🎓', lastLogin: '2 ชม.ที่แล้ว' },
-  { id: 'usr-004', name: 'นางสาวสมใจ หวังดี', email: 'std002@school.ac.th', role: 'student', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', status: 'active', avatar: '👩‍🎓', lastLogin: '1 วันที่แล้ว' },
-  { id: 'usr-005', name: 'นายพิชัย นักเรียน', email: 'std003@school.ac.th', role: 'student', school: 'วิทยาลัยอาชีวศึกษาเชียงใหม่', status: 'inactive', avatar: '👨‍🎓', lastLogin: '5 วันที่แล้ว' },
-]
+interface UserItem {
+  id: string
+  name: string
+  email: string
+  password?: string
+  role: string
+  school: string
+  status?: 'active' | 'inactive'
+  avatar: string
+  lastLogin?: string
+}
 
 const initialPendingTeachers = [
   { id: 'pend-001', name: 'ครูสมศักดิ์ เรียนรู้', email: 'somsak.t@school.ac.th', school: 'วิทยาลัยอาชีวศึกษาสุราษฎร์ธานี', requestDate: 'วันนี้, 10:20 น.', docs: 'ใบประกอบวิชาชีพครู.pdf' },
@@ -15,66 +19,112 @@ const initialPendingTeachers = [
 ]
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState(initialUsers)
+  const [users, setUsers] = useState<UserItem[]>([])
   const [pendingTeachers, setPendingTeachers] = useState(initialPendingTeachers)
-  const [activeTab, setActiveTab] = useState<'all' | 'pending'>('all')
+  const [activeTab, setActiveTab] = useState<'teachers' | 'pending'>('teachers')
   const [search, setSearch] = useState('')
-  const [roleFilter, setRoleFilter] = useState('all')
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newUserName, setNewUserName] = useState('')
   const [newUserEmail, setNewUserEmail] = useState('')
-  const [newUserRole, setNewUserRole] = useState('student')
+  const [newUserPassword, setNewUserPassword] = useState('teacher1234')
   const [newUserSchool, setNewUserSchool] = useState('วิทยาลัยอาชีวศึกษากรุงเทพ')
 
-  const filtered = users.filter(u => {
-    const matchRole = roleFilter === 'all' || u.role === roleFilter
+  // Load from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('registeredUsers')
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored)
+          setUsers(parsed)
+        } catch (e) {}
+      } else {
+        const defaultUsers: UserItem[] = [
+          { id: 'teacher-001', name: 'ครูสมหญิง รักเรียน', email: 'teacher@school.ac.th', password: 'teacher1234', role: 'teacher', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', status: 'active', avatar: '👩‍🏫', lastLogin: '10 นาทีที่แล้ว' }
+        ]
+        setUsers(defaultUsers)
+        localStorage.setItem('registeredUsers', JSON.stringify(defaultUsers))
+      }
+    }
+  }, [])
+
+  const saveUsersToStorage = (updatedList: UserItem[]) => {
+    setUsers(updatedList)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('registeredUsers', JSON.stringify(updatedList))
+    }
+  }
+
+  // Admin manages ONLY Teachers (students are managed by teachers)
+  const teacherUsers = users.filter(u => u.role === 'teacher')
+
+  const filteredTeachers = teacherUsers.filter(u => {
     const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase())
-    return matchRole && matchSearch
+    return matchSearch
   })
 
   function toggleStatus(id: string) {
-    setUsers(prev => prev.map(u => u.id === id ? { ...u, status: u.status === 'active' ? 'inactive' : 'active' } : u))
+    const updated = users.map(u => {
+      if (u.id === id) {
+        return { ...u, status: u.status === 'active' ? 'inactive' : 'active' } as UserItem
+      }
+      return u
+    })
+    saveUsersToStorage(updated)
   }
 
   function handleCreateUser(e: React.FormEvent) {
     e.preventDefault()
     if (!newUserName || !newUserEmail) return
-    const newUser = {
-      id: `usr-00${users.length + 1}`,
-      name: newUserName,
-      email: newUserEmail,
-      role: newUserRole,
-      school: newUserSchool,
+
+    const emailExists = users.some(u => u.email.toLowerCase() === newUserEmail.trim().toLowerCase())
+    if (emailExists) {
+      alert('อีเมลนี้ถูกใช้ลงทะเบียนแล้วในระบบ')
+      return
+    }
+
+    const newUser: UserItem = {
+      id: `usr-${Date.now()}`,
+      name: newUserName.trim(),
+      email: newUserEmail.trim(),
+      password: newUserPassword || 'teacher1234',
+      role: 'teacher', // Locked to teacher for Admin user management
+      school: newUserSchool.trim(),
       status: 'active',
-      avatar: newUserRole === 'teacher' ? '👩‍🏫' : '👨‍🎓',
+      avatar: '👩‍🏫',
       lastLogin: 'เพิ่งสร้าง'
     }
-    setUsers(prev => [newUser, ...prev])
+
+    saveUsersToStorage([newUser, ...users])
     setNewUserName('')
     setNewUserEmail('')
+    setNewUserPassword('teacher1234')
     setShowCreateModal(false)
   }
 
   function handleDeleteUser(id: string) {
-    if (confirm('คุณต้องการลบผู้ใช้นี้ออกจากระบบหรือไม่?')) {
-      setUsers(prev => prev.filter(u => u.id !== id))
+    if (confirm('คุณต้องการลบสิทธิ์บัญชีครูรายนี้ออกจากระบบหรือไม่?')) {
+      const updated = users.filter(u => u.id !== id)
+      saveUsersToStorage(updated)
     }
   }
 
   function handleApprove(teacher: typeof initialPendingTeachers[0]) {
-    const newUser = {
+    const newUser: UserItem = {
       id: `usr-${Date.now()}`,
       name: teacher.name,
       email: teacher.email,
+      password: 'teacher1234',
       role: 'teacher',
       school: teacher.school,
       status: 'active',
       avatar: '👩‍🏫',
       lastLogin: 'เพิ่งได้รับการอนุมัติ'
     }
-    setUsers(prev => [newUser, ...prev])
+
+    saveUsersToStorage([newUser, ...users])
     setPendingTeachers(prev => prev.filter(t => t.id !== teacher.id))
-    alert(`อนุมัติและเปิดสิทธิ์การใช้งานให้ ${teacher.name} สำเร็จ!`)
+    alert(`อนุมัติและเปิดสิทธิ์ครูผู้สอนให้ ${teacher.name} สำเร็จ!`)
   }
 
   function handleReject(id: string, name: string) {
@@ -88,27 +138,27 @@ export default function AdminUsersPage() {
       {/* Header card */}
       <div className="erp-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 style={{ fontSize: '20px', fontWeight: 700 }}>👥 ระบบบริหารจัดการผู้ใช้ (User & Teacher Approval)</h2>
+          <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#1E4D3A' }}>👥 ระบบบริหารจัดการครูผู้สอน (Teacher Management)</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '4px' }}>
-            จัดการบัญชีผู้ใช้งาน และพิจารณาอนุมัติคำขอสิทธิ์ของครูผู้สอนเพื่อเริ่มการสอนในระบบ
+            [ผู้ดูแลระบบ] บริหารจัดการสิทธิ์เฉพาะบัญชี **ครูผู้สอน (Teacher)** เท่านั้น (ระบบนักเรียนจะได้รับการจัดการโดยคุณครูโดยตรง)
           </p>
         </div>
         <button onClick={() => setShowCreateModal(true)} className="btn btn-primary" style={{ border: 'none', borderRadius: '10px', padding: '10px 20px', fontWeight: 700 }}>
-          ➕ สร้างผู้ใช้ใหม่
+          ➕ อนุมัติสิทธิ์ครูท่านใหม่
         </button>
       </div>
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: '12px', borderBottom: '1.5px solid #EDE9E1', paddingBottom: '2px' }}>
         <button
-          onClick={() => setActiveTab('all')}
+          onClick={() => setActiveTab('teachers')}
           style={{
-            background: 'transparent', border: 'none', fontSize: '14px', fontWeight: activeTab === 'all' ? 700 : 500,
-            color: activeTab === 'all' ? '#1E4D3A' : 'var(--text-muted)', cursor: 'pointer', padding: '10px 20px',
-            borderBottom: activeTab === 'all' ? '3px solid #1E4D3A' : 'none'
+            background: 'transparent', border: 'none', fontSize: '14px', fontWeight: activeTab === 'teachers' ? 700 : 500,
+            color: activeTab === 'teachers' ? '#1E4D3A' : 'var(--text-muted)', cursor: 'pointer', padding: '10px 20px',
+            borderBottom: activeTab === 'teachers' ? '3px solid #1E4D3A' : 'none'
           }}
         >
-          👤 ผู้ใช้ทั้งหมดในระบบ ({users.length})
+          👩‍🏫 ครูผู้สอนในระบบ ({teacherUsers.length})
         </button>
         <button
           onClick={() => setActiveTab('pending')}
@@ -118,7 +168,7 @@ export default function AdminUsersPage() {
             borderBottom: activeTab === 'pending' ? '3px solid #C9A84C' : 'none', display: 'flex', alignItems: 'center', gap: '6px'
           }}
         >
-          ⏳ รออนุมัติครูผู้สอน ({pendingTeachers.length})
+          ⏳ รออนุมัติรับรองคุณครู ({pendingTeachers.length})
           {pendingTeachers.length > 0 && (
             <span style={{ fontSize: '10px', background: '#C9A84C', color: '#1A1410', padding: '2px 6px', borderRadius: '10px', fontWeight: 700 }}>
               {pendingTeachers.length}
@@ -127,24 +177,20 @@ export default function AdminUsersPage() {
         </button>
       </div>
 
-      {activeTab === 'all' ? (
+      {activeTab === 'teachers' ? (
         <>
           {/* Filter and Search controls */}
           <div className="erp-card" style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
             <div style={{ flex: 1 }}>
               <input
                 className="erp-input"
-                placeholder="ค้นหาตามชื่อ หรือ อีเมล..."
+                placeholder="ค้นหาอาจารย์ ตามชื่อ หรือ อีเมล..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
             </div>
-            <div style={{ width: '200px' }}>
-              <select className="erp-input" value={roleFilter} onChange={e => setRoleFilter(e.target.value)}>
-                <option value="all">ทุกบทบาท</option>
-                <option value="teacher">ครูผู้สอน (Teacher)</option>
-                <option value="student">นักเรียน (Student)</option>
-              </select>
+            <div style={{ padding: '8px 16px', background: '#F5F0E6', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#4A4138' }}>
+              บทบาทที่จัดการ: ครูผู้สอน (Teacher)
             </div>
           </div>
 
@@ -157,56 +203,71 @@ export default function AdminUsersPage() {
                     <th style={{ width: '80px' }}>รูปโปรไฟล์</th>
                     <th>ชื่อผู้ใช้</th>
                     <th>อีเมล</th>
-                    <th>บทบาท</th>
+                    <th>บทบาทสิทธิ์</th>
                     <th>สถาบันการศึกษา</th>
                     <th>เข้าใช้งานล่าสุด</th>
-                    <th>สถานะ</th>
-                    <th style={{ textAlign: 'center' }}>จัดการ</th>
+                    <th>สถานะการอนุญาต</th>
+                    <th style={{ textAlign: 'center' }}>จัดการคีย์/ลบ</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map(u => (
-                    <tr key={u.id}>
-                      <td>
-                        <div style={{ width: 44, height: 44, background: '#F5F0E6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
-                          {u.avatar}
-                        </div>
-                      </td>
-                      <td style={{ fontWeight: 600 }}>{u.name}</td>
-                      <td>{u.email}</td>
-                      <td>
-                        <span className="badge" style={{
-                          background: u.role === 'teacher' ? '#FBF6E9' : '#EAF3EE',
-                          color: u.role === 'teacher' ? '#A6882A' : '#1E4D3A',
-                          fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '12px'
-                        }}>
-                          {u.role.toUpperCase()}
-                        </span>
-                      </td>
-                      <td>{u.school}</td>
-                      <td style={{ color: 'var(--text-muted)' }}>{u.lastLogin}</td>
-                      <td>
-                        <span onClick={() => toggleStatus(u.id)} style={{
-                          cursor: 'pointer',
-                          background: u.status === 'active' ? '#EAF3EE' : '#FAE8EB',
-                          color: u.status === 'active' ? '#1E4D3A' : '#8B2635',
-                          fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '20px'
-                        }}>
-                          ● {u.status === 'active' ? 'Active' : 'Suspended'}
-                        </span>
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                          <button className="btn btn-outline btn-sm" style={{ padding: '6px 12px', fontSize: '12px' }}>
-                            แก้ไข
-                          </button>
-                          <button onClick={() => handleDeleteUser(u.id)} className="btn btn-outline btn-sm" style={{ padding: '6px 12px', fontSize: '12px', color: 'var(--error)', borderColor: 'var(--error-light)' }}>
-                            ลบ
-                          </button>
-                        </div>
+                  {filteredTeachers.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        ไม่พบข้อมูลครูผู้สอนในระบบตามเงื่อนไขค้นหา
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    filteredTeachers.map(u => (
+                      <tr key={u.id}>
+                        <td>
+                          <div style={{ width: 44, height: 44, background: '#F5F0E6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
+                            {u.avatar}
+                          </div>
+                        </td>
+                        <td style={{ fontWeight: 600 }}>{u.name}</td>
+                        <td>{u.email}</td>
+                        <td>
+                          <span className="badge" style={{
+                            background: '#FBF6E9',
+                            color: '#A6882A',
+                            fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '12px'
+                          }}>
+                            TEACHER
+                          </span>
+                        </td>
+                        <td>{u.school}</td>
+                        <td style={{ color: 'var(--text-muted)' }}>{u.lastLogin || 'ยังไม่ได้ระบุ'}</td>
+                        <td>
+                          <span onClick={() => toggleStatus(u.id)} style={{
+                            cursor: 'pointer',
+                            background: u.status === 'active' || !u.status ? '#EAF3EE' : '#FAE8EB',
+                            color: u.status === 'active' || !u.status ? '#1E4D3A' : '#8B2635',
+                            fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '20px'
+                          }}>
+                            ● {u.status === 'active' || !u.status ? 'Active (ผ่านสิทธิ์)' : 'Suspended (ระงับสิทธิ์)'}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                            <button onClick={() => {
+                              const newPass = prompt(`ตั้งค่ารหัสผ่านใหม่สำหรับคุณครู ${u.name}:`, u.password || '')
+                              if (newPass !== null) {
+                                const updated = users.map(item => item.id === u.id ? { ...item, password: newPass } : item)
+                                saveUsersToStorage(updated)
+                                alert('เปลี่ยนรหัสผ่านสำเร็จ!')
+                              }
+                            }} className="btn btn-outline btn-sm" style={{ padding: '6px 12px', fontSize: '12px' }}>
+                              รหัสผ่าน
+                            </button>
+                            <button onClick={() => handleDeleteUser(u.id)} className="btn btn-outline btn-sm" style={{ padding: '6px 12px', fontSize: '12px', color: 'var(--error)', borderColor: 'var(--error-light)' }}>
+                              ลบสิทธิ์
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -242,7 +303,7 @@ export default function AdminUsersPage() {
                       <td>{t.school}</td>
                       <td style={{ color: 'var(--text-muted)' }}>{t.requestDate}</td>
                       <td>
-                        <a href="#" style={{ color: '#C9A84C', fontWeight: 600, textDecoration: 'none', fontSize: '13px' }}>
+                        <a href="#" onClick={(e) => { e.preventDefault(); alert('กำลังดาวน์โหลดเอกสารประกอบวิชาชีพครูเพื่อตรวจสอบสิทธิ์...') }} style={{ color: '#C9A84C', fontWeight: 600, textDecoration: 'none', fontSize: '13px' }}>
                           📄 {t.docs}
                         </a>
                       </td>
@@ -270,31 +331,33 @@ export default function AdminUsersPage() {
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100 }}>
           <div className="erp-card" style={{ width: '450px', background: '#FDFAF4', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#1E4D3A' }}>➕ สร้างผู้ใช้ระบบใหม่</h3>
+              <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#1E4D3A' }}>➕ อนุมัติสิทธิ์บัญชีครูผู้สอนใหม่</h3>
               <button onClick={() => setShowCreateModal(false)} style={{ background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer' }}>✕</button>
             </div>
             <form onSubmit={handleCreateUser} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               <div className="erp-form-group">
-                <label className="erp-label">ชื่อผู้ใช้ (ไทย)</label>
-                <input className="erp-input" placeholder="เช่น นายวิชา ดีมาก" value={newUserName} onChange={e => setNewUserName(e.target.value)} required />
+                <label className="erp-label">ชื่อ - นามสกุลครูผู้สอน</label>
+                <input className="erp-input" placeholder="เช่น ดร.มงคล สมบูรณ์" value={newUserName} onChange={e => setNewUserName(e.target.value)} required />
               </div>
               <div className="erp-form-group">
-                <label className="erp-label">อีเมล</label>
-                <input type="email" className="erp-input" placeholder="example@school.ac.th" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} required />
+                <label className="erp-label">อีเมลวิชาชีพ</label>
+                <input type="email" className="erp-input" placeholder="teacher@school.ac.th" value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} required />
               </div>
               <div className="erp-form-group">
-                <label className="erp-label">บทบาท</label>
-                <select className="erp-input" value={newUserRole} onChange={e => setNewUserRole(e.target.value)}>
-                  <option value="student">นักเรียน (Student)</option>
-                  <option value="teacher">ครูผู้สอน (Teacher)</option>
-                </select>
+                <label className="erp-label">กำหนดรหัสผ่านเบื้องต้น</label>
+                <input type="text" className="erp-input" value={newUserPassword} onChange={e => setNewUserPassword(e.target.value)} required />
               </div>
               <div className="erp-form-group">
-                <label className="erp-label">สถาบันการศึกษา</label>
+                <label className="erp-label">สถาบันวิทยาลัยอาชีวศึกษา</label>
                 <input className="erp-input" value={newUserSchool} onChange={e => setNewUserSchool(e.target.value)} />
               </div>
+              
+              <div style={{ background: '#EAF3EE', padding: '10px 14px', borderRadius: '8px', fontSize: '12px', color: '#1E4D3A', fontWeight: 650 }}>
+                💡 บทบาทบัญชีที่จะได้รับ: ครูผู้สอน (Teacher) เสมอ
+              </div>
+
               <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '12px', border: 'none', fontWeight: 700 }}>
-                บันทึกบัญชีผู้ใช้งาน
+                บันทึกประวัติและอนุมัติสิทธิ์คุณครู
               </button>
             </form>
           </div>

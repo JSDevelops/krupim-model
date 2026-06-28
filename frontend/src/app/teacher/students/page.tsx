@@ -5,6 +5,9 @@ interface Student {
   id: string
   name: string
   class: string
+  email: string
+  password?: string
+  status?: 'active' | 'inactive'
   ksa: {
     K: number // Knowledge (20%)
     S: number // Skill (30%)
@@ -15,11 +18,11 @@ interface Student {
 }
 
 const initialStudents: Student[] = [
-  { id: 'std-001', name: 'นายสมชาย ใจดี', class: 'ปวช.1/1', ksa: { K: 80, S: 75, A: 82, C: 70 }, sessions: 45 },
-  { id: 'std-002', name: 'นางสาวมาลี สวยงาม', class: 'ปวช.1/1', ksa: { K: 95, S: 90, A: 94, C: 88 }, sessions: 62 },
-  { id: 'std-003', name: 'นายพิชัย นักเรียน', class: 'ปวช.1/2', ksa: { K: 50, S: 42, A: 48, C: 38 }, sessions: 18 },
-  { id: 'std-004', name: 'นางสาวกาญจนา ดีใจ', class: 'ปวช.1/2', ksa: { K: 68, S: 62, A: 70, C: 58 }, sessions: 33 },
-  { id: 'std-005', name: 'นายอนันต์ มีใจ', class: 'ปวช.1/1', ksa: { K: 90, S: 85, A: 92, C: 82 }, sessions: 55 },
+  { id: 'std-001', name: 'นายสมชาย ใจดี', class: 'ปวช.1/1', email: 'student@school.ac.th', password: 'student1234', status: 'active', ksa: { K: 80, S: 75, A: 82, C: 70 }, sessions: 45 },
+  { id: 'std-002', name: 'นางสาวมาลี สวยงาม', class: 'ปวช.1/1', email: 'std002@school.ac.th', password: 'student1234', status: 'active', ksa: { K: 95, S: 90, A: 94, C: 88 }, sessions: 62 },
+  { id: 'std-003', name: 'นายพิชัย นักเรียน', class: 'ปวช.1/2', email: 'std003@school.ac.th', password: 'student1234', status: 'inactive', ksa: { K: 50, S: 42, A: 48, C: 38 }, sessions: 18 },
+  { id: 'std-004', name: 'นางสาวกาญจนา ดีใจ', class: 'ปวช.1/2', email: 'std004@school.ac.th', password: 'student1234', status: 'active', ksa: { K: 68, S: 62, A: 70, C: 58 }, sessions: 33 },
+  { id: 'std-005', name: 'นายอนันต์ มีใจ', class: 'ปวช.1/1', email: 'std005@school.ac.th', password: 'student1234', status: 'active', ksa: { K: 90, S: 85, A: 92, C: 82 }, sessions: 55 },
 ]
 
 export default function TeacherStudentsPage() {
@@ -34,6 +37,8 @@ export default function TeacherStudentsPage() {
   // Form states
   const [name, setName] = useState('')
   const [studentClass, setStudentClass] = useState('ปวช.1/1')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('student1234')
   const [kScore, setKScore] = useState(0)
   const [sScore, setSScore] = useState(0)
   const [aScore, setAScore] = useState(0)
@@ -48,20 +53,52 @@ export default function TeacherStudentsPage() {
         try {
           setStudents(JSON.parse(stored))
           return
-        } catch (e) {
-          // fallback
-        }
+        } catch (e) {}
       }
-      // If not stored, set and save initial
       setStudents(initialStudents)
       localStorage.setItem('classroomStudents', JSON.stringify(initialStudents))
     }
   }, [])
 
-  const saveStudents = (updatedList: Student[]) => {
+  // Sync to both classroomStudents (KSA database) and registeredUsers (login database)
+  const saveStudentsAndSyncAuth = (updatedList: Student[]) => {
     setStudents(updatedList)
     if (typeof window !== 'undefined') {
       localStorage.setItem('classroomStudents', JSON.stringify(updatedList))
+      
+      // Sync to registeredUsers for login check
+      const rawUsers = localStorage.getItem('registeredUsers')
+      let registeredList = rawUsers ? JSON.parse(rawUsers) : []
+
+      updatedList.forEach(s => {
+        const existingIdx = registeredList.findIndex((u: any) => u.id === s.id || u.email === s.email)
+        const mappedUser = {
+          id: s.id,
+          name: s.name,
+          email: s.email,
+          password: s.password || 'student1234',
+          role: 'student',
+          school: 'วิทยาลัยอาชีวศึกษากรุงเทพ',
+          status: s.status || 'active',
+          avatar: '👨‍🎓',
+          lastLogin: 'ลงทะเบียนโดยครู'
+        }
+        if (existingIdx > -1) {
+          registeredList[existingIdx] = { ...registeredList[existingIdx], ...mappedUser }
+        } else {
+          registeredList.push(mappedUser)
+        }
+      })
+
+      // Clean up deleted students from registeredUsers
+      registeredList = registeredList.filter((u: any) => {
+        if (u.role === 'student') {
+          return updatedList.some(s => s.id === u.id || s.email === u.email)
+        }
+        return true // Keep teachers & admins
+      })
+
+      localStorage.setItem('registeredUsers', JSON.stringify(registeredList))
     }
   }
 
@@ -69,9 +106,6 @@ export default function TeacherStudentsPage() {
     classFilter === 'all' || s.class === classFilter
   )
 
-  // Calculate weighted score & verify pass requirements (หน้า 24-27 ในคู่มือครู)
-  // 1. Every aspect score >= 60%
-  // 2. Weighted total score >= 70%
   function evaluateCompetency(ksa: Student['ksa']) {
     const kVal = ksa?.K ?? 0
     const sVal = ksa?.S ?? 0
@@ -86,10 +120,10 @@ export default function TeacherStudentsPage() {
       total: weightedTotal,
       passed: isPassed,
       failedReasons: [
-        kVal < 60 && 'ความรู้ (K) < 60%',
-        sVal < 60 && 'ทักษะ (S) < 60%',
-        aVal < 60 && 'คุณลักษณะ (A) < 60%',
-        cVal < 60 && 'สมรรถนะ (C) < 60%',
+        kVal < 60 && 'Knowledge (K) < 60%',
+        sVal < 60 && 'Skill (S) < 60%',
+        aVal < 60 && 'Attribute (A) < 60%',
+        cVal < 60 && 'Competency (C) < 60%',
         weightedTotal < 70 && 'คะแนนรวม < 70%'
       ].filter(Boolean) as string[]
     }
@@ -99,6 +133,8 @@ export default function TeacherStudentsPage() {
     setEditingStudent(null)
     setName('')
     setStudentClass('ปวช.1/1')
+    setEmail('')
+    setPassword('student1234')
     setKScore(0)
     setSScore(0)
     setAScore(0)
@@ -111,6 +147,8 @@ export default function TeacherStudentsPage() {
     setEditingStudent(s)
     setName(s.name)
     setStudentClass(s.class)
+    setEmail(s.email || '')
+    setPassword(s.password || 'student1234')
     setKScore(s.ksa?.K ?? 0)
     setSScore(s.ksa?.S ?? 0)
     setAScore(s.ksa?.A ?? 0)
@@ -121,45 +159,64 @@ export default function TeacherStudentsPage() {
 
   function handleSaveStudent(e: React.FormEvent) {
     e.preventDefault()
-    if (!name) return
+    if (!name || !email) return
+
+    const emailCheck = students.some(s => s.email.toLowerCase() === email.trim().toLowerCase() && (!editingStudent || s.id !== editingStudent.id))
+    if (emailCheck) {
+      alert('อีเมลผู้เรียนนี้มีในระบบทะเบียนแล้ว')
+      return
+    }
 
     if (editingStudent) {
-      // Edit mode
       const updated = students.map(s => {
         if (s.id === editingStudent.id) {
           return {
             ...s,
             name,
             class: studentClass,
+            email: email.trim(),
+            password: password.trim(),
             ksa: { K: kScore, S: sScore, A: aScore, C: cScore },
             sessions
           }
         }
         return s
       })
-      saveStudents(updated)
-      alert('แก้ไขข้อมูลทะเบียนนักเรียนสำเร็จ!')
+      saveStudentsAndSyncAuth(updated)
+      alert('แก้ไขประวัตินักเรียนและอัปเดตสิทธิ์เข้าเรียนสำเร็จ!')
     } else {
-      // Add mode
       const newStudent: Student = {
         id: `std-${Date.now()}`,
         name,
         class: studentClass,
+        email: email.trim(),
+        password: password.trim(),
+        status: 'active',
         ksa: { K: kScore, S: sScore, A: aScore, C: cScore },
         sessions
       }
-      saveStudents([...students, newStudent])
-      alert('ลงทะเบียนนักเรียนใหม่สำเร็จ!')
+      saveStudentsAndSyncAuth([...students, newStudent])
+      alert('ลงทะเบียนนักเรียนและสร้างสิทธิ์เข้าสู่ระบบเรียบร้อย!')
     }
 
     setShowAddEdit(false)
   }
 
   function handleDeleteStudent(id: string) {
-    if (confirm('คุณต้องการลบนักเรียนรายนี้ออกจากระบบทะเบียนหรือไม่?')) {
+    if (confirm('คุณต้องการลบข้อมูลประวัติและยกเลิกสิทธิ์ล็อกอินของนักเรียนรายนี้หรือไม่?')) {
       const updated = students.filter(s => s.id !== id)
-      saveStudents(updated)
+      saveStudentsAndSyncAuth(updated)
     }
+  }
+
+  function toggleStudentStatus(s: Student) {
+    const updated = students.map(item => {
+      if (item.id === s.id) {
+        return { ...item, status: item.status === 'active' || !item.status ? 'inactive' : 'active' } as Student
+      }
+      return item
+    })
+    saveStudentsAndSyncAuth(updated)
   }
 
   return (
@@ -168,13 +225,13 @@ export default function TeacherStudentsPage() {
       {/* Header */}
       <div className="erp-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#1E4D3A', margin: 0 }}>👥 ทะเบียนนักเรียนและการรับรองสมรรถนะ (Student Registry)</h2>
+          <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#1E4D3A', margin: 0 }}>👥 ทะเบียนและสิทธิ์เข้าเรียนของนักเรียน (Student Registry & Permissions)</h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '4px', margin: '4px 0 0 0' }}>
-            จัดการทำทะเบียนประวัตินักเรียน ตรวจสอบพฤติกรรม และประเมินการผ่านสมรรถนะ KSA-C มุ่งเน้นของ FINE Model
+            [อาจารย์ผู้สอน] บริหารจัดการสิทธิ์การเข้าใช้งาน, รหัสผ่าน, พร้อมประเมินสมรรถนะ KSA-C ของผู้เรียน
           </p>
         </div>
         <button onClick={handleOpenAdd} className="btn btn-primary" style={{ border: 'none', borderRadius: '10px', padding: '10px 20px', fontWeight: 700 }}>
-          ➕ ลงทะเบียนนักเรียนใหม่
+          ➕ ลงทะเบียนนักเรียน & อนุมัติสิทธิ์เข้าเรียน
         </button>
       </div>
 
@@ -205,15 +262,16 @@ export default function TeacherStudentsPage() {
             <thead>
               <tr>
                 <th>ชื่อผู้เรียน</th>
+                <th>อีเมลระบบ</th>
                 <th>ชั้นเรียน</th>
-                <th style={{ textAlign: 'center' }}>จำนวน Session</th>
+                <th>สิทธิ์เข้าใช้งาน</th>
                 <th style={{ textAlign: 'center' }}>Knowledge (K)</th>
                 <th style={{ textAlign: 'center' }}>Skills (S)</th>
                 <th style={{ textAlign: 'center' }}>Attribute (A)</th>
                 <th style={{ textAlign: 'center' }}>Competency (C)</th>
                 <th style={{ textAlign: 'center' }}>คะแนนรวม</th>
-                <th>ผลการรับรอง</th>
-                <th style={{ textAlign: 'center' }}>การกระทำ</th>
+                <th>ผลสัมฤทธิ์</th>
+                <th style={{ textAlign: 'center' }}>จัดการสิทธิ์</th>
               </tr>
             </thead>
             <tbody>
@@ -222,62 +280,50 @@ export default function TeacherStudentsPage() {
                 return (
                   <tr key={s.id}>
                     <td style={{ fontWeight: 700 }}>👨‍🎓 {s.name}</td>
+                    <td style={{ fontSize: '12.5px', color: 'var(--text-muted)' }}>{s.email}</td>
                     <td>{s.class}</td>
-                    <td style={{ textAlign: 'center', fontWeight: 600 }}>{s.sessions} ครั้ง</td>
+                    <td>
+                      <span 
+                        onClick={() => toggleStudentStatus(s)}
+                        style={{
+                          cursor: 'pointer',
+                          background: s.status === 'active' || !s.status ? '#EAF3EE' : '#FAE8EB',
+                          color: s.status === 'active' || !s.status ? '#1E4D3A' : '#8B2635',
+                          fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '20px'
+                        }}
+                      >
+                        ● {s.status === 'active' || !s.status ? 'Active (มีสิทธิ์)' : 'Suspended (ระงับ)'}
+                      </span>
+                    </td>
                     
                     {/* KSA-C columns */}
                     <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                        <span style={{ fontWeight: 700, fontSize: 13, color: '#1E4D3A' }}>{s.ksa?.K ?? 0}%</span>
-                        <div className="progress-bar-wrap" style={{ width: '60px', height: '5px', background: '#EAF3EE' }}>
-                          <div className="progress-bar-fill" style={{ width: `${s.ksa?.K ?? 0}%`, background: '#1E4D3A' }} />
-                        </div>
-                      </div>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: '#1E4D3A' }}>{s.ksa?.K ?? 0}%</span>
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                        <span style={{ fontWeight: 700, fontSize: 13, color: '#A6882A' }}>{s.ksa?.S ?? 0}%</span>
-                        <div className="progress-bar-wrap" style={{ width: '60px', height: '5px', background: '#FBF6E9' }}>
-                          <div className="progress-bar-fill" style={{ width: `${s.ksa?.S ?? 0}%`, background: '#A6882A' }} />
-                        </div>
-                      </div>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: '#A6882A' }}>{s.ksa?.S ?? 0}%</span>
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                        <span style={{ fontWeight: 700, fontSize: 13, color: '#C9A84C' }}>{s.ksa?.A ?? 0}%</span>
-                        <div className="progress-bar-wrap" style={{ width: '60px', height: '5px', background: '#FBF6E9' }}>
-                          <div className="progress-bar-fill" style={{ width: `${s.ksa?.A ?? 0}%`, background: '#C9A84C' }} />
-                        </div>
-                      </div>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: '#C9A84C' }}>{s.ksa?.A ?? 0}%</span>
                     </td>
                     <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                        <span style={{ fontWeight: 700, fontSize: 13, color: '#1E4D3A' }}>{s.ksa?.C ?? 0}%</span>
-                        <div className="progress-bar-wrap" style={{ width: '60px', height: '5px', background: '#EAF3EE' }}>
-                          <div className="progress-bar-fill" style={{ width: `${s.ksa?.C ?? 0}%`, background: '#1E4D3A' }} />
-                        </div>
-                      </div>
+                      <span style={{ fontWeight: 700, fontSize: 13, color: '#1E4D3A' }}>{s.ksa?.C ?? 0}%</span>
                     </td>
 
                     <td style={{ textAlign: 'center' }}>
-                      <span style={{ fontSize: '16px', fontWeight: 850, color: evalResult.passed ? '#1E4D3A' : '#8B2635' }}>
+                      <span style={{ fontSize: '15px', fontWeight: 800, color: evalResult.passed ? '#1E4D3A' : '#8B2635' }}>
                         {evalResult.total}%
                       </span>
                     </td>
                     <td style={{ textAlign: 'left' }}>
                       {evalResult.passed ? (
                         <span className="badge" style={{ background: '#EAF3EE', color: '#1E4D3A', fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '20px' }}>
-                          🏆 ได้ใบรับรองสมรรถนะ
+                          🏆 ผ่านสมรรถนะ
                         </span>
                       ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                          <span className="badge" style={{ background: '#FAE8EB', color: '#8B2635', fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '20px', width: 'fit-content' }}>
-                            ⚠️ ยังไม่ได้รับรอง
-                          </span>
-                          <span style={{ fontSize: '9px', color: '#8B2635', opacity: 0.8 }}>
-                            {evalResult.failedReasons.join(', ')}
-                          </span>
-                        </div>
+                        <span className="badge" style={{ background: '#FAE8EB', color: '#8B2635', fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '20px', width: 'fit-content' }}>
+                          ⚠️ ต่ำกว่าเกณฑ์
+                        </span>
                       )}
                     </td>
                     <td style={{ textAlign: 'center' }}>
@@ -319,7 +365,7 @@ export default function TeacherStudentsPage() {
           <div className="erp-card" style={{ width: '500px', background: '#FDFAF4', display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'left' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #EDE9E1', paddingBottom: '10px' }}>
               <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#1E4D3A', margin: 0 }}>
-                {editingStudent ? '✏️ แก้ไขข้อมูลทะเบียนนักเรียน' : '➕ ลงทะเบียนนักเรียนใหม่'}
+                {editingStudent ? '✏️ แก้ไขสิทธิ์ทะเบียนนักเรียน' : '➕ ลงทะเบียนบัญชีนักเรียนใหม่'}
               </h3>
               <button onClick={() => setShowAddEdit(false)} style={{ background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer' }}>✕</button>
             </div>
@@ -328,11 +374,35 @@ export default function TeacherStudentsPage() {
                 <label className="erp-label">ชื่อ - นามสกุล นักเรียน *</label>
                 <input
                   className="erp-input"
-                  placeholder="เช่น นายมานะ เฝ้าเรียน"
+                  placeholder="เช่น นายสมชาย ใจดี"
                   value={name}
                   onChange={e => setName(e.target.value)}
                   required
                 />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="erp-form-group">
+                  <label className="erp-label">อีเมลเข้าเรียน (ล็อกอิน)*</label>
+                  <input
+                    type="email"
+                    className="erp-input"
+                    placeholder="student@school.ac.th"
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="erp-form-group">
+                  <label className="erp-label">กำหนดรหัสผ่านเบื้องต้น</label>
+                  <input
+                    type="text"
+                    className="erp-input"
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -414,7 +484,7 @@ export default function TeacherStudentsPage() {
               </div>
 
               <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '12px', border: 'none', fontWeight: 700, marginTop: '8px' }}>
-                บันทึกประวัตินักเรียน
+                บันทึกประวัตินักเรียนและสิทธิ์เข้าเรียน
               </button>
             </form>
           </div>
