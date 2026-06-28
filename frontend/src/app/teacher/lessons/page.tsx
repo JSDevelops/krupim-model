@@ -50,6 +50,7 @@ interface AR3DItem {
   desc: string
   imageUrl?: string
   glbUrl?: string
+  usdzUrl?: string
 }
 
 interface Student {
@@ -384,6 +385,7 @@ export default function TeacherLessonsDashboard() {
   const [arDesc, setARDesc] = useState('')
   const [arImageUrl, setArImageUrl] = useState('')
   const [arGlbUrl, setArGlbUrl] = useState('')
+  const [arUsdzUrl, setArUsdzUrl] = useState('')
   const [arCreationMode, setArCreationMode] = useState<'manual' | 'ai'>('manual')
   const [arAiTopic, setArAiTopic] = useState('แก้วไวน์แดงคริสตัล (Crystal Wine Glass)')
   const [aiGenerating, setAiGenerating] = useState(false)
@@ -801,7 +803,8 @@ export default function TeacherLessonsDashboard() {
       sentence: arSent || 'Please use this item correctly.',
       desc: arDesc || 'คำอธิบายทั่วไปเกี่ยวกับชิ้นอุปกรณ์',
       imageUrl: arImageUrl || '/images/espresso_cup_3d.png',
-      glbUrl: arGlbUrl || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
+      glbUrl: arGlbUrl || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+      usdzUrl: arUsdzUrl
     }
 
     setARItems(prev => [...prev, newItem])
@@ -812,6 +815,7 @@ export default function TeacherLessonsDashboard() {
     setARDesc('')
     setArImageUrl('')
     setArGlbUrl('')
+    setArUsdzUrl('')
     alert('เพิ่มโมเดล 3 มิติ และสแกนอุปกรณ์เข้าคลังสำเร็จ!')
   }
 
@@ -1465,9 +1469,14 @@ export default function TeacherLessonsDashboard() {
                     </div>
 
                     <div className="erp-form-group">
-                      <label className="erp-label">โมเดล 3D (.glb URL) [สำหรับฉาย AR]</label>
+                      <label className="erp-label">โมเดล 3D (.glb URL) [สำหรับ Web / Android]</label>
                       <input className="erp-input" value={arGlbUrl} onChange={e => setArGlbUrl(e.target.value)} placeholder="เช่น https://modelviewer.dev/shared-assets/models/Astronaut.glb" />
-                      <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>* ใส่ลิงก์ไฟล์ .glb ที่ต้องการสแกนเปิดดูแบบ AR (หากไม่ใส่จะใช้โมเดลนักบินอวกาศเป็นตัวอย่างเริ่มต้น)</p>
+                    </div>
+
+                    <div className="erp-form-group">
+                      <label className="erp-label">โมเดล 3D (.usdz URL) [สำหรับ iPhone / iPad / iOS]</label>
+                      <input className="erp-input" value={arUsdzUrl} onChange={e => setArUsdzUrl(e.target.value)} placeholder="เช่น https://modelviewer.dev/shared-assets/models/Astronaut.usdz" />
+                      <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>* ใส่ลิงก์ไฟล์ .usdz สำหรับแสดงผล AR Quick Look บน iPhone/iPad (หากไม่ใส่จะใช้โมเดลของ Android ทดแทน)</p>
                     </div>
 
                     <button type="submit" className="btn btn-primary" style={{ border: 'none', padding: '12px', fontWeight: 700, marginTop: '8px' }}>
@@ -1910,7 +1919,7 @@ export default function TeacherLessonsDashboard() {
       {/* 4.5.1 QR Code Modal for AR Items */}
       {showQrModal && selectedQrItem && (() => {
         const studentLink = typeof window !== 'undefined' 
-          ? `${window.location.origin}/student/ar-view?id=${selectedQrItem.id}&nameEn=${encodeURIComponent(selectedQrItem.nameEn)}&nameTh=${encodeURIComponent(selectedQrItem.nameTh || '')}&desc=${encodeURIComponent(selectedQrItem.desc || '')}&glbUrl=${encodeURIComponent(selectedQrItem.glbUrl || '')}&imageUrl=${encodeURIComponent(selectedQrItem.imageUrl || '')}` 
+          ? `${window.location.origin}/student/ar-view?id=${selectedQrItem.id}&nameEn=${encodeURIComponent(selectedQrItem.nameEn)}&nameTh=${encodeURIComponent(selectedQrItem.nameTh || '')}&desc=${encodeURIComponent(selectedQrItem.desc || '')}&glbUrl=${encodeURIComponent(selectedQrItem.glbUrl || '')}&usdzUrl=${encodeURIComponent(selectedQrItem.usdzUrl || '')}&pronounce=${encodeURIComponent(selectedQrItem.pronounce || '')}&sentence=${encodeURIComponent(selectedQrItem.sentence || '')}&imageUrl=${encodeURIComponent(selectedQrItem.imageUrl || '')}` 
           : `/student/ar-view?id=${selectedQrItem.id}`;
         const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(studentLink)}`;
         
@@ -1931,9 +1940,27 @@ export default function TeacherLessonsDashboard() {
                 <h4 style={{ fontSize: '17px', fontWeight: 800, color: '#1E4D3A', margin: '4px 0 0' }}>{selectedQrItem.nameEn}</h4>
                 <span style={{ fontSize: '12px', color: '#A6882A', fontWeight: 700 }}>{selectedQrItem.nameTh}</span>
                 
-                {/* QR Code Generated Image */}
-                <div style={{ width: '180px', height: '180px', border: '1px solid #EDE9E1', borderRadius: '12px', padding: '8px', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {/* QR Code Generated Image with FINE Center Logo */}
+                <div style={{ position: 'relative', width: '180px', height: '180px', border: '1px solid #EDE9E1', borderRadius: '12px', padding: '8px', background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <img src={qrApiUrl} alt="QR Code" style={{ width: '100%', height: '100%' }} />
+                  {/* Central FINE Logo */}
+                  <div style={{
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    background: '#102B1F',
+                    border: '1.5px solid #C9A84C',
+                    padding: '3px 6px',
+                    borderRadius: '6px',
+                    color: '#C9A84C',
+                    fontWeight: 900,
+                    fontSize: '8px',
+                    boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+                    pointerEvents: 'none'
+                  }}>
+                    FINE
+                  </div>
                 </div>
                 
                 <span style={{ fontSize: '9.5px', color: 'var(--text-muted)', lineHeight: 1.4 }}>
@@ -1943,6 +1970,16 @@ export default function TeacherLessonsDashboard() {
 
               {/* Control Buttons */}
               <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(studentLink);
+                    alert('คัดลอกลิงก์การ์ด AR สำหรับนักเรียนเรียบร้อยแล้ว!');
+                  }}
+                  className="btn btn-outline" 
+                  style={{ padding: '10px', borderColor: '#1E4D3A', color: '#1E4D3A', fontWeight: 700, fontSize: '12px' }}
+                >
+                  🔗 คัดลอกลิงก์
+                </button>
                 <button 
                   onClick={() => {
                     const printContent = document.getElementById('printable-qr-card')?.innerHTML;
@@ -1981,7 +2018,7 @@ export default function TeacherLessonsDashboard() {
                     }
                   }} 
                   className="btn btn-outline" 
-                  style={{ flex: 1, padding: '10px', borderColor: '#C9A84C', color: '#A6882A', fontWeight: 700, fontSize: '12px' }}
+                  style={{ padding: '10px', borderColor: '#C9A84C', color: '#A6882A', fontWeight: 700, fontSize: '12px' }}
                 >
                   🖨️ พิมพ์การ์ด
                 </button>
