@@ -63,6 +63,45 @@ export default function ExplorePage() {
     }
   }, [activeTab])
 
+  // Load real equipment items from Supabase
+  useEffect(() => {
+    async function loadEquipment() {
+      const supabaseUrl = typeof window !== 'undefined' ? localStorage.getItem('supabaseUrl') : null
+      const supabaseAnonKey = typeof window !== 'undefined' ? localStorage.getItem('supabaseAnonKey') : null
+      if (supabaseUrl && supabaseAnonKey) {
+        try {
+          const { createClient } = await import('@supabase/supabase-js')
+          const client = createClient(supabaseUrl, supabaseAnonKey)
+          const { data, error } = await client
+            .from('ai_scan_items')
+            .select('*')
+            .order('created_at', { ascending: false })
+          
+          if (data && data.length > 0) {
+            const mapped = data.map((x: any) => ({
+              name: x.name_th,
+              nameEn: x.name_en,
+              emoji: x.image_url || (x.name_en.toLowerCase().includes('glass') || x.name_en.toLowerCase().includes('wine') ? '🍷' :
+                     x.name_en.toLowerCase().includes('teapot') || x.name_en.toLowerCase().includes('tea') ? '🫖' :
+                     x.name_en.toLowerCase().includes('spoon') || x.name_en.toLowerCase().includes('soup') ? '🥄' : '📦'),
+              use: x.description || 'ไม่มีรายละเอียดวิธีใช้งานสำหรับอุปกรณ์ชิ้นนี้',
+              sentence: x.service_tips || 'Please handle this item with care.'
+            }))
+            // Merge defaults and filter out duplicates
+            setEquipment(() => {
+              const existingNames = new Set(mapped.map(x => x.nameEn.toLowerCase()))
+              const filteredDefaults = defaultEquipment.filter(x => !existingNames.has(x.nameEn.toLowerCase()))
+              return [...mapped, ...filteredDefaults]
+            })
+          }
+        } catch (err) {
+          console.error('Failed to load dynamic equipment from Supabase:', err)
+        }
+      }
+    }
+    loadEquipment()
+  }, [])
+
   // ฟังก์ชันสตาร์ทกล้องสตรีมมิ่งสด
   async function startVRCamera() {
     setScanError('')
@@ -405,9 +444,12 @@ export default function ExplorePage() {
                 <h2 style={{ fontSize: 13.5, fontWeight: 800, color: '#1E4D3A', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
                   📖 เรียนรู้คำศัพท์
                 </h2>
-                <span style={{ fontSize: 10, color: '#1E4D3A', background: '#EAF3EE', padding: '3px 10px', borderRadius: 100, fontWeight: 800 }}>
-                  {equipment.length} คำ
-                </span>
+                <button
+                  onClick={() => setShowVocabPopup(true)}
+                  style={{ border: 'none', fontSize: 10.5, color: '#1E4D3A', background: '#EAF3EE', padding: '4px 12px', borderRadius: 100, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                >
+                  ดูทั้งหมด ({equipment.length} คำ) ➔
+                </button>
               </div>
 
               {/* แสดงผล 3 รายการแรกทางหน้าหลัก */}
