@@ -370,8 +370,10 @@ export default function ExplorePage() {
         {activeTab === 'qr' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             {/* QR Scanner Visual */}
-            <Link href="/student/scanner" style={{ textDecoration: 'none' }}>
-              <div style={{
+            <div 
+              onClick={() => window.location.href = '/student/scanner'}
+              style={{
+                cursor: 'pointer',
                 background: 'linear-gradient(135deg, #102B1F 0%, #1E4D3A 100%)',
                 borderRadius: 22, padding: '24px 20px',
                 display: 'flex', alignItems: 'center', gap: 18,
@@ -381,22 +383,21 @@ export default function ExplorePage() {
               }}
               onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
               onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-              >
-                <div style={{
-                  width: 58, height: 58, background: 'rgba(255,255,255,0.12)',
-                  borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  border: '2px solid #C9A84C', flexShrink: 0,
-                  fontSize: 28,
-                  boxShadow: '0 0 14px rgba(201,168,76,0.4) inset',
-                }}>📷</div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ color: '#C9A84C', fontSize: 11, fontWeight: 900, letterSpacing: '1px', marginBottom: 2 }}>🚀 ACTIVE AR CAMERA</div>
-                  <div style={{ color: 'white', fontSize: 16, fontWeight: 800 }}>สแกน QR Code อุปกรณ์</div>
-                  <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11.5, marginTop: 4, lineHeight: 1.3 }}>ส่องกล้องไปที่รูปอุปกรณ์เพื่อเปิดภาพ 3D AR</div>
-                </div>
-                <div style={{ color: '#C9A84C', fontSize: 24, fontWeight: 'bold' }}>⚡</div>
+            >
+              <div style={{
+                width: 58, height: 58, background: 'rgba(255,255,255,0.12)',
+                borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                border: '2px solid #C9A84C', flexShrink: 0,
+                fontSize: 28,
+                boxShadow: '0 0 14px rgba(201,168,76,0.4) inset',
+              }}>📷</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ color: '#C9A84C', fontSize: 11, fontWeight: 900, letterSpacing: '1px', marginBottom: 2 }}>🚀 ACTIVE AR CAMERA</div>
+                <div style={{ color: 'white', fontSize: 16, fontWeight: 800 }}>สแกน QR Code อุปกรณ์</div>
+                <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11.5, marginTop: 4, lineHeight: 1.3 }}>ส่องกล้องไปที่รูปอุปกรณ์เพื่อเปิดภาพ 3D AR</div>
               </div>
-            </Link>
+              <div style={{ color: '#C9A84C', fontSize: 24, fontWeight: 'bold' }}>⚡</div>
+            </div>
 
             {/* Equipment List */}
             <div>
