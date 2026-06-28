@@ -496,7 +496,10 @@ export default function TeacherLessonsDashboard() {
     setActiveInvitePlan(plan)
     const teacherName = user?.name || 'ครูผู้สอน'
     const schoolName = user?.school || 'วิทยาลัยอาชีวศึกษา'
-    const url = `${window.location.origin}/register?class=${encodeURIComponent(plan.targetClass)}&teacher=${encodeURIComponent(teacherName)}&school=${encodeURIComponent(schoolName)}`
+    const origin = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+      ? window.location.origin
+      : 'https://krupim-finemodel3d-ar.com'
+    const url = `${origin}/register?class=${encodeURIComponent(plan.targetClass)}&teacher=${encodeURIComponent(teacherName)}&school=${encodeURIComponent(schoolName)}`
     navigator.clipboard.writeText(url)
     setCopiedId(plan.id)
     setTimeout(() => setCopiedId(null), 3000)
@@ -1678,7 +1681,10 @@ export default function TeacherLessonsDashboard() {
       {activeInvitePlan && (() => {
         const teacherName = user?.name || 'ครูผู้สอน'
         const schoolName = user?.school || 'วิทยาลัยอาชีวศึกษา'
-        const url = `${window.location.origin}/register?class=${encodeURIComponent(activeInvitePlan.targetClass)}&teacher=${encodeURIComponent(teacherName)}&school=${encodeURIComponent(schoolName)}`
+        const origin = typeof window !== 'undefined' && window.location.hostname !== 'localhost'
+          ? window.location.origin
+          : 'https://krupim-finemodel3d-ar.com'
+        const url = `${origin}/register?class=${encodeURIComponent(activeInvitePlan.targetClass)}&teacher=${encodeURIComponent(teacherName)}&school=${encodeURIComponent(schoolName)}`
         const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}`
 
         return (
