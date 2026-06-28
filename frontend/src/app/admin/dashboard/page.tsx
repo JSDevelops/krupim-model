@@ -164,10 +164,10 @@ export default function AdminDashboard() {
             <div style={{ padding: '14px', background: '#FDFBF7', border: '1px solid #EDE9E1', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', transition: 'all 0.2s' }}
                  onMouseEnter={e => e.currentTarget.style.borderColor = '#C9A84C'}
                  onMouseLeave={e => e.currentTarget.style.borderColor = '#EDE9E1'}>
-              <span style={{ fontSize: '22px' }}>📝</span>
+              <span style={{ fontSize: '22px' }}>📢</span>
               <div style={{ textAlign: 'left' }}>
-                <div style={{ fontSize: '13px', fontWeight: 700, color: '#1E4D3A' }}>AI Blog Builder</div>
-                <div style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>สร้างบทความวิชาการโดย AI</div>
+                <div style={{ fontSize: '13px', fontWeight: 700, color: '#1E4D3A' }}>แจ้งข่าวและกิจกรรม</div>
+                <div style={{ fontSize: '10.5px', color: 'var(--text-muted)' }}>แจ้งประกาศด่วนไปยังครูผู้สอน</div>
               </div>
             </div>
           </Link>

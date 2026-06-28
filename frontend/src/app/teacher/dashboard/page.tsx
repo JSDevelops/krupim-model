@@ -1,4 +1,5 @@
 'use client'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRole } from '@/context/RoleContext'
 
@@ -20,6 +21,18 @@ const needHelpStudents = [
 
 export default function TeacherDashboard() {
   const { user } = useRole()
+  const [announcements, setAnnouncements] = useState<any[]>([])
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('systemNews')
+      if (stored) {
+        try {
+          setAnnouncements(JSON.parse(stored))
+        } catch (e) {}
+      }
+    }
+  }, [])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -34,6 +47,42 @@ export default function TeacherDashboard() {
         </p>
         <div style={{ marginTop: '12px', width: '60px', height: '2px', background: 'linear-gradient(90deg, #A6882A, #C9A84C, #E0C068)' }} />
       </div>
+
+      {/* 📢 บอร์ดประกาศและข่าวสารจากผู้ดูแลระบบ (System Notices) */}
+      {announcements.length > 0 && (
+        <div className="erp-card" style={{ background: '#FFFDF6', border: '1.5px solid #C9A84C', padding: '16px', borderRadius: '16px' }}>
+          <h3 style={{ fontSize: '14px', fontWeight: 800, color: '#A6882A', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            📢 ประกาศด่วนและข่าวสารจากผู้ดูแลระบบ
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '200px', overflowY: 'auto' }}>
+            {announcements.map((news: any) => (
+              <div key={news.id} style={{ background: 'white', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(201,168,76,0.15)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{
+                    background: news.priority === 'urgent' ? '#FAE8EB' : news.priority === 'event' ? '#FBF6E9' : '#EAF3EE',
+                    color: news.priority === 'urgent' ? '#8B2635' : news.priority === 'event' ? '#A6882A' : '#1E4D3A',
+                    fontSize: '9.5px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px'
+                  }}>
+                    {news.priority === 'urgent' ? 'ด่วนที่สุด (Urgent)' : news.priority === 'event' ? 'กิจกรรม (Event)' : 'ประกาศทั่วไป'}
+                  </span>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{news.publishedAt}</span>
+                </div>
+                <h4 style={{ fontSize: '13.5px', fontWeight: 800, color: '#1E4D3A', marginTop: '6px' }}>{news.title}</h4>
+                <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.5, marginTop: '4px', whiteSpace: 'pre-wrap' }}>
+                  {news.content}
+                </p>
+                {news.tags && news.tags.length > 0 && (
+                  <div style={{ display: 'flex', gap: '4px', marginTop: '6px' }}>
+                    {news.tags.map((t: string) => (
+                      <span key={t} style={{ background: '#EDE9E1', color: '#554D41', fontSize: '9.5px', padding: '1px 6px', borderRadius: '4px' }}>#{t}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* KPI Stats Grid */}
       <div className="erp-kpi-grid">

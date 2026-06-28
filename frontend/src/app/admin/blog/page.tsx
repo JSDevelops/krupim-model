@@ -1,224 +1,321 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
-interface GeneratedBlog {
+interface Announcement {
+  id: string
   title: string
   content: string
-  excerpt: string
-  readTime: string
+  priority: 'urgent' | 'general' | 'event'
   tags: string[]
+  publishedAt: string
 }
 
-export default function AIBlogWriterPage() {
-  const [topic, setTopic] = useState('วิธีการจัดโต๊ะอาหารแบบ Fine Dining แบบมาตรฐานสากล')
-  const [category, setCategory] = useState('Table Setting')
-  const [tone, setTone] = useState('เป็นทางการและให้ความรู้')
-  const [keywords, setKeywords] = useState('จัดโต๊ะอาหาร, Fine Dining, บริกรมืออาชีพ, แก้วไวน์')
+export default function AdminNewsPage() {
+  const [topic, setTopic] = useState('แจ้งเตือนการอัปเดตโมเดล 3D แก้วเครื่องดื่มและมีดสเต็กตัวใหม่')
+  const [priority, setPriority] = useState<'urgent' | 'general' | 'event'>('general')
+  const [keywords, setKeywords] = useState('อุปกรณ์จัดโต๊ะ, อัปเดตโมเดล, 3D AR')
+  const [content, setContent] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [blog, setBlog] = useState<GeneratedBlog | null>(null)
-  const [publishedBlogs, setPublishedBlogs] = useState<GeneratedBlog[]>([
-    {
-      title: 'ศิลปะการต้อนรับลูกค้าภาษาอังกฤษสไตล์โรงแรมห้าดาว',
-      excerpt: 'เรียนรู้ประโยคและเทคนิคระดับสูงในการต้อนรับและแนะนำเมนูอาหารสำหรับนักศึกษาวิชาชีพการโรงแรม',
-      content: '### ศิลปะการต้อนรับลูกค้าภาษาอังกฤษ\n\nการบริการที่เป็นเลิศเริ่มต้นด้วยคำทักทายแรกพบ ต่อไปนี้เป็นประโยคที่ควรจดจำ:\n\n1. **Greeting:** "Good evening, welcome to FINE Restaurant. Do you have a reservation?"\n2. **Escorting:** "Please follow me, I will show you to your table."\n3. **Seating:** "Please be seated. Here is your menu."',
-      readTime: '4 นาที',
-      tags: ['English', 'Service tips']
-    }
-  ])
+  const [publishedNews, setPublishedNews] = useState<Announcement[]>([])
 
-  async function generateBlog() {
+  // Load published news on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('systemNews')
+      if (stored) {
+        try {
+          setPublishedNews(JSON.parse(stored))
+        } catch (e) {}
+      } else {
+        const defaultNews: Announcement[] = [
+          {
+            id: 'news-001',
+            title: '📣 ขอความร่วมมือครูผู้สอนเร่งการประเมิน Rubric เล่มจำลองสถานการณ์',
+            content: 'ขอแจ้งความร่วมมือให้คุณครูทุกท่านดำเนินการประเมินผลคะแนน Rubric ด้านคุณลักษณะ (Attribute) ของนักศึกษาให้เสร็จสิ้นภายในสิ้นสัปดาห์นี้ เพื่อเตรียมออกใบรับรองสมรรถนะ FINE Model',
+            priority: 'urgent',
+            tags: ['การประเมิน', 'คุณลักษณะ'],
+            publishedAt: '28 มิ.ย. 2026, 08:30 น.'
+          }
+        ]
+        setPublishedNews(defaultNews)
+        localStorage.setItem('systemNews', JSON.stringify(defaultNews))
+      }
+    }
+  }, [])
+
+  const saveNewsToStorage = (updatedList: Announcement[]) => {
+    setPublishedNews(updatedList)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('systemNews', JSON.stringify(updatedList))
+    }
+  }
+
+  // AI generation of announcement body
+  async function generateWithAI() {
     if (!topic) return
     setLoading(true)
     setError('')
-    setBlog(null)
+    setContent('')
 
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+      const provider = localStorage.getItem('activeAiProvider') || 'gemini'
+      const geminiKey = localStorage.getItem('geminiApiKey') || ''
+      const openaiKey = localStorage.getItem('openaiApiKey') || ''
+      const claudeKey = localStorage.getItem('claudeApiKey') || ''
+
       const resp = await fetch(`${backendUrl}/api/blog/generate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic, category, tone, keywords })
+        headers: {
+          'Content-Type': 'application/json',
+          'x-ai-provider': provider,
+          'x-gemini-key': geminiKey,
+          'x-openai-key': openaiKey,
+          'x-claude-key': claudeKey
+        },
+        body: JSON.stringify({
+          topic: `เขียนประกาศข่าวสารระบบการศึกษาโรงเรียนอาชีวะสั้นๆ หัวข้อ: "${topic}"`,
+          category: 'ข่าวสารและกิจกรรม',
+          tone: 'กระชับ สุภาพ เป็นทางการ',
+          keywords
+        })
       })
 
       if (!resp.ok) {
-        throw new Error('ระบบ AI เกิดข้อผิดพลาดชั่วคราว โปรดตรวจสอบการเชื่อมต่ออินเทอร์เน็ตหรือ API Key')
+        throw new Error('AI ล้มเหลว กรุณาตรวจสอบ API Keys ในหน้าตั้งค่า หรือเขียนเนื้อหาด้วยตนเอง')
       }
 
       const data = await resp.json()
-      setBlog(data)
+      setContent(data.content || data.excerpt || '')
     } catch (err: any) {
-      setError(err.message || 'เกิดข้อผิดพลาดในการติดต่อระบบ AI')
+      setError(err.message || 'เกิดข้อผิดพลาดในการสร้างเนื้อหาด้วย AI')
     } finally {
       setLoading(false)
     }
   }
 
-  function publishBlog() {
-    if (!blog) return
-    setPublishedBlogs(prev => [blog, ...prev])
-    setBlog(null)
-    alert('เผยแพร่บทความการศึกษาเข้าสู่ระบบสำเร็จ! นักเรียนและผู้ใช้จะเห็นในหน้าบอร์ดความรู้')
+  function handlePublish(e: React.FormEvent) {
+    e.preventDefault()
+    if (!topic || !content) {
+      alert('กรุณากรอกหัวเรื่องและเนื้อหาก่อนเผยแพร่')
+      return
+    }
+
+    const now = new Date()
+    const thaiDate = now.toLocaleDateString('th-TH', {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    }) + `, ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')} น.`
+
+    const newAnnouncement: Announcement = {
+      id: `news-${Date.now()}`,
+      title: (priority === 'urgent' ? '🚨 [ด่วนที่สุด] ' : priority === 'event' ? '📅 [กิจกรรม] ' : '📣 ') + topic.trim(),
+      content: content.trim(),
+      priority,
+      tags: keywords.split(',').map(k => k.trim()).filter(Boolean),
+      publishedAt: thaiDate
+    }
+
+    const updated = [newAnnouncement, ...publishedNews]
+    saveNewsToStorage(updated)
+    
+    // Clear inputs
+    setTopic('')
+    setContent('')
+    setKeywords('')
+    alert('ส่งกระจายประกาศและกิจกรรมแจ้งไปยังแดชบอร์ดคุณครูสำเร็จเรียบร้อย! 📢')
+  }
+
+  function handleDeleteNews(id: string) {
+    if (confirm('คุณต้องการลบข่าวประกาศกิจกรรมชิ้นนี้หรือไม่?')) {
+      const updated = publishedNews.filter(n => n.id !== id)
+      saveNewsToStorage(updated)
+    }
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Title Header Card */}
-      <div className="erp-card">
-        <h2 style={{ fontSize: '20px', fontWeight: 700 }}>✍️ ระบบสร้างบทความอัจฉริยะ (AI Blog Writer)</h2>
+      
+      {/* Header */}
+      <div className="erp-card" style={{ background: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #EDE9E1' }}>
+        <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#1E4D3A' }}>📢 ระบบแจ้งข่าวสารและกิจกรรมไปยังครูผู้สอน (News & Events Dispatcher)</h2>
         <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '4px' }}>
-          ใช้ระบบ AI (Gemini 2.0 Flash) ร่างบทความวิชาการสำหรับการเสิร์ฟ จัดโต๊ะอาหาร และคำศัพท์บริการได้ทันที
+          [ผู้ดูแลระบบ] เขียนกระจายข่าวสาร ประกาศด่วน หรืออัปเดตกิจกรรมส่งตรงไปยังหน้าแรก (Dashboard) ของครูผู้สอนทุกคนในระบบพร้อมกัน
         </p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', alignItems: 'start' }}>
+        
         {/* Editor Form */}
-        <div className="erp-card" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={handlePublish} className="erp-card" style={{ background: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #EDE9E1', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <h3 style={{ fontSize: '15px', fontWeight: 700, borderBottom: '1px solid #EDE9E1', paddingBottom: '10px', color: '#1E4D3A' }}>
-            ⚙️ ตั้งค่าความต้องการบทความ
+            ✏️ เขียนประกาศ/สร้างกิจกรรม
           </h3>
 
           <div className="erp-form-group">
-            <label className="erp-label">หัวข้อบทความหลัก (Topic)</label>
-            <textarea
+            <label className="erp-label" style={{ fontWeight: 700, fontSize: '13px' }}>ระดับความสำคัญ (Priority)</label>
+            <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+              {[
+                { value: 'urgent', label: '🚨 ด่วนที่สุด (Urgent)', color: '#8B2635' },
+                { value: 'general', label: '📣 ข่าวทั่วไป (General)', color: '#1E4D3A' },
+                { value: 'event', label: '📅 กิจกรรมเด่น (Event)', color: '#A6882A' }
+              ].map(p => (
+                <button
+                  key={p.value}
+                  type="button"
+                  onClick={() => setPriority(p.value as any)}
+                  style={{
+                    flex: 1,
+                    padding: '8px',
+                    borderRadius: '8px',
+                    border: '1.5px solid',
+                    borderColor: priority === p.value ? p.color : '#EDE9E1',
+                    background: priority === p.value ? `${p.color}15` : '#fff',
+                    color: p.color,
+                    fontWeight: 700,
+                    fontSize: '11.5px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                >
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="erp-form-group">
+            <label className="erp-label" style={{ fontWeight: 700, fontSize: '13px' }}>หัวข้อกิจกรรม/ชื่อเรื่อง</label>
+            <input
               className="erp-input"
-              rows={3}
-              style={{ width: '100%', resize: 'none' }}
+              style={{ padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1', fontSize: '13px' }}
               value={topic}
               onChange={e => setTopic(e.target.value)}
-              placeholder="เช่น การรินไวน์อย่างถูกวิธีสำหรับบริกร..."
+              placeholder="เช่น การส่งรายชื่อนักศึกษาประกวดสแกน AR อุปกรณ์โต๊ะ..."
+              required
             />
           </div>
 
           <div className="erp-form-group">
-            <label className="erp-label">หมวดหมู่เนื้อหา (Category)</label>
-            <select className="erp-input" value={category} onChange={e => setCategory(e.target.value)}>
-              <option value="Table Setting">การจัดโต๊ะอาหาร (Table Setting)</option>
-              <option value="Hospitality English">ภาษาอังกฤษบริการ (Hospitality English)</option>
-              <option value="Restaurant Service">เทคนิคการบริการอาหาร (Restaurant Service)</option>
-              <option value="Wine & Beverage">การจัดการไวน์และเครื่องดื่ม (Wine & Beverage)</option>
-            </select>
+            <label className="erp-label" style={{ fontWeight: 700, fontSize: '13px' }}>
+              เนื้อหารายละเอียดข่าวประกาศ
+            </label>
+            <textarea
+              className="erp-input"
+              rows={6}
+              style={{ width: '100%', resize: 'none', padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1', fontSize: '13px', lineHeight: 1.5 }}
+              value={content}
+              onChange={e => setContent(e.target.value)}
+              placeholder="กรอกเนื้อหารายละเอียด หรือ ให้ AI ช่วยร่างเบื้องต้นโดยคลิกปุ่มสีทองด้านล่าง..."
+              required
+            />
           </div>
 
           <div className="erp-form-group">
-            <label className="erp-label">โทนเสียงบทความ (Tone & Style)</label>
-            <select className="erp-input" value={tone} onChange={e => setTone(e.target.value)}>
-              <option value="เป็นทางการและวิชาการระดับสูง">เป็นทางการและอิงวิชาการ (Professional)</option>
-              <option value="เป็นกันเอง สนุกสนาน เข้าใจง่าย">เป็นกันเอง เข้าใจง่าย (Conversational)</option>
-              <option value="หรูหราสร้างแรงบันดาลใจแบบโรงแรม 6 ดาว">หรูหราสร้างแรงบันดาลใจ (Premium Luxury)</option>
-            </select>
-          </div>
-
-          <div className="erp-form-group">
-            <label className="erp-label">คำสำคัญ SEO (Keywords)</label>
+            <label className="erp-label" style={{ fontWeight: 700, fontSize: '13px' }}>ป้ายกำกับคีย์เวิร์ด (คั่นด้วยจุลภาค ,)</label>
             <input
               className="erp-input"
-              placeholder="คั่นด้วยเครื่องหมายจุลภาค ,"
+              style={{ padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1', fontSize: '13px' }}
+              placeholder="เช่น อัปเดต, เกณฑ์การประเมิน, การจัดโต๊ะ"
               value={keywords}
               onChange={e => setKeywords(e.target.value)}
             />
           </div>
 
           {error && (
-            <div style={{ padding: '10px 14px', background: '#FAE8EB', color: '#8B2635', borderRadius: '8px', fontSize: '13px', border: '1px solid rgba(139,38,53,0.2)' }}>
+            <div style={{ padding: '10px 14px', background: '#FAE8EB', color: '#8B2635', borderRadius: '8px', fontSize: '12.5px', border: '1px solid rgba(139,38,53,0.2)' }}>
               ⚠️ {error}
             </div>
           )}
 
-          <button
-            onClick={generateBlog}
-            disabled={loading}
-            className="btn btn-primary"
-            style={{ border: 'none', borderRadius: '10px', padding: '12px', fontWeight: 700 }}
-          >
-            {loading ? 'กำลังเขียนบทความประมวลผล AI...' : '✦ เขียนบทความด้วย AI'}
-          </button>
-        </div>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              type="button"
+              onClick={generateWithAI}
+              disabled={loading || !topic}
+              style={{
+                flex: 1,
+                padding: '12px',
+                background: 'rgba(201,168,76,0.15)',
+                border: '1.5px solid #C9A84C',
+                color: '#A6882A',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '13px',
+                cursor: 'pointer'
+              }}
+            >
+              {loading ? 'กำลังร่างข่าว...' : '✨ ให้ AI ร่างเนื้อหา'}
+            </button>
+            <button
+              type="submit"
+              style={{
+                flex: 1.5,
+                padding: '12px',
+                background: 'linear-gradient(135deg, #1E4D3A 0%, #103024 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                fontWeight: 700,
+                fontSize: '13px',
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(16,48,36,0.2)'
+              }}
+            >
+              📢 ประกาศข่าวสารด่วน
+            </button>
+          </div>
+        </form>
 
-        {/* Live Preview Area */}
-        <div className="erp-card" style={{ minHeight: '480px', display: 'flex', flexDirection: 'column' }}>
-          <h3 style={{ fontSize: '15px', fontWeight: 700, borderBottom: '1px solid #EDE9E1', paddingBottom: '10px', color: '#1E4D3A', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span>📝 ตัวอย่างพรีวิวบทความ</span>
-            {blog && (
-              <span className="badge" style={{ background: '#EAF3EE', color: '#1E4D3A' }}>{blog.readTime}</span>
-            )}
+        {/* Live Active News Board */}
+        <div className="erp-card" style={{ background: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #EDE9E1', display: 'flex', flexDirection: 'column', minHeight: '480px' }}>
+          <h3 style={{ fontSize: '15px', fontWeight: 700, borderBottom: '1px solid #EDE9E1', paddingBottom: '10px', color: '#1E4D3A' }}>
+            📡 บอร์ดข่าวสารคุณครูที่กำลังออนไลน์ (Active Notices Feed)
           </h3>
 
-          {!blog && !loading && (
+          {publishedNews.length === 0 ? (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', textAlign: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '40px' }}>✍️</span>
-              <div style={{ fontSize: '14px', fontWeight: 600 }}>ยังไม่มีบทความที่สร้างขณะนี้</div>
-              <div style={{ fontSize: '12px', maxWidth: '280px' }}>กรอกความต้องการบทความด้านซ้าย และกดปุ่มสร้างบทความด้วย AI</div>
+              <span style={{ fontSize: '40px' }}>📡</span>
+              <div style={{ fontSize: '14px', fontWeight: 600 }}>ไม่มีประกาศข่าวสารในขณะนี้</div>
+              <div style={{ fontSize: '12px', maxWidth: '280px' }}>สร้างข่าวสารใหม่ทางแถบซ้ายเพื่อออกประกาศไปยังแดชบอร์ดคุณครู</div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '14px', overflowY: 'auto', maxHeight: '420px', paddingRight: '4px' }}>
+              {publishedNews.map(news => (
+                <div key={news.id} style={{ padding: '16px', background: '#FDFAF4', border: '1px solid rgba(201,168,76,0.2)', borderRadius: '12px', position: 'relative' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <span style={{
+                      background: news.priority === 'urgent' ? '#FAE8EB' : news.priority === 'event' ? '#FBF6E9' : '#EAF3EE',
+                      color: news.priority === 'urgent' ? '#8B2635' : news.priority === 'event' ? '#A6882A' : '#1E4D3A',
+                      fontSize: '9.5px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px', textTransform: 'uppercase'
+                    }}>
+                      {news.priority}
+                    </span>
+                    <button
+                      onClick={() => handleDeleteNews(news.id)}
+                      style={{ background: 'transparent', border: 'none', color: '#8B2635', cursor: 'pointer', fontSize: '12px', fontWeight: 700 }}
+                    >
+                      ลบ
+                    </button>
+                  </div>
+
+                  <h4 style={{ fontSize: '14.5px', fontWeight: 800, marginTop: '8px', color: '#1E4D3A' }}>{news.title}</h4>
+                  <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.5, marginTop: '6px', whiteSpace: 'pre-wrap' }}>{news.content}</p>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #EDE9E1', fontSize: '11px', color: 'var(--text-muted)' }}>
+                    <span>📅 โพสต์เมื่อ: {news.publishedAt}</span>
+                    <div style={{ display: 'flex', gap: '4px' }}>
+                      {news.tags.map(t => (
+                        <span key={t} style={{ background: '#EDE9E1', color: '#554D41', padding: '1px 6px', borderRadius: '4px' }}>#{t}</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
-
-          {loading && (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
-              <div className="spinner" style={{ width: '40px', height: '40px', borderWidth: '3px', borderColor: 'rgba(201,168,76,0.2)', borderTopColor: '#C9A84C' }} />
-              <div style={{ fontSize: '14px', fontWeight: 600, color: '#C9A84C' }}>Gemini กำลังร่างเนื้อหาวิชาการและโครงสร้าง Markdown...</div>
-            </div>
-          )}
-
-          {blog && !loading && (
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <div style={{ overflowY: 'auto', maxHeight: '420px', paddingRight: '4px', marginBottom: '16px' }}>
-                <h1 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--primary)', marginBottom: '12px', lineHeight: 1.4 }}>{blog.title}</h1>
-                
-                <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', flexWrap: 'wrap' }}>
-                  <span className="badge" style={{ background: '#F5F0E6', color: '#A6882A', fontWeight: 600 }}>{category}</span>
-                  {blog.tags?.map(t => (
-                    <span key={t} className="badge" style={{ background: '#EDE9E1', color: '#4A4138' }}>#{t}</span>
-                  ))}
-                </div>
-
-                <div style={{ fontSize: '13px', padding: '10px 14px', background: '#FBF6E9', borderLeft: '4px solid #C9A84C', borderRadius: '0 8px 8px 0', color: 'var(--text-secondary)', marginBottom: '16px', fontStyle: 'italic' }}>
-                  {blog.excerpt}
-                </div>
-
-                <div style={{ fontSize: '14px', color: 'var(--text-primary)', lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
-                  {blog.content}
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', borderTop: '1px solid #EDE9E1', paddingTop: '16px' }}>
-                <button
-                  onClick={() => setBlog(null)}
-                  className="btn btn-outline"
-                  style={{ flex: 1, padding: '10px' }}
-                >
-                  ยกเลิก
-                </button>
-                <button
-                  onClick={publishBlog}
-                  className="btn btn-primary"
-                  style={{ flex: 2, padding: '10px', border: 'none' }}
-                >
-                  ✦ เผยแพร่บทความเข้าระบบ
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Published Blogs Directory */}
-      <div className="erp-card">
-        <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px', color: '#1E4D3A' }}>📚 คลังบทความการเรียนการสอน (Published Articles)</h3>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-          {publishedBlogs.map((b, i) => (
-            <div key={i} style={{ background: '#FDFAF4', border: '1px solid rgba(201,168,76,0.20)', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', boxShadow: '0 2px 8px rgba(16,43,31,0.04)' }}>
-              <div>
-                <span className="badge" style={{ background: '#EAF3EE', color: '#1E4D3A', fontSize: '10px', fontWeight: 700, marginBottom: '6px' }}>{b.readTime} อ่าน</span>
-                <h4 style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.4 }}>{b.title}</h4>
-              </div>
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.5, flex: 1 }}>{b.excerpt}</p>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #EDE9E1', paddingTop: '10px', marginTop: '4px' }}>
-                <span style={{ fontSize: '11px', color: '#A6882A', fontWeight: 600 }}>{category}</span>
-                <span style={{ fontSize: '12px', cursor: 'pointer', color: 'var(--primary)', fontWeight: 700 }}>อ่านบทความเต็ม ›</span>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>
