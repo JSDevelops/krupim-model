@@ -5,10 +5,11 @@ import Link from 'next/link'
 
 interface ARModel {
   id: string
-  title: string
-  description: string
-  glbUrl: string
-  thumbnail: string
+  nameEn: string
+  nameTh: string
+  desc: string
+  glbUrl?: string
+  imageUrl?: string
 }
 
 function ARViewerContent() {
@@ -21,13 +22,17 @@ function ARViewerContent() {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && id) {
-      const storedModels = localStorage.getItem('arModels')
+      const storedModels = localStorage.getItem('arItems')
       if (storedModels) {
         try {
           const parsed = JSON.parse(storedModels)
           const found = parsed.find((m: ARModel) => m.id === id)
           if (found) {
-            setModel(found)
+            // Set the glbUrl, use fallback astronaut model if empty
+            setModel({
+              ...found,
+              glbUrl: found.glbUrl || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
+            })
           }
         } catch (e) {}
       }
@@ -88,12 +93,12 @@ function ARViewerContent() {
         gap: '8px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 800 }}>{model.title}</h1>
+          <h1 style={{ margin: 0, fontSize: '22px', fontWeight: 800 }}>{model.nameEn} ({model.nameTh})</h1>
           <button onClick={() => router.push('/student/scanner')} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', color: '#FFF', padding: '8px 12px', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}>
             ✕ ปิด
           </button>
         </div>
-        <p style={{ margin: 0, fontSize: '14px', opacity: 0.9 }}>{model.description}</p>
+        <p style={{ margin: 0, fontSize: '14px', opacity: 0.9 }}>{model.desc}</p>
       </div>
 
     </div>

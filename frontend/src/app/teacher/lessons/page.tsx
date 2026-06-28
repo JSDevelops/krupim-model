@@ -49,6 +49,7 @@ interface AR3DItem {
   sentence: string
   desc: string
   imageUrl?: string
+  glbUrl?: string
 }
 
 interface Student {
@@ -297,6 +298,12 @@ export default function TeacherLessonsDashboard() {
   // Load AR items on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const tabParam = params.get('tab')
+      if (tabParam === '4.5') {
+        setActiveTab('4.5')
+      }
+
       const stored = localStorage.getItem('arItems')
       if (stored) {
         try {
@@ -376,6 +383,7 @@ export default function TeacherLessonsDashboard() {
   const [arSent, setARSent] = useState('')
   const [arDesc, setARDesc] = useState('')
   const [arImageUrl, setArImageUrl] = useState('')
+  const [arGlbUrl, setArGlbUrl] = useState('')
   const [arCreationMode, setArCreationMode] = useState<'manual' | 'ai'>('manual')
   const [arAiTopic, setArAiTopic] = useState('แก้วไวน์แดงคริสตัล (Crystal Wine Glass)')
   const [aiGenerating, setAiGenerating] = useState(false)
@@ -792,7 +800,8 @@ export default function TeacherLessonsDashboard() {
       pronounce: arPron || `/name/`,
       sentence: arSent || 'Please use this item correctly.',
       desc: arDesc || 'คำอธิบายทั่วไปเกี่ยวกับชิ้นอุปกรณ์',
-      imageUrl: arImageUrl || '/images/espresso_cup_3d.png'
+      imageUrl: arImageUrl || '/images/espresso_cup_3d.png',
+      glbUrl: arGlbUrl || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
     }
 
     setARItems(prev => [...prev, newItem])
@@ -802,6 +811,7 @@ export default function TeacherLessonsDashboard() {
     setARSent('')
     setARDesc('')
     setArImageUrl('')
+    setArGlbUrl('')
     alert('เพิ่มโมเดล 3 มิติ และสแกนอุปกรณ์เข้าคลังสำเร็จ!')
   }
 
@@ -1454,6 +1464,12 @@ export default function TeacherLessonsDashboard() {
                       </div>
                     </div>
 
+                    <div className="erp-form-group">
+                      <label className="erp-label">โมเดล 3D (.glb URL) [สำหรับฉาย AR]</label>
+                      <input className="erp-input" value={arGlbUrl} onChange={e => setArGlbUrl(e.target.value)} placeholder="เช่น https://modelviewer.dev/shared-assets/models/Astronaut.glb" />
+                      <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>* ใส่ลิงก์ไฟล์ .glb ที่ต้องการสแกนเปิดดูแบบ AR (หากไม่ใส่จะใช้โมเดลนักบินอวกาศเป็นตัวอย่างเริ่มต้น)</p>
+                    </div>
+
                     <button type="submit" className="btn btn-primary" style={{ border: 'none', padding: '12px', fontWeight: 700, marginTop: '8px' }}>
                       บันทึกชิ้นงานเข้าคลัง 3D
                     </button>
@@ -1894,8 +1910,8 @@ export default function TeacherLessonsDashboard() {
       {/* 4.5.1 QR Code Modal for AR Items */}
       {showQrModal && selectedQrItem && (() => {
         const studentLink = typeof window !== 'undefined' 
-          ? `${window.location.origin}/ar-3d?scanId=${selectedQrItem.id}` 
-          : `/ar-3d?scanId=${selectedQrItem.id}`;
+          ? `${window.location.origin}/student/ar-view?id=${selectedQrItem.id}` 
+          : `/student/ar-view?id=${selectedQrItem.id}`;
         const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(studentLink)}`;
         
         return (

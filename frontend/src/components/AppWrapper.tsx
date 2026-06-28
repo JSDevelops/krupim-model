@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useRole } from '@/context/RoleContext'
@@ -10,6 +10,13 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
   const [showNotifications, setShowNotifications] = useState(false)
   const [showProfileSettings, setShowProfileSettings] = useState(false)
   const [showSystemStats, setShowSystemStats] = useState(false)
+  const [currentSearch, setCurrentSearch] = useState('')
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setCurrentSearch(window.location.search)
+    }
+  }, [pathname])
 
   // Profile forms fields
   const [profName, setProfName] = useState('')
@@ -116,7 +123,7 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
         ]
       },
       { href: '/teacher/assignments', icon: '📋', label: 'งานและกิจกรรม' },
-      { href: '/teacher/ar-models', icon: '🛸', label: 'AR & 3D Models' },
+      { href: '/teacher/lessons?tab=4.5', icon: '🛸', label: 'AR & 3D Items' },
       { href: '/teacher/vocab', icon: '🔤', label: 'คลังคำศัพท์' },
       { href: '/teacher/manual', icon: '📚', label: 'คู่มือการใช้งาน' },
     ]
@@ -138,7 +145,16 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
           <nav className="erp-nav" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {sidebarMenu.map(item => {
               const hasChildren = 'children' in item && item.children
-              const isActive = pathname === item.href || (hasChildren && item.children.some(child => pathname === child.href))
+              
+              const isMatch = (href: string) => {
+                const [hPath, hQuery] = href.split('?')
+                if (hQuery) {
+                  return pathname === hPath && currentSearch.includes(hQuery)
+                }
+                return pathname === hPath && !currentSearch.includes('tab=')
+              }
+
+              const isActive = isMatch(item.href) || (hasChildren && item.children.some(child => isMatch(child.href)))
               
               return (
                 <div key={item.href} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -169,7 +185,7 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
                       marginBottom: '4px'
                     }}>
                       {item.children.map(child => {
-                        const isChildActive = pathname === child.href
+                        const isChildActive = isMatch(child.href)
                         return (
                           <Link
                             key={child.href}
