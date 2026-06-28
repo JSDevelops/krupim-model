@@ -71,8 +71,33 @@ export default function TeacherDashboard() {
                 <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.5, marginTop: '4px', whiteSpace: 'pre-wrap' }}>
                   {news.content}
                 </p>
+                {news.linkUrl && (
+                  <div style={{ marginTop: '8px' }}>
+                    <a
+                      href={news.linkUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn btn-outline btn-sm"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        fontSize: '11px',
+                        padding: '4px 10px',
+                        borderColor: '#C9A84C',
+                        color: '#A6882A',
+                        fontWeight: 700,
+                        textDecoration: 'none',
+                        borderRadius: '6px',
+                        background: '#FDFAF4'
+                      }}
+                    >
+                      🔗 เปิดดูลิงก์แนบ / เอกสารเพิ่มเติม
+                    </a>
+                  </div>
+                )}
                 {news.tags && news.tags.length > 0 && (
-                  <div style={{ display: 'flex', gap: '4px', marginTop: '6px' }}>
+                  <div style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
                     {news.tags.map((t: string) => (
                       <span key={t} style={{ background: '#EDE9E1', color: '#554D41', fontSize: '9.5px', padding: '1px 6px', borderRadius: '4px' }}>#{t}</span>
                     ))}

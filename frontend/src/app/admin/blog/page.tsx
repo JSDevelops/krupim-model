@@ -8,6 +8,7 @@ interface Announcement {
   priority: 'urgent' | 'general' | 'event'
   tags: string[]
   publishedAt: string
+  linkUrl?: string
 }
 
 export default function AdminNewsPage() {
@@ -15,6 +16,7 @@ export default function AdminNewsPage() {
   const [priority, setPriority] = useState<'urgent' | 'general' | 'event'>('general')
   const [keywords, setKeywords] = useState('อุปกรณ์จัดโต๊ะ, อัปเดตโมเดล, 3D AR')
   const [content, setContent] = useState('')
+  const [linkUrl, setLinkUrl] = useState('https://krupim-finemodel3d-ar.com')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [publishedNews, setPublishedNews] = useState<Announcement[]>([])
@@ -115,7 +117,8 @@ export default function AdminNewsPage() {
       content: content.trim(),
       priority,
       tags: keywords.split(',').map(k => k.trim()).filter(Boolean),
-      publishedAt: thaiDate
+      publishedAt: thaiDate,
+      linkUrl: linkUrl.trim() || undefined
     }
 
     const updated = [newAnnouncement, ...publishedNews]
@@ -125,6 +128,7 @@ export default function AdminNewsPage() {
     setTopic('')
     setContent('')
     setKeywords('')
+    setLinkUrl('')
     alert('ส่งกระจายประกาศและกิจกรรมแจ้งไปยังแดชบอร์ดคุณครูสำเร็จเรียบร้อย! 📢')
   }
 
@@ -224,6 +228,17 @@ export default function AdminNewsPage() {
             />
           </div>
 
+          <div className="erp-form-group">
+            <label className="erp-label" style={{ fontWeight: 700, fontSize: '13px' }}>ลิงก์แนบข่าวสาร/กิจกรรม (Link URL - ถ้ามี)</label>
+            <input
+              className="erp-input"
+              style={{ padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1', fontSize: '13px' }}
+              placeholder="เช่น https://google.com หรือ ลิงก์แบบฟอร์ม"
+              value={linkUrl}
+              onChange={e => setLinkUrl(e.target.value)}
+            />
+          </div>
+
           {error && (
             <div style={{ padding: '10px 14px', background: '#FAE8EB', color: '#8B2635', borderRadius: '8px', fontSize: '12.5px', border: '1px solid rgba(139,38,53,0.2)' }}>
               ⚠️ {error}
@@ -303,6 +318,13 @@ export default function AdminNewsPage() {
 
                   <h4 style={{ fontSize: '14.5px', fontWeight: 800, marginTop: '8px', color: '#1E4D3A' }}>{news.title}</h4>
                   <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.5, marginTop: '6px', whiteSpace: 'pre-wrap' }}>{news.content}</p>
+                  {news.linkUrl && (
+                    <div style={{ marginTop: '8px', fontSize: '12px' }}>
+                      <a href={news.linkUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#A6882A', fontWeight: 700, textDecoration: 'underline' }}>
+                        🔗 ลิงก์แนบ: {news.linkUrl}
+                      </a>
+                    </div>
+                  )}
                   
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '10px', paddingTop: '8px', borderTop: '1px solid #EDE9E1', fontSize: '11px', color: 'var(--text-muted)' }}>
                     <span>📅 โพสต์เมื่อ: {news.publishedAt}</span>
