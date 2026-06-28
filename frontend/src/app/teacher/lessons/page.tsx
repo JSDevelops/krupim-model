@@ -305,24 +305,60 @@ export default function TeacherLessonsDashboard() {
         setActiveTab('4.5')
       }
 
-      const stored = localStorage.getItem('arItems')
-      if (stored) {
+      async function fetchARItems() {
         try {
-          setARItems(JSON.parse(stored))
+          const { data, error } = await supabase
+            .from('fine_lesson_plans')
+            .select('vocabulary')
+            .eq('id', 'ar-items-store')
+            .single()
+          
+          if (data && data.vocabulary) {
+            const items = data.vocabulary as AR3DItem[]
+            setARItems(items)
+            localStorage.setItem('arItems', JSON.stringify(items))
+            return
+          }
         } catch (e) {
-          setARItems(initialARItems)
+          console.error('Error fetching from Supabase:', e)
         }
-      } else {
-        setARItems(initialARItems)
-        localStorage.setItem('arItems', JSON.stringify(initialARItems))
+
+        // Fallback to localStorage
+        const stored = localStorage.getItem('arItems')
+        if (stored) {
+          try {
+            setARItems(JSON.parse(stored))
+          } catch (e) {
+            setARItems(initialARItems)
+          }
+        } else {
+          setARItems(initialARItems)
+          localStorage.setItem('arItems', JSON.stringify(initialARItems))
+        }
       }
+      fetchARItems()
     }
   }, [])
 
-  // Sync AR items to localStorage when changed
+  // Sync AR items to localStorage & Supabase when changed
   useEffect(() => {
     if (typeof window !== 'undefined' && arItems.length > 0) {
       localStorage.setItem('arItems', JSON.stringify(arItems))
+      
+      async function syncToSupabase() {
+        try {
+          await supabase
+            .from('fine_lesson_plans')
+            .upsert({
+              id: 'ar-items-store',
+              title: 'AR 3D Items Repository',
+              vocabulary: arItems
+            })
+        } catch (e) {
+          console.error('Error syncing to Supabase:', e)
+        }
+      }
+      syncToSupabase()
     }
   }, [arItems])
 
@@ -1919,7 +1955,7 @@ export default function TeacherLessonsDashboard() {
       {/* 4.5.1 QR Code Modal for AR Items */}
       {showQrModal && selectedQrItem && (() => {
         const studentLink = typeof window !== 'undefined' 
-          ? `${window.location.origin}/student/ar-view?id=${selectedQrItem.id}&nameEn=${encodeURIComponent(selectedQrItem.nameEn)}&nameTh=${encodeURIComponent(selectedQrItem.nameTh || '')}&desc=${encodeURIComponent(selectedQrItem.desc || '')}&glbUrl=${encodeURIComponent(selectedQrItem.glbUrl || '')}&usdzUrl=${encodeURIComponent(selectedQrItem.usdzUrl || '')}&pronounce=${encodeURIComponent(selectedQrItem.pronounce || '')}&sentence=${encodeURIComponent(selectedQrItem.sentence || '')}&imageUrl=${encodeURIComponent(selectedQrItem.imageUrl || '')}` 
+          ? `${window.location.origin}/student/ar-view?id=${selectedQrItem.id}` 
           : `/student/ar-view?id=${selectedQrItem.id}`;
         const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(studentLink)}`;
         

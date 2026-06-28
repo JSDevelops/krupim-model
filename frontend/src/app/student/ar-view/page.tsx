@@ -2,6 +2,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { supabase } from '@/lib/supabase'
 
 interface ARModel {
   id: string
@@ -36,45 +37,74 @@ function ARViewerContent() {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && id) {
-      const qNameEn = searchParams.get('nameEn')
-      const qNameTh = searchParams.get('nameTh')
-      const qDesc = searchParams.get('desc')
-      const qGlbUrl = searchParams.get('glbUrl')
-      const qUsdzUrl = searchParams.get('usdzUrl')
-      const qPronounce = searchParams.get('pronounce')
-      const qSentence = searchParams.get('sentence')
-      const qImageUrl = searchParams.get('imageUrl')
-
-      if (qNameEn) {
-        setModel({
-          id,
-          nameEn: qNameEn,
-          nameTh: qNameTh || '',
-          desc: qDesc || '',
-          glbUrl: qGlbUrl || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
-          usdzUrl: qUsdzUrl || '',
-          pronounce: qPronounce || '',
-          sentence: qSentence || '',
-          imageUrl: qImageUrl || ''
-        })
-        setLoading(false)
-        return
-      }
-
-      const storedModels = localStorage.getItem('arItems')
-      if (storedModels) {
+      async function loadModel() {
+        // 1. Try to fetch from Supabase 'ar-items-store'
         try {
-          const parsed = JSON.parse(storedModels)
-          const found = parsed.find((m: any) => m.id === id)
-          if (found) {
-            setModel({
-              ...found,
-              glbUrl: found.glbUrl || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
-            })
+          const { data, error } = await supabase
+            .from('fine_lesson_plans')
+            .select('vocabulary')
+            .eq('id', 'ar-items-store')
+            .single()
+          
+          if (data && data.vocabulary) {
+            const items = data.vocabulary as any[]
+            const found = items.find(m => m.id === id)
+            if (found) {
+              setModel({
+                ...found,
+                glbUrl: found.glbUrl || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
+              })
+              setLoading(false)
+              return
+            }
           }
-        } catch (e) {}
+        } catch (e) {
+          console.error('Error fetching model from Supabase:', e)
+        }
+
+        // 2. Fallback to URL search parameters (for older QR codes)
+        const qNameEn = searchParams.get('nameEn')
+        const qNameTh = searchParams.get('nameTh')
+        const qDesc = searchParams.get('desc')
+        const qGlbUrl = searchParams.get('glbUrl')
+        const qUsdzUrl = searchParams.get('usdzUrl')
+        const qPronounce = searchParams.get('pronounce')
+        const qSentence = searchParams.get('sentence')
+        const qImageUrl = searchParams.get('imageUrl')
+
+        if (qNameEn) {
+          setModel({
+            id,
+            nameEn: qNameEn,
+            nameTh: qNameTh || '',
+            desc: qDesc || '',
+            glbUrl: qGlbUrl || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+            usdzUrl: qUsdzUrl || '',
+            pronounce: qPronounce || '',
+            sentence: qSentence || '',
+            imageUrl: qImageUrl || ''
+          })
+          setLoading(false)
+          return
+        }
+
+        // 3. Fallback to localStorage
+        const storedModels = localStorage.getItem('arItems')
+        if (storedModels) {
+          try {
+            const parsed = JSON.parse(storedModels)
+            const found = parsed.find((m: any) => m.id === id)
+            if (found) {
+              setModel({
+                ...found,
+                glbUrl: found.glbUrl || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
+              })
+            }
+          } catch (e) {}
+        }
+        setLoading(false)
       }
-      setLoading(false)
+      loadModel()
     }
   }, [id, searchParams])
 
