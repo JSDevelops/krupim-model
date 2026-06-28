@@ -112,7 +112,15 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
       { href: '/admin/settings', icon: '⚙️', label: 'ตั้งค่าระบบ' },
     ] : [
       { href: '/teacher/dashboard', icon: '🏫', label: 'Dashboard' },
-      { href: '/teacher/lessons', icon: '📖', label: 'แผนการสอน FINE MODEL' },
+      { 
+        href: '/teacher/lessons', 
+        icon: '📖', 
+        label: 'แผนการสอน FINE MODEL',
+        children: [
+          { href: '/teacher/lessons', icon: '📝', label: 'จัดการแผนการสอน' },
+          { href: '/teacher/lessons?tab=4.5', icon: '🛸', label: 'AR & 3D Items' }
+        ]
+      },
       { 
         href: '/teacher/classes', 
         icon: '👨‍👩‍👧‍👦', 
@@ -123,7 +131,6 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
         ]
       },
       { href: '/teacher/assignments', icon: '📋', label: 'งานและกิจกรรม' },
-      { href: '/teacher/lessons?tab=4.5', icon: '🛸', label: 'AR & 3D Items' },
       { href: '/teacher/vocab', icon: '🔤', label: 'คลังคำศัพท์' },
       { href: '/teacher/manual', icon: '📚', label: 'คู่มือการใช้งาน' },
     ]
