@@ -37,6 +37,8 @@ export default function TeacherStudentsPage() {
   const [showAddEdit, setShowAddEdit] = useState(false)
   const [editingStudent, setEditingStudent] = useState<Student | null>(null)
   const [showEvidence, setShowEvidence] = useState<Student | null>(null)
+  const [showImportModal, setShowImportModal] = useState(false)
+  const [registryStudents, setRegistryStudents] = useState<any[]>([])
 
   // Form states
   const [name, setName] = useState('')
@@ -281,6 +283,39 @@ export default function TeacherStudentsPage() {
     alert(`อนุมัติ ${s.name} เข้าชั้นเรียนเรียบร้อย!`)
   }
 
+  function handleOpenImport() {
+    if (typeof window !== 'undefined') {
+      const storedUsers = localStorage.getItem('registeredUsers')
+      if (storedUsers) {
+        try {
+          const parsed = JSON.parse(storedUsers)
+          const available = parsed.filter((u: any) => 
+            u.role === 'student' && 
+            !students.some(s => s.email === u.email)
+          )
+          setRegistryStudents(available)
+        } catch (e) {}
+      }
+    }
+    setShowImportModal(true)
+  }
+
+  function handleImportStudent(regUser: any) {
+    const newStudent: Student = {
+      id: regUser.id || `std-${Date.now()}`,
+      name: regUser.name,
+      class: regUser.enrolledClass || 'ปวช.1/1',
+      email: regUser.email,
+      password: regUser.password || '',
+      status: 'active',
+      ksa: { K: 0, S: 0, A: 0, C: 0 },
+      sessions: 0
+    }
+    saveStudentsAndSyncAuth([...students, newStudent])
+    setRegistryStudents(prev => prev.filter(u => u.id !== regUser.id))
+    alert(`เพิ่ม ${regUser.name} เข้าสู่ชั้นเรียนสำเร็จ!`)
+  }
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
       
@@ -313,6 +348,9 @@ export default function TeacherStudentsPage() {
             )}
           </button>
           <div style={{ width: '1px', height: '30px', background: '#EDE9E1', margin: '0 4px' }}></div>
+          <button onClick={handleOpenImport} className="btn btn-outline" style={{ borderRadius: '10px', padding: '10px 16px', fontWeight: 700, borderColor: '#A6882A', color: '#A6882A' }}>
+            📥 ดึงจากทะเบียนกลาง
+          </button>
           <button onClick={handleOpenAdd} className="btn btn-primary" style={{ border: 'none', borderRadius: '10px', padding: '10px 20px', fontWeight: 700, background: '#A6882A', color: '#FFF' }}>
             ➕ ลงทะเบียนนักเรียน
           </button>
@@ -698,6 +736,51 @@ export default function TeacherStudentsPage() {
           </div>
         )
       })()}
+
+      {/* Import from Registry Modal */}
+      {showImportModal && (
+        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200 }}>
+          <div className="erp-card" style={{ width: '650px', maxWidth: '90%', background: '#FDFAF4', display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'left', maxHeight: '80vh', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #EDE9E1', paddingBottom: '10px' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#1E4D3A', margin: 0 }}>
+                📥 เพิ่มนักเรียนจากทะเบียนกลาง (Import from Registry)
+              </h3>
+              <button onClick={() => setShowImportModal(false)} style={{ background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer' }}>✕</button>
+            </div>
+            
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '4px' }}>
+              {registryStudents.length === 0 ? (
+                <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  ไม่มีรายชื่อนักเรียนในทะเบียนกลางที่สามารถเพิ่มได้
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {registryStudents.map(rs => (
+                    <div key={rs.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#FFF', padding: '12px 16px', borderRadius: '12px', border: '1px solid #EDE9E1' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ width: 40, height: 40, background: '#F5F0E6', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                          {rs.avatar || '👨‍🎓'}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '14px', fontWeight: 700, color: '#1A1410' }}>{rs.name}</div>
+                          <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{rs.email}</div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleImportStudent(rs)}
+                        className="btn btn-primary btn-sm"
+                        style={{ padding: '6px 14px', fontWeight: 700, borderRadius: '8px' }}
+                      >
+                        เพิ่มเข้าชั้นเรียน
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   )
