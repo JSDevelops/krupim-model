@@ -50,7 +50,6 @@ export default function QRScannerPage() {
               onScan={handleScan}
               onError={(err) => console.log(err)}
               components={{
-                audio: false,
                 onOff: true,
                 torch: true,
                 zoom: true,
