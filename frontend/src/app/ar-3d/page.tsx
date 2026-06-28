@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
 
 interface AR3DItem {
   id: string
@@ -10,15 +11,62 @@ interface AR3DItem {
   sentence: string
   desc: string
   imageUrl: string
+  glbUrl?: string
+  usdzUrl?: string
 }
 
-// Fallback items if localStorage is empty
+// Fallback items if localStorage and Supabase are empty
 const defaultAr3dItems: AR3DItem[] = [
-  { id: 'item-001', nameEn: 'Espresso Coffee Cup', nameTh: 'แก้วกาแฟเอสเปรสโซ่', pronounce: '/es-pres-oh kup/', sentence: 'Please serve the double espresso in a pre-heated cup.', desc: 'ถ้วยเซรามิกขนาดเล็ก (Demitasse) สำหรับเสิร์ฟกาแฟเอสเปรสโซ่ พร้อมจานรอง', imageUrl: '/images/espresso_cup_3d.png' },
-  { id: 'item-002', nameEn: 'Cocktail Shaker', nameTh: 'กระบอกเขย่าค็อกเทล', pronounce: '/kok-teyl shey-ker/', sentence: 'Pour the ingredients into the cocktail shaker with ice.', desc: 'กระบอกโลหะแฮนด์ทัมเบลอร์สำหรับใช้เขย่าผสมเครื่องดื่มและกรองน้ำแข็งออก', imageUrl: '/images/cocktail_shaker_3d.png' },
-  { id: 'item-003', nameEn: 'Wine Glass', nameTh: 'แก้วไวน์แดง', pronounce: '/wahyn glas/', sentence: 'Hold the wine glass by the stem to prevent warming the wine.', desc: 'แก้วคริสตัลทรงกว้างรูปทรงดอกทิวลิปสำหรับจับเสิร์ฟเครื่องดื่มไวน์แดงเพื่อรับกลิ่นหอม', imageUrl: '/images/wine_glass_3d.png' },
-  { id: 'item-004', nameEn: 'Soup Spoon', nameTh: 'ช้อนตักซุป', pronounce: '/soop spoon/', sentence: 'Place the soup spoon on the right side of the dinner plate.', desc: 'ช้อนตักซุปปลายมนหัวกลมกว้างออกแบบพิเศษสำหรับการรับประทานอาหารประเภทซุปใสหรือซุปข้น', imageUrl: '/images/soup_spoon_3d.png' },
-  { id: 'item-005', nameEn: 'Dinner Plate', nameTh: 'จานอาหารหลัก', pronounce: '/din-er pleyt/', sentence: 'Serve the main course on a warm dinner plate.', desc: 'จานกระเบื้องเซรามิกสีขาวขนาดเส้นผ่านศูนย์กลาง 10-12 นิ้วสำหรับจัดเสิร์ฟอาหารจานหลักหลักสูตรสากล', imageUrl: '/images/plate_3d.png' }
+  { 
+    id: 'item-001', 
+    nameEn: 'Ceramic Teapot', 
+    nameTh: 'กาน้ำชาเซรามิก', 
+    pronounce: '/tee-pot/', 
+    sentence: 'Please fill the teapot with hot water for the guests.', 
+    desc: 'กาน้ำชาทำจากดินเผาหรือเซรามิก สำหรับใช้ชงและเสิร์ฟชาในห้องอาหารและงานจัดเลี้ยง', 
+    imageUrl: '/images/teapot_3d.png',
+    glbUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb'
+  },
+  { 
+    id: 'item-002', 
+    nameEn: 'Stainless Water Bottle', 
+    nameTh: 'ขวดน้ำสแตนเลส', 
+    pronounce: '/waw-ter bot-l/', 
+    sentence: 'We keep a cold water bottle on every guest table.', 
+    desc: 'กระบอกน้ำหรือขวดน้ำเก็บความเย็นทำจากสแตนเลส สำหรับคอยบริการลูกค้าบนโต๊ะอาหาร', 
+    imageUrl: '/images/water_bottle_3d.png',
+    glbUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/WaterBottle/glTF-Binary/WaterBottle.glb'
+  },
+  { 
+    id: 'item-003', 
+    nameEn: 'Wine Glass', 
+    nameTh: 'แก้วไวน์แดงคริสตัล', 
+    pronounce: '/wahyn glas/', 
+    sentence: 'Hold the wine glass by the stem to prevent warming the wine.', 
+    desc: 'แก้วคริสตัลทรงกว้างรูปทรงดอกทิวลิปสำหรับจับเสิร์ฟเครื่องดื่มไวน์แดงเพื่อรับกลิ่นหอมสากล', 
+    imageUrl: '/images/wine_glass_3d.png', 
+    glbUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WineGlass/glTF-Binary/WineGlass.glb' 
+  },
+  { 
+    id: 'item-004', 
+    nameEn: 'Chocolate Cake', 
+    nameTh: 'เค้กช็อกโกแลต', 
+    pronounce: '/chok-luh-t keyk/', 
+    sentence: 'Would you like to order a slice of chocolate cake for dessert?', 
+    desc: 'เค้กช็อกโกแลตตกแต่งสวยงาม สำหรับบริการเป็นเมนูของหวานปิดท้ายมื้ออาหารหรู', 
+    imageUrl: '/images/cake_3d.png',
+    glbUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Cake/glTF-Binary/Cake.glb'
+  },
+  { 
+    id: 'item-005', 
+    nameEn: 'Fresh Apple', 
+    nameTh: 'ผลแอปเปิ้ลสด', 
+    pronounce: '/ap-l/', 
+    sentence: 'A fresh red apple is served on a small dessert plate.', 
+    desc: 'แอปเปิ้ลสดคัดพิเศษสำหรับจัดเสิร์ฟเป็นผลไม้ประกอบมื้อหรือใช้ประดับแต่งจานอาหาร', 
+    imageUrl: '/images/apple_3d.png',
+    glbUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Apple/glTF-Binary/Apple.glb'
+  }
 ]
 
 export default function AR3DPage() {
@@ -28,35 +76,56 @@ export default function AR3DPage() {
   const [isRotating, setIsRotating] = useState(true) // สำหรับควบคุม CSS 360 Rotation Animation
   const [speaking, setSpeaking] = useState<string | null>(null)
 
-  // 1. โหลดข้อมูลแบบไดนามิกจาก localStorage คีย์เดียวกับที่คุณครูบริหารจัดการ
+  // 1. โหลดข้อมูลแบบไดนามิกจาก Supabase หรือ localStorage คีย์เดียวกับที่คุณครูบริหารจัดการ
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('arItems')
+    async function loadARItems() {
       let loadedItems: AR3DItem[] = []
-      if (stored) {
-        try {
-          loadedItems = JSON.parse(stored)
-        } catch (e) {
-          loadedItems = defaultAr3dItems
+      
+      // Try to load from Supabase first
+      try {
+        const { data, error } = await supabase
+          .from('fine_lesson_plans')
+          .select('vocabulary')
+          .eq('id', 'ar-items-store')
+          .single()
+
+        if (!error && data && data.vocabulary) {
+          const rawVocab = data.vocabulary;
+          loadedItems = Array.isArray(rawVocab) ? (rawVocab as any[]) : JSON.parse(rawVocab as string)
         }
-      } else {
-        loadedItems = defaultAr3dItems
-        localStorage.setItem('arItems', JSON.stringify(defaultAr3dItems))
+      } catch (err) {
+        console.error('Error fetching AR items from Supabase:', err)
       }
+
+      // Fallback to localStorage if Supabase call failed or returned empty
+      if (!loadedItems || loadedItems.length === 0) {
+        const stored = localStorage.getItem('arItems')
+        if (stored) {
+          try {
+            loadedItems = JSON.parse(stored)
+          } catch (e) {
+            loadedItems = defaultAr3dItems
+          }
+        } else {
+          loadedItems = defaultAr3dItems
+          localStorage.setItem('arItems', JSON.stringify(defaultAr3dItems))
+        }
+      }
+      
       setArItems(loadedItems)
 
       // 2. ตรวจหาพารามิเตอร์ scanId เพื่อประมวลผลการสแกน QR Code เปิดอัตโนมัติ
       const params = new URLSearchParams(window.location.search)
-      const scanId = params.get('scanId')
+      const scanId = params.get('scanId') || params.get('id')
       if (scanId) {
         const matched = loadedItems.find(item => item.id === scanId)
         if (matched) {
           setSelected(matched)
-          // แจ้งเตือนเล็กน้อยเพื่อให้ทราบว่าสแกนสำเร็จ
-          alert(`⚡ สแกนสำเร็จ! กำลังเปิดโมเดล 3D ของ "${matched.nameEn}"`)
         }
       }
     }
+
+    loadARItems()
   }, [])
 
   // ฟังก์ชันออกเสียงคำศัพท์ภาษาอังกฤษ
@@ -205,38 +274,27 @@ export default function AR3DPage() {
               justifyContent: 'center', position: 'relative', overflow: 'hidden',
               boxShadow: 'inset 0 0 32px rgba(0,0,0,0.95), 0 8px 24px rgba(16,43,31,0.1)'
             }}>
-              {/* Starry tech mesh background */}
-              <div style={{ position: 'absolute', inset: 0, opacity: 0.1, background: 'radial-gradient(circle, #fff 10%, transparent 11%) 0 0/12px 12px' }} />
-
-              {/* 🔄 Rotatable Image Container */}
-              <div 
-                className={isRotating ? 'rotate-animation' : ''} 
-                style={{
-                  width: 140, height: 140, display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', transition: 'transform 0.4s'
-                }}
-              >
-                {selected.imageUrl ? (
-                  <img 
-                    src={selected.imageUrl} 
-                    alt={selected.nameEn} 
-                    style={{ width: '100%', height: '100%', objectFit: 'contain', filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.6))' }} 
-                  />
-                ) : (
-                  <span style={{ fontSize: 72 }}>🍽️</span>
+              {/* @ts-ignore */}
+              <model-viewer
+                src={selected.glbUrl || (
+                  selected.id === 'item-001' ? 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb' :
+                  selected.id === 'item-002' ? 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/WaterBottle/glTF-Binary/WaterBottle.glb' :
+                  selected.id === 'item-003' ? 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WineGlass/glTF-Binary/WineGlass.glb' :
+                  selected.id === 'item-004' ? 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Cake/glTF-Binary/Cake.glb' :
+                  selected.id === 'item-005' ? 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Apple/glTF-Binary/Apple.glb' :
+                  'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
                 )}
-              </div>
-
-              {/* Hologram rotate ring under the item */}
-              <div style={{
-                position: 'absolute', bottom: 35, width: 150, height: 24,
-                borderRadius: '50%', border: '1.5px solid rgba(201,168,76,0.3)',
-                background: 'rgba(201,168,76,0.05)', transform: 'rotateX(75deg)',
-                boxShadow: '0 0 15px rgba(201,168,76,0.3)', pointerEvents: 'none'
-              }} />
+                ios-src={selected.usdzUrl}
+                alt={selected.nameEn}
+                ar
+                ar-modes="webxr scene-viewer quick-look"
+                camera-controls
+                auto-rotate={isRotating}
+                style={{ width: '100%', height: '100%', '--poster-color': 'transparent' }}
+              />
 
               {/* Active controls inside overlay */}
-              <div style={{ position: 'absolute', bottom: 10, left: 10, display: 'flex', gap: 6 }}>
+              <div style={{ position: 'absolute', bottom: 10, left: 10, display: 'flex', gap: 6, zIndex: 10 }}>
                 <button 
                   onClick={() => setIsRotating(!isRotating)}
                   style={{
@@ -248,11 +306,11 @@ export default function AR3DPage() {
                 </button>
               </div>
 
-              <span style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(201,168,76,0.2)', border: '1px solid #C9A84C', color: '#C9A84C', fontSize: 8.5, fontWeight: 900, padding: '2px 8px', borderRadius: 6, letterSpacing: '0.8px' }}>
+              <span style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(201,168,76,0.2)', border: '1px solid #C9A84C', color: '#C9A84C', fontSize: 8.5, fontWeight: 900, padding: '2px 8px', borderRadius: 6, letterSpacing: '0.8px', zIndex: 10 }}>
                 ✦ 3D SIMULATION
               </span>
             </div>
-
+ 
             {/* Metadata Information Area */}
             <div style={{ marginTop: 14, overflowY: 'auto', flex: 1, paddingRight: 4 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -274,25 +332,25 @@ export default function AR3DPage() {
                   🔊
                 </button>
               </div>
-
+ 
               {selected.pronounce && (
                 <div style={{ fontSize: 11, fontFamily: 'monospace', color: '#8C8272', marginTop: 4 }}>
                   คำอ่านสัทอักษร: {selected.pronounce}
                 </div>
               )}
-
+ 
               {/* Description box */}
               <div style={{ background: 'white', borderRadius: 14, padding: '12px 14px', border: '1px solid #EDE9E1', marginTop: 12, textAlign: 'left' }}>
                 <span style={{ fontSize: 9.5, color: '#A6882A', fontWeight: 800, display: 'block', marginBottom: 4, letterSpacing: '0.5px' }}>📋 คำอธิบายหน้าทีใช้อุปกรณ์</span>
                 <p style={{ fontSize: 12.5, color: '#4A4138', margin: 0, lineHeight: 1.6 }}>{selected.desc}</p>
               </div>
-
+ 
               {/* Example sentence box */}
               <div style={{ background: '#EAF3EE', borderRadius: 14, padding: '12px 14px', border: '1.5px solid rgba(30,77,58,0.08)', marginTop: 10, textAlign: 'left' }}>
                 <span style={{ fontSize: 9.5, color: '#1E4D3A', fontWeight: 800, display: 'block', marginBottom: 4, letterSpacing: '0.5px' }}>🗣️ ประโยคภาษาอังกฤษตัวอย่าง</span>
                 <p style={{ fontSize: 13, color: '#1E4D3A', fontWeight: 700, fontStyle: 'italic', margin: 0, lineHeight: 1.5 }}>"{selected.sentence}"</p>
               </div>
-
+ 
               <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
                 <Link 
                   href="/chat"
@@ -305,11 +363,12 @@ export default function AR3DPage() {
                   💬 สอบถามผู้ช่วย AI
                 </Link>
                 <button 
-                  onClick={() => alert('จำลองการสแกนกล้อง AR (Augmented Reality) คัดส่องผ่านกล้องถ่ายรูปจริงเสร็จสมบูรณ์!')}
+                  onClick={() => window.location.href = `/student/ar-view?id=${selected.id}`}
                   style={{
                     flex: 1, padding: '12px', borderRadius: 14, border: 'none',
                     background: 'linear-gradient(135deg, #102B1F, #1E4D3A)', color: 'white',
-                    fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-primary)'
+                    fontWeight: 800, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-primary)',
+                    textAlign: 'center'
                   }}
                 >
                   📱 ส่องกล้อง AR จริง

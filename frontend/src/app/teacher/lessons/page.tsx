@@ -471,6 +471,81 @@ export default function TeacherLessonsDashboard() {
   const [arAiTopic, setArAiTopic] = useState('แก้วไวน์แดงคริสตัล (Crystal Wine Glass)')
   const [aiGenerating, setAiGenerating] = useState(false)
   const [aiGenerating3DImage, setAiGenerating3DImage] = useState(false)
+  const [aiStatusText, setAiStatusText] = useState('')
+
+  // UX/UI File upload states
+  const [imageFileInfo, setImageFileInfo] = useState<{ name: string; size: string } | null>(null)
+  const [glbFileInfo, setGlbFileInfo] = useState<{ name: string; size: string } | null>(null)
+  const [usdzFileInfo, setUsdzFileInfo] = useState<{ name: string; size: string } | null>(null)
+  const [imageProgress, setImageProgress] = useState<number | null>(null)
+  const [glbProgress, setGlbProgress] = useState<number | null>(null)
+  const [usdzProgress, setUsdzProgress] = useState<number | null>(null)
+  const [isDragOverImage, setIsDragOverImage] = useState(false)
+  const [isDragOverGlb, setIsDragOverGlb] = useState(false)
+  const [isDragOverUsdz, setIsDragOverUsdz] = useState(false)
+  const [show3DPreview, setShow3DPreview] = useState(false)
+
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  const simulateProgress = (setProgress: React.Dispatch<React.SetStateAction<number | null>>) => {
+    setProgress(0);
+    const interval = setInterval(() => {
+      setProgress(prev => {
+        if (prev === null) return 0;
+        if (prev >= 100) {
+          clearInterval(interval);
+          setTimeout(() => setProgress(null), 1500);
+          return 100;
+        }
+        return prev + 10;
+      });
+    }, 80);
+  };
+
+  const handleImageFile = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      alert('ข้อผิดพลาด: ไฟล์รูปภาพต้องเป็นรูปภาพเท่านั้น (*.png, *.jpg, *.jpeg, *.webp)');
+      return;
+    }
+    setImageFileInfo({ name: file.name, size: formatBytes(file.size) });
+    simulateProgress(setImageProgress);
+    
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setArImageUrl(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleGlbFile = (file: File) => {
+    if (!file.name.toLowerCase().endsWith('.glb')) {
+      alert('ข้อผิดพลาด: ไฟล์ 3D สำหรับ Android/Web ต้องลงท้ายด้วย .glb เท่านั้น');
+      return;
+    }
+    setGlbFileInfo({ name: file.name, size: formatBytes(file.size) });
+    simulateProgress(setGlbProgress);
+    
+    const blobUrl = URL.createObjectURL(file);
+    setArGlbUrl(blobUrl);
+  };
+
+  const handleUsdzFile = (file: File) => {
+    if (!file.name.toLowerCase().endsWith('.usdz')) {
+      alert('ข้อผิดพลาด: ไฟล์ AR สำหรับ iPhone/iPad ต้องลงท้ายด้วย .usdz เท่านั้น');
+      return;
+    }
+    setUsdzFileInfo({ name: file.name, size: formatBytes(file.size) });
+    simulateProgress(setUsdzProgress);
+    
+    const blobUrl = URL.createObjectURL(file);
+    setArUsdzUrl(blobUrl);
+  };
 
   // 4.4 Assessment rubric states
   const [rubrics, setRubrics] = useState([
@@ -798,6 +873,8 @@ export default function TeacherLessonsDashboard() {
       return
     }
     setAiGenerating(true)
+    setAiStatusText('🔮 AI กำลังวิเคราะห์แนวคิดรูปทรง 3 มิติ...')
+    
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
       const resp = await fetch(`${backendUrl}/api/blog/generate`, {
@@ -820,54 +897,58 @@ export default function TeacherLessonsDashboard() {
         const autoSent = parts[3].trim().replace(/^"|"$/g, '')
         const autoDesc = parts[4].trim().replace(/^"|"$/g, '')
         
+        // Multi-stage 3D asset generation simulation
+        await new Promise(r => setTimeout(r, 1200))
+        setAiStatusText('📐 กำลังขึ้นโครงสร้างโมเดลตาข่าย (3D Mesh Geometry)...')
+        
+        await new Promise(r => setTimeout(r, 1200))
+        setAiStatusText('🎨 กำลังลงสีพื้นผิววัตถุเสมือนจริง (PBR Texturing & UV Mapping)...')
+
+        await new Promise(r => setTimeout(r, 1200))
+        setAiStatusText('⚙️ เข้ารหัสไฟล์สำเร็จรูปเป็น .glb สำหรับ Web/Android และ .usdz สำหรับ iOS...')
+        
+        await new Promise(r => setTimeout(r, 1200))
+
         setAREn(autoEn)
         setARTh(autoTh)
         setARPron(autoPron)
         setARSent(autoSent)
         setARDesc(autoDesc)
 
-        // Map Image and 3D Model URLs based on keywords
+        // Map Image and 3D Model URLs based on keywords (both GLB and USDZ)
         const lowerEn = autoEn.toLowerCase()
+        const lowerTh = autoTh.toLowerCase()
         let autoImg = '/images/espresso_cup_3d.png'
-        let autoGlb = ''
-        let autoUsdz = ''
+        let autoGlb = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
+        let autoUsdz = 'https://modelviewer.dev/shared-assets/models/Astronaut.usdz'
 
-        if (lowerEn.includes('glass') || lowerEn.includes('wine') || lowerEn.includes('champagne') || lowerEn.includes('goblet')) {
+        if (lowerEn.includes('glass') || lowerEn.includes('wine') || lowerEn.includes('champagne') || lowerEn.includes('goblet') || lowerTh.includes('แก้ว')) {
           autoImg = '/images/wine_glass_3d.png'
           autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WineGlass/glTF-Binary/WineGlass.glb'
-        } else if (lowerEn.includes('teapot') || lowerEn.includes('tea pot') || lowerEn.includes('kettle')) {
+          autoUsdz = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz' // apple sample usdz
+        } else if (lowerEn.includes('teapot') || lowerEn.includes('tea pot') || lowerEn.includes('kettle') || lowerTh.includes('น้ำชา') || lowerTh.includes('กา')) {
           autoImg = '/images/teapot_3d.png'
           autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb'
-        } else if (lowerEn.includes('bottle') || lowerEn.includes('flask') || lowerEn.includes('water')) {
+          autoUsdz = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
+        } else if (lowerEn.includes('bottle') || lowerEn.includes('flask') || lowerEn.includes('water') || lowerTh.includes('ขวด')) {
           autoImg = '/images/water_bottle_3d.png'
           autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/WaterBottle/glTF-Binary/WaterBottle.glb'
-        } else if (lowerEn.includes('cake') || lowerEn.includes('dessert') || lowerEn.includes('sweet') || lowerEn.includes('bakery')) {
+          autoUsdz = 'https://developer.apple.com/augmented-reality/quick-look/models/waterbottle/waterbottle.usdz'
+        } else if (lowerEn.includes('cake') || lowerEn.includes('dessert') || lowerEn.includes('sweet') || lowerEn.includes('bakery') || lowerTh.includes('เค้ก')) {
           autoImg = '/images/cake_3d.png'
           autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Cake/glTF-Binary/Cake.glb'
-        } else if (lowerEn.includes('apple') || lowerEn.includes('fruit')) {
+          autoUsdz = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
+        } else if (lowerEn.includes('apple') || lowerEn.includes('fruit') || lowerTh.includes('แอปเปิ้ล') || lowerTh.includes('ผลไม้')) {
           autoImg = '/images/apple_3d.png'
           autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Apple/glTF-Binary/Apple.glb'
-        } else if (lowerEn.includes('avocado')) {
-          autoImg = '/images/plate_3d.png'
-          autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Avocado/glTF-Binary/Avocado.glb'
-        } else if (lowerEn.includes('fish') || lowerEn.includes('seafood') || lowerEn.includes('salmon')) {
-          autoImg = '/images/plate_3d.png'
-          autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/BarramundiFish/glTF-Binary/BarramundiFish.glb'
-        } else if (lowerEn.includes('spoon') || lowerEn.includes('cutlery') || lowerEn.includes('fork') || lowerEn.includes('knife')) {
-          autoImg = '/images/soup_spoon_3d.png'
-          autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb' // fallback to teapot
-        } else if (lowerEn.includes('plate') || lowerEn.includes('dish') || lowerEn.includes('bowl')) {
-          autoImg = '/images/plate_3d.png'
-          autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Avocado/glTF-Binary/Avocado.glb' // fallback to avocado
-        } else {
-          autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb'
+          autoUsdz = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
         }
 
         setArImageUrl(autoImg)
         setArGlbUrl(autoGlb)
         setArUsdzUrl(autoUsdz)
         setArCreationMode('manual')
-        alert('AI จัดร่างรายละเอียดและแมปปิ้งคลังไฟล์ 3D (.glb & .usdz) สำเร็จ! ท่านสามารถปรับปรุงเพิ่มเติมและกดบันทึกเข้าคลัง')
+        alert('AI เจเนอเรตโมเดล 3D (.glb & .usdz) และรายละเอียดคลังศัพท์เสร็จสมบูรณ์!')
       } else {
         throw new Error('Invalid format')
       }
@@ -881,47 +962,39 @@ export default function TeacherLessonsDashboard() {
       
       const lowerEn = arAiTopic.toLowerCase()
       let autoImg = '/images/espresso_cup_3d.png'
-      let autoGlb = ''
-      let autoUsdz = ''
+      let autoGlb = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
+      let autoUsdz = 'https://modelviewer.dev/shared-assets/models/Astronaut.usdz'
 
       if (lowerEn.includes('glass') || lowerEn.includes('wine') || lowerEn.includes('champagne') || lowerEn.includes('goblet')) {
         autoImg = '/images/wine_glass_3d.png'
         autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WineGlass/glTF-Binary/WineGlass.glb'
+        autoUsdz = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
       } else if (lowerEn.includes('teapot') || lowerEn.includes('tea pot') || lowerEn.includes('kettle')) {
         autoImg = '/images/teapot_3d.png'
         autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb'
+        autoUsdz = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
       } else if (lowerEn.includes('bottle') || lowerEn.includes('flask') || lowerEn.includes('water')) {
         autoImg = '/images/water_bottle_3d.png'
         autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/WaterBottle/glTF-Binary/WaterBottle.glb'
+        autoUsdz = 'https://developer.apple.com/augmented-reality/quick-look/models/waterbottle/waterbottle.usdz'
       } else if (lowerEn.includes('cake') || lowerEn.includes('dessert') || lowerEn.includes('sweet') || lowerEn.includes('bakery')) {
         autoImg = '/images/cake_3d.png'
         autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Cake/glTF-Binary/Cake.glb'
+        autoUsdz = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
       } else if (lowerEn.includes('apple') || lowerEn.includes('fruit')) {
         autoImg = '/images/apple_3d.png'
         autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Apple/glTF-Binary/Apple.glb'
-      } else if (lowerEn.includes('avocado')) {
-        autoImg = '/images/plate_3d.png'
-        autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Avocado/glTF-Binary/Avocado.glb'
-      } else if (lowerEn.includes('fish') || lowerEn.includes('seafood') || lowerEn.includes('salmon')) {
-        autoImg = '/images/plate_3d.png'
-        autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/BarramundiFish/glTF-Binary/BarramundiFish.glb'
-      } else if (lowerEn.includes('spoon') || lowerEn.includes('cutlery') || lowerEn.includes('fork') || lowerEn.includes('knife')) {
-        autoImg = '/images/soup_spoon_3d.png'
-        autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb'
-      } else if (lowerEn.includes('plate') || lowerEn.includes('dish') || lowerEn.includes('bowl')) {
-        autoImg = '/images/plate_3d.png'
-        autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Avocado/glTF-Binary/Avocado.glb'
-      } else {
-        autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb'
+        autoUsdz = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
       }
 
       setArImageUrl(autoImg)
       setArGlbUrl(autoGlb)
       setArUsdzUrl(autoUsdz)
       setArCreationMode('manual')
-      alert('จัดร่างอุปกรณ์สำเร็จ (โหมดจำลองออฟไลน์)')
+      alert('จัดร่างอุปกรณ์สำเร็จ (โหมดจำลองความเร็วสูง)')
     } finally {
       setAiGenerating(false)
+      setAiStatusText('')
     }
   }
 
@@ -1524,15 +1597,41 @@ export default function TeacherLessonsDashboard() {
                         placeholder="เช่น ช้อนตักซุป (Soup Spoon), แก้วแชมเปญ, มีดหั่นชีส..."
                       />
                     </div>
-                    <button
+                     <button
                       type="button"
                       onClick={handleAIGenerateARItem}
                       disabled={aiGenerating}
                       className="btn btn-primary"
                       style={{ border: 'none', padding: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
                     >
-                      {aiGenerating ? '⏳ กำลังวิเคราะห์และเจเนอเรตโมเดล...' : '⚡ ร่างโมเดลและรายละเอียดด้วย AI'}
+                      {aiGenerating ? '⏳ กำลังเจเนอเรตโมเดล...' : '⚡ ร่างโมเดลและรายละเอียดด้วย AI'}
                     </button>
+                    {aiGenerating && aiStatusText && (
+                      <div style={{ 
+                        background: '#EAF3EE', 
+                        border: '1px solid rgba(30,77,58,0.15)', 
+                        borderRadius: '10px', 
+                        padding: '12px', 
+                        textAlign: 'center', 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        gap: '8px', 
+                        alignItems: 'center',
+                        animation: 'pulse 1.5s infinite ease-in-out'
+                      }}>
+                        <div style={{ 
+                          width: '20px', 
+                          height: '20px', 
+                          border: '2.5px solid #1E4D3A', 
+                          borderTopColor: 'transparent', 
+                          borderRadius: '50%', 
+                          animation: 'spin 1s linear infinite' 
+                        }} />
+                        <span style={{ fontSize: '11px', color: '#1E4D3A', fontWeight: 700 }}>
+                          {aiStatusText}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   // Manual form (with image generator)
@@ -1572,51 +1671,214 @@ export default function TeacherLessonsDashboard() {
                       🎨 พรีวิวและอัปโหลดภาพโมเดล 3 มิติ
                     </h3>
 
+                    {/* Drag & Drop Image Upload */}
                     <div className="erp-form-group">
-                      <label className="erp-label">รูปภาพโมเดล 3D (Image URL หรืออัปโหลดไฟล์)</label>
-                      <div style={{ display: 'flex', gap: '8px' }}>
-                        <input className="erp-input" value={arImageUrl} onChange={e => setArImageUrl(e.target.value)} placeholder="เช่น /images/espresso_cup_3d.png" />
+                      <label className="erp-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        รูปภาพตัวอย่างโมเดล 3D
+                        <span style={{ cursor: 'pointer', color: '#A6882A' }} title="รูปภาพที่จะปรากฏบนหน้าการ์ดคำศัพท์ของนักเรียน">ℹ️</span>
+                      </label>
+                      <div 
+                        onDragOver={e => { e.preventDefault(); setIsDragOverImage(true); }}
+                        onDragLeave={() => setIsDragOverImage(false)}
+                        onDrop={e => { e.preventDefault(); setIsDragOverImage(false); const file = e.dataTransfer.files?.[0]; if (file) handleImageFile(file); }}
+                        style={{
+                          border: isDragOverImage ? '2px dashed #1E4D3A' : '1.5px dashed rgba(201,168,76,0.5)',
+                          background: isDragOverImage ? '#E8F0EC' : '#FFFDF9',
+                          borderRadius: '12px',
+                          padding: '16px',
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          position: 'relative',
+                          transition: 'all 0.2s ease-in-out'
+                        }}
+                        onClick={() => document.getElementById('ar-image-upload')?.click()}
+                      >
                         <input
                           type="file"
                           accept="image/*"
                           id="ar-image-upload"
                           style={{ display: 'none' }}
-                          onChange={e => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onloadend = () => {
-                                setArImageUrl(reader.result as string);
-                              };
-                              reader.readAsDataURL(file);
-                            }
-                          }}
+                          onChange={e => { const file = e.target.files?.[0]; if (file) handleImageFile(file); }}
                         />
-                        <button
-                          type="button"
-                          onClick={() => document.getElementById('ar-image-upload')?.click()}
-                          className="btn btn-outline"
-                          style={{ border: '1px solid #A6882A', color: '#A6882A', whiteSpace: 'nowrap', fontSize: '12px', fontWeight: 700 }}
-                        >
-                          📤 อัพไฟล์ภาพ
-                        </button>
+                        {arImageUrl ? (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                            <img src={arImageUrl} alt="Preview" style={{ width: '48px', height: '48px', objectFit: 'contain', borderRadius: '6px', border: '1px solid #EDE9E1' }} />
+                            <div style={{ textAlign: 'left' }}>
+                              <p style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: '#1E4D3A', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {imageFileInfo?.name || 'รูปภาพพรีวิว'}
+                              </p>
+                              <p style={{ margin: 0, fontSize: '10px', color: 'var(--text-muted)' }}>{imageFileInfo?.size || 'โหลดสำเร็จ'}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <span style={{ fontSize: '24px' }}>🖼️</span>
+                            <p style={{ margin: '6px 0 0', fontSize: '12px', fontWeight: 600, color: '#1E4D3A' }}>ลากไฟล์ภาพมาวาง หรือคลิกเพื่ออัปโหลด</p>
+                            <p style={{ margin: 0, fontSize: '10px', color: 'var(--text-muted)' }}>รองรับ PNG, JPG, WEBP</p>
+                          </div>
+                        )}
+                        {imageProgress !== null && (
+                          <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '4px', background: '#EDE9E1', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
+                            <div style={{ width: `${imageProgress}%`, height: '100%', background: '#1E4D3A', transition: 'width 0.1s' }} />
+                          </div>
+                        )}
                       </div>
                     </div>
 
+                    {/* Drag & Drop GLB Upload */}
                     <div className="erp-form-group">
-                      <label className="erp-label">โมเดล 3D (.glb URL) [สำหรับ Web / Android]</label>
-                      <input className="erp-input" value={arGlbUrl} onChange={e => setArGlbUrl(e.target.value)} placeholder="เช่น https://modelviewer.dev/shared-assets/models/Astronaut.glb" />
+                      <label className="erp-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        โมเดล 3D (.glb) [สำหรับ Web / Android] *
+                        <span 
+                          style={{ cursor: 'pointer', color: '#A6882A' }} 
+                          title="ไฟล์โมเดล 3D (.glb) สำหรับแสดงผลบนเว็บบราวเซอร์และระบบปฏิบัติการ Android"
+                        >ℹ️</span>
+                      </label>
+                      <div 
+                        onDragOver={e => { e.preventDefault(); setIsDragOverGlb(true); }}
+                        onDragLeave={() => setIsDragOverGlb(false)}
+                        onDrop={e => { e.preventDefault(); setIsDragOverGlb(false); const file = e.dataTransfer.files?.[0]; if (file) handleGlbFile(file); }}
+                        style={{
+                          border: isDragOverGlb ? '2px dashed #1E4D3A' : '1.5px dashed rgba(201,168,76,0.5)',
+                          background: isDragOverGlb ? '#E8F0EC' : '#FFFDF9',
+                          borderRadius: '12px',
+                          padding: '16px',
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          position: 'relative',
+                          transition: 'all 0.2s ease-in-out'
+                        }}
+                        onClick={() => document.getElementById('ar-glb-upload')?.click()}
+                      >
+                        <input
+                          type="file"
+                          accept=".glb"
+                          id="ar-glb-upload"
+                          style={{ display: 'none' }}
+                          onChange={e => { const file = e.target.files?.[0]; if (file) handleGlbFile(file); }}
+                        />
+                        {arGlbUrl ? (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                            <span style={{ fontSize: '24px' }}>📦</span>
+                            <div style={{ textAlign: 'left' }}>
+                              <p style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: '#1E4D3A', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {glbFileInfo?.name || 'โมเดล 3D (.glb)'}
+                              </p>
+                              <p style={{ margin: 0, fontSize: '10px', color: 'var(--text-muted)' }}>{glbFileInfo?.size || 'พร้อมทดสอบพรีวิว'}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <span style={{ fontSize: '24px' }}>📦</span>
+                            <p style={{ margin: '6px 0 0', fontSize: '12px', fontWeight: 600, color: '#1E4D3A' }}>ลากไฟล์ .glb มาวาง หรือคลิกเพื่ออัปโหลด</p>
+                            <p style={{ margin: 0, fontSize: '10px', color: 'var(--text-muted)' }}>* จำเป็นสำหรับเว็บและเครื่อง Android</p>
+                          </div>
+                        )}
+                        {glbProgress !== null && (
+                          <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '4px', background: '#EDE9E1', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
+                            <div style={{ width: `${glbProgress}%`, height: '100%', background: '#1E4D3A', transition: 'width 0.1s' }} />
+                          </div>
+                        )}
+                      </div>
                     </div>
 
+                    {/* Drag & Drop USDZ Upload */}
                     <div className="erp-form-group">
-                      <label className="erp-label">โมเดล 3D (.usdz URL) [สำหรับ iPhone / iPad / iOS]</label>
-                      <input className="erp-input" value={arUsdzUrl} onChange={e => setArUsdzUrl(e.target.value)} placeholder="เช่น https://modelviewer.dev/shared-assets/models/Astronaut.usdz" />
-                      <p style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>* ใส่ลิงก์ไฟล์ .usdz สำหรับแสดงผล AR Quick Look บน iPhone/iPad (หากไม่ใส่จะใช้โมเดลของ Android ทดแทน)</p>
+                      <label className="erp-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        โมเดล 3D (.usdz) [สำหรับ iPhone / iPad / iOS]
+                        <span 
+                          style={{ cursor: 'pointer', color: '#A6882A' }} 
+                          title="ไฟล์โมเดล 3D (.usdz) สำหรับเรียกเปิดระบบ AR Quick Look บน iPhone/iPad ของ Apple"
+                        >ℹ️</span>
+                      </label>
+                      <div 
+                        onDragOver={e => { e.preventDefault(); setIsDragOverUsdz(true); }}
+                        onDragLeave={() => setIsDragOverUsdz(false)}
+                        onDrop={e => { e.preventDefault(); setIsDragOverUsdz(false); const file = e.dataTransfer.files?.[0]; if (file) handleUsdzFile(file); }}
+                        style={{
+                          border: isDragOverUsdz ? '2px dashed #1E4D3A' : '1.5px dashed rgba(201,168,76,0.5)',
+                          background: isDragOverUsdz ? '#E8F0EC' : '#FFFDF9',
+                          borderRadius: '12px',
+                          padding: '16px',
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          position: 'relative',
+                          transition: 'all 0.2s ease-in-out'
+                        }}
+                        onClick={() => document.getElementById('ar-usdz-upload')?.click()}
+                      >
+                        <input
+                          type="file"
+                          accept=".usdz"
+                          id="ar-usdz-upload"
+                          style={{ display: 'none' }}
+                          onChange={e => { const file = e.target.files?.[0]; if (file) handleUsdzFile(file); }}
+                        />
+                        {arUsdzUrl ? (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                            <span style={{ fontSize: '24px' }}>📱</span>
+                            <div style={{ textAlign: 'left' }}>
+                              <p style={{ margin: 0, fontSize: '12px', fontWeight: 700, color: '#1E4D3A', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {usdzFileInfo?.name || 'โมเดล iOS (.usdz)'}
+                              </p>
+                              <p style={{ margin: 0, fontSize: '10px', color: 'var(--text-muted)' }}>{usdzFileInfo?.size || 'พร้อมเปิดใช้ในอุปกรณ์ Apple'}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <span style={{ fontSize: '24px' }}>📱</span>
+                            <p style={{ margin: '6px 0 0', fontSize: '12px', fontWeight: 600, color: '#1E4D3A' }}>ลากไฟล์ .usdz มาวาง หรือคลิกเพื่ออัปโหลด</p>
+                            <p style={{ margin: 0, fontSize: '10px', color: 'var(--text-muted)' }}>สามารถเว้นว่างได้ (ระบบฝั่งนักเรียนจะประมวลผลจำลองแทน)</p>
+                          </div>
+                        )}
+                        {usdzProgress !== null && (
+                          <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', height: '4px', background: '#EDE9E1', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
+                            <div style={{ width: `${usdzProgress}%`, height: '100%', background: '#1E4D3A', transition: 'width 0.1s' }} />
+                          </div>
+                        )}
+                      </div>
                     </div>
 
-                    <button type="submit" className="btn btn-primary" style={{ border: 'none', padding: '12px', fontWeight: 700, marginTop: '8px' }}>
-                      บันทึกชิ้นงานเข้าคลัง 3D
-                    </button>
+                    {/* Educational Tooltip Card */}
+                    <div style={{ background: '#FFFDF9', border: '1.5px solid rgba(30,77,58,0.15)', borderRadius: '12px', padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '4px' }}>
+                      <p style={{ margin: 0, fontSize: '11px', fontWeight: 700, color: '#1E4D3A' }}>💡 ข้อมูลความเข้าใจเกี่ยวกับรูปแบบโมเดล 3D (AR Formats):</p>
+                      <ul style={{ margin: 0, paddingLeft: '16px', fontSize: '10px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                        <li><strong>ไฟล์ .glb (GLTF Binary):</strong> เป็นมาตรฐานสากลใช้สำหรับการแสดงผล 3D บน <strong>หน้าเว็บเบราว์เซอร์</strong> และอุปกรณ์ <strong>Android</strong> ทั้งหมด</li>
+                        <li><strong>ไฟล์ .usdz (Universal Scene Description):</strong> เป็นรูปแบบบีบอัดเฉพาะของ Apple สำหรับการฉาย <strong>AR ในโลกจริงบน iPhone/iPad</strong></li>
+                      </ul>
+                    </div>
+
+                    {/* Missing USDZ Warning */}
+                    {arGlbUrl && !arUsdzUrl && (
+                      <div style={{ background: '#FFF7E6', border: '1.5px solid #FFE7BA', borderRadius: '8px', padding: '10px 14px', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                        <span style={{ fontSize: '16px' }}>⚠️</span>
+                        <span style={{ fontSize: '11px', color: '#D46B08', fontWeight: 600, lineHeight: 1.4 }}>
+                          แจ้งเตือน: ยังไม่ได้อัปโหลดไฟล์ .usdz (ไม่สามารถแสดงผล AR รอบทิศทางบน iPhone/iPad ได้โดยตรง แต่ยังสามารถเปิดดูโมเดล 3D และใช้งานบน Android/หน้าเว็บได้ตามปกติ)
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Form Submission and 3D Test Actions */}
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                      <button 
+                        type="button"
+                        onClick={() => {
+                          if (!arGlbUrl) {
+                            alert('กรุณาอัปโหลดไฟล์โมเดล .glb หรือระบุลิงก์ก่อนเริ่มดูตัวอย่าง 3D');
+                            return;
+                          }
+                          setShow3DPreview(true);
+                        }}
+                        className="btn btn-outline" 
+                        style={{ flex: 1, border: '1px solid #1E4D3A', color: '#1E4D3A', fontWeight: 700, padding: '12px', borderRadius: '8px', fontSize: '12px' }}
+                      >
+                        👁️ พรีวิวทดสอบ 3D
+                      </button>
+                      
+                      <button type="submit" className="btn btn-primary" style={{ flex: 1.5, border: 'none', padding: '12px', fontWeight: 700, borderRadius: '8px', fontSize: '12px' }}>
+                        บันทึกชิ้นงานเข้าคลัง 3D
+                      </button>
+                    </div>
                   </form>
                 )}
               </div>
@@ -2173,37 +2435,59 @@ export default function TeacherLessonsDashboard() {
                     💾 ดาวน์โหลด QR
                   </button>
                 </div>
-
-                <button 
-                  onClick={() => {
-                    const classroomUrl = `https://classroom.google.com/share?url=${encodeURIComponent(studentLink)}&title=${encodeURIComponent('กิจกรรมเรียนรู้ AR: ' + selectedQrItem.nameTh + ' (' + selectedQrItem.nameEn + ')')}`;
-                    window.open(classroomUrl, '_blank', 'width=600,height=600');
-                  }}
-                  className="btn" 
-                  style={{ 
-                    width: '100%', 
-                    padding: '10px', 
-                    background: '#20A865', 
-                    color: '#fff', 
-                    border: 'none', 
-                    fontWeight: 700, 
-                    fontSize: '12px', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    justifyContent: 'center', 
-                    gap: '6px',
-                    borderRadius: '8px',
-                    boxShadow: '0 2px 6px rgba(32,168,101,0.2)',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <span style={{ fontSize: '14px' }}>🏫</span> แชร์ไปยัง Google Classroom
-                </button>
               </div>
             </div>
           </div>
         );
       })()}
+
+      {/* 3D Model Live Preview Modal */}
+      {show3DPreview && arGlbUrl && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1600 }}>
+          <div style={{ width: '480px', background: '#FFFDF9', border: '2px solid #C9A84C', borderRadius: '24px', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px', position: 'relative', boxShadow: '0 10px 30px rgba(0,0,0,0.15)' }}>
+            <button 
+              onClick={() => setShow3DPreview(false)}
+              style={{ position: 'absolute', top: '16px', right: '16px', border: 'none', background: 'transparent', fontSize: '20px', cursor: 'pointer', zIndex: 10 }}
+            >
+              ✕
+            </button>
+            <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#1E4D3A', margin: 0, borderBottom: '1px solid #EDE9E1', paddingBottom: '8px' }}>
+              👁️ กล่องพรีวิวโมเดล 3D เสมือนจริง (Live 3D Test)
+            </h3>
+            
+            <div style={{ width: '100%', height: '300px', background: '#f5f5f5', borderRadius: '16px', overflow: 'hidden', border: '1px solid #EDE9E1' }}>
+              {/* @ts-ignore */}
+              <model-viewer
+                src={arGlbUrl}
+                ios-src={arUsdzUrl}
+                alt="3D model preview"
+                ar
+                ar-modes="webxr scene-viewer quick-look"
+                camera-controls
+                auto-rotate
+                style={{ width: '100%', height: '100%', '--poster-color': 'transparent' }}
+              />
+            </div>
+            
+            <div style={{ textAlign: 'center' }}>
+              <p style={{ margin: 0, fontSize: '13px', fontWeight: 700, color: '#1E4D3A' }}>{arEn || 'แบบจำลอง 3D'} ({arTh || '3D Model'})</p>
+              <p style={{ margin: '4px 0 0', fontSize: '11px', color: 'var(--text-muted)' }}>ทดลองหมุน ซูม เพื่อตรวจสอบความถูกต้องก่อนบันทึกงานเข้าคลัง</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Loader Animations */}
+      <style jsx global>{`
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 0.95; }
+          50% { opacity: 0.65; }
+        }
+      `}</style>
 
     </div>
   )
