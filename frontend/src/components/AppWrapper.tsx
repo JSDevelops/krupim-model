@@ -105,7 +105,7 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
       { href: '/admin/settings', icon: '⚙️', label: 'ตั้งค่าระบบ' },
     ] : [
       { href: '/teacher/dashboard', icon: '🏫', label: 'Dashboard' },
-      { href: '/teacher/lessons', icon: '📖', label: 'แผนการสอน FINE' },
+      { href: '/teacher/lessons', icon: '📖', label: 'แผนการสอน FINE MODEL' },
       { 
         href: '/teacher/classes', 
         icon: '🏫', 

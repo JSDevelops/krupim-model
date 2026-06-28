@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRole } from '@/context/RoleContext'
 
 interface LessonPlan {
   id: string
@@ -24,6 +25,8 @@ interface LessonPlan {
   activitiesN: string
   activitiesE: string
   activitiesWrap: string
+  teacherName?: string
+  teacherEmail?: string
 }
 
 const fallbackPlans: LessonPlan[] = [
@@ -79,24 +82,39 @@ const fallbackPlans: LessonPlan[] = [
 export default function StudentLearnPage() {
   const [plans, setPlans] = useState<LessonPlan[]>([])
   const [expandedPlanId, setExpandedPlanId] = useState<string | null>(null)
+  const { user } = useRole()
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('lessonPlans')
+      let list: LessonPlan[] = []
       if (stored) {
         try {
-          const list = JSON.parse(stored)
-          if (Array.isArray(list) && list.length > 0) {
-            setPlans(list)
-            setExpandedPlanId(list[0].id)
-            return
-          }
+          list = JSON.parse(stored)
         } catch (e) {}
       }
-      setPlans(fallbackPlans)
-      setExpandedPlanId(fallbackPlans[0].id)
+      
+      if (!list || list.length === 0) {
+        list = fallbackPlans
+      }
+
+      // Filter: only show plans matching the student's registered teacher
+      // If student registered via invitation link, user.teacherName holds the teacher
+      const studentTeacher = user?.teacherName || 'ครูสมหญิง รักเรียน'
+
+      const filtered = list.filter(p => {
+        const planTeacher = p.teacherName || 'ครูสมหญิง รักเรียน'
+        return planTeacher.trim().toLowerCase() === studentTeacher.trim().toLowerCase()
+      })
+
+      setPlans(filtered)
+      if (filtered.length > 0) {
+        setExpandedPlanId(filtered[0].id)
+      } else {
+        setExpandedPlanId(null)
+      }
     }
-  }, [])
+  }, [user])
 
   function togglePlan(id: string) {
     setExpandedPlanId(prev => (prev === id ? null : id))

@@ -25,6 +25,8 @@ interface LessonPlan {
   activitiesN: string
   activitiesE: string
   activitiesWrap: string
+  teacherName?: string
+  teacherEmail?: string
 }
 
 interface AIScenario {
@@ -108,7 +110,9 @@ const initialPlans: LessonPlan[] = [
     activitiesI: 'ฝึกออกเสียงคำศัพท์และแต่งประโยคระบุหน้าที่ผ่านระบบ Gemini และ Gemini Live และจัดกิจกรรมคู่หู (Pair Work) ถามตอบชิ้นอุปกรณ์',
     activitiesN: 'ทำกิจกรรมกลุ่ม "Restaurant Table Setup Challenge" แข่งจัดโต๊ะอาหารแบบเป็นทางการ (Formal Western) ตามหลัก Outside-In',
     activitiesE: 'ตัวแทนกลุ่มนำเสนอผลงานจัดโต๊ะเป็นภาษาอังกฤษ, ทำแบบทดสอบศัพท์ในห้องเรียนออนไลน์ (Quiz), ประเมินรายบุคคล',
-    activitiesWrap: 'ครูและผู้เรียนสรุปหลักการร่วมกันเกี่ยวกับการจัดอุปกรณ์ และทำ Exit Ticket สรุปคำศัพท์ 5 คำก่อนออกจากห้องเรียน'
+    activitiesWrap: 'ครูและผู้เรียนสรุปหลักการร่วมกันเกี่ยวกับการจัดอุปกรณ์ และทำ Exit Ticket สรุปคำศัพท์ 5 คำก่อนออกจากห้องเรียน',
+    teacherName: 'ครูสมหญิง รักเรียน',
+    teacherEmail: 'teacher@school.ac.th'
   }
 ]
 
@@ -444,7 +448,9 @@ export default function TeacherLessonsDashboard() {
         activitiesI: pInteract,
         activitiesN: pNavigate,
         activitiesE: pExhibit,
-        activitiesWrap: pWrap
+        activitiesWrap: pWrap,
+        teacherName: p.teacherName || user?.name || 'ครูสมหญิง รักเรียน',
+        teacherEmail: p.teacherEmail || user?.email || 'teacher@school.ac.th'
       } : p))
       alert('แก้ไขแผนการจัดการเรียนรู้รายสัปดาห์เรียบร้อย!')
     } else {
@@ -470,7 +476,9 @@ export default function TeacherLessonsDashboard() {
         activitiesI: pInteract || 'กิจกรรม Interact (AI)',
         activitiesN: pNavigate || 'กิจกรรม Navigate (Simulation)',
         activitiesE: pExhibit || 'กิจกรรม Exhibit (Rubric)',
-        activitiesWrap: pWrap || 'ขั้นสรุปการเรียนรู้'
+        activitiesWrap: pWrap || 'ขั้นสรุปการเรียนรู้',
+        teacherName: user?.name || 'ครูสมหญิง รักเรียน',
+        teacherEmail: user?.email || 'teacher@school.ac.th'
       }
       setPlans(prev => [newPlan, ...prev])
       alert('สร้างแผนการจัดการเรียนรู้รายสัปดาห์สำเร็จ!')
@@ -804,7 +812,7 @@ export default function TeacherLessonsDashboard() {
             <div className="erp-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <span style={{ fontSize: '11px', color: '#C9A84C', fontWeight: 650, letterSpacing: '1px' }}>WEEKLY SYLLABUS BUILDER</span>
-                <h2 style={{ fontSize: '18px', fontWeight: 700, marginTop: '2px', color: '#1E4D3A' }}>ออกแบบแผนการสอน FINE Model</h2>
+                <h2 style={{ fontSize: '18px', fontWeight: 700, marginTop: '2px', color: '#1E4D3A' }}>ออกแบบแผนการสอน FINE MODEL</h2>
               </div>
               <button onClick={handleOpenPlanCreate} className="btn btn-primary" style={{ border: 'none', padding: '10px 18px' }}>
                 ➕ สร้างแผนรายสัปดาห์ใหม่

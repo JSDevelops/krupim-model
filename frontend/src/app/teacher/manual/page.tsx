@@ -5,7 +5,7 @@ export default function TeacherManualPage() {
   const [activeTopic, setActiveTopic] = useState('lessons')
 
   const topics = [
-    { id: 'lessons', label: 'แผนการสอน FINE', emoji: '📖' },
+    { id: 'lessons', label: 'แผนการสอน FINE MODEL', emoji: '📖' },
     { id: 'ar3d', label: 'คลังอุปกรณ์ AR & 3D', emoji: '🎨' },
     { id: 'scenario', label: 'สถานการณ์จำลอง AI', emoji: '⚡' },
     { id: 'assignments', label: 'งานและกิจกรรม', emoji: '📋' },

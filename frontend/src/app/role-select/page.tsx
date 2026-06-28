@@ -21,7 +21,7 @@ const roles = [
     label: 'ครูผู้สอน', labelEn: 'Teacher / Instructor', emoji: '👩‍🏫',
     subtitle: 'ผู้บริหารการสอนและการประเมินผล',
     description: 'จัดทำแผนการสอน รายงานผลสมรรถนะ มอบหมายกิจกรรม และจัดการทะเบียนเด็ก',
-    features: ['📖 แผนการสอน FINE', '⚡ AI Scenario จำลองโจทย์', '📋 สั่งงานและประเมิน Rubrics', '👥 ทะเบียนและออกประกาศ PDF'],
+    features: ['📖 แผนการสอน FINE MODEL', '⚡ AI Scenario จำลองโจทย์', '📋 สั่งงานและประเมิน Rubrics', '👥 ทะเบียนและออกประกาศ PDF'],
     gradient: 'linear-gradient(135deg, #4A3010 0%, #2E1D0A 100%)',
     color: '#4A3010', bg: '#FBF6E9', border: '#F0E0A8',
     path: '/teacher/dashboard',

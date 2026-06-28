@@ -10,6 +10,8 @@ export interface UserInfo {
   avatar?: string
   school?: string
   email?: string
+  teacherName?: string
+  enrolledClass?: string
 }
 
 interface RoleContextType {
