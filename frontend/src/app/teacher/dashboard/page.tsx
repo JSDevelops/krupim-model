@@ -380,38 +380,39 @@ export default function TeacherDashboard() {
                 <table className="erp-table">
                   <thead>
                     <tr>
-                      <th>นักเรียน</th>
-                      <th>ห้องเรียน</th>
+                      <th style={{ whiteSpace: 'nowrap' }}>นักเรียน</th>
+                      <th style={{ whiteSpace: 'nowrap' }}>ห้องเรียน</th>
                       <th>ประเภทกิจกรรม (FINE)</th>
-                      <th>ส่งเมื่อ</th>
-                      <th style={{ textAlign: 'center' }}>ประเมิน</th>
+                      <th style={{ whiteSpace: 'nowrap' }}>ส่งเมื่อ</th>
+                      <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>คะแนน</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredPending.map(g => (
                       <tr key={g.id}>
-                        <td style={{ fontWeight: 750, color: '#333' }}>
+                        <td style={{ fontWeight: 750, color: '#333', whiteSpace: 'nowrap' }}>
                           <span style={{ marginRight: '6px' }}>{g.avatar}</span> {g.studentName}
                         </td>
-                        <td>{g.class}</td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{g.class}</td>
                         <td>
                           <span className="badge" style={{
                             background: g.type === 'Familiarize' ? '#EAF3EE' : g.type === 'Interact' ? '#FBF6E9' : '#FDFAF4',
                             color: g.type === 'Familiarize' ? '#1E4D3A' : g.type === 'Interact' ? '#A6882A' : '#C9A84C',
-                            fontSize: '10.5px', fontWeight: 750, border: '1px solid rgba(201,168,76,0.15)'
+                            fontSize: '10.5px', fontWeight: 750, border: '1px solid rgba(201,168,76,0.15)',
+                            whiteSpace: 'nowrap'
                           }}>
                             {g.type}
                           </span>
                           <span style={{ marginLeft: '6px', fontSize: '12.5px', color: '#4A4138' }}>{g.taskName}</span>
                         </td>
-                        <td style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{g.submittedAt}</td>
+                        <td style={{ color: 'var(--text-muted)', fontSize: '12px', whiteSpace: 'nowrap' }}>{g.submittedAt}</td>
                         <td style={{ textAlign: 'center' }}>
                           <button
                             onClick={() => openGradingModal(g)}
                             className="btn btn-primary btn-sm"
-                            style={{ padding: '6px 12px', fontSize: '12px', border: 'none', borderRadius: '8px', color: 'white', background: '#1E4D3A', fontWeight: 700 }}
+                            style={{ padding: '8px 16px', fontSize: '12px', border: 'none', borderRadius: '8px', color: 'white', background: '#1E4D3A', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
                           >
-                            กรอกรูบริค
+                            คะแนน
                           </button>
                         </td>
                       </tr>
