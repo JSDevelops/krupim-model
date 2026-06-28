@@ -2104,72 +2104,100 @@ export default function TeacherLessonsDashboard() {
               </div>
 
               {/* Control Buttons */}
-              <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', marginTop: '4px' }}>
+                <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(studentLink);
+                      alert('คัดลอกลิงก์การ์ด AR สำหรับนักเรียนเรียบร้อยแล้ว!');
+                    }}
+                    className="btn btn-outline" 
+                    style={{ flex: 1, padding: '10px', borderColor: '#1E4D3A', color: '#1E4D3A', fontWeight: 700, fontSize: '12px' }}
+                  >
+                    🔗 คัดลอกลิงก์
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const printContent = document.getElementById('printable-qr-card')?.innerHTML;
+                      if (!printContent) return;
+                      const win = window.open('', '_blank');
+                      if (win) {
+                        win.document.write(`
+                          <html>
+                            <head>
+                              <title>Print QR - ${selectedQrItem.nameEn}</title>
+                              <style>
+                                body { font-family: 'Kanit', sans-serif; display: flex; align-items: center; justify-content: center; height: 95vh; margin: 0; }
+                                #card { border: 3px solid #C9A84C; border-radius: 20px; padding: 40px 30px; text-align: center; max-width: 320px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+                                span.badge { background: #102B1F; color: #C9A84C; font-size: 10px; font-weight: bold; padding: 6px 16px; border-radius: 100px; text-transform: uppercase; letter-spacing: 1px; }
+                                h2 { color: #1E4D3A; margin: 15px 0 5px; font-size: 22px; }
+                                h3 { color: #A6882A; margin: 0 0 15px; font-size: 15px; }
+                                img { width: 220px; height: 220px; border: 1px solid #eee; padding: 10px; border-radius: 12px; }
+                                p { font-size: 11px; color: #666; margin-top: 15px; line-height: 1.4; }
+                              </style>
+                            </head>
+                            <body>
+                              <div id="card">
+                                <span class="badge">FINE MODE AR LEARNING</span>
+                                <h2>${selectedQrItem.nameEn}</h2>
+                                <h3>${selectedQrItem.nameTh}</h3>
+                                <img src="${qrApiUrl}" />
+                                <p>สแกนเพื่อเปิดแบบจำลอง 3D และทดลองใช้เครื่องมือในวิชาโรงแรมสากล</p>
+                              </div>
+                              <script>
+                                window.onload = function() { window.print(); window.close(); }
+                              </script>
+                            </body>
+                          </html>
+                        `);
+                        win.document.close();
+                      }
+                    }} 
+                    className="btn btn-outline" 
+                    style={{ flex: 1, padding: '10px', borderColor: '#C9A84C', color: '#A6882A', fontWeight: 700, fontSize: '12px' }}
+                  >
+                    🖨️ พิมพ์การ์ด
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const link = document.createElement("a");
+                      link.href = qrApiUrl;
+                      link.download = `QR_${selectedQrItem.nameEn.replace(/\s+/g, '_')}.png`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                    className="btn btn-primary" 
+                    style={{ flex: 1, padding: '10px', border: 'none', fontWeight: 700, fontSize: '12px' }}
+                  >
+                    💾 ดาวน์โหลด QR
+                  </button>
+                </div>
+
                 <button 
                   onClick={() => {
-                    navigator.clipboard.writeText(studentLink);
-                    alert('คัดลอกลิงก์การ์ด AR สำหรับนักเรียนเรียบร้อยแล้ว!');
+                    const classroomUrl = `https://classroom.google.com/share?url=${encodeURIComponent(studentLink)}&title=${encodeURIComponent('กิจกรรมเรียนรู้ AR: ' + selectedQrItem.nameTh + ' (' + selectedQrItem.nameEn + ')')}`;
+                    window.open(classroomUrl, '_blank', 'width=600,height=600');
                   }}
-                  className="btn btn-outline" 
-                  style={{ padding: '10px', borderColor: '#1E4D3A', color: '#1E4D3A', fontWeight: 700, fontSize: '12px' }}
-                >
-                  🔗 คัดลอกลิงก์
-                </button>
-                <button 
-                  onClick={() => {
-                    const printContent = document.getElementById('printable-qr-card')?.innerHTML;
-                    if (!printContent) return;
-                    const win = window.open('', '_blank');
-                    if (win) {
-                      win.document.write(`
-                        <html>
-                          <head>
-                            <title>Print QR - ${selectedQrItem.nameEn}</title>
-                            <style>
-                              body { font-family: 'Kanit', sans-serif; display: flex; align-items: center; justify-content: center; height: 95vh; margin: 0; }
-                              #card { border: 3px solid #C9A84C; border-radius: 20px; padding: 40px 30px; text-align: center; max-width: 320px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
-                              span.badge { background: #102B1F; color: #C9A84C; font-size: 10px; font-weight: bold; padding: 6px 16px; border-radius: 100px; text-transform: uppercase; letter-spacing: 1px; }
-                              h2 { color: #1E4D3A; margin: 15px 0 5px; font-size: 22px; }
-                              h3 { color: #A6882A; margin: 0 0 15px; font-size: 15px; }
-                              img { width: 220px; height: 220px; border: 1px solid #eee; padding: 10px; border-radius: 12px; }
-                              p { font-size: 11px; color: #666; margin-top: 15px; line-height: 1.4; }
-                            </style>
-                          </head>
-                          <body>
-                            <div id="card">
-                              <span class="badge">FINE MODE AR LEARNING</span>
-                              <h2>${selectedQrItem.nameEn}</h2>
-                              <h3>${selectedQrItem.nameTh}</h3>
-                              <img src="${qrApiUrl}" />
-                              <p>สแกนเพื่อเปิดแบบจำลอง 3D และทดลองใช้เครื่องมือในวิชาโรงแรมสากล</p>
-                            </div>
-                            <script>
-                              window.onload = function() { window.print(); window.close(); }
-                            </script>
-                          </body>
-                        </html>
-                      `);
-                      win.document.close();
-                    }
-                  }} 
-                  className="btn btn-outline" 
-                  style={{ padding: '10px', borderColor: '#C9A84C', color: '#A6882A', fontWeight: 700, fontSize: '12px' }}
-                >
-                  🖨️ พิมพ์การ์ด
-                </button>
-                <button 
-                  onClick={() => {
-                    const link = document.createElement("a");
-                    link.href = qrApiUrl;
-                    link.download = `QR_${selectedQrItem.nameEn.replace(/\s+/g, '_')}.png`;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
+                  className="btn" 
+                  style={{ 
+                    width: '100%', 
+                    padding: '10px', 
+                    background: '#20A865', 
+                    color: '#fff', 
+                    border: 'none', 
+                    fontWeight: 700, 
+                    fontSize: '12px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center', 
+                    gap: '6px',
+                    borderRadius: '8px',
+                    boxShadow: '0 2px 6px rgba(32,168,101,0.2)',
+                    cursor: 'pointer'
                   }}
-                  className="btn btn-primary" 
-                  style={{ flex: 1, padding: '10px', border: 'none', fontWeight: 700, fontSize: '12px' }}
                 >
-                  💾 ดาวน์โหลด QR
+                  <span style={{ fontSize: '14px' }}>🏫</span> แชร์ไปยัง Google Classroom
                 </button>
               </div>
             </div>
