@@ -411,6 +411,85 @@ app.post('/api/blog/generate', async (req, res) => {
   }
 })
 
+// 3D AI Studio Generation API Integration
+app.post('/api/3d/generate', async (req, res) => {
+  try {
+    const { topic } = req.body
+    if (!topic) {
+      return res.status(400).json({ error: 'Topic is required' })
+    }
+
+    const apiKey = process.env.THREE_D_AI_STUDIO_API_KEY || ''
+    console.log(`Generating 3D model via 3D AI Studio for: ${topic}`)
+
+    let glbUrl = ''
+    let usdzUrl = ''
+    let isMocked = true
+
+    if (apiKey && apiKey !== 'your_3d_ai_studio_api_key_here') {
+      try {
+        const response = await fetch('https://3daistudio.com/api/v1/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
+          },
+          body: JSON.stringify({
+            prompt: topic,
+            quality: 'high',
+            formats: ['glb', 'usdz']
+          })
+        })
+        if (response.ok) {
+          const result = await response.json()
+          if (result.glb_url) {
+            glbUrl = result.glb_url
+            usdzUrl = result.usdz_url || ''
+            isMocked = false
+          }
+        }
+      } catch (err) {
+        console.error('Failed to communicate with 3D AI Studio API:', err)
+      }
+    }
+
+    if (isMocked) {
+      const lowerTopic = topic.toLowerCase()
+      if (lowerTopic.includes('glass') || lowerTopic.includes('wine') || lowerTopic.includes('champagne') || lowerTopic.includes('แก้ว')) {
+        glbUrl = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WineGlass/glTF-Binary/WineGlass.glb'
+        usdzUrl = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
+      } else if (lowerTopic.includes('teapot') || lowerTopic.includes('tea pot') || lowerTopic.includes('kettle') || lowerTopic.includes('กา')) {
+        glbUrl = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb'
+        usdzUrl = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
+      } else if (lowerTopic.includes('bottle') || lowerTopic.includes('flask') || lowerTopic.includes('water') || lowerTopic.includes('ขวด')) {
+        glbUrl = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/WaterBottle/glTF-Binary/WaterBottle.glb'
+        usdzUrl = 'https://developer.apple.com/augmented-reality/quick-look/models/waterbottle/waterbottle.usdz'
+      } else if (lowerTopic.includes('cake') || lowerTopic.includes('dessert') || lowerTopic.includes('sweet') || lowerTopic.includes('เค้ก')) {
+        glbUrl = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Cake/glTF-Binary/Cake.glb'
+        usdzUrl = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
+      } else if (lowerTopic.includes('apple') || lowerTopic.includes('fruit') || lowerTopic.includes('ผลไม้')) {
+        glbUrl = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Apple/glTF-Binary/Apple.glb'
+        usdzUrl = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
+      } else {
+        const modelId = Math.random().toString(36).substring(2, 11)
+        glbUrl = `https://modelviewer.dev/shared-assets/models/Astronaut.glb?id=${modelId}`
+        usdzUrl = `https://modelviewer.dev/shared-assets/models/Astronaut.usdz?id=${modelId}`
+      }
+    }
+
+    res.json({
+      success: true,
+      topic,
+      glbUrl,
+      usdzUrl,
+      provider: isMocked ? '3D AI Studio (Simulated)' : '3D AI Studio API'
+    })
+  } catch (error: any) {
+    console.error('3D Generation Error:', error)
+    res.status(500).json({ error: error.message || 'Failed to generate 3D model' })
+  }
+})
+
 // Connection Health Ping Monitor API
 app.get('/api/ping-all', async (req, res) => {
   try {

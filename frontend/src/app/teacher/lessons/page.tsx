@@ -875,8 +875,9 @@ export default function TeacherLessonsDashboard() {
     setAiGenerating(true)
     setAiStatusText('🔮 AI กำลังวิเคราะห์แนวคิดรูปทรง 3 มิติ...')
     
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
       const resp = await fetch(`${backendUrl}/api/blog/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -905,7 +906,7 @@ export default function TeacherLessonsDashboard() {
         setAiStatusText('🎨 กำลังลงสีพื้นผิววัตถุเสมือนจริง (PBR Texturing & UV Mapping)...')
 
         await new Promise(r => setTimeout(r, 1200))
-        setAiStatusText('⚙️ เข้ารหัสไฟล์สำเร็จรูปเป็น .glb สำหรับ Web/Android และ .usdz สำหรับ iOS...')
+        setAiStatusText('⚙️ เรียกใช้งาน 3D AI Studio และแปลงไฟล์เป็น .glb และ .usdz...')
         
         await new Promise(r => setTimeout(r, 1200))
 
@@ -922,26 +923,32 @@ export default function TeacherLessonsDashboard() {
         let autoGlb = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
         let autoUsdz = 'https://modelviewer.dev/shared-assets/models/Astronaut.usdz'
 
+        // Call the 3D AI Studio backend endpoint to get the 3D assets dynamically
+        try {
+          const gen3dResp = await fetch(`${backendUrl}/api/3d/generate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ topic: autoEn })
+          })
+          if (gen3dResp.ok) {
+            const gen3dData = await gen3dResp.json()
+            autoGlb = gen3dData.glbUrl || autoGlb
+            autoUsdz = gen3dData.usdzUrl || autoUsdz
+          }
+        } catch (err3d) {
+          console.error('Failed to generate 3D model from backend:', err3d)
+        }
+
         if (lowerEn.includes('glass') || lowerEn.includes('wine') || lowerEn.includes('champagne') || lowerEn.includes('goblet') || lowerTh.includes('แก้ว')) {
           autoImg = '/images/wine_glass_3d.png'
-          autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WineGlass/glTF-Binary/WineGlass.glb'
-          autoUsdz = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz' // apple sample usdz
         } else if (lowerEn.includes('teapot') || lowerEn.includes('tea pot') || lowerEn.includes('kettle') || lowerTh.includes('น้ำชา') || lowerTh.includes('กา')) {
           autoImg = '/images/teapot_3d.png'
-          autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb'
-          autoUsdz = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
         } else if (lowerEn.includes('bottle') || lowerEn.includes('flask') || lowerEn.includes('water') || lowerTh.includes('ขวด')) {
           autoImg = '/images/water_bottle_3d.png'
-          autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/WaterBottle/glTF-Binary/WaterBottle.glb'
-          autoUsdz = 'https://developer.apple.com/augmented-reality/quick-look/models/waterbottle/waterbottle.usdz'
         } else if (lowerEn.includes('cake') || lowerEn.includes('dessert') || lowerEn.includes('sweet') || lowerEn.includes('bakery') || lowerTh.includes('เค้ก')) {
           autoImg = '/images/cake_3d.png'
-          autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Cake/glTF-Binary/Cake.glb'
-          autoUsdz = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
         } else if (lowerEn.includes('apple') || lowerEn.includes('fruit') || lowerTh.includes('แอปเปิ้ล') || lowerTh.includes('ผลไม้')) {
           autoImg = '/images/apple_3d.png'
-          autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Apple/glTF-Binary/Apple.glb'
-          autoUsdz = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
         }
 
         setArImageUrl(autoImg)
@@ -965,26 +972,32 @@ export default function TeacherLessonsDashboard() {
       let autoGlb = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
       let autoUsdz = 'https://modelviewer.dev/shared-assets/models/Astronaut.usdz'
 
+      // Call the 3D AI Studio backend endpoint to get the 3D assets dynamically
+      try {
+        const gen3dResp = await fetch(`${backendUrl}/api/3d/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic: arAiTopic })
+        })
+        if (gen3dResp.ok) {
+          const gen3dData = await gen3dResp.json()
+          autoGlb = gen3dData.glbUrl || autoGlb
+          autoUsdz = gen3dData.usdzUrl || autoUsdz
+        }
+      } catch (err3d) {
+        console.error('Failed to generate 3D model from backend:', err3d)
+      }
+
       if (lowerEn.includes('glass') || lowerEn.includes('wine') || lowerEn.includes('champagne') || lowerEn.includes('goblet')) {
         autoImg = '/images/wine_glass_3d.png'
-        autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WineGlass/glTF-Binary/WineGlass.glb'
-        autoUsdz = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
       } else if (lowerEn.includes('teapot') || lowerEn.includes('tea pot') || lowerEn.includes('kettle')) {
         autoImg = '/images/teapot_3d.png'
-        autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb'
-        autoUsdz = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
       } else if (lowerEn.includes('bottle') || lowerEn.includes('flask') || lowerEn.includes('water')) {
         autoImg = '/images/water_bottle_3d.png'
-        autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/WaterBottle/glTF-Binary/WaterBottle.glb'
-        autoUsdz = 'https://developer.apple.com/augmented-reality/quick-look/models/waterbottle/waterbottle.usdz'
       } else if (lowerEn.includes('cake') || lowerEn.includes('dessert') || lowerEn.includes('sweet') || lowerEn.includes('bakery')) {
         autoImg = '/images/cake_3d.png'
-        autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Cake/glTF-Binary/Cake.glb'
-        autoUsdz = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
       } else if (lowerEn.includes('apple') || lowerEn.includes('fruit')) {
         autoImg = '/images/apple_3d.png'
-        autoGlb = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Apple/glTF-Binary/Apple.glb'
-        autoUsdz = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
       }
 
       setArImageUrl(autoImg)
