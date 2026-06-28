@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import Script from 'next/script'
 import './globals.css'
 import { RoleProvider } from '@/context/RoleContext'
 import AppWrapper from '@/components/AppWrapper'
@@ -63,6 +64,7 @@ export default function RootLayout({
         <link rel="shortcut icon" href="/favicon.ico" />
       </head>
       <body>
+        <Script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js" strategy="lazyOnload" />
         <RoleProvider>
           <AppWrapper>
             {children}

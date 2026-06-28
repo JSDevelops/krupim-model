@@ -21,9 +21,9 @@ const teacherNav = [
 const studentNav = [
   { href: '/student/explore', icon: '📱', label: 'F-Familiarize' },
   { href: '/student/interact', icon: '💬', label: 'I-Interact' },
+  { href: '/student/scanner', icon: '📷', label: 'สแกน AR' },
   { href: '/student/learn', icon: '📖', label: 'N-Navigate' },
   { href: '/student/progress', icon: '🏅', label: 'E-Exhibit' },
-  { href: '/student/profile', icon: '🎓', label: 'Portfolio' },
 ]
 
 const roleColors: Record<string, string> = {

@@ -108,14 +108,15 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
       { href: '/teacher/lessons', icon: '📖', label: 'แผนการสอน FINE MODEL' },
       { 
         href: '/teacher/classes', 
-        icon: '🏫', 
-        label: 'ห้องเรียน',
+        icon: '👨‍👩‍👧‍👦', 
+        label: 'จัดการนักเรียน',
         children: [
           { href: '/teacher/classes', icon: '🏫', label: 'จัดการห้องเรียน' },
           { href: '/teacher/students', icon: '👥', label: 'ทะเบียนนักเรียน' }
         ]
       },
       { href: '/teacher/assignments', icon: '📋', label: 'งานและกิจกรรม' },
+      { href: '/teacher/ar-models', icon: '🛸', label: 'AR & 3D Models' },
       { href: '/teacher/vocab', icon: '🔤', label: 'คลังคำศัพท์' },
       { href: '/teacher/manual', icon: '📚', label: 'คู่มือการใช้งาน' },
     ]
