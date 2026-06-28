@@ -7,7 +7,6 @@ const adminNav = [
   { href: '/admin/dashboard', icon: '🏠', label: 'ภาพรวม' },
   { href: '/admin/users', icon: '👥', label: 'ผู้ใช้' },
   { href: '/admin/content', icon: '📦', label: 'เนื้อหา' },
-  { href: '/admin/analytics', icon: '📊', label: 'Analytics' },
   { href: '/admin/settings', icon: '⚙️', label: 'ตั้งค่า' },
 ]
 

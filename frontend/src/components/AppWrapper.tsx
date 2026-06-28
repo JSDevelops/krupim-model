@@ -102,7 +102,6 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
       { href: '/admin/dashboard', icon: '📊', label: 'Dashboard' },
       { href: '/admin/users', icon: '👥', label: 'จัดการผู้ใช้' },
       { href: '/admin/blog', icon: '📢', label: 'แจ้งข่าวและกิจกรรม' },
-      { href: '/admin/analytics', icon: '📈', label: 'รายงานวิเคราะห์' },
       { href: '/admin/settings', icon: '⚙️', label: 'ตั้งค่าระบบ' },
     ] : [
       { href: '/teacher/dashboard', icon: '🏫', label: 'Dashboard' },
