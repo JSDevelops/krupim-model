@@ -22,6 +22,25 @@ function ARViewerContent() {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && id) {
+      const qNameEn = searchParams.get('nameEn')
+      const qNameTh = searchParams.get('nameTh')
+      const qDesc = searchParams.get('desc')
+      const qGlbUrl = searchParams.get('glbUrl')
+      const qImageUrl = searchParams.get('imageUrl')
+
+      if (qNameEn) {
+        setModel({
+          id,
+          nameEn: qNameEn,
+          nameTh: qNameTh || '',
+          desc: qDesc || '',
+          glbUrl: qGlbUrl || 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+          imageUrl: qImageUrl || ''
+        })
+        setLoading(false)
+        return
+      }
+
       const storedModels = localStorage.getItem('arItems')
       if (storedModels) {
         try {
@@ -38,7 +57,7 @@ function ARViewerContent() {
       }
       setLoading(false)
     }
-  }, [id])
+  }, [id, searchParams])
 
   if (loading) {
     return <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>กำลังโหลดโมเดล 3 มิติ...</div>
