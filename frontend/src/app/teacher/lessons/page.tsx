@@ -3403,20 +3403,12 @@ export default function TeacherLessonsDashboard() {
                       type="button" 
                       onClick={() => {
                         setWizardOpen(false);
-                        setAREn('');
-                        setARTh('');
-                        setARPron('');
-                        setARSent('');
-                        setARDesc('');
-                        setArImageUrl('');
-                        setArGlbUrl('');
-                        setArUsdzUrl('');
-                        setArBlenderScript('');
+                        setArCreationMode('manual');
                       }}
                       className="btn btn-primary"
                       style={{ border: 'none', padding: '12px', width: '100%', fontWeight: 800 }}
                     >
-                      เสร็จสิ้นและปิดกล่องเครื่องมือ ✕
+                      นำข้อมูลกลับไปยังหน้าสร้างแบบจำลอง ➔
                     </button>
                   </div>
                 )}
