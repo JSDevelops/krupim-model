@@ -73,10 +73,11 @@ const supabaseUrl = process.env.SUPABASE_URL || ''
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-// Initialize Default AI Clients
-const defaultGenAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '')
-const defaultOpenAI = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || '' })
-const defaultAnthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || '' })
+// Initialize Default AI Clients (using dummy fallbacks to prevent startup crash if keys are empty)
+const defaultGenAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'AIzaSyDummyKey')
+const defaultOpenAI = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'sk-DummyOpenAIKeyToPreventCrash' })
+const defaultAnthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || 'sk-ant-DummyAnthropicKeyToPreventCrash' })
+
 
 // Helper to get dynamic active provider
 function getActiveProvider(req: express.Request): 'gemini' | 'openai' | 'claude' {

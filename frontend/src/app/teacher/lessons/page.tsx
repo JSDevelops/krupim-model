@@ -3398,7 +3398,7 @@ export default function TeacherLessonsDashboard() {
                       <span style={{ fontSize: '11px', color: '#A6882A', fontWeight: 700 }}>{arTh}</span>
                       
                       <div style={{ position: 'relative', width: '140px', height: '140px', border: '1px solid #EDE9E1', borderRadius: '8px', padding: '6px', background: 'white' }}>
-                        <img src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent('https://frontend-5ul5tzcc0-jsdevelopth-2022s-projects.vercel.app/student/ar-view?id=' + arEn)}`} alt="QR Code" style={{ width: '100%', height: '100%' }} />
+                        <img src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent((typeof window !== 'undefined' ? window.location.origin : 'https://www.krupim-finemodel3d-ar.com') + '/student/ar-view?id=' + arEn)}`} alt="QR Code" style={{ width: '100%', height: '100%' }} />
                       </div>
                     </div>
 
