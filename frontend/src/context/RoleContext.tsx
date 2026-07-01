@@ -41,7 +41,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // 1. ดึง session ปัจจุบันจาก Supabase Auth
-    supabase.auth.getSession().then(async ({ data }) => {
+    supabase.auth.getSession().then(async ({ data }: any) => {
       const supabaseUser = data.session?.user
       if (supabaseUser) {
         // ดึง profile จาก DB เพื่อรับ role
@@ -76,13 +76,14 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     })
 
     // 2. ฟัง Auth state changes (login/logout จาก tab อื่น)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
       if (event === 'SIGNED_OUT') {
         setUserState(null)
         localStorage.removeItem('userRole')
         localStorage.removeItem('userInfo')
       } else if (event === 'SIGNED_IN' && session?.user) {
         const profile = await getProfileFromDB(session.user.id)
+
         if (profile) {
           const userInfo: UserInfo = {
             id: profile.id,

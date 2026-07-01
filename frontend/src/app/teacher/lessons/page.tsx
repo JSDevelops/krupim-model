@@ -269,11 +269,12 @@ export default function TeacherLessonsDashboard() {
     async function loadPlans() {
       const { data, error } = await supabase.from('fine_lesson_plans').select('*')
       if (data && data.length > 0) {
-        const mappedPlans = data.map(dbPlan => ({
+        const mappedPlans = data.map((dbPlan: any) => ({
           id: dbPlan.id,
           title: dbPlan.title,
           subject: dbPlan.subject,
           level: dbPlan.level,
+
           term: dbPlan.term,
           duration: dbPlan.duration,
           targetClass: dbPlan.target_class,

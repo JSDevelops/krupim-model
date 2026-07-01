@@ -1,52 +1,64 @@
+import { createServerClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 
 // ─── Protected Route Config ───────────────────────────────────────────────────
-// กำหนด prefix ที่ต้องการ role ใด
 const ROLE_GUARDS: Record<string, ('developer' | 'teacher' | 'student')[]> = {
   '/admin':   ['developer'],
   '/teacher': ['teacher', 'developer'],
   '/student': ['student', 'developer'],
 }
 
-// Public routes ที่ไม่ต้องการ Auth
+// Public routes that don't need auth
 const PUBLIC_PATHS = ['/', '/role-select', '/register-teacher', '/register-student']
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+  let response = NextResponse.next({
+    request: {
+      headers: request.headers,
+    },
+  })
 
-  // ── 1. อนุญาต public routes ────────────────────────────────────────────────
+  // ── 1. Allow public routes ──────────────────────────────────────────────────
   if (PUBLIC_PATHS.some(p => pathname === p || pathname.startsWith(p + '/'))) {
-    return NextResponse.next()
+    return response
   }
 
-  // ── 2. ตรวจสอบ Supabase session token จาก cookie ─────────────────────────
-  const supabaseUrl  = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const supabaseKey  = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  // ── 2. Create server client (managing session cookies manually in middleware) ─
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-  // สร้าง supabase client แบบ server-side (อ่าน cookie จาก request)
-  const supabase = createClient(supabaseUrl, supabaseKey, {
-    global: {
-      headers: { cookie: request.headers.get('cookie') || '' }
+  const supabase = createServerClient(supabaseUrl, supabaseKey, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll().map(({ name, value }) => ({ name, value }))
+      },
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+        response = NextResponse.next({
+          request: {
+            headers: request.headers,
+          },
+        })
+        cookiesToSet.forEach(({ name, value, options }) =>
+          response.cookies.set(name, value, options)
+        )
+      },
     },
-    auth: { persistSession: false }
   })
 
   const { data: { session } } = await supabase.auth.getSession()
 
-  // ── 3. ถ้าไม่มี session → redirect ไปหน้า Login ────────────────────────────
+  // ── 3. If no session, redirect to Login ────────────────────────────────────
   if (!session) {
-    // ตรวจสอบ localStorage role ผ่าน cookie fallback (สำหรับ dev mode)
-    // ถ้าไม่มีเลยให้ redirect ไป /
     const url = request.nextUrl.clone()
     url.pathname = '/'
     url.searchParams.set('redirect', pathname)
     return NextResponse.redirect(url)
   }
 
-  // ── 4. ดึง role จาก user_metadata หรือ profiles table (via header) ────────
-  // role อยู่ใน profiles table — ดึงผ่าน supabase
+  // ── 4. Fetch user role from profiles table ───────────────────────────────
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')
@@ -55,11 +67,10 @@ export async function middleware(request: NextRequest) {
 
   const userRole = (profile?.role || 'student') as string
 
-  // ── 5. ตรวจสอบ role ต่อ route prefix ─────────────────────────────────────
+  // ── 5. Enforce role guards ─────────────────────────────────────────────────
   for (const [prefix, allowedRoles] of Object.entries(ROLE_GUARDS)) {
     if (pathname.startsWith(prefix)) {
       if (!allowedRoles.includes(userRole as any)) {
-        // Redirect ไปหน้าที่เหมาะสมกับ role ของตัวเอง
         const url = request.nextUrl.clone()
         if (userRole === 'teacher') url.pathname = '/teacher/dashboard'
         else if (userRole === 'student') url.pathname = '/student/explore'
@@ -70,12 +81,11 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  return NextResponse.next()
+  return response
 }
 
 export const config = {
   matcher: [
-    // Guard ทุก route ยกเว้น static assets และ API
     '/((?!_next/static|_next/image|favicon.ico|api|icons|manifest.json|.*\\.(?:png|jpg|svg|ico|webp|glb|usdz)).*)',
   ],
 }
