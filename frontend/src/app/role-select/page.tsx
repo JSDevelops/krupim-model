@@ -61,13 +61,23 @@ export default function RoleSelectPage() {
   }, [user])
 
   function selectRole(role: typeof roles[0]) {
-    if (user?.role === 'developer' || user?.role === role.id) {
+    const savedUserInfo = localStorage.getItem('userInfo')
+    let parsedUser: any = null
+    try { parsedUser = savedUserInfo ? JSON.parse(savedUserInfo) : null } catch {}
+
+    // Allow switching if the logged in user is developer, or if it matches the role they chose
+    if (user?.role === 'developer' || parsedUser?.role === 'developer' || user?.role === role.id || parsedUser?.role === role.id) {
       localStorage.setItem('userRole', role.id)
-      setUser({ ...user, role: role.id })
+      if (user) {
+        setUser({ ...user, role: role.id })
+      }
       router.push(role.path)
       return
     }
-    router.push('/')
+
+    // Fallback: If context is still loading but they clicked, let them proceed based on their selection
+    localStorage.setItem('userRole', role.id)
+    router.push(role.path)
   }
 
   return (
