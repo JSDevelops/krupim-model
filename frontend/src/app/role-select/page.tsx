@@ -1,7 +1,8 @@
 'use client'
 import { useRouter } from 'next/navigation'
-import { useRole, DEMO_USERS, UserRole } from '@/context/RoleContext'
+import { useRole, UserRole } from '@/context/RoleContext'
 import { useEffect } from 'react'
+
 
 const roles = [
   {
@@ -60,14 +61,13 @@ export default function RoleSelectPage() {
   }, [user])
 
   function selectRole(role: typeof roles[0]) {
-    if (user?.role === 'developer') {
+    if (user?.role === 'developer' || user?.role === role.id) {
       localStorage.setItem('userRole', role.id)
+      setUser({ ...user, role: role.id })
       router.push(role.path)
       return
     }
-    const demoUser = DEMO_USERS[role.id]
-    setUser(demoUser)
-    router.push(role.path)
+    router.push('/')
   }
 
   return (

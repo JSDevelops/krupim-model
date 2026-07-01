@@ -2,8 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-
-import { useEffect } from 'react'
+import { signInWithSupabase } from '@/lib/supabase'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -13,72 +12,56 @@ export default function LoginPage() {
   const [error, setError] = useState('')
   const [showPass, setShowPass] = useState(false)
 
-  // Seed default test accounts if they don't exist
-  useEffect(() => {
-    const existingUsersRaw = localStorage.getItem('registeredUsers')
-    const existingUsers = existingUsersRaw ? JSON.parse(existingUsersRaw) : []
-    
-    const hasTeacher = existingUsers.some((u: any) => u.email === 'teacher@school.ac.th')
-    const hasStudent = existingUsers.some((u: any) => u.email === 'student@school.ac.th')
-
-    if (!hasTeacher) {
-      existingUsers.push({
-        id: 'teacher-001', name: 'ครูสมหญิง รักเรียน', email: 'teacher@school.ac.th',
-        password: 'teacher1234', role: 'teacher', avatar: '👩‍🏫', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ'
-      })
-    }
-    if (!hasStudent) {
-      existingUsers.push({
-        id: 'student-001', name: 'นายสมชาย ใจดี', email: 'student@school.ac.th',
-        password: 'student1234', role: 'student', avatar: '👨‍🎓', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ'
-      })
-    }
-    localStorage.setItem('registeredUsers', JSON.stringify(existingUsers))
-  }, [])
-
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    setTimeout(() => {
-      // 1. Check Admin Account (Developer)
-      if (email === 'admin@finemode.ac.th' && password === 'admin1234') {
-        const adminUser = {
-          id: 'admin-001', name: 'ผู้ดูแลระบบ', role: 'developer' as const,
-          avatar: '⚙️', school: 'FINE MODE Platform', email: 'admin@finemode.ac.th'
-        }
-        localStorage.setItem('userRole', 'developer')
-        localStorage.setItem('userInfo', JSON.stringify(adminUser))
+    try {
+      const { user, profile } = await signInWithSupabase(email, password)
+
+      // ถ้าไม่มี profile row ใน DB (เช่น admin สร้างตรงใน Supabase Auth)
+      // fallback ไป role-select เพื่อให้เลือก role
+      if (!profile) {
+        const fallbackUser = { id: user.id, name: user.email ?? 'User', role: 'student' as const, email: user.email }
+        localStorage.setItem('userRole', 'student')
+        localStorage.setItem('userInfo', JSON.stringify(fallbackUser))
         setLoading(false)
         router.push('/role-select')
         return
       }
 
-      // 2. Check Registered Users
-      const existingUsersRaw = localStorage.getItem('registeredUsers')
-      const existingUsers = existingUsersRaw ? JSON.parse(existingUsersRaw) : []
-      const foundUser = existingUsers.find((u: any) => u.email === email && u.password === password)
-
-      if (foundUser) {
-        if (foundUser.status === 'pending') {
-          if (foundUser.role === 'student') {
-            setError('รอการอนุมัติจากครูผู้สอนเพื่อเข้าชั้นเรียน')
-          } else if (foundUser.role === 'teacher') {
-            setError('รอการอนุมัติสิทธิ์จากผู้ดูแลระบบ')
-          }
-          setLoading(false)
-          return
-        }
-        localStorage.setItem('userRole', foundUser.role)
-        localStorage.setItem('userInfo', JSON.stringify(foundUser))
-        setLoading(false)
-        router.push(foundUser.role === 'teacher' ? '/teacher/dashboard' : '/student/explore')
-      } else {
-        setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง หรือโปรดลงทะเบียนเข้าใช้งานก่อน')
-        setLoading(false)
+      // เก็บเฉพาะ role และข้อมูลที่ไม่ใช่ password
+      const safeUser = {
+        id: profile.id,
+        name: profile.name,
+        role: profile.role,
+        avatar_url: profile.avatar_url,
+        school_id: profile.school_id,
+        email: user.email
       }
-    }, 1000)
+      localStorage.setItem('userRole', profile.role)
+      localStorage.setItem('userInfo', JSON.stringify(safeUser))
+
+      setLoading(false)
+
+      // Redirect ตาม role
+      if (profile.role === 'developer') router.push('/role-select')
+      else if (profile.role === 'teacher') router.push('/teacher/dashboard')
+      else router.push('/student/explore')
+
+    } catch (err: any) {
+      // แปล error message ให้เป็นภาษาไทย
+      const msg = err.message || ''
+      if (msg.includes('Invalid login credentials')) {
+        setError('อีเมลหรือรหัสผ่านไม่ถูกต้อง')
+      } else if (msg.includes('Email not confirmed')) {
+        setError('กรุณายืนยันอีเมลก่อนเข้าสู่ระบบ')
+      } else {
+        setError(msg || 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง')
+      }
+      setLoading(false)
+    }
   }
 
   return (

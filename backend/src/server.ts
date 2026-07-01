@@ -1,5 +1,7 @@
 import express from 'express'
 import cors from 'cors'
+import helmet from 'helmet'
+import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { OpenAI } from 'openai'
@@ -8,15 +10,67 @@ import { createClient } from '@supabase/supabase-js'
 
 dotenv.config()
 
+// ─── Startup validation (Fail Fast) ─────────────────────────────────────────
+const REQUIRED_ENV = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'] as const
+for (const key of REQUIRED_ENV) {
+  if (!process.env[key]) {
+    console.error(`[STARTUP ERROR] Missing required env var: ${key}`)
+    process.exit(1)
+  }
+}
+
 const app = express()
 const port = process.env.PORT || 3001
 
-app.use(cors())
+// ─── Security Middleware ─────────────────────────────────────────────────────
+
+// 1. Helmet — sets security-related HTTP headers
+app.use(helmet())
+
+// 2. CORS — allow only whitelisted origins
+const allowedOrigins = (
+  process.env.ALLOWED_ORIGINS || 'http://localhost:3000'
+).split(',').map(o => o.trim())
+
+app.use(cors({
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g. curl, server-to-server)
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true)
+    } else {
+      callback(new Error(`CORS: Origin "${origin}" is not allowed`))
+    }
+  },
+  credentials: true
+}))
+
+// 3. Rate Limiting — max 30 requests per minute per IP
+const limiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests. Please wait a moment and try again.' }
+})
+app.use('/api/', limiter)
+
+// Stricter limit for AI endpoints (10 req/min per IP)
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'AI rate limit exceeded. Please wait before sending more messages.' }
+})
+app.use('/api/chat', aiLimiter)
+app.use('/api/scan', aiLimiter)
+app.use('/api/simulation', aiLimiter)
+
 app.use(express.json({ limit: '10mb' }))
 
-// Initialize Supabase Client (Service Role for backend to bypass RLS)
+// ─── Initialize Supabase Client (Service Role — bypasses RLS for backend writes) ─
 const supabaseUrl = process.env.SUPABASE_URL || ''
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_ANON_KEY || ''
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 // Initialize Default AI Clients

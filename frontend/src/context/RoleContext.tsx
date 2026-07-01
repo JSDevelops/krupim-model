@@ -1,5 +1,6 @@
 'use client'
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { supabase, getProfileFromDB } from '@/lib/supabase'
 
 export type UserRole = 'developer' | 'teacher' | 'student'
 
@@ -8,7 +9,9 @@ export interface UserInfo {
   name: string
   role: UserRole
   avatar?: string
+  avatar_url?: string
   school?: string
+  school_id?: string
   email?: string
   teacherName?: string
   enrolledClass?: string
@@ -22,42 +25,81 @@ interface RoleContextType {
   isAdmin: boolean
   isTeacher: boolean
   isStudent: boolean
+  loading: boolean
 }
 
 const RoleContext = createContext<RoleContextType>({
   user: null, role: null,
   setUser: () => {}, logout: () => {},
-  isAdmin: false, isTeacher: false, isStudent: false
+  isAdmin: false, isTeacher: false, isStudent: false,
+  loading: true
 })
-
-// Demo users per role
-const DEMO_USERS: Record<UserRole, UserInfo> = {
-  developer: {
-    id: 'admin-001', name: 'ผู้ดูแลระบบ', role: 'developer',
-    avatar: '⚙️', school: 'FINE MODE Platform', email: 'admin@finemode.ac.th'
-  },
-  teacher: {
-    id: 'teacher-001', name: 'ครูสมหญิง รักเรียน', role: 'teacher',
-    avatar: '👩‍🏫', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', email: 'teacher@school.ac.th'
-  },
-  student: {
-    id: 'student-001', name: 'นายสมชาย ใจดี', role: 'student',
-    avatar: '👨‍🎓', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', email: 'student@school.ac.th'
-  }
-}
 
 export function RoleProvider({ children }: { children: ReactNode }) {
   const [user, setUserState] = useState<UserInfo | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Restore from localStorage
-    const savedRole = localStorage.getItem('userRole') as UserRole | null
-    const savedUser = localStorage.getItem('userInfo')
-    if (savedUser) {
-      try { setUserState(JSON.parse(savedUser)) } catch {}
-    } else if (savedRole && DEMO_USERS[savedRole]) {
-      setUserState(DEMO_USERS[savedRole])
-    }
+    // 1. ดึง session ปัจจุบันจาก Supabase Auth
+    supabase.auth.getSession().then(async ({ data }) => {
+      const supabaseUser = data.session?.user
+      if (supabaseUser) {
+        // ดึง profile จาก DB เพื่อรับ role
+        const profile = await getProfileFromDB(supabaseUser.id)
+        if (profile) {
+          const userInfo: UserInfo = {
+            id: profile.id,
+            name: profile.name,
+            role: profile.role,
+            avatar_url: profile.avatar_url,
+            school_id: profile.school_id,
+            email: supabaseUser.email
+          }
+          setUserState(userInfo)
+          localStorage.setItem('userRole', profile.role)
+          localStorage.setItem('userInfo', JSON.stringify(userInfo))
+        } else {
+          // fallback: ถ้าไม่มี profile ใน DB ให้อ่านจาก localStorage
+          const savedUser = localStorage.getItem('userInfo')
+          if (savedUser) {
+            try { setUserState(JSON.parse(savedUser)) } catch {}
+          }
+        }
+      } else {
+        // ไม่มี Supabase session — อ่านจาก localStorage (สำหรับ dev/offline mode)
+        const savedUser = localStorage.getItem('userInfo')
+        if (savedUser) {
+          try { setUserState(JSON.parse(savedUser)) } catch {}
+        }
+      }
+      setLoading(false)
+    })
+
+    // 2. ฟัง Auth state changes (login/logout จาก tab อื่น)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setUserState(null)
+        localStorage.removeItem('userRole')
+        localStorage.removeItem('userInfo')
+      } else if (event === 'SIGNED_IN' && session?.user) {
+        const profile = await getProfileFromDB(session.user.id)
+        if (profile) {
+          const userInfo: UserInfo = {
+            id: profile.id,
+            name: profile.name,
+            role: profile.role,
+            avatar_url: profile.avatar_url,
+            school_id: profile.school_id,
+            email: session.user.email
+          }
+          setUserState(userInfo)
+          localStorage.setItem('userRole', profile.role)
+          localStorage.setItem('userInfo', JSON.stringify(userInfo))
+        }
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
   function setUser(u: UserInfo) {
@@ -66,7 +108,8 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     localStorage.setItem('userInfo', JSON.stringify(u))
   }
 
-  function logout() {
+  async function logout() {
+    await supabase.auth.signOut()
     setUserState(null)
     localStorage.removeItem('userRole')
     localStorage.removeItem('userInfo')
@@ -76,7 +119,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   const role = user?.role ?? null
   return (
     <RoleContext.Provider value={{
-      user, role, setUser, logout,
+      user, role, setUser, logout, loading,
       isAdmin: role === 'developer',
       isTeacher: role === 'teacher',
       isStudent: role === 'student',
@@ -87,4 +130,3 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 }
 
 export const useRole = () => useContext(RoleContext)
-export { DEMO_USERS }

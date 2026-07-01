@@ -421,7 +421,13 @@ ALTER TABLE fine_lesson_plans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE class_invites ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow public read fine_lesson_plans" ON fine_lesson_plans FOR SELECT USING (true);
-CREATE POLICY "Allow public all fine_lesson_plans" ON fine_lesson_plans FOR ALL USING (true);
+CREATE POLICY "Teachers manage own lesson plans" ON fine_lesson_plans
+  FOR ALL USING (
+    (auth.jwt()->>'email' = teacher_email) 
+    OR (auth.jwt()->'user_metadata'->>'role' = 'developer')
+  );
 
 CREATE POLICY "Allow public read class_invites" ON class_invites FOR SELECT USING (true);
-CREATE POLICY "Allow public all class_invites" ON class_invites FOR ALL USING (true);
+CREATE POLICY "Teachers create class invites" ON class_invites
+  FOR ALL WITH CHECK (auth.role() = 'authenticated');
+
