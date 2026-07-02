@@ -491,21 +491,17 @@ export default function ExplorePage() {
 
             {/* Immersive VR Camera Simulator (Height-fitted container) */}
             <div style={{
-              position: isCameraActive ? 'fixed' : 'relative',
-              inset: isCameraActive ? 0 : 'auto',
-              top: isCameraActive ? 0 : 'auto',
-              left: isCameraActive ? 0 : 'auto',
-              width: isCameraActive ? '100vw' : '100%',
-              height: isCameraActive ? '100dvh' : '74vh',
-              minHeight: isCameraActive ? '100dvh' : 520,
+              position: 'relative',
+              width: '100%',
+              height: '74vh',
+              minHeight: 520,
               background: '#040806',
-              borderRadius: isCameraActive ? 0 : 28,
+              borderRadius: 28,
               overflow: 'hidden',
-              border: isCameraActive ? 'none' : '2.5px solid #C9A84C',
+              border: '2.5px solid #C9A84C',
               boxShadow: '0 20px 48px rgba(10,43,26,0.35)',
               display: 'flex',
-              flexDirection: 'column',
-              zIndex: isCameraActive ? 1000 : 1
+              flexDirection: 'column'
             }}>
               {/* 1. Live Video background */}
               {isCameraActive ? (
@@ -525,60 +521,34 @@ export default function ExplorePage() {
 
               {/* 2. Absolute Floating Header (Top bar) */}
               <div style={{
-                position: 'absolute',
-                top: isCameraActive ? 'calc(env(safe-area-inset-top, 24px) + 12px)' : 12,
-                left: 12, right: 12, zIndex: 10,
+                position: 'absolute', top: 12, left: 12, right: 12, zIndex: 10,
                 display: 'flex', flexDirection: 'column', gap: 10
               }}>
                 {/* Upper row: Navigation & Status */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 6 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    {/* Home Badge */}
-                    <Link href="/student/dashboard" style={{
-                      background: 'rgba(15, 28, 41, 0.75)',
-                      backdropFilter: 'blur(8px)',
-                      WebkitBackdropFilter: 'blur(8px)',
-                      border: '1px solid rgba(255,255,255,0.15)',
-                      color: 'white',
-                      textDecoration: 'none',
-                      padding: '7px 14px',
-                      borderRadius: 100,
-                      fontSize: 11.5,
-                      fontWeight: 800,
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 6,
-                      transition: 'all 0.2s',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
-                    onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
-                    >
-                      ← Home
-                    </Link>
-
-                    {/* Turn Off Camera Button */}
-                    {isCameraActive && (
-                      <button
-                        onClick={stopVRCamera}
-                        style={{
-                          background: 'rgba(239, 68, 68, 0.85)',
-                          backdropFilter: 'blur(8px)',
-                          WebkitBackdropFilter: 'blur(8px)',
-                          border: '1px solid rgba(239, 68, 68, 0.3)',
-                          color: 'white',
-                          padding: '7px 14px',
-                          borderRadius: 100,
-                          fontSize: 11.5,
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                        }}
-                      >
-                        ⏹️ ปิดกล้อง
-                      </button>
-                    )}
-                  </div>
+                  {/* Home Badge */}
+                  <Link href="/student/dashboard" style={{
+                    background: 'rgba(15, 28, 41, 0.75)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    color: 'white',
+                    textDecoration: 'none',
+                    padding: '7px 14px',
+                    borderRadius: 100,
+                    fontSize: 11.5,
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    transition: 'all 0.2s',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.05)'}
+                  onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    ← Home
+                  </Link>
 
                   {/* Live simulation tag */}
                   <div style={{
@@ -638,12 +608,12 @@ export default function ExplorePage() {
                   position: 'absolute', top: '44%', left: '50%', transform: 'translate(-50%, -50%)',
                   zIndex: 5, pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center'
                 }}>
-                  <div style={{ position: 'relative', width: 180, height: 180 }}>
+                  <div style={{ position: 'relative', width: 160, height: 160 }}>
                     {/* Brackets */}
-                    <div style={{ position: 'absolute', top: 0, left: 0, width: 30, height: 30, borderLeft: '4px solid #C9A84C', borderTop: '4px solid #C9A84C', borderRadius: '10px 0 0 0' }} />
-                    <div style={{ position: 'absolute', top: 0, right: 0, width: 30, height: 30, borderRight: '4px solid #C9A84C', borderTop: '4px solid #C9A84C', borderRadius: '0 10px 0 0' }} />
-                    <div style={{ position: 'absolute', bottom: 0, left: 0, width: 30, height: 30, borderLeft: '4px solid #C9A84C', borderBottom: '4px solid #C9A84C', borderRadius: '0 0 0 10px' }} />
-                    <div style={{ position: 'absolute', bottom: 0, right: 0, width: 30, height: 30, borderRight: '4px solid #C9A84C', borderBottom: '4px solid #C9A84C', borderRadius: '0 0 10px 0' }} />
+                    <div style={{ position: 'absolute', top: 0, left: 0, width: 26, height: 26, borderLeft: '4px solid #C9A84C', borderTop: '4px solid #C9A84C', borderRadius: '8px 0 0 0' }} />
+                    <div style={{ position: 'absolute', top: 0, right: 0, width: 26, height: 26, borderRight: '4px solid #C9A84C', borderTop: '4px solid #C9A84C', borderRadius: '0 8px 0 0' }} />
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, width: 26, height: 26, borderLeft: '4px solid #C9A84C', borderBottom: '4px solid #C9A84C', borderRadius: '0 0 0 8px' }} />
+                    <div style={{ position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRight: '4px solid #C9A84C', borderBottom: '4px solid #C9A84C', borderRadius: '0 0 8px 0' }} />
                     
                     {/* Pulsing ring inside */}
                     <div style={{
@@ -654,7 +624,7 @@ export default function ExplorePage() {
                     }} />
                   </div>
                   <div style={{
-                    color: 'white', fontSize: 10.5, fontWeight: 900, marginTop: 16,
+                    color: 'white', fontSize: 10, fontWeight: 900, marginTop: 14,
                     letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.85)',
                     textAlign: 'center', textTransform: 'uppercase'
                   }}>
@@ -677,12 +647,9 @@ export default function ExplorePage() {
               {/* 4. Translucent Floating AI Result Card (overlaid on top of camera) */}
               {aiScanned && aiItem && (
                 <div style={{
-                  position: 'absolute',
-                  top: isCameraActive ? 'calc(env(safe-area-inset-top, 24px) + 64px)' : 78,
-                  left: 14, right: 14, zIndex: 6,
+                  position: 'absolute', top: 78, left: 14, right: 14, zIndex: 6,
                   display: 'flex', flexDirection: 'column', gap: 10,
-                  maxHeight: isCameraActive ? 'calc(100% - env(safe-area-inset-top, 24px) - env(safe-area-inset-bottom, 0px) - 100px)' : 'calc(100% - 92px)',
-                  overflowY: 'auto',
+                  maxHeight: 'calc(100% - 92px)', overflowY: 'auto',
                   animation: 'fadeInUp 0.4s ease'
                 }}>
                   {/* Holographic transparent card */}
@@ -732,11 +699,9 @@ export default function ExplorePage() {
                         <div style={{ fontSize: 9.5, color: '#38bdf8', fontWeight: 900, marginBottom: 3, letterSpacing: '0.5px' }}>DESCRIPTION:</div>
                         <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', margin: 0, lineHeight: 1.45 }}>{aiItem.use}</p>
                       </div>
-                      {aiItem.location && (
-                        <div>
-                          <p style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', margin: 0, fontStyle: 'italic', lineHeight: 1.4 }}>{aiItem.location}</p>
-                        </div>
-                      )}
+                      <div>
+                        <p style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', margin: 0, fontStyle: 'italic', lineHeight: 1.4 }}>{aiItem.location}</p>
+                      </div>
                     </div>
 
                     {/* AI Pronunciation Coach */}
@@ -860,12 +825,10 @@ export default function ExplorePage() {
               {/* 5. Immersive Bottom Analyze Trigger */}
               {!aiScanned && (
                 <div style={{
-                  position: 'absolute',
-                  bottom: isCameraActive ? 'calc(env(safe-area-inset-bottom, 0px) + 24px)' : 16,
-                  left: 16, right: 16, zIndex: 10,
+                  position: 'absolute', bottom: 16, left: 16, right: 16, zIndex: 10,
                   display: 'flex', flexDirection: 'column', gap: 8
                 }}>
-                  {/* Hidden File Pick Input */}
+                  {/* File Pick Input */}
                   <input 
                     type="file" 
                     ref={fileInputRef} 
