@@ -180,35 +180,118 @@ export default function ExplorePage() {
     setQuizSelectedOption(null)
     setQuizAnswered(false)
     setFineTab('F')
-
     try {
       const activeProvider = typeof window !== 'undefined' ? localStorage.getItem('activeAiProvider') || 'gemini' : 'gemini'
       const geminiKey = typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : ''
       const openaiKey = typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') || '' : ''
       const claudeKey = typeof window !== 'undefined' ? localStorage.getItem('claudeApiKey') || '' : ''
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
       
-      const resp = await fetch(`${backendUrl}/api/scan`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-ai-provider': activeProvider,
-          'x-gemini-key': geminiKey,
-          'x-openai-key': openaiKey,
-          'x-claude-key': claudeKey
-        },
-        body: JSON.stringify({ imageBase64: base64, mimeType })
-      })
+      let data = null
+      let usedDirectGemini = false
 
-      if (!resp.ok) {
-        throw new Error('การสแกนล้มเหลว')
+      // If a custom Gemini Key is saved in localStorage, call Gemini API directly from the browser!
+      // This bypasses any backend server issues (such as Railway suspensions).
+      if (geminiKey && geminiKey.trim().startsWith('AIzaSy')) {
+        try {
+          console.log('Using direct client-side Gemini API call...');
+          const systemPrompt = `คุณเป็น AI ผู้เชี่ยวชาญการวิเคราะห์และระบุวัตถุจากภาพถ่ายตามความเป็นจริง (Object Identification AI)
+วิเคราะห์ภาพวัตถุที่เห็นในภาพนี้ตามจริงที่ปรากฏ 100% (ตัวอย่างเช่น หากเห็นเป็นขวดน้ำพลาสติก ขวดกาแฟ แก้วพลาสติก ของเล่น โทรศัพท์มือถือ หรือสิ่งของทั่วไป ให้ระบุชื่อที่เป็นสิ่งนั้นจริงๆ โดยตรงตามความจริงที่กล้องจับภาพได้ ไม่ต้องพยายามเปรียบเทียบหรือบิดเบือนให้กลายเป็นชิ้นส่วนจัดโต๊ะอาหารระดับห้าดาวของโรงแรมหรูหากไม่ใช่สิ่งนั้นจริงๆ)
+และส่งค่ากลับมาเป็นรูปแบบ JSON เท่านั้น (ห้ามเขียนข้อความเกริ่นนำหรือปิดท้ายใดๆ นอกเหนือจาก JSON):
+{
+  "name_th": "ชื่อวัตถุภาษาไทยตามความจริง เช่น ขวดกาแฟพลาสติก, ส้อมอาหาร, ขวดน้ำดื่ม",
+  "name_en": "ชื่อวัตถุภาษาอังกฤษตามความจริง เช่น Plastic Coffee Bottle, Dinner Fork, Plastic Water Bottle",
+  "category": "food หรือ beverage หรือ equipment หรือ tableware หรือ general (สำหรับของใช้ทั่วไป)",
+  "subcategory": "หมวดย่อยเชิงลึก เช่น Plastic Container, Stemware, Flatware, Dinnerware, Electronics",
+  "description": "คำอธิบายลักษณะ หน้าที่ และประโยชน์การใช้งานตามจริงของวัตถุชิ้นนั้นๆ",
+  "location": "ตำแหน่งหรือจุดที่เรามักจะพบเจอวัตถุชนิดนี้ในชีวิตจริง",
+  "service_tips": "เคล็ดลับการจัดเตรียม สุขอนามัย หรือทักษะการหยิบจับดูแลรักษาของสิ่งนั้นๆ 1-2 ข้อ",
+  "english_phrases": ["ประโยคภาษาอังกฤษที่เกี่ยวข้องกับการแนะนำ การหยิบใช้ หรือการบริการสิ่งนี้กับลูกค้า/คู่สนทนา 1", "ประโยคแนะนำ/สื่อสารที่ 2"],
+  "pronounce": "คำอ่านสัทอักษร (Phonetic Transcription) ภาษาอังกฤษ เช่น /'plæs.tɪk 'kɒf.i 'bɒt.əl/",
+  "confidence": 95,
+  "fine_analysis": {
+    "familiarize": {
+      "desc": "คำอธิบายรูปร่างลักษณะ หน้าที่และประโยชน์ใช้สอยโดยละเอียดตามจริง",
+      "location": "ตำแหน่งหรือการวางจัดเตรียมเป็นปกติ"
+    },
+    "interact": {
+      "pronunciation": "คำอ่านออกเสียงภาษาอังกฤษเลียนแบบสัทอักษรหรือคำอ่านไทยเชิงอังกฤษ",
+      "english_phrases": ["ประโยคแนะนำ/สื่อสารในงานบริการ 1", "ประโยคแนะนำ/สื่อสารในงานบริการ 2"],
+      "roleplay_prompt": "โจทย์สั้นๆ สำหรับฝึกพูดบทบาทสมมติเกี่ยวกับการแนะนำหรือบริการสิ่งนี้"
+    },
+    "navigate": {
+      "service_steps": [
+        "ขั้นตอนการจัดเตรียมสุขอนามัย/ความสะอาดก่อนใช้งาน",
+        "ขั้นตอนการเสิร์ฟ/การวางตำแหน่งใช้งานหลัก",
+        "ขั้นตอนการเก็บถอน/การทิ้งหรือทำความสะอาดหลังเสร็จงาน"
+      ],
+      "safety_rules": "ข้อควรระวังสำคัญด้านสุขอนามัยหรือความปลอดภัยที่ต้องระวัง"
+    },
+    "exhibit": {
+      "quiz_question": "คำถามปรนัยทบทวนความรู้เกี่ยวกับคุณสมบัติหรือการหยิบจับสิ่งนี้ 1 ข้อ",
+      "quiz_options": ["ตัวเลือกผิด 1", "ตัวเลือกถูก", "ตัวเลือกผิด 2"],
+      "correct_answer": "ตัวเลือกถูก (ต้องตรงกับตัวเลือกใน quiz_options ตัวใดตัวหนึ่งพอดี)"
+    }
+  }
+}`
+
+          const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey.trim()}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [
+                  {
+                    parts: [
+                      { text: systemPrompt },
+                      { inlineData: { mimeType: mimeType || 'image/jpeg', data: base64 } }
+                    ]
+                  }
+                ],
+                generationConfig: { responseMimeType: 'application/json' }
+              })
+            }
+          )
+
+          if (response.ok) {
+            const resData = await response.json()
+            const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text || ''
+            const jsonMatch = rawText.match(/\{[\s\S]*\}/)
+            if (jsonMatch) {
+              data = JSON.parse(jsonMatch[0])
+              usedDirectGemini = true
+            }
+          }
+        } catch (directErr) {
+          console.warn('Direct client-side Gemini call failed, falling back to backend:', directErr)
+        }
       }
 
-      const data = await resp.json()
+      if (!usedDirectGemini) {
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+        const resp = await fetch(`${backendUrl}/api/scan`, {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json',
+            'x-ai-provider': activeProvider,
+            'x-gemini-key': geminiKey,
+            'x-openai-key': openaiKey,
+            'x-claude-key': claudeKey
+          },
+          body: JSON.stringify({ imageBase64: base64, mimeType })
+        })
+
+        if (!resp.ok) {
+          throw new Error('การสแกนล้มเหลว')
+        }
+
+        data = await resp.json()
+      }
+
+      if (!data) throw new Error('ไม่สามารถวิเคราะห์ข้อมูลได้')
+
       setAiItem(data)
       setAiScanned(true)
-
-      // Look up matching 3D model in database
       try {
         const { data: matchedItem } = await supabase
           .from('ai_scan_items')
