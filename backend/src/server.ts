@@ -245,7 +245,32 @@ app.post('/api/scan', async (req, res) => {
   "location": "ตำแหน่งการจัดวางมาตรฐานบนโต๊ะอาหาร (หาได้ที่ไหน/วางไว้จุดไหน เช่น วางเยื้องไปทางขวาบน เหนือปลายใบมีดห่างประมาณ 1 นิ้ว)",
   "service_tips": "เคล็ดลับการบริการหรือทักษะมาตรฐานสำหรับบริกร 1-2 ข้อ",
   "english_phrases": ["ประโยคภาษาอังกฤษที่ใช้พูดแนะนำการใช้อุปกรณ์หรือทักทายเกี่ยวกับอุปกรณ์ชิ้นนี้กับลูกค้า 1", "ประโยคแนะนำลูกค้าที่ 2"],
-  "confidence": ตัวเลขระดับความมั่นใจ 0-100
+  "pronounce": "คำอ่านสัทอักษร (Phonetic Transcription) ภาษาอังกฤษ เช่น /krɪs.təl red waɪn ɡlæs/",
+  "confidence": ตัวเลขระดับความมั่นใจ 0-100,
+  "fine_analysis": {
+    "familiarize": {
+      "desc": "คำอธิบายรูปร่างลักษณะและหน้าที่การใช้งานโดยละเอียด",
+      "location": "ตำแหน่งการวางจัดโต๊ะอาหารมาตรฐาน"
+    },
+    "interact": {
+      "pronunciation": "คำอ่านออกเสียงภาษาอังกฤษเลียนแบบสัทอักษรหรือคำอ่านไทยเชิงอังกฤษ",
+      "english_phrases": ["ประโยคสำหรับบริกรแนะนำการใช้อุปกรณ์ 1", "ประโยคแนะนำที่ 2"],
+      "roleplay_prompt": "โจทย์สั้นๆ สำหรับให้ผู้เรียนฝึกพูดตอบโต้ เช่น 'จงแนะนำวิธีการเสิร์ฟด้วยไวน์แดงชนิดนี้แก่ลูกค้า'"
+    },
+    "navigate": {
+      "service_steps": [
+        "ขั้นตอนเตรียมอุปกรณ์สะอวดไร้รอยนิ้วมือ",
+        "ขั้นตอนการจัดวางบนโต๊ะ",
+        "ขั้นตอนการถอนจาน/แก้วหลังใช้งานเสร็จ"
+      ],
+      "safety_rules": "ข้อควรระวังสำคัญ เช่น ห้ามจับปากแก้วเด็ดขาด"
+    },
+    "exhibit": {
+      "quiz_question": "คำถามปรนัยเพื่อทบทวนทักษะเกี่ยวกับวัสดุ/อุปกรณ์ชิ้นนี้ 1 ข้อ",
+      "quiz_options": ["ตัวเลือกผิด 1", "ตัวเลือกถูก", "ตัวเลือกผิด 2"],
+      "correct_answer": "ตัวเลือกถูก (ต้องตรงกับตัวเลือกใน quiz_options ตัวใดตัวหนึ่งพอดี)"
+    }
+  }
 }`
 
     let text = ''
@@ -321,10 +346,11 @@ app.post('/api/scan', async (req, res) => {
           name_en: parsedData.name_en,
           category: parsedData.category || 'tableware',
           subcategory: parsedData.subcategory || '',
-          description: parsedData.description || '',
-          location: parsedData.location || '',
-          service_tips: parsedData.service_tips || '',
-          english_phrases: parsedData.english_phrases || []
+          description: parsedData.description || (parsedData.fine_analysis?.familiarize?.desc || ''),
+          location: parsedData.location || (parsedData.fine_analysis?.familiarize?.location || ''),
+          service_tips: parsedData.service_tips || (parsedData.fine_analysis?.navigate?.service_steps?.join('\n') || ''),
+          english_phrases: parsedData.english_phrases || (parsedData.fine_analysis?.interact?.english_phrases || []),
+          pronounce: parsedData.pronounce || (parsedData.fine_analysis?.interact?.pronunciation || '')
         }, { onConflict: 'name_en' })
       } catch (dbErr) {
         console.error('Failed to save scanned item to DB:', dbErr)

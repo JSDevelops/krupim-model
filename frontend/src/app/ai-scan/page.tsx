@@ -1,6 +1,28 @@
 'use client'
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import Link from 'next/link'
+import { supabase } from '@/lib/supabase'
+
+interface FineAnalysis {
+  familiarize?: {
+    desc: string
+    location: string
+  }
+  interact?: {
+    pronunciation: string
+    english_phrases: string[]
+    roleplay_prompt?: string
+  }
+  navigate?: {
+    service_steps: string[]
+    safety_rules?: string
+  }
+  exhibit?: {
+    quiz_question: string
+    quiz_options: string[]
+    correct_answer: string
+  }
+}
 
 interface ScanResult {
   name_th: string
@@ -8,9 +30,12 @@ interface ScanResult {
   category: string
   subcategory?: string
   description: string
+  location?: string
   service_tips: string
   english_phrases?: string[]
+  pronounce?: string
   confidence: number
+  fine_analysis?: FineAnalysis
 }
 
 const categoryColors: Record<string, { bg: string; color: string; emoji: string }> = {
@@ -26,14 +51,133 @@ export default function AIScanPage() {
   const [preview, setPreview] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [camMode, setCamMode] = useState(false)
+  
+  // Real-time Scanning & Interactive States
+  const [autoScan, setAutoScan] = useState(false)
+  const [matchedModelId, setMatchedModelId] = useState<string | null>(null)
+  const [quizSelectedOption, setQuizSelectedOption] = useState<string | null>(null)
+  const [quizAnswered, setQuizAnswered] = useState(false)
+  const [activeTab, setActiveTab] = useState<'F' | 'I' | 'N' | 'E'>('F')
+  
   const fileRef = useRef<HTMLInputElement>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  
+  const autoScanTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const isRequestPendingRef = useRef(false)
+
+  // Speech output helper
+  function speakText(text: string) {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel()
+      const ut = new SpeechSynthesisUtterance(text)
+      ut.lang = 'en-US'
+      ut.rate = 0.85
+      window.speechSynthesis.speak(ut)
+    }
+  }
+
+  // Auto-scan capturing frame
+  const captureAutoScanFrame = useCallback(async () => {
+    if (!videoRef.current || !canvasRef.current || isRequestPendingRef.current || scanning || result) return
+    
+    const canvas = canvasRef.current
+    const video = videoRef.current
+    
+    // Safety check for video dimensions
+    if (video.videoWidth === 0 || video.videoHeight === 0) return
+    
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    
+    ctx.drawImage(video, 0, 0)
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+    const base64 = dataUrl.split(',')[1]
+    
+    isRequestPendingRef.current = true
+    setScanning(true)
+    setError('')
+    
+    try {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+      const resp = await fetch(`${backendUrl}/api/scan`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg' })
+      })
+      if (!resp.ok) throw new Error('Scan failed')
+      const data = (await resp.json()) as ScanResult
+      
+      // If AI detects something with high confidence
+      if (data.confidence && data.confidence > 55) {
+        setResult(data)
+        setPreview(dataUrl)
+        
+        // Stop camera stream
+        if (videoRef.current && videoRef.current.srcObject) {
+          const stream = videoRef.current.srcObject as MediaStream
+          stream.getTracks().forEach(t => t.stop())
+          videoRef.current.srcObject = null
+        }
+        setCamMode(false)
+        setAutoScan(false)
+        setMatchedModelId(null)
+        setQuizSelectedOption(null)
+        setQuizAnswered(false)
+        setActiveTab('F')
+        
+        // Look up matching 3D model in database
+        try {
+          const { data: matchedItem } = await supabase
+            .from('ai_scan_items')
+            .select('id, glb_url')
+            .eq('name_en', data.name_en)
+            .maybeSingle()
+          if (matchedItem && matchedItem.glb_url) {
+            setMatchedModelId(matchedItem.id)
+          }
+        } catch (dbErr) {
+          console.error('Database match check error:', dbErr)
+        }
+      }
+    } catch (e) {
+      console.warn('Real-time frame scan error:', e)
+    } finally {
+      setScanning(false)
+      isRequestPendingRef.current = false
+    }
+  }, [scanning, result])
+
+  // Setup auto scan timer loop
+  useEffect(() => {
+    if (camMode && autoScan && !result) {
+      autoScanTimerRef.current = setInterval(() => {
+        captureAutoScanFrame()
+      }, 3500)
+    } else {
+      if (autoScanTimerRef.current) {
+        clearInterval(autoScanTimerRef.current)
+        autoScanTimerRef.current = null
+      }
+    }
+    return () => {
+      if (autoScanTimerRef.current) {
+        clearInterval(autoScanTimerRef.current)
+      }
+    }
+  }, [camMode, autoScan, result, captureAutoScanFrame])
 
   async function analyzeImage(base64: string, mimeType: string) {
     setScanning(true)
     setError('')
     setResult(null)
+    setMatchedModelId(null)
+    setQuizSelectedOption(null)
+    setQuizAnswered(false)
+    setActiveTab('F')
     try {
       const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
       const resp = await fetch(`${backendUrl}/api/scan`, {
@@ -44,6 +188,20 @@ export default function AIScanPage() {
       if (!resp.ok) throw new Error('Scan failed')
       const data = await resp.json()
       setResult(data)
+
+      // Look up matching 3D model in database
+      try {
+        const { data: matchedItem } = await supabase
+          .from('ai_scan_items')
+          .select('id, glb_url')
+          .eq('name_en', data.name_en)
+          .maybeSingle()
+        if (matchedItem && matchedItem.glb_url) {
+          setMatchedModelId(matchedItem.id)
+        }
+      } catch (err) {
+        console.error('Database match check error:', err)
+      }
     } catch (e) {
       setError('ไม่สามารถวิเคราะห์ภาพได้ กรุณาลองใหม่')
     } finally {
@@ -86,18 +244,32 @@ export default function AIScanPage() {
     const base64 = dataUrl.split(',')[1]
     
     // Stop camera
-    const stream = videoRef.current.srcObject as MediaStream
-    stream?.getTracks().forEach(t => t.stop())
+    if (videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream
+      stream.getTracks().forEach(t => t.stop())
+      videoRef.current.srcObject = null
+    }
     setCamMode(false)
+    setAutoScan(false)
     
     await analyzeImage(base64, 'image/jpeg')
   }
 
   function reset() {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream
+      stream.getTracks().forEach(t => t.stop())
+      videoRef.current.srcObject = null
+    }
     setResult(null)
     setPreview(null)
     setError('')
     setCamMode(false)
+    setAutoScan(false)
+    setMatchedModelId(null)
+    setQuizSelectedOption(null)
+    setQuizAnswered(false)
+    setActiveTab('F')
     if (fileRef.current) fileRef.current.value = ''
   }
 
@@ -108,25 +280,46 @@ export default function AIScanPage() {
       <div className="scan-header">
         <Link href="/student/dashboard" className="premium-back-btn">‹</Link>
         <div>
-          <div style={{color:'white', fontWeight:700, fontSize:16}}>AI Scan</div>
-          <div style={{color:'rgba(255,255,255,0.6)', fontSize:11}}>วิเคราะห์ด้วย Gemini Vision</div>
+          <div style={{color:'white', fontWeight:700, fontSize:16}}>AI Real-time Scan</div>
+          <div style={{color:'rgba(255,255,255,0.6)', fontSize:11}}>วิเคราะห์แบบเรียลไทม์ด้วย FINE MODEL</div>
         </div>
         <div style={{width:44}} />
       </div>
 
       {/* Camera / Preview Area */}
-      <div className="scan-viewfinder">
+      <div className="scan-viewfinder" style={{ height: '320px' }}>
         {camMode ? (
           <div className="cam-view">
             <video ref={videoRef} autoPlay playsInline muted className="cam-video" />
             <canvas ref={canvasRef} style={{display:'none'}} />
             <div className="cam-overlay">
               <div className="scan-frame" />
-              <p style={{color:'rgba(255,255,255,0.8)', fontSize:13, marginTop:16}}>จัดวางสิ่งของให้อยู่ในกรอบ</p>
+              <button 
+                onClick={() => setAutoScan(!autoScan)}
+                type="button"
+                style={{
+                  background: autoScan ? 'linear-gradient(135deg, #E65100, #EF6C00)' : 'rgba(0,0,0,0.6)',
+                  color: 'white',
+                  border: '1.5px solid ' + (autoScan ? '#FFF3E0' : 'rgba(255,255,255,0.3)'),
+                  borderRadius: 20,
+                  padding: '6px 16px',
+                  fontSize: 12,
+                  fontWeight: 'bold',
+                  cursor: 'pointer',
+                  marginTop: 12,
+                  zIndex: 20,
+                  boxShadow: autoScan ? '0 0 12px rgba(230,81,0,0.5)' : 'none'
+                }}
+              >
+                {autoScan ? '🔵 กำลังสแกนเรียลไทม์อัตโนมัติ...' : '📷 เปิดสแกนเรียลไทม์ (Auto)'}
+              </button>
+              <p style={{color:'rgba(255,255,255,0.8)', fontSize:11, marginTop:8}}>
+                {autoScan ? 'ถือกล้องนิ่งๆ รอ AI ตรวจจับและประมวลผล' : 'จัดวางอุปกรณ์ให้อยู่ในกรอบแล้วกดปุ่มถ่าย'}
+              </p>
             </div>
             <div className="cam-controls">
               <button onClick={reset} className="cam-btn-cancel">ยกเลิก</button>
-              <button onClick={capturePhoto} className="cam-btn-capture">
+              <button onClick={capturePhoto} className="cam-btn-capture" title="ถ่ายภาพวิเคราะห์">
                 <div className="capture-btn-inner" />
               </button>
               <div style={{width:64}} />
@@ -145,11 +338,11 @@ export default function AIScanPage() {
           </div>
         ) : (
           <div className="scan-placeholder">
-            <div className="scan-icon-wrap">
+            <div className="scan-icon-wrap" style={{ borderStyle: 'solid', borderColor: '#C9A84C' }}>
               <span style={{fontSize:60}}>🤖</span>
             </div>
             <p style={{color:'rgba(255,255,255,0.7)', fontSize:14, textAlign:'center', lineHeight:1.6}}>
-              ถ่ายภาพหรืออัพโหลดรูปอาหาร<br/>เครื่องดื่ม หรืออุปกรณ์<br/>เพื่อวิเคราะห์ด้วย AI
+              ส่องกล้องสแกนวัสดุ/อุปกรณ์จริง<br/>หรืออัปโหลดรูปภาพอาหารและเครื่องดื่ม<br/>เพื่อวิเคราะห์ตามหลัก FINE MODEL
             </p>
           </div>
         )}
@@ -160,11 +353,11 @@ export default function AIScanPage() {
         <div className="scan-actions">
           <button className="scan-btn-primary" onClick={startCamera}>
             <span style={{fontSize:22}}>📷</span>
-            ถ่ายภาพ
+            เปิดกล้องสแกนวัตถุ
           </button>
           <button className="scan-btn-secondary" onClick={() => fileRef.current?.click()}>
             <span style={{fontSize:22}}>🖼️</span>
-            เลือกจากคลัง
+            อัปโหลดภาพถ่าย
           </button>
           <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}} onChange={handleFileSelect} />
         </div>
@@ -172,68 +365,286 @@ export default function AIScanPage() {
 
       {/* Error */}
       {error && (
-        <div className="scan-error">⚠️ {error}</div>
+        <div className="scan-error" style={{ marginTop: 12 }}>⚠️ {error}</div>
       )}
 
       {/* Result */}
       {result && cat && (
-        <div className="scan-result animate-slide-up">
-          <div className="result-header" style={{background: cat.bg}}>
+        <div className="scan-result animate-slide-up" style={{ borderRadius: '24px 24px 0 0', background: '#FDFAF4' }}>
+          <div className="result-header" style={{background: cat.bg, borderBottom: '1px solid rgba(0,0,0,0.06)'}}>
             <div className="result-icon" style={{background: cat.color}}>
               <span style={{fontSize:28}}>{cat.emoji}</span>
             </div>
             <div className="result-title-wrap">
-              <div className="result-name-th">{result.name_th}</div>
-              <div className="result-name-en">{result.name_en}</div>
-              <div className="badge" style={{background: cat.color, color:'white', marginTop:4}}>
+              <div className="result-name-th" style={{color: '#102B1F'}}>{result.name_th}</div>
+              <div className="result-name-en" style={{color: '#666'}}>{result.name_en}</div>
+              <div className="badge" style={{background: cat.color, color:'white', marginTop:4, fontSize: 10, fontWeight: 700}}>
                 {result.subcategory || result.category}
               </div>
             </div>
             <div className="result-confidence">
               <div style={{fontSize:20, fontWeight:700, color: cat.color}}>{result.confidence}%</div>
-              <div style={{fontSize:10, color:'var(--text-muted)'}}>ความมั่นใจ</div>
+              <div style={{fontSize:9, color:'#888', fontWeight: 600}}>ความมั่นใจ AI</div>
             </div>
           </div>
 
-          <div className="result-body">
-            <div className="result-section">
-              <div className="result-section-title">📝 คำอธิบาย</div>
-              <p className="result-text">{result.description}</p>
+          <div className="result-body" style={{ background: '#FDFAF4', padding: '16px 20px 32px' }}>
+            
+            {/* FINE Tab Navigation */}
+            <div style={{
+              display: 'flex',
+              background: '#EDE9E1',
+              borderRadius: 12,
+              padding: 4,
+              marginBottom: 20
+            }}>
+              {(['F', 'I', 'N', 'E'] as const).map(tab => {
+                const isActive = activeTab === tab
+                const label = tab === 'F' ? 'F-Familiarize' : tab === 'I' ? 'I-Interact' : tab === 'N' ? 'N-Navigate' : 'E-Exhibit'
+                return (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    type="button"
+                    style={{
+                      flex: 1,
+                      padding: '8px 2px',
+                      border: 'none',
+                      background: isActive ? '#102B1F' : 'transparent',
+                      color: isActive ? '#C9A84C' : '#555',
+                      fontWeight: isActive ? 800 : 600,
+                      fontSize: 10.5,
+                      borderRadius: 8,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {label}
+                  </button>
+                )
+              })}
             </div>
 
-            <div className="result-section">
-              <div className="result-section-title">💡 เคล็ดลับการบริการ</div>
-              <p className="result-text">{result.service_tips}</p>
-            </div>
-
-            {result.english_phrases && result.english_phrases.length > 0 && (
-              <div className="result-section">
-                <div className="result-section-title">🇬🇧 ประโยคภาษาอังกฤษ</div>
-                {result.english_phrases.map((p, i) => (
-                  <div key={i} className="english-phrase">
-                    <span style={{color: cat.color, fontWeight:600}}>→</span> {p}
-                  </div>
-                ))}
+            {/* TAB F: Familiarize */}
+            {activeTab === 'F' && (
+              <div className="animate-fade-in">
+                <div className="result-section">
+                  <div className="result-section-title" style={{color: '#102B1F'}}>📝 ลักษณะและการใช้งาน (F-Familiarize)</div>
+                  <p className="result-text" style={{fontSize: 13.5, color: '#4A4138', lineHeight: 1.6}}>
+                    {result.fine_analysis?.familiarize?.desc || result.description}
+                  </p>
+                </div>
+                <div className="result-section" style={{marginTop: 14}}>
+                  <div className="result-section-title" style={{color: '#102B1F'}}>📍 ตำแหน่งการจัดวางบนโต๊ะอาหาร</div>
+                  <p className="result-text" style={{fontSize: 13.5, color: '#4A4138', lineHeight: 1.6}}>
+                    {result.fine_analysis?.familiarize?.location || result.location || 'จัดวางตามมาตรฐานการจัดโต๊ะ Place Setting'}
+                  </p>
+                </div>
               </div>
             )}
 
-            <div style={{display:'flex', gap:'8px', marginTop:'8px'}}>
-              <button onClick={reset} className="btn btn-outline" style={{flex:1}}>
-                🔄 สแกนใหม่
+            {/* TAB I: Interact */}
+            {activeTab === 'I' && (
+              <div className="animate-fade-in">
+                <div className="result-section">
+                  <div className="result-section-title" style={{color: '#102B1F'}}>🔊 การออกเสียงศัพท์บริการ (I-Interact)</div>
+                  <div style={{display:'flex', alignItems:'center', gap:10, background:'white', border: '1px solid #EDE9E1', padding:'10px 14px', borderRadius:14, marginBottom:12}}>
+                    <span style={{fontSize:15, fontWeight:800, color:'#102B1F'}}>{result.name_en}</span>
+                    {result.fine_analysis?.interact?.pronunciation && (
+                      <span style={{fontSize:12, color:'#A6882A', fontStyle:'italic', fontWeight: 600}}>{result.fine_analysis?.interact?.pronunciation}</span>
+                    )}
+                    <button 
+                      onClick={() => speakText(result.name_en)}
+                      type="button"
+                      style={{marginLeft:'auto', border:'none', background:'#EAF3EE', width:32, height:32, borderRadius:'50%', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center'}}
+                      title="ฟังเสียงคำอ่าน"
+                    >
+                      🔊
+                    </button>
+                  </div>
+                </div>
+                <div className="result-section">
+                  <div className="result-section-title" style={{color: '#102B1F'}}>🗣️ ประโยคภาษาอังกฤษสื่อสารกับลูกค้า</div>
+                  {(result.fine_analysis?.interact?.english_phrases || result.english_phrases || []).map((phrase, idx) => (
+                    <div key={idx} style={{background:'white', border: '1px solid #EDE9E1', padding:'10px 12px', borderRadius:10, marginBottom:6, fontSize:13, display:'flex', alignItems:'center', gap:8}}>
+                      <span style={{color:cat.color, fontWeight:'bold'}}>→</span>
+                      <span style={{fontStyle:'italic', flex:1, color:'#333'}}>{phrase}</span>
+                      <button 
+                        onClick={() => speakText(phrase)}
+                        type="button"
+                        style={{border:'none', background:'transparent', cursor:'pointer', fontSize:14}}
+                      >
+                        🔊
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                {result.fine_analysis?.interact?.roleplay_prompt && (
+                  <div className="result-section" style={{background:'#FFF7E6', padding:12, borderRadius:12, borderLeft:'4px solid #C9A84C', marginTop:14}}>
+                    <div style={{fontSize:10, fontWeight:900, color:'#A6882A', textTransform:'uppercase', letterSpacing: '0.5px'}}>โจทย์บทบาทสมมติ (Role-play Practice)</div>
+                    <p style={{margin:'4px 0 0 0', fontSize:12.5, color:'#4A4138', fontWeight:700}}>{result.fine_analysis?.interact?.roleplay_prompt}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB N: Navigate */}
+            {activeTab === 'N' && (
+              <div className="animate-fade-in">
+                <div className="result-section">
+                  <div className="result-section-title" style={{color: '#102B1F'}}>📋 ขั้นตอนมาตรฐานปฏิบัติงาน (N-Navigate)</div>
+                  {(result.fine_analysis?.navigate?.service_steps || []).length > 0 ? (
+                    (result.fine_analysis?.navigate?.service_steps || []).map((step, idx) => (
+                      <div key={idx} style={{display:'flex', gap:10, marginBottom:10, fontSize:13.5, alignItems: 'flex-start'}}>
+                        <span style={{background:'#102B1F', color:'#C9A84C', borderRadius:'50%', width:20, height:20, display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, flexShrink:0, fontWeight:'bold', marginTop: 1}}>{idx + 1}</span>
+                        <span style={{color:'#4A4138', lineHeight:1.5}}>{step}</span>
+                      </div>
+                    ))
+                  ) : (
+                    <p style={{fontSize:13.5, color:'#4A4138'}}>{result.service_tips}</p>
+                  )}
+                </div>
+                {result.fine_analysis?.navigate?.safety_rules && (
+                  <div className="result-section" style={{background:'#FFF0F2', padding:12, borderRadius:12, borderLeft:'4px solid #D32F2F', marginTop:16}}>
+                    <div style={{fontSize:10, fontWeight:900, color:'#D32F2F', textTransform:'uppercase', letterSpacing: '0.5px'}}>⚠️ ข้อควรระวังและสุขอนามัยบริการ</div>
+                    <p style={{margin:'4px 0 0 0', fontSize:12.5, color:'#555', fontWeight:700}}>{result.fine_analysis?.navigate?.safety_rules}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB E: Exhibit */}
+            {activeTab === 'E' && (
+              <div className="animate-fade-in">
+                <div className="result-section">
+                  <div className="result-section-title" style={{color: '#102B1F'}}>📝 คำถามประเมินตนเอง (E-Exhibit)</div>
+                  {result.fine_analysis?.exhibit?.quiz_question ? (
+                    <div style={{background:'white', border:'1.5px solid #EDE9E1', padding:16, borderRadius:18}}>
+                      <div style={{fontSize:14, fontWeight:800, color:'#102B1F', marginBottom:12, lineHeight: 1.5}}>
+                        ❓ {result.fine_analysis?.exhibit?.quiz_question}
+                      </div>
+                      <div style={{display:'flex', flexDirection:'column', gap:8}}>
+                        {(result.fine_analysis?.exhibit?.quiz_options || []).map((option, idx) => {
+                          const isSelected = quizSelectedOption === option
+                          const isCorrect = option === result.fine_analysis?.exhibit?.correct_answer
+                          let btnBg = 'white'
+                          let btnBorder = '1px solid #EDE9E1'
+                          let btnColor = '#4A4138'
+                          
+                          if (quizAnswered) {
+                            if (isCorrect) {
+                              btnBg = '#EAF3EE'
+                              btnBorder = '1.5px solid #1E4D3A'
+                              btnColor = '#1E4D3A'
+                            } else if (isSelected) {
+                              btnBg = '#FDF0F2'
+                              btnBorder = '1.5px solid #D32F2F'
+                              btnColor = '#D32F2F'
+                            } else {
+                              btnBg = 'white'
+                              btnBorder = '1px solid #F5F5F5'
+                              btnColor = '#999'
+                            }
+                          } else if (isSelected) {
+                            btnBg = '#FDFAF4'
+                            btnBorder = '1.5px solid #C9A84C'
+                          }
+
+                          return (
+                            <button
+                              key={idx}
+                              disabled={quizAnswered}
+                              onClick={() => setQuizSelectedOption(option)}
+                              type="button"
+                              style={{
+                                width: '100%',
+                                padding: '12px 14px',
+                                border: btnBorder,
+                                background: btnBg,
+                                color: btnColor,
+                                borderRadius: 12,
+                                fontSize: 13,
+                                fontWeight: isSelected || (quizAnswered && isCorrect) ? 'bold' : 'normal',
+                                textAlign: 'left',
+                                cursor: quizAnswered ? 'default' : 'pointer',
+                                transition: 'all 0.15s'
+                              }}
+                            >
+                              <span style={{ marginRight: 6, color: isSelected ? '#C9A84C' : '#888' }}>
+                                {idx === 0 ? 'A.' : idx === 1 ? 'B.' : 'C.'}
+                              </span>
+                              {option}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      
+                      {!quizAnswered ? (
+                        <button
+                          disabled={!quizSelectedOption}
+                          onClick={() => setQuizAnswered(true)}
+                          type="button"
+                          style={{
+                            width: '100%',
+                            marginTop: 14,
+                            padding: '12px',
+                            background: quizSelectedOption ? 'linear-gradient(135deg, #102B1F, #1E4D3A)' : '#CCC',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: 12,
+                            fontWeight: 'bold',
+                            fontSize: 13,
+                            cursor: quizSelectedOption ? 'pointer' : 'default'
+                          }}
+                        >
+                          ส่งคำตอบ
+                        </button>
+                      ) : (
+                        <div style={{
+                          marginTop: 14,
+                          padding: '10px',
+                          background: quizSelectedOption === result.fine_analysis?.exhibit?.correct_answer ? '#EAF3EE' : '#FDF0F2',
+                          color: quizSelectedOption === result.fine_analysis?.exhibit?.correct_answer ? '#1E4D3A' : '#D32F2F',
+                          borderRadius: 10,
+                          fontSize: 12.5,
+                          fontWeight: 'bold',
+                          textAlign: 'center'
+                        }}>
+                          {quizSelectedOption === result.fine_analysis?.exhibit?.correct_answer ? '🎉 ยอดเยี่ยม! คุณตอบถูกต้อง ได้รับ 10 คะแนนความรู้' : '❌ คำตอบยังไม่ถูก ลองศึกษาข้อมูลใน F-Familiarize ใหม่นะครับ'}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <p style={{fontSize:13, color:'#666'}}>ไม่มีชุดแบบทดสอบรองรับสำหรับอุปกรณ์จำลองนี้</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Bottom Actions */}
+            <div style={{display:'flex', gap:'10px', marginTop:'24px'}}>
+              <button onClick={reset} className="btn btn-outline" style={{flex:1, borderRadius: 14, background: 'transparent', border: '1.5px solid #1E4D3A', color: '#1E4D3A', fontWeight: 800, fontFamily: 'var(--font-primary)'}}>
+                🔄 สแกนชิ้นใหม่
               </button>
-              <Link href="/chat" className="btn btn-primary" style={{flex:1, textDecoration:'none'}}>
-                💬 ถาม AI
-              </Link>
+              {matchedModelId ? (
+                <Link href={`/student/ar-view?id=${matchedModelId}`} className="btn btn-primary" style={{flex:1, borderRadius: 14, background: 'linear-gradient(135deg, #102B1F 0%, #1E4D3A 100%)', color: 'white', fontWeight: 800, textDecoration:'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-primary)'}}>
+                  📱 ส่องกล้อง AR จริง
+                </Link>
+              ) : (
+                <Link href="/chat" className="btn btn-primary" style={{flex:1, borderRadius: 14, background: 'linear-gradient(135deg, #C9A84C 0%, #A6882A 100%)', color: 'white', fontWeight: 800, textDecoration:'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-primary)'}}>
+                  💬 ถามผู้ช่วย AI
+                </Link>
+              )}
             </div>
           </div>
         </div>
       )}
 
-      {/* Scanning state bottom */}
+      {/* Scanning status footer overlay */}
       {scanning && (
-        <div className="scan-status">
+        <div className="scan-status" style={{ background: 'rgba(0,0,0,0.85)', position: 'fixed', bottom: 0, left:0, right:0, zIndex: 1000 }}>
           <span className="animate-pulse" style={{fontSize:18}}>🤖</span>
-          Gemini กำลังวิเคราะห์ภาพ...
+          Gemini Vision กำลังวิเคราะห์วัตถุแบบเรียลไทม์...
         </div>
       )}
 
@@ -261,10 +672,11 @@ export default function AIScanPage() {
           flex-direction: column;
           align-items: center;
           justify-content: center;
+          background: rgba(0,0,0,0.1);
         }
         .scan-frame {
-          width: 200px; height: 200px;
-          border: 2px solid rgba(255,255,255,0.8);
+          width: 180px; height: 180px;
+          border: 2px solid rgba(255,255,255,0.4);
           border-radius: var(--radius-lg);
           position: relative;
         }
@@ -272,7 +684,7 @@ export default function AIScanPage() {
           content: '';
           position: absolute;
           width: 24px; height: 24px;
-          border-color: var(--accent);
+          border-color: #C9A84C;
           border-style: solid;
           border-radius: 2px;
         }
@@ -286,6 +698,7 @@ export default function AIScanPage() {
           align-items: center;
           justify-content: space-around;
           padding: 0 var(--space-6);
+          z-index: 30;
         }
         .cam-btn-cancel {
           background: rgba(255,255,255,0.15);
@@ -459,6 +872,13 @@ export default function AIScanPage() {
           padding: var(--space-4);
           color: rgba(255,255,255,0.7);
           font-size: 13px;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+          animation: fadeIn 0.25s ease-out forwards;
         }
       `}</style>
     </div>
