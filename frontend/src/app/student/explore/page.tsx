@@ -304,20 +304,25 @@ export default function ExplorePage() {
       } catch (err) {
         console.error('Database match check error:', err)
       }
-    } catch (e) {
-      setScanError('ไม่สามารถวิเคราะห์ชิ้นอุปกรณ์นี้ได้ กรุณาลองใหม่')
-      // Fallback mock item for demo
-      const mock = aiResults[Math.floor(Math.random() * aiResults.length)]
-      setAiItem({
-        name_en: mock.name,
-        name_th: mock.nameTh,
-        description: mock.use,
-        location: 'จัดวางอยู่บนโต๊ะฝั่งขวามือถัดจากจานอาหารหลัก หรือเบิกจากเคาน์เตอร์บาร์น้ำ',
-        service_tips: 'ควรรักษาความสะอาดเช็ดคราบรอยนิ้วมือก่อนนำเสิร์ฟ',
-        english_phrases: [mock.sentence],
-        confidence: 80
-      })
-      setAiScanned(true)
+    } catch (e: any) {
+      console.error('Scan Error in frontend:', e)
+      
+      let errMsg = 'ไม่สามารถวิเคราะห์ชิ้นอุปกรณ์นี้ได้ กรุณาลองใหม่อีกครั้ง'
+      const errStr = String(e.message || e).toLowerCase()
+      
+      if (errStr.includes('failed to fetch') || errStr.includes('load failed') || errStr.includes('networkerror')) {
+        errMsg = '⚠️ ไม่สามารถสแกนได้: ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์หลังบ้านได้ (เซิร์ฟเวอร์ออฟไลน์หรือปัญหาเครือข่าย)'
+      } else if (errStr.includes('429') || errStr.includes('quota') || errStr.includes('rate limit') || errStr.includes('too many requests')) {
+        errMsg = '⚠️ ไม่สามารถสแกนได้: โควตาการใช้งานฟรีของ Gemini API เต็มแล้ว กรุณาใส่คีย์ส่วนตัวในหน้าตั้งค่าโปรไฟล์เพื่อใช้งานต่อ'
+      } else if (errStr.includes('api key') || errStr.includes('unauthorized') || errStr.includes('403') || errStr.includes('not found')) {
+        errMsg = '⚠️ ไม่สามารถสแกนได้: คีย์ API ไม่ถูกต้อง หมดอายุ หรือไม่มีสิทธิ์เข้าถึงโมเดลนี้'
+      } else if (e.message) {
+        errMsg = `⚠️ ไม่สามารถสแกนได้: ${e.message}`
+      }
+      
+      setScanError(errMsg)
+      setAiItem(null)
+      setAiScanned(false)
     } finally {
       setScanAnim(false)
     }
