@@ -621,15 +621,22 @@ export default function ExplorePage() {
               flexDirection: 'column'
             }}>
               {/* 1. Live Video background */}
-              {isCameraActive ? (
-                <video 
-                  ref={videoRef}
-                  playsInline
-                  autoPlay
-                  muted
-                  style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', zIndex: 1 }}
-                />
-              ) : (
+              <video 
+                ref={videoRef}
+                playsInline
+                autoPlay
+                muted
+                style={{ 
+                  position: 'absolute', 
+                  inset: 0, 
+                  width: '100%', 
+                  height: '100%', 
+                  objectFit: 'cover', 
+                  zIndex: 1,
+                  display: isCameraActive ? 'block' : 'none'
+                }}
+              />
+              {!isCameraActive && (
                 <div style={{ position: 'absolute', inset: 0, zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24, background: '#090F0B' }}>
                   <span style={{ fontSize: 48, animation: 'spin 10s linear infinite' }}>📡</span>
                   <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13.5, fontWeight: 700, letterSpacing: '0.5px' }}>กำลังเชื่อมต่อกล้องระบบ VR Scan...</div>
