@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { supabase } from '@/lib/supabase'
 
 interface Equipment {
   name: string
@@ -38,6 +39,13 @@ export default function ExplorePage() {
   const [isCameraActive, setIsCameraActive] = useState(false)
   const [previewImage, setPreviewImage] = useState<string | null>(null)
   
+  // Real-time Scanning & Interactive States
+  const [autoScan, setAutoScan] = useState(false)
+  const [matchedModelId, setMatchedModelId] = useState<string | null>(null)
+  const [quizSelectedOption, setQuizSelectedOption] = useState<string | null>(null)
+  const [quizAnswered, setQuizAnswered] = useState(false)
+  const [fineTab, setFineTab] = useState<'F' | 'I' | 'N' | 'E'>('F')
+
   // Voice Evaluation States
   const [studentSpeech, setStudentSpeech] = useState('')
   const [speechScore, setSpeechScore] = useState<number | null>(null)
@@ -50,12 +58,16 @@ export default function ExplorePage() {
   const streamRef = useRef<MediaStream | null>(null)
   const recognitionRef = useRef<any>(null)
 
+  const autoScanTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const isRequestPendingRef = useRef(false)
+
   // จัดการควบคุมสถานะเปิด-ปิดกล้องวิดีโอเมื่อสลับแท็บ
   useEffect(() => {
     if (activeTab === 'ai') {
       startVRCamera()
     } else {
       stopVRCamera()
+      setAutoScan(false)
     }
 
     return () => {
@@ -164,6 +176,10 @@ export default function ExplorePage() {
     setScanError('')
     setAiScanned(false)
     setAiItem(null)
+    setMatchedModelId(null)
+    setQuizSelectedOption(null)
+    setQuizAnswered(false)
+    setFineTab('F')
 
     try {
       const activeProvider = typeof window !== 'undefined' ? localStorage.getItem('activeAiProvider') || 'gemini' : 'gemini'
@@ -188,35 +204,135 @@ export default function ExplorePage() {
         throw new Error('การสแกนล้มเหลว')
       }
 
-      // แปลงโครงสร้างคำตอบเพื่อให้ตรงกับการนำไปใช้แสดงผล
       const data = await resp.json()
-      setAiItem({
-
-        name: data.name_en || 'Unknown Object',
-        nameTh: data.name_th || 'ไม่สามารถระบุได้',
-        use: data.description || 'ไม่มีรายละเอียดวิธีใช้งานสำหรับอุปกรณ์ชิ้นนี้',
-        location: data.location || 'จัดตั้งอยู่บนโต๊ะอาหารสำหรับการใช้ร่วมบริการอาหารจานหลัก',
-        sentence: data.english_phrases?.[0] || 'Hello, how can I help you today?',
-        tips: data.service_tips || ''
-      })
+      setAiItem(data)
       setAiScanned(true)
+
+      // Look up matching 3D model in database
+      try {
+        const { data: matchedItem } = await supabase
+          .from('ai_scan_items')
+          .select('id, glb_url')
+          .eq('name_en', data.name_en)
+          .maybeSingle()
+        if (matchedItem && matchedItem.glb_url) {
+          setMatchedModelId(matchedItem.id)
+        }
+      } catch (err) {
+        console.error('Database match check error:', err)
+      }
     } catch (e) {
       setScanError('ไม่สามารถวิเคราะห์ชิ้นอุปกรณ์นี้ได้ กรุณาลองใหม่')
       // Fallback mock item for demo
       const mock = aiResults[Math.floor(Math.random() * aiResults.length)]
       setAiItem({
-        name: mock.name,
-        nameTh: mock.nameTh,
-        use: mock.use,
+        name_en: mock.name,
+        name_th: mock.nameTh,
+        description: mock.use,
         location: 'จัดวางอยู่บนโต๊ะฝั่งขวามือถัดจากจานอาหารหลัก หรือเบิกจากเคาน์เตอร์บาร์น้ำ',
-        sentence: mock.sentence,
-        tips: 'ควรรักษาความสะอาดเช็ดคราบรอยนิ้วมือก่อนนำเสิร์ฟ'
+        service_tips: 'ควรรักษาความสะอาดเช็ดคราบรอยนิ้วมือก่อนนำเสิร์ฟ',
+        english_phrases: [mock.sentence],
+        confidence: 80
       })
       setAiScanned(true)
     } finally {
       setScanAnim(false)
     }
   }
+
+  // Auto-scan capturing frame for explorer
+  async function captureAutoScanFrame() {
+    if (!videoRef.current || !canvasRef.current || isRequestPendingRef.current || scanAnim || aiScanned || activeTab !== 'ai') return
+    
+    const canvas = canvasRef.current
+    const video = videoRef.current
+    
+    if (video.videoWidth === 0 || video.videoHeight === 0) return
+    
+    canvas.width = video.videoWidth
+    canvas.height = video.videoHeight
+    
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return
+    
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+    const base64 = dataUrl.split(',')[1]
+    
+    isRequestPendingRef.current = true
+    setScanAnim(true)
+    setScanError('')
+    
+    try {
+      const activeProvider = typeof window !== 'undefined' ? localStorage.getItem('activeAiProvider') || 'gemini' : 'gemini'
+      const geminiKey = typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : ''
+      const openaiKey = typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') || '' : ''
+      const claudeKey = typeof window !== 'undefined' ? localStorage.getItem('claudeApiKey') || '' : ''
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+      
+      const resp = await fetch(`${backendUrl}/api/scan`, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-ai-provider': activeProvider,
+          'x-gemini-key': geminiKey,
+          'x-openai-key': openaiKey,
+          'x-claude-key': claudeKey
+        },
+        body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg' })
+      })
+      if (!resp.ok) throw new Error('Scan failed')
+      const data = await resp.json()
+      
+      if (data.confidence && data.confidence > 55) {
+        setAiItem(data)
+        setAiScanned(true)
+        stopVRCamera()
+        setAutoScan(false)
+        setMatchedModelId(null)
+        setQuizSelectedOption(null)
+        setQuizAnswered(false)
+        setFineTab('F')
+        
+        try {
+          const { data: matchedItem } = await supabase
+            .from('ai_scan_items')
+            .select('id, glb_url')
+            .eq('name_en', data.name_en)
+            .maybeSingle()
+          if (matchedItem && matchedItem.glb_url) {
+            setMatchedModelId(matchedItem.id)
+          }
+        } catch (dbErr) {
+          console.error(dbErr)
+        }
+      }
+    } catch (e) {
+      console.warn('Real-time frame scan error:', e)
+    } finally {
+      setScanAnim(false)
+      isRequestPendingRef.current = false
+    }
+  }
+
+  // Setup auto scan loop for explorer
+  useEffect(() => {
+    if (isCameraActive && autoScan && activeTab === 'ai' && !aiScanned) {
+      autoScanTimerRef.current = setInterval(() => {
+        captureAutoScanFrame()
+      }, 3500)
+    } else {
+      if (autoScanTimerRef.current) {
+        clearInterval(autoScanTimerRef.current)
+        autoScanTimerRef.current = null
+      }
+    }
+    return () => {
+      if (autoScanTimerRef.current) {
+        clearInterval(autoScanTimerRef.current)
+      }
+    }
+  }, [isCameraActive, autoScan, activeTab, aiScanned])
 
   // ฟังก์ชันจับภาพจากวิดีโอสดในแคนวาส (Capture Real-time Frame)
   async function captureVRFrame() {
@@ -237,6 +353,7 @@ export default function ExplorePage() {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
         const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
         const base64 = dataUrl.split(',')[1]
+        setAutoScan(false)
         await analyzeImage(base64, 'image/jpeg')
       }
     } catch (err) {
@@ -606,27 +723,49 @@ export default function ExplorePage() {
               {!aiScanned && (
                 <div style={{
                   position: 'absolute', top: '44%', left: '50%', transform: 'translate(-50%, -50%)',
-                  zIndex: 5, pointerEvents: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center'
+                  zIndex: 5, display: 'flex', flexDirection: 'column', alignItems: 'center'
                 }}>
-                  <div style={{ position: 'relative', width: 160, height: 160 }}>
+                  <div style={{ position: 'relative', width: 140, height: 140, marginBottom: 8, pointerEvents: 'none' }}>
                     {/* Brackets */}
-                    <div style={{ position: 'absolute', top: 0, left: 0, width: 26, height: 26, borderLeft: '4px solid #C9A84C', borderTop: '4px solid #C9A84C', borderRadius: '8px 0 0 0' }} />
-                    <div style={{ position: 'absolute', top: 0, right: 0, width: 26, height: 26, borderRight: '4px solid #C9A84C', borderTop: '4px solid #C9A84C', borderRadius: '0 8px 0 0' }} />
-                    <div style={{ position: 'absolute', bottom: 0, left: 0, width: 26, height: 26, borderLeft: '4px solid #C9A84C', borderBottom: '4px solid #C9A84C', borderRadius: '0 0 0 8px' }} />
-                    <div style={{ position: 'absolute', bottom: 0, right: 0, width: 26, height: 26, borderRight: '4px solid #C9A84C', borderBottom: '4px solid #C9A84C', borderRadius: '0 0 8px 0' }} />
+                    <div style={{ position: 'absolute', top: 0, left: 0, width: 22, height: 22, borderLeft: '3.5px solid #C9A84C', borderTop: '3.5px solid #C9A84C', borderRadius: '4px 0 0 0' }} />
+                    <div style={{ position: 'absolute', top: 0, right: 0, width: 22, height: 22, borderRight: '3.5px solid #C9A84C', borderTop: '3.5px solid #C9A84C', borderRadius: '0 4px 0 0' }} />
+                    <div style={{ position: 'absolute', bottom: 0, left: 0, width: 22, height: 22, borderLeft: '3.5px solid #C9A84C', borderBottom: '3.5px solid #C9A84C', borderRadius: '0 0 0 4px' }} />
+                    <div style={{ position: 'absolute', bottom: 0, right: 0, width: 22, height: 22, borderRight: '3.5px solid #C9A84C', borderBottom: '3.5px solid #C9A84C', borderRadius: '0 0 4px 0' }} />
                     
                     {/* Pulsing ring inside */}
                     <div style={{
-                      position: 'absolute', inset: 26,
-                      border: '1px dashed rgba(201, 168, 76, 0.4)',
+                      position: 'absolute', inset: 22,
+                      border: '1.5px dashed rgba(201, 168, 76, 0.4)',
                       borderRadius: '50%',
                       animation: 'spin 16s linear infinite'
                     }} />
                   </div>
+
+                  {/* Auto-Scan toggle button overlay inside camera view */}
+                  <button 
+                    onClick={() => setAutoScan(!autoScan)}
+                    type="button"
+                    style={{
+                      background: autoScan ? 'linear-gradient(135deg, #102B1F 0%, #1E4D3A 100%)' : 'rgba(15, 28, 41, 0.85)',
+                      color: autoScan ? '#C9A84C' : 'white',
+                      border: '1.5px solid ' + (autoScan ? '#C9A84C' : 'rgba(255,255,255,0.25)'),
+                      borderRadius: 100,
+                      padding: '6px 14px',
+                      fontSize: 10,
+                      fontWeight: 900,
+                      cursor: 'pointer',
+                      zIndex: 20,
+                      boxShadow: autoScan ? '0 0 10px rgba(201,168,76,0.3)' : 'none',
+                      fontFamily: 'var(--font-primary)'
+                    }}
+                  >
+                    {autoScan ? '🔵 Auto-Scanning: ON' : '📷 Auto-Scan: OFF'}
+                  </button>
+
                   <div style={{
-                    color: 'white', fontSize: 10, fontWeight: 900, marginTop: 14,
+                    color: 'white', fontSize: 9, fontWeight: 900, marginTop: 8,
                     letterSpacing: '1px', textShadow: '0 2px 8px rgba(0,0,0,0.85)',
-                    textAlign: 'center', textTransform: 'uppercase'
+                    textAlign: 'center', textTransform: 'uppercase', pointerEvents: 'none'
                   }}>
                     {scanAnim ? 'ANALYZING TARGET MESH...' : 'ALIGN TARGET TO DETECT OBJECT'}
                   </div>
@@ -654,171 +793,357 @@ export default function ExplorePage() {
                 }}>
                   {/* Holographic transparent card */}
                   <div style={{
-                    background: 'rgba(15, 28, 41, 0.88)',
+                    background: 'rgba(15, 28, 41, 0.92)',
                     backdropFilter: 'blur(16px)',
                     WebkitBackdropFilter: 'blur(16px)',
-                    border: '1.5px solid rgba(56, 189, 248, 0.35)',
+                    border: '1.5px solid rgba(201, 168, 76, 0.3)',
                     borderRadius: 22,
                     color: 'white',
                     padding: '16px 18px',
-                    boxShadow: '0 20px 50px rgba(0,0,0,0.65)'
+                    boxShadow: '0 20px 50px rgba(0,0,0,0.7)'
                   }}>
                     {/* Header */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                       <span style={{
-                        background: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8',
-                        border: '1px solid rgba(56, 189, 248, 0.35)',
-                        fontSize: 9.5, fontWeight: 900, padding: '4px 10px', borderRadius: 100,
+                        background: 'rgba(201, 168, 76, 0.15)', color: '#C9A84C',
+                        border: '1px solid rgba(201, 168, 76, 0.35)',
+                        fontSize: 9, fontWeight: 900, padding: '4px 10px', borderRadius: 100,
                         letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 4
                       }}>
-                        ⚙️ AI ANALYZED
+                        ⚙️ FINE MODEL ANALYZED
                       </span>
                       
                       <button
-                        onClick={() => speak(aiItem.sentence, 'ai-sentence')}
+                        onClick={() => speak(aiItem.name_en || aiItem.name, 'ai-name')}
                         style={{
-                          background: 'rgba(56, 189, 248, 0.2)', border: 'none',
-                          color: '#38bdf8', width: 34, height: 34, borderRadius: '50%',
+                          background: 'rgba(255, 255, 255, 0.1)', border: 'none',
+                          color: '#C9A84C', width: 30, height: 30, borderRadius: '50%',
                           cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 14, transition: 'background 0.2s'
+                          fontSize: 12, transition: 'background 0.2s'
                         }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(56, 189, 248, 0.35)'}
-                        onMouseLeave={e => e.currentTarget.style.background = 'rgba(56, 189, 248, 0.2)'}
                       >
                         🔊
                       </button>
                     </div>
 
                     {/* Titles */}
-                    <h3 style={{ fontSize: 18.5, fontWeight: 800, color: 'white', margin: '0 0 2px' }}>{aiItem.name}</h3>
-                    <h4 style={{ fontSize: 14, color: '#38bdf8', fontWeight: 700, margin: '0 0 14px' }}>{aiItem.nameTh}</h4>
+                    <h3 style={{ fontSize: 17, fontWeight: 800, color: 'white', margin: '0 0 2px' }}>{aiItem.name_en || aiItem.name}</h3>
+                    <h4 style={{ fontSize: 13, color: '#C9A84C', fontWeight: 700, margin: '0 0 12px' }}>{aiItem.name_th || aiItem.nameTh}</h4>
 
-                    {/* Description & Placement */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 14 }}>
-                      <div>
-                        <div style={{ fontSize: 9.5, color: '#38bdf8', fontWeight: 900, marginBottom: 3, letterSpacing: '0.5px' }}>DESCRIPTION:</div>
-                        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', margin: 0, lineHeight: 1.45 }}>{aiItem.use}</p>
-                      </div>
-                      <div>
-                        <p style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.55)', margin: 0, fontStyle: 'italic', lineHeight: 1.4 }}>{aiItem.location}</p>
-                      </div>
+                    {/* FINE Tab Navigation */}
+                    <div style={{
+                      display: 'flex',
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      borderRadius: 10,
+                      padding: 3,
+                      marginBottom: 12,
+                      border: '1px solid rgba(255, 255, 255, 0.08)'
+                    }}>
+                      {(['F', 'I', 'N', 'E'] as const).map(tab => {
+                        const isActive = fineTab === tab
+                        const label = tab === 'F' ? 'Familiarize' : tab === 'I' ? 'Interact' : tab === 'N' ? 'Navigate' : 'Exhibit'
+                        return (
+                          <button
+                            key={tab}
+                            onClick={() => setFineTab(tab)}
+                            type="button"
+                            style={{
+                              flex: 1,
+                              padding: '6px 2px',
+                              border: 'none',
+                              background: isActive ? '#C9A84C' : 'transparent',
+                              color: isActive ? '#0F1C29' : 'rgba(255,255,255,0.7)',
+                              fontWeight: isActive ? 900 : 700,
+                              fontSize: 9.5,
+                              borderRadius: 8,
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                              fontFamily: 'var(--font-primary)'
+                            }}
+                          >
+                            {isActive ? label : tab}
+                          </button>
+                        )
+                      })}
                     </div>
 
-                    {/* AI Pronunciation Coach */}
-                    <div style={{ borderTop: '1.5px solid rgba(255,255,255,0.1)', paddingTop: 12 }}>
-                      <div style={{
-                        fontSize: 9.5, color: '#eab308', fontWeight: 900, marginBottom: 6,
-                        letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: 4
-                      }}>
-                        🎙️ AI PRONUNCIATION COACH
+                    {/* TAB F: Familiarize */}
+                    {fineTab === 'F' && (
+                      <div style={{ animation: 'fadeInUp 0.3s ease', fontSize: 12 }}>
+                        <div style={{ marginBottom: 10 }}>
+                          <div style={{ fontSize: 9, color: '#C9A84C', fontWeight: 900, marginBottom: 3, letterSpacing: '0.5px' }}>ลักษณะและการใช้งาน (F-FAMILIARIZE):</div>
+                          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.85)', margin: 0, lineHeight: 1.45 }}>
+                            {aiItem.fine_analysis?.familiarize?.desc || aiItem.use || aiItem.description}
+                          </p>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 9, color: '#C9A84C', fontWeight: 900, marginBottom: 3, letterSpacing: '0.5px' }}>ตำแหน่งการจัดวางมาตรฐาน:</div>
+                          <p style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.65)', margin: 0, fontStyle: 'italic', lineHeight: 1.4 }}>
+                            {aiItem.fine_analysis?.familiarize?.location || aiItem.location}
+                          </p>
+                        </div>
                       </div>
-                      
-                      <div style={{
-                        background: 'rgba(255,255,255,0.06)',
-                        border: '1.5px solid rgba(234, 179, 8, 0.35)',
-                        borderRadius: 12,
-                        padding: '11px 13px',
-                        fontSize: 12.5,
-                        color: 'white',
-                        fontStyle: 'italic',
-                        fontWeight: 650,
-                        marginBottom: 10,
-                        lineHeight: 1.45
-                      }}>
-                        "{aiItem.sentence}"
-                      </div>
+                    )}
 
-                      {/* Microphone Controls */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {isRecording ? (
+                    {/* TAB I: Interact */}
+                    {fineTab === 'I' && (
+                      <div style={{ animation: 'fadeInUp 0.3s ease' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'rgba(255,255,255,0.06)', padding: '8px 12px', borderRadius: 10, marginBottom: 10 }}>
+                          <span style={{ fontSize: 12.5, fontWeight: 'bold' }}>{aiItem.name_en || aiItem.name}</span>
+                          {aiItem.fine_analysis?.interact?.pronunciation && (
+                            <span style={{ fontSize: 11, color: '#C9A84C', fontStyle: 'italic' }}>({aiItem.fine_analysis.interact.pronunciation})</span>
+                          )}
                           <button
-                            onClick={stopSpeechPractice}
-                            style={{
-                              width: '100%', padding: '10px', borderRadius: 100, border: 'none',
-                              background: '#dc3545', color: 'white', fontSize: 11.5, fontWeight: 800,
-                              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                              boxShadow: '0 0 12px rgba(220,53,69,0.3)',
-                              animation: 'pulseMic 1.2s infinite'
-                            }}
+                            onClick={() => speak(aiItem.name_en || aiItem.name, 'ai-name-i')}
+                            type="button"
+                            style={{ marginLeft: 'auto', border: 'none', background: 'rgba(255,255,255,0.1)', width: 26, height: 26, borderRadius: '50%', color: '#C9A84C', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}
                           >
-                            ⏹️ Stop Recording
+                            🔊
                           </button>
-                        ) : (
-                          <button
-                            onClick={() => startSpeechPractice(aiItem.sentence)}
-                            style={{
-                              width: '100%', padding: '10px', borderRadius: 100, border: 'none',
-                              background: 'linear-gradient(135deg, #eab308 0%, #ca8a04 100%)',
-                              color: 'white', fontSize: 11.5, fontWeight: 900,
-                              cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                              boxShadow: '0 4px 12px rgba(234,179,8,0.2)'
-                            }}
-                          >
-                            🎙️ Record Speech
-                          </button>
+                        </div>
+
+                        <div style={{ marginBottom: 10 }}>
+                          <div style={{ fontSize: 9, color: '#C9A84C', fontWeight: 900, marginBottom: 4, letterSpacing: '0.5px' }}>ประโยคบริการลูกค้าภาษาอังกฤษ (I-INTERACT):</div>
+                          {(aiItem.fine_analysis?.interact?.english_phrases || aiItem.english_phrases || []).map((phrase: string, idx: number) => (
+                            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)', padding: '6px 10px', borderRadius: 8, marginBottom: 4, fontSize: 11 }}>
+                              <span style={{ fontStyle: 'italic', flex: 1, color: 'rgba(255,255,255,0.85)' }}>"{phrase}"</span>
+                              <button
+                                onClick={() => speak(phrase, 'phrase-' + idx)}
+                                type="button"
+                                style={{ border: 'none', background: 'transparent', color: '#C9A84C', cursor: 'pointer', fontSize: 11 }}
+                              >
+                                🔊
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+
+                        {aiItem.fine_analysis?.interact?.roleplay_prompt && (
+                          <div style={{ background: 'rgba(201, 168, 76, 0.1)', borderLeft: '3px solid #C9A84C', padding: 8, borderRadius: 8, marginBottom: 12, fontSize: 11 }}>
+                            <div style={{ fontWeight: 'bold', color: '#C9A84C', fontSize: 9, marginBottom: 2 }}>โจทย์บทบาทสมมติ (Role-play Practice):</div>
+                            <p style={{ margin: 0, color: 'rgba(255,255,255,0.8)' }}>{aiItem.fine_analysis.interact.roleplay_prompt}</p>
+                          </div>
                         )}
 
-                        {/* Pronunciation Feedback Panel */}
-                        {speechScore !== null && (
-                          <div style={{
-                            background: 'rgba(0, 0, 0, 0.35)',
-                            padding: '12px 14px',
-                            borderRadius: 12,
-                            border: '1px solid rgba(255,255,255,0.1)',
-                            marginTop: 4
-                          }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                              <span style={{ fontSize: 10.5, color: 'rgba(255,255,255,0.6)', fontWeight: 700 }}>Accuracy Score:</span>
-                              <span style={{
-                                fontSize: 10, fontWeight: 950, padding: '2px 8px', borderRadius: 100,
-                                background: speechScore >= 80 ? '#22c55e' : '#eab308',
-                                color: 'white'
-                              }}>
-                                {speechScore}% Match
-                              </span>
-                            </div>
+                        <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 10 }}>
+                          <div style={{ fontSize: 9, color: '#eab308', fontWeight: 900, marginBottom: 4, letterSpacing: '0.5px' }}>🎙️ บันทึกเสียงทดสอบการพูด:</div>
+                          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px dashed rgba(234,179,8,0.3)', borderRadius: 8, padding: 8, fontSize: 11.5, fontStyle: 'italic', marginBottom: 8, color: 'rgba(255,255,255,0.9)' }}>
+                            "{aiItem.fine_analysis?.interact?.english_phrases?.[0] || aiItem.sentence}"
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {isRecording ? (
+                              <button
+                                onClick={stopSpeechPractice}
+                                type="button"
+                                style={{ width: '100%', padding: '8px', borderRadius: 100, border: 'none', background: '#dc3545', color: 'white', fontSize: 11, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, animation: 'pulseMic 1.2s infinite' }}
+                              >
+                                ⏹️ Stop Recording
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => startSpeechPractice(aiItem.fine_analysis?.interact?.english_phrases?.[0] || aiItem.sentence)}
+                                type="button"
+                                style={{ width: '100%', padding: '8px', borderRadius: 100, border: 'none', background: 'linear-gradient(135deg, #eab308 0%, #ca8a04 100%)', color: 'white', fontSize: 11, fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                              >
+                                🎙️ Record & Evaluate
+                              </button>
+                            )}
 
-                            {/* Word Highlights */}
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', lineHeight: 1.4 }}>
-                              {speechDiff.map((word, wIdx) => (
-                                <span
-                                  key={wIdx}
-                                  style={{
-                                    fontSize: 12, fontWeight: 800,
-                                    color: word.status === 'correct' ? '#22c55e' : '#ef4444'
-                                  }}
-                                >
-                                  {word.text}
-                                </span>
-                              ))}
-                            </div>
+                            {speechScore !== null && (
+                              <div style={{ background: 'rgba(0,0,0,0.35)', padding: 8, borderRadius: 8, border: '1px solid rgba(255,255,255,0.08)' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginBottom: 4 }}>
+                                  <span style={{ color: 'rgba(255,255,255,0.5)' }}>คะแนนความถูกต้อง:</span>
+                                  <span style={{ color: speechScore >= 80 ? '#22c55e' : '#eab308', fontWeight: 'bold' }}>{speechScore}% Match</span>
+                                </div>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, lineHeight: 1.3 }}>
+                                  {speechDiff.map((word, wIdx) => (
+                                    <span key={wIdx} style={{ fontSize: 11, fontWeight: 'bold', color: word.status === 'correct' ? '#22c55e' : '#ef4444' }}>
+                                      {word.text}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* TAB N: Navigate */}
+                    {fineTab === 'N' && (
+                      <div style={{ animation: 'fadeInUp 0.3s ease' }}>
+                        <div style={{ marginBottom: 10 }}>
+                          <div style={{ fontSize: 9, color: '#C9A84C', fontWeight: 900, marginBottom: 6, letterSpacing: '0.5px' }}>ขั้นตอนการปฏิบัติการบริการ (N-NAVIGATE):</div>
+                          {(aiItem.fine_analysis?.navigate?.service_steps || []).length > 0 ? (
+                            (aiItem.fine_analysis?.navigate?.service_steps || []).map((step: string, idx: number) => (
+                              <div key={idx} style={{ display: 'flex', gap: 6, marginBottom: 6, fontSize: 11.5, alignItems: 'flex-start' }}>
+                                <span style={{ background: '#C9A84C', color: '#0F1C29', borderRadius: '50%', width: 15, height: 15, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, flexShrink: 0, fontWeight: 'bold', marginTop: 1 }}>{idx + 1}</span>
+                                <span style={{ color: 'rgba(255,255,255,0.85)', lineHeight: 1.4 }}>{step}</span>
+                              </div>
+                            ))
+                          ) : (
+                            <p style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.8)', margin: 0 }}>{aiItem.tips || aiItem.service_tips || 'ไม่มีขั้นตอนแนะนำเพิ่มเติมสำหรับอุปกรณ์ชิ้นนี้'}</p>
+                          )}
+                        </div>
+
+                        {aiItem.fine_analysis?.navigate?.safety_rules && (
+                          <div style={{ background: 'rgba(239, 68, 68, 0.15)', borderLeft: '3px solid #ef4444', padding: 8, borderRadius: 8, fontSize: 11 }}>
+                            <div style={{ fontWeight: 'bold', color: '#ef4444', fontSize: 9, marginBottom: 2 }}>⚠️ กฎและข้อควรระวังสุขอนามัย:</div>
+                            <p style={{ margin: 0, color: 'rgba(255,255,255,0.85)' }}>{aiItem.fine_analysis.navigate.safety_rules}</p>
                           </div>
                         )}
                       </div>
-                    </div>
-                  </div>
+                    )}
 
-                  <button
-                    onClick={() => { setAiScanned(false); setAiItem(null); setSpeechScore(null); setStudentSpeech('') }}
-                    style={{
-                      alignSelf: 'center',
-                      background: 'rgba(255, 255, 255, 0.15)',
-                      backdropFilter: 'blur(8px)',
-                      WebkitBackdropFilter: 'blur(8px)',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      color: 'white',
-                      padding: '8px 20px',
-                      borderRadius: 100,
-                      fontSize: 11,
-                      fontWeight: 800,
-                      cursor: 'pointer',
-                      transition: 'background 0.2s'
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
-                    onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
-                  >
-                    🔄 Scan Another Object
-                  </button>
+                    {/* TAB E: Exhibit */}
+                    {fineTab === 'E' && (
+                      <div style={{ animation: 'fadeInUp 0.3s ease' }}>
+                        <div style={{ fontSize: 9, color: '#C9A84C', fontWeight: 900, marginBottom: 6, letterSpacing: '0.5px' }}>แบบทดสอบประเมินตนเอง (E-EXHIBIT):</div>
+                        {aiItem.fine_analysis?.exhibit?.quiz_question ? (
+                          <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', padding: 10, borderRadius: 12 }}>
+                            <div style={{ fontSize: 12, fontWeight: 'bold', color: 'white', marginBottom: 8, lineHeight: 1.4 }}>
+                              ❓ {aiItem.fine_analysis.exhibit.quiz_question}
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                              {(aiItem.fine_analysis.exhibit.quiz_options || []).map((option: string, idx: number) => {
+                                const isSelected = quizSelectedOption === option
+                                const isCorrect = option === aiItem.fine_analysis?.exhibit?.correct_answer
+                                let btnBg = 'rgba(255,255,255,0.06)'
+                                let btnBorder = '1px solid rgba(255,255,255,0.1)'
+                                let btnColor = 'white'
+                                
+                                if (quizAnswered) {
+                                  if (isCorrect) {
+                                    btnBg = 'rgba(34, 197, 94, 0.2)'
+                                    btnBorder = '1.5px solid #22c55e'
+                                    btnColor = '#22c55e'
+                                  } else if (isSelected) {
+                                    btnBg = 'rgba(239, 68, 68, 0.2)'
+                                    btnBorder = '1.5px solid #ef4444'
+                                    btnColor = '#ef4444'
+                                  } else {
+                                    btnBg = 'rgba(255,255,255,0.02)'
+                                    btnBorder = '1px solid rgba(255,255,255,0.04)'
+                                    btnColor = 'rgba(255,255,255,0.4)'
+                                  }
+                                } else if (isSelected) {
+                                  btnBg = 'rgba(201, 168, 76, 0.2)'
+                                  btnBorder = '1.5px solid #C9A84C'
+                                  btnColor = '#C9A84C'
+                                }
+                                
+                                return (
+                                  <button
+                                    key={idx}
+                                    onClick={() => {
+                                      if (quizAnswered) return
+                                      setQuizSelectedOption(option)
+                                      setQuizAnswered(true)
+                                    }}
+                                    type="button"
+                                    style={{
+                                      width: '100%',
+                                      padding: '8px 12px',
+                                      borderRadius: 8,
+                                      background: btnBg,
+                                      border: btnBorder,
+                                      color: btnColor,
+                                      fontSize: 11,
+                                      textAlign: 'left',
+                                      cursor: quizAnswered ? 'default' : 'pointer',
+                                      transition: 'all 0.2s',
+                                      fontWeight: 700
+                                    }}
+                                  >
+                                    {idx + 1}. {option}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        ) : (
+                          <p style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.5)', margin: 0 }}>ไม่มีแบบทดสอบสำหรับอุปกรณ์ชิ้นนี้</p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Bottom Action Area */}
+                    <div style={{ display: 'flex', gap: 8, width: '100%', marginTop: 14 }}>
+                      <button
+                        onClick={() => { 
+                          setAiScanned(false)
+                          setAiItem(null)
+                          setSpeechScore(null)
+                          setStudentSpeech('')
+                          setMatchedModelId(null)
+                          setAutoScan(false)
+                          startVRCamera()
+                        }}
+                        style={{
+                          flex: 1,
+                          background: 'rgba(255, 255, 255, 0.12)',
+                          border: '1px solid rgba(255,255,255,0.2)',
+                          color: 'white',
+                          padding: '10px 14px',
+                          borderRadius: 12,
+                          fontSize: 11,
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          transition: 'background 0.2s',
+                          fontFamily: 'var(--font-primary)'
+                        }}
+                      >
+                        🔄 สแกนใหม่
+                      </button>
+                      
+                      {matchedModelId ? (
+                        <Link
+                          href={`/student/ar-view?id=${matchedModelId}`}
+                          style={{
+                            flex: 1,
+                            background: 'linear-gradient(135deg, #A6882A 0%, #C9A84C 100%)',
+                            border: 'none',
+                            color: 'white',
+                            padding: '10px 14px',
+                            borderRadius: 12,
+                            fontSize: 11,
+                            fontWeight: 900,
+                            textAlign: 'center',
+                            textDecoration: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontFamily: 'var(--font-primary)'
+                          }}
+                        >
+                          📱 ส่อง AR จริง
+                        </Link>
+                      ) : (
+                        <Link
+                          href="/chat"
+                          style={{
+                            flex: 1,
+                            background: 'rgba(56, 189, 248, 0.25)',
+                            border: '1px solid rgba(56, 189, 248, 0.4)',
+                            color: '#38bdf8',
+                            padding: '10px 14px',
+                            borderRadius: 12,
+                            fontSize: 11,
+                            fontWeight: 900,
+                            textAlign: 'center',
+                            textDecoration: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontFamily: 'var(--font-primary)'
+                          }}
+                        >
+                          💬 ถาม AI
+                        </Link>
+                      )}
+                    </div>
+
+                  </div>
                 </div>
               )}
 
