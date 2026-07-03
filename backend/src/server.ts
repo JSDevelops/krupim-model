@@ -35,11 +35,29 @@ const allowedOrigins = (
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (e.g. curl, server-to-server)
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin) {
       callback(null, true)
-    } else {
-      callback(new Error(`CORS: Origin "${origin}" is not allowed`))
+      return
     }
+    
+    // Check if origin is in explicit whitelist
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true)
+      return
+    }
+
+    // Allow localhost, local IP addresses, ngrok subdomains, and vercel subdomains
+    if (
+      origin.startsWith('http://localhost:') ||
+      origin.startsWith('http://127.0.0.1:') ||
+      origin.endsWith('.ngrok-free.app') ||
+      origin.endsWith('.vercel.app')
+    ) {
+      callback(null, true)
+      return
+    }
+
+    callback(new Error(`CORS: Origin "${origin}" is not allowed`))
   },
   credentials: true
 }))

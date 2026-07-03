@@ -648,6 +648,24 @@ export default function ExplorePage() {
                 position: 'absolute', top: 12, left: 12, right: 12, zIndex: 10,
                 display: 'flex', flexDirection: 'column', gap: 10
               }}>
+                {/* Error Banner */}
+                {scanError && (
+                  <div style={{
+                    background: 'rgba(239, 68, 68, 0.92)',
+                    color: 'white',
+                    padding: '8px 12px',
+                    borderRadius: 12,
+                    fontSize: 10.5,
+                    fontWeight: 800,
+                    textAlign: 'center',
+                    border: '1.5px solid rgba(255,255,255,0.25)',
+                    boxShadow: '0 4px 12px rgba(239, 68, 68, 0.35)',
+                    fontFamily: 'var(--font-primary)'
+                  }}>
+                    ⚠️ {scanError}
+                  </div>
+                )}
+
                 {/* Upper row: Navigation & Status */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', gap: 6 }}>
                   {/* Home Badge */}
