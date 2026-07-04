@@ -91,10 +91,41 @@ const supabaseUrl = process.env.SUPABASE_URL || ''
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-// Initialize Default AI Clients (using dummy fallbacks to prevent startup crash if keys are empty)
-const defaultGenAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || 'AIzaSyDummyKey')
-const defaultOpenAI = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || 'sk-DummyOpenAIKeyToPreventCrash' })
-const defaultAnthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || 'sk-ant-DummyAnthropicKeyToPreventCrash' })
+// Initialize Default AI Clients — only if key is present, otherwise null (guarded in helper functions)
+const defaultGenAI = process.env.GEMINI_API_KEY
+  ? new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+  : null
+const defaultOpenAI = process.env.OPENAI_API_KEY
+  ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  : null
+const defaultAnthropic = process.env.ANTHROPIC_API_KEY
+  ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  : null
+
+// ─── JWT Auth Middleware (Supabase token verification) ──────────────────────
+// ใช้กับ endpoint ที่ต้องการ login เท่านั้น
+async function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+  const authHeader = req.headers['authorization']
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'Unauthorized: Missing or invalid Authorization header' })
+    return
+  }
+
+  const token = authHeader.slice(7)
+  try {
+    // ตรวจสอบ JWT กับ Supabase
+    const { data: { user }, error } = await supabase.auth.getUser(token)
+    if (error || !user) {
+      res.status(401).json({ error: 'Unauthorized: Invalid or expired session token' })
+      return
+    }
+    // ส่ง userId ต่อให้ handler ใช้งาน
+    ;(req as any).userId = user.id
+    next()
+  } catch (err) {
+    res.status(401).json({ error: 'Unauthorized: Token verification failed' })
+  }
+}
 
 
 // Helper to get dynamic active provider
@@ -112,7 +143,8 @@ function getGemini(req: express.Request): GoogleGenerativeAI {
   if (customKey && customKey.trim().startsWith('AIzaSy')) {
     return new GoogleGenerativeAI(customKey.trim())
   }
-  return defaultGenAI
+  if (defaultGenAI) return defaultGenAI
+  throw new Error('No Gemini API key configured. Please set GEMINI_API_KEY in .env or provide x-gemini-key header.')
 }
 
 function getOpenAI(req: express.Request): OpenAI {
@@ -120,7 +152,8 @@ function getOpenAI(req: express.Request): OpenAI {
   if (customKey && customKey.trim().startsWith('sk-')) {
     return new OpenAI({ apiKey: customKey.trim() })
   }
-  return defaultOpenAI
+  if (defaultOpenAI) return defaultOpenAI
+  throw new Error('No OpenAI API key configured. Please set OPENAI_API_KEY in .env or provide x-openai-key header.')
 }
 
 function getAnthropic(req: express.Request): Anthropic {
@@ -128,7 +161,8 @@ function getAnthropic(req: express.Request): Anthropic {
   if (customKey && customKey.trim().startsWith('sk-ant-')) {
     return new Anthropic({ apiKey: customKey.trim() })
   }
-  return defaultAnthropic
+  if (defaultAnthropic) return defaultAnthropic
+  throw new Error('No Anthropic API key configured. Please set ANTHROPIC_API_KEY in .env or provide x-claude-key header.')
 }
 
 // System status endpoint
@@ -156,8 +190,8 @@ app.get('/api/status', (req, res) => {
   })
 })
 
-// Unified Multi-LLM Chat API
-app.post('/api/chat', async (req, res) => {
+// Unified Multi-LLM Chat API  (🔐 requires Supabase JWT)
+app.post('/api/chat', requireAuth, async (req, res) => {
   try {
     const { message, history, student_id, session_type, topic, session_id } = req.body
     const provider = getActiveProvider(req)
@@ -246,8 +280,8 @@ app.post('/api/chat', async (req, res) => {
   }
 })
 
-// Unified Multi-LLM Vision Scan API
-app.post('/api/scan', async (req, res) => {
+// Unified Multi-LLM Vision Scan API  (🔐 requires Supabase JWT)
+app.post('/api/scan', requireAuth, async (req, res) => {
   try {
     const { imageBase64, mimeType } = req.body
     const provider = getActiveProvider(req)
@@ -360,7 +394,6 @@ app.post('/api/scan', async (req, res) => {
         result = await model.generateContent([systemPrompt, imagePart])
       }
       text = result.response.text()
-      console.log('Gemini Raw Response Object:', JSON.stringify(result.response, null, 2))
     }
 
     // Parse JSON
@@ -459,8 +492,8 @@ app.post('/api/scan', async (req, res) => {
   }
 })
 
-// Unified Simulation Evaluation API
-app.post('/api/simulation/evaluate', async (req, res) => {
+// Unified Simulation Evaluation API  (🔐 requires Supabase JWT)
+app.post('/api/simulation/evaluate', requireAuth, async (req, res) => {
   try {
     const { messages, score, student_id, scenario_id } = req.body
     const provider = getActiveProvider(req)
@@ -529,8 +562,8 @@ ${chatContent}
   }
 })
 
-// Unified AI Blog Generation API
-app.post('/api/blog/generate', async (req, res) => {
+// Unified AI Blog Generation API  (🔐 requires Supabase JWT)
+app.post('/api/blog/generate', requireAuth, async (req, res) => {
   try {
     const { topic, category, tone, keywords } = req.body
     const provider = getActiveProvider(req)

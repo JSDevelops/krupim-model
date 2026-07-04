@@ -14,18 +14,34 @@ export const FINE_SYSTEM_PROMPT = `คุณคือ AI ผู้ช่วย�
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
 
-// Helper to get active AI headers from localStorage
-export function getAIHeaders(): Record<string, string> {
+// ดึง Supabase access token จาก session ปัจจุบัน
+async function getAccessToken(): Promise<string> {
+  if (typeof window === 'undefined') return ''
+  try {
+    // dynamic import เพื่อหลีกเลี่ยง circular dependency
+    const { supabase } = await import('@/lib/supabase')
+    const { data } = await supabase.auth.getSession()
+    return data.session?.access_token ?? ''
+  } catch {
+    return ''
+  }
+}
+
+// Helper to get active AI headers from localStorage + Supabase JWT
+export async function getAIHeaders(): Promise<Record<string, string>> {
+  const token = await getAccessToken()
+
   if (typeof window === 'undefined') {
-    return { 
+    return {
       'Content-Type': 'application/json',
+      'Authorization': token ? `Bearer ${token}` : '',
       'x-ai-provider': 'gemini',
       'x-gemini-key': '',
       'x-openai-key': '',
       'x-claude-key': ''
     }
   }
-  
+
   const activeProvider = localStorage.getItem('activeAiProvider') || 'gemini'
   const geminiKey = localStorage.getItem('geminiApiKey') || ''
   const openaiKey = localStorage.getItem('openaiApiKey') || ''
@@ -33,6 +49,7 @@ export function getAIHeaders(): Record<string, string> {
 
   return {
     'Content-Type': 'application/json',
+    'Authorization': token ? `Bearer ${token}` : '',
     'x-ai-provider': activeProvider,
     'x-gemini-key': geminiKey,
     'x-openai-key': openaiKey,
@@ -49,9 +66,10 @@ export async function chatWithGemini(
   topic?: string,
   sessionId?: string
 ) {
+  const headers = await getAIHeaders()
   const response = await fetch(`${BACKEND_URL}/api/chat`, {
     method: 'POST',
-    headers: getAIHeaders(),
+    headers,
     body: JSON.stringify({
       message: userMessage,
       history: messages,
@@ -63,7 +81,8 @@ export async function chatWithGemini(
   })
 
   if (!response.ok) {
-    throw new Error('Failed to fetch from chat API')
+    const errBody = await response.json().catch(() => ({}))
+    throw new Error(errBody.error || `Chat API error: ${response.status}`)
   }
   const data = await response.json()
   return data
@@ -71,9 +90,10 @@ export async function chatWithGemini(
 
 // AI Scan - analyze image (Routes via backend)
 export async function analyzeImage(imageBase64: string, mimeType: string = 'image/jpeg') {
+  const headers = await getAIHeaders()
   const response = await fetch(`${BACKEND_URL}/api/scan`, {
     method: 'POST',
-    headers: getAIHeaders(),
+    headers,
     body: JSON.stringify({
       imageBase64,
       mimeType
@@ -81,7 +101,8 @@ export async function analyzeImage(imageBase64: string, mimeType: string = 'imag
   })
 
   if (!response.ok) {
-    throw new Error('Failed to analyze image via scan API')
+    const errBody = await response.json().catch(() => ({}))
+    throw new Error(errBody.error || `Scan API error: ${response.status}`)
   }
   return response.json()
 }
@@ -93,9 +114,10 @@ export async function generateSimulationFeedback(
   studentId?: string,
   scenarioId?: string
 ) {
+  const headers = await getAIHeaders()
   const response = await fetch(`${BACKEND_URL}/api/simulation/evaluate`, {
     method: 'POST',
-    headers: getAIHeaders(),
+    headers,
     body: JSON.stringify({
       messages,
       score,
@@ -105,7 +127,8 @@ export async function generateSimulationFeedback(
   })
 
   if (!response.ok) {
-    throw new Error('Failed to evaluate simulation')
+    const errBody = await response.json().catch(() => ({}))
+    throw new Error(errBody.error || `Simulation API error: ${response.status}`)
   }
   return response.json()
 }

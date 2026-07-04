@@ -38,15 +38,8 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
 
   const unreadCount = notifications.filter(n => !n.read).length
 
-  // Initialize default API Key provided by user
-  useState(() => {
-    if (typeof window !== 'undefined') {
-      const existing = localStorage.getItem('geminiApiKey')
-      if (!existing) {
-        localStorage.setItem('geminiApiKey', 'AIzaSyAkk92tJrfj-f5R40wPyHIRquBK1qdCIdE')
-      }
-    }
-  })
+  // NOTE: API keys are entered by the user in Profile Settings and stored in localStorage.
+  // Do NOT hardcode any API keys here. Users must enter their own keys.
 
   function markAllAsRead() {
     setNotifications(prev => prev.map(n => ({ ...n, read: true })))
