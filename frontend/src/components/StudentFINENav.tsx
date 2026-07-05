@@ -65,7 +65,7 @@ const TABS = [
   {
     href: '/student/profile',
     letter: 'P',
-    sub: 'Profile',
+    sub: 'Portfolio',
     grad: ['#3A2808', '#8B5E1A'],
     dot: '#C9A84C',
     glow: 'rgba(201,168,76,0.45)',
