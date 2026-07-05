@@ -1,6 +1,6 @@
 {
-  "name": "FINE MODE AR+AI 3D Learning",
-  "short_name": "FINE MODE",
+  "name": "FINE MODEL AR 3D + AI Learning",
+  "short_name": "FINE MODEL",
   "description": "แพลตฟอร์มการเรียนรู้แบบบูรณาการ 3 มิติ ผ่าน AR + AI",
   "start_url": "/",
   "display": "standalone",

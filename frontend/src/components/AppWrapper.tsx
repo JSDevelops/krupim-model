@@ -128,9 +128,9 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
         {/* Sidebar — Dark Luxury Green */}
         <aside className="erp-sidebar">
           <div className="erp-brand">
-            <img src="/logo.png" alt="FINE MODE Logo" style={{ width: 36, height: 36, borderRadius: '6px', border: '1px solid rgba(201,168,76,0.3)', boxShadow: '0 0 10px rgba(201,168,76,0.2)' }} />
+            <img src="/logo.png" alt="FINE MODEL Logo" style={{ width: 36, height: 36, borderRadius: '6px', border: '1px solid rgba(201,168,76,0.3)', boxShadow: '0 0 10px rgba(201,168,76,0.2)' }} />
             <div>
-              <div style={{ fontWeight: 700, fontSize: 15, color: '#FDFAF4', letterSpacing: '1.5px', textTransform: 'uppercase' }}>FINE MODE</div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: '#FDFAF4', letterSpacing: '1.5px', textTransform: 'uppercase' }}>FINE MODEL</div>
               <div style={{ fontSize: 10, color: '#C9A84C', fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase', marginTop: '2px' }}>{roleLabel} Panel ✦</div>
             </div>
           </div>

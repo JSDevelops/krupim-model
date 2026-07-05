@@ -2677,7 +2677,7 @@ export default function TeacherLessonsDashboard() {
               {/* Printable Card Area */}
               <div id="printable-qr-card" style={{ background: 'white', padding: '24px 16px', borderRadius: '16px', border: '2px solid #C9A84C', width: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
                 <span style={{ background: '#102B1F', color: '#C9A84C', fontSize: '9px', fontWeight: 900, padding: '4px 12px', borderRadius: '100px', letterSpacing: '1px' }}>
-                  FINE MODE AR LEARNING
+                  FINE MODEL AR LEARNING
                 </span>
                 
                 <h4 style={{ fontSize: '17px', fontWeight: 800, color: '#1E4D3A', margin: '4px 0 0' }}>{selectedQrItem.nameEn}</h4>
@@ -2746,7 +2746,7 @@ export default function TeacherLessonsDashboard() {
                             </head>
                             <body>
                               <div id="card">
-                                <span class="badge">FINE MODE AR LEARNING</span>
+                                <span class="badge">FINE MODEL AR LEARNING</span>
                                 <h2>${selectedQrItem.nameEn}</h2>
                                 <h3>${selectedQrItem.nameTh}</h3>
                                 <img src="${qrApiUrl}" />
@@ -3394,7 +3394,7 @@ export default function TeacherLessonsDashboard() {
                     </div>
 
                     <div style={{ background: '#fff', border: '2px solid #C9A84C', padding: '16px', borderRadius: '16px', width: '100%', maxWidth: '280px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-                      <span style={{ background: '#102B1F', color: '#C9A84C', fontSize: '8px', fontWeight: 900, padding: '3px 10px', borderRadius: '100px' }}>FINE MODE AR LEARNING</span>
+                      <span style={{ background: '#102B1F', color: '#C9A84C', fontSize: '8px', fontWeight: 900, padding: '3px 10px', borderRadius: '100px' }}>FINE MODEL AR LEARNING</span>
                       <h5 style={{ margin: 0, fontSize: '14px', color: '#1E4D3A', fontWeight: 800 }}>{arEn}</h5>
                       <span style={{ fontSize: '11px', color: '#A6882A', fontWeight: 700 }}>{arTh}</span>
                       

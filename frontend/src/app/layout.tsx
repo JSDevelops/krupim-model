@@ -5,7 +5,7 @@ import { RoleProvider } from '@/context/RoleContext'
 import AppWrapper from '@/components/AppWrapper'
 
 export const metadata: Metadata = {
-  title: 'FINE MODE — AR+AI 3D Learning',
+  title: 'FINE MODEL — AR 3D + AI Learning',
   description: 'แพลตฟอร์มการเรียนรู้แบบบูรณาการ 3 มิติ ผ่าน AR + AI สำหรับพัฒนาสมรรถนะการบริการอาหารและเครื่องดื่ม',
   manifest: '/manifest.json',
   icons: {
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'FINE MODE',
+    title: 'FINE MODEL',
     startupImage: '/logo.png',
   },
   formatDetection: { telephone: false },

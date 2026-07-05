@@ -39,7 +39,7 @@ export default function DashboardPage() {
             <div className="dash-greeting-text">
               <span className="dash-hi">{greeting} 👋</span>
               <h1 className="dash-name">สวัสดิ์รัก, ครูผู้สอน</h1>
-              <p className="dash-subtitle">FINE MODE · AR+AI 3D Learning</p>
+              <p className="dash-subtitle">FINE MODEL · AR 3D + AI LEARNING</p>
             </div>
             <div className="dash-avatar">
               <span style={{fontSize: 28}}>👩‍🏫</span>

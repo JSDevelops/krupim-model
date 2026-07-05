@@ -1,5 +1,5 @@
 -- ============================================
--- FINE MODE AR+AI 3D Learning — Database Schema
+-- FINE MODEL AR 3D + AI Learning — Database Schema
 -- ============================================
 
 -- Enable UUID extension

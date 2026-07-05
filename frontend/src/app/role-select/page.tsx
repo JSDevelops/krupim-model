@@ -130,10 +130,10 @@ export default function RoleSelectPage() {
       {/* Header */}
       <div style={{ padding: '64px var(--space-4) 32px', position: 'relative', zIndex: 1 }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 24 }}>
-          <img src="/logo.png" alt="FINE MODE Logo" style={{ width: 64, height: 64, borderRadius: 16, border: '2.5px solid #C9A84C', boxShadow: '0 0 25px rgba(201,168,76,0.3)' }} />
+          <img src="/logo.png" alt="FINE MODEL Logo" style={{ width: 64, height: 64, borderRadius: 16, border: '2.5px solid #C9A84C', boxShadow: '0 0 25px rgba(201,168,76,0.3)' }} />
           <div style={{ textAlign: 'left' }}>
-            <div style={{ color: 'white', fontSize: 26, fontWeight: 800, letterSpacing: '1.5px', fontFamily: 'var(--font-primary)' }}>FINE MODE</div>
-            <div style={{ color: '#C9A84C', fontSize: 12, letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 700, marginTop: '2px' }}>AR+AI 3D Learning Platform</div>
+            <div style={{ color: 'white', fontSize: 26, fontWeight: 800, letterSpacing: '1.5px', fontFamily: 'var(--font-primary)' }}>FINE MODEL</div>
+            <div style={{ color: '#C9A84C', fontSize: 12, letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 700, marginTop: '2px' }}>AR 3D + AI Learning Platform</div>
           </div>
         </div>
         <div style={{ textAlign: 'center' }}>
@@ -192,7 +192,7 @@ export default function RoleSelectPage() {
         </div>
 
         <p style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)', marginTop: 'auto', paddingBottom: '24px', maxWidth: '600px', margin: '0 auto' }}>
-          การเข้าใช้งานถือว่าคุณยอมรับข้อกำหนดการให้บริการและการคุ้มครองข้อมูลส่วนบุคคลของระบบปฏิบัติการ FINE MODE ✦
+          การเข้าใช้งานถือว่าคุณยอมรับข้อกำหนดการให้บริการและการคุ้มครองข้อมูลส่วนบุคคลของระบบปฏิบัติการ FINE MODEL ✦
         </p>
       </div>
 
