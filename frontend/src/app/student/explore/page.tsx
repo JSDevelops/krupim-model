@@ -292,6 +292,7 @@ export default function ExplorePage() {
 
       setAiItem(data)
       setAiScanned(true)
+      stopVRCamera()
       try {
         const { data: matchedItem } = await supabase
           .from('ai_scan_items')
@@ -373,6 +374,7 @@ export default function ExplorePage() {
       const data = await resp.json()
       
       if (data.confidence && data.confidence > 55) {
+        setPreviewImage(dataUrl)
         setAiItem(data)
         setAiScanned(true)
         stopVRCamera()
@@ -440,6 +442,7 @@ export default function ExplorePage() {
       if (ctx) {
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
         const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+        setPreviewImage(dataUrl)
         const base64 = dataUrl.split(',')[1]
         setAutoScan(false)
         await analyzeImage(base64, 'image/jpeg')
@@ -690,12 +693,12 @@ export default function ExplorePage() {
 
         {/* === AI SCAN TAB === */}
         {activeTab === 'ai' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className={`ai-scanner-layout ${aiScanned && aiItem ? 'has-results' : ''}`}>
             {/* Hidden Canvas for Live Video Capture */}
             <canvas ref={canvasRef} style={{ display: 'none' }} />
 
             {/* Immersive VR Camera Simulator (Height-fitted container) */}
-            <div style={{
+            <div className="camera-container" style={{
               position: 'relative',
               width: '100%',
               height: '74vh',
@@ -708,23 +711,38 @@ export default function ExplorePage() {
               display: 'flex',
               flexDirection: 'column'
             }}>
-              {/* 1. Live Video background */}
-              <video 
-                ref={videoRef}
-                playsInline
-                autoPlay
-                muted
-                style={{ 
-                  position: 'absolute', 
-                  inset: 0, 
-                  width: '100%', 
-                  height: '100%', 
-                  objectFit: 'cover', 
-                  zIndex: 1,
-                  display: isCameraActive ? 'block' : 'none'
-                }}
-              />
-              {!isCameraActive && (
+              {/* 1. Live Video background or Frozen Preview */}
+              {aiScanned && previewImage ? (
+                <img 
+                  src={previewImage} 
+                  alt="Scanned Preview" 
+                  style={{
+                    position: 'absolute',
+                    inset: 0,
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                    zIndex: 1
+                  }}
+                />
+              ) : (
+                <video 
+                  ref={videoRef}
+                  playsInline
+                  autoPlay
+                  muted
+                  style={{ 
+                    position: 'absolute', 
+                    inset: 0, 
+                    width: '100%', 
+                    height: '100%', 
+                    objectFit: 'cover', 
+                    zIndex: 1,
+                    display: isCameraActive ? 'block' : 'none'
+                  }}
+                />
+              )}
+              {!isCameraActive && !aiScanned && (
                 <div style={{ position: 'absolute', inset: 0, zIndex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 14, padding: 24, background: '#090F0B' }}>
                   <span style={{ fontSize: 48, animation: 'spin 10s linear infinite' }}>📡</span>
                   <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 13.5, fontWeight: 700, letterSpacing: '0.5px' }}>กำลังเชื่อมต่อกล้องระบบ VR Scan...</div>
@@ -795,41 +813,43 @@ export default function ExplorePage() {
                   </div>
                 </div>
 
-                {/* Lower row: Tab Switcher (Centered) */}
-                <div style={{
-                  alignSelf: 'center',
-                  display: 'flex',
-                  gap: 3,
-                  background: 'rgba(15, 28, 41, 0.75)',
-                  backdropFilter: 'blur(8px)',
-                  WebkitBackdropFilter: 'blur(8px)',
-                  padding: 4,
-                  borderRadius: 100,
-                  border: '1.5px solid rgba(201, 168, 76, 0.25)',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                }}>
-                  <button 
-                    onClick={() => setActiveTab('qr')} 
-                    style={{
-                      background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.7)',
-                      fontSize: 10.5, fontWeight: 800, padding: '5px 12px', borderRadius: 100, cursor: 'pointer',
-                      fontFamily: 'var(--font-primary)'
-                    }}
-                  >
-                    QR Model
-                  </button>
-                  <button 
-                    style={{
-                      background: 'linear-gradient(135deg, #A6882A 0%, #C9A84C 100%)',
-                      border: 'none', color: 'white',
-                      fontSize: 10.5, fontWeight: 900, padding: '5px 12px', borderRadius: 100, cursor: 'pointer',
-                      fontFamily: 'var(--font-primary)',
-                      boxShadow: '0 2px 8px rgba(201,168,76,0.3)'
-                    }}
-                  >
-                    AI Scanner
-                  </button>
-                </div>
+                {/* Lower row: Tab Switcher (Centered) - HIDE when scanned */}
+                {!aiScanned && (
+                  <div style={{
+                    alignSelf: 'center',
+                    display: 'flex',
+                    gap: 3,
+                    background: 'rgba(15, 28, 41, 0.75)',
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    padding: 4,
+                    borderRadius: 100,
+                    border: '1.5px solid rgba(201, 168, 76, 0.25)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
+                  }}>
+                    <button 
+                      onClick={() => setActiveTab('qr')} 
+                      style={{
+                        background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.7)',
+                        fontSize: 10.5, fontWeight: 800, padding: '5px 12px', borderRadius: 100, cursor: 'pointer',
+                        fontFamily: 'var(--font-primary)'
+                      }}
+                    >
+                      QR Model
+                    </button>
+                    <button 
+                      style={{
+                        background: 'linear-gradient(135deg, #A6882A 0%, #C9A84C 100%)',
+                        border: 'none', color: 'white',
+                        fontSize: 10.5, fontWeight: 900, padding: '5px 12px', borderRadius: 100, cursor: 'pointer',
+                        fontFamily: 'var(--font-primary)',
+                        boxShadow: '0 2px 8px rgba(201,168,76,0.3)'
+                      }}
+                    >
+                      AI Scanner
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* 3. Gold view brackets (Enclosing target in center) */}
@@ -896,12 +916,66 @@ export default function ExplorePage() {
                 }} />
               )}
 
-              {/* 4. Translucent Floating AI Result Card (overlaid on top of camera) */}
-              {aiScanned && aiItem && (
+              {/* 5. Immersive Bottom Analyze Trigger */}
+              {!aiScanned && (
                 <div style={{
-                  position: 'absolute', top: 78, left: 14, right: 14, zIndex: 6,
+                  position: 'absolute', bottom: 16, left: 16, right: 16, zIndex: 10,
+                  display: 'flex', flexDirection: 'column', gap: 8
+                }}>
+                  {/* File Pick Input */}
+                  <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    accept="image/*" 
+                    style={{ display: 'none' }}
+                    onChange={handleFileChange}
+                  />
+
+                  <button
+                    onClick={captureVRFrame}
+                    disabled={scanAnim || !isCameraActive}
+                    style={{
+                      width: '100%', padding: '14px', borderRadius: 100, border: 'none',
+                      background: scanAnim ? 'rgba(255,255,255,0.18)' : 'linear-gradient(135deg, #A6882A 0%, #C9A84C 100%)',
+                      color: 'white',
+                      fontSize: 13, fontWeight: 900, cursor: isCameraActive ? 'pointer' : 'not-allowed',
+                      boxShadow: '0 8px 24px rgba(201,168,76,0.35)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    📷 {scanAnim ? 'Decoding Target Mesh...' : 'Analyze Object with Gemini AI'}
+                  </button>
+
+                  {/* Fallback File Uploader for Laptop Tests */}
+                  {!isCameraActive && (
+                    <button
+                      onClick={handleTriggerUpload}
+                      disabled={scanAnim}
+                      style={{
+                        width: '100%', padding: '11px', borderRadius: 100,
+                        border: '1.5px dashed #C9A84C',
+                        background: 'rgba(201,168,76,0.12)',
+                        color: '#C9A84C',
+                        fontSize: 12, fontWeight: 800, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(201,168,76,0.22)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'rgba(201,168,76,0.12)'}
+                    >
+                      📁 Upload Photo from Device
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* 4. Translucent Floating AI Result Card (Moved outside camera-container as a sibling) */}
+            {aiScanned && aiItem && (
+              <div className="results-container">
+                <div style={{
                   display: 'flex', flexDirection: 'column', gap: 10,
-                  maxHeight: 'calc(100% - 92px)', overflowY: 'auto',
                   animation: 'fadeInUp 0.4s ease'
                 }}>
                   {/* Holographic transparent card */}
@@ -1186,6 +1260,7 @@ export default function ExplorePage() {
                         onClick={() => { 
                           setAiScanned(false)
                           setAiItem(null)
+                          setPreviewImage(null)
                           setSpeechScore(null)
                           setStudentSpeech('')
                           setMatchedModelId(null)
@@ -1255,64 +1330,12 @@ export default function ExplorePage() {
                         </Link>
                       )}
                     </div>
-
                   </div>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* 5. Immersive Bottom Analyze Trigger */}
-              {!aiScanned && (
-                <div style={{
-                  position: 'absolute', bottom: 16, left: 16, right: 16, zIndex: 10,
-                  display: 'flex', flexDirection: 'column', gap: 8
-                }}>
-                  {/* File Pick Input */}
-                  <input 
-                    type="file" 
-                    ref={fileInputRef} 
-                    accept="image/*" 
-                    style={{ display: 'none' }}
-                    onChange={handleFileChange}
-                  />
 
-                  <button
-                    onClick={captureVRFrame}
-                    disabled={scanAnim || !isCameraActive}
-                    style={{
-                      width: '100%', padding: '14px', borderRadius: 100, border: 'none',
-                      background: scanAnim ? 'rgba(255,255,255,0.18)' : 'linear-gradient(135deg, #A6882A 0%, #C9A84C 100%)',
-                      color: 'white',
-                      fontSize: 13, fontWeight: 900, cursor: isCameraActive ? 'pointer' : 'not-allowed',
-                      boxShadow: '0 8px 24px rgba(201,168,76,0.35)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    📷 {scanAnim ? 'Decoding Target Mesh...' : 'Analyze Object with Gemini AI'}
-                  </button>
-
-                  {/* Fallback File Uploader for Laptop Tests */}
-                  {!isCameraActive && (
-                    <button
-                      onClick={handleTriggerUpload}
-                      disabled={scanAnim}
-                      style={{
-                        width: '100%', padding: '11px', borderRadius: 100,
-                        border: '1.5px dashed #C9A84C',
-                        background: 'rgba(201,168,76,0.12)',
-                        color: '#C9A84C',
-                        fontSize: 12, fontWeight: 800, cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(201,168,76,0.22)'}
-                      onMouseLeave={e => e.currentTarget.style.background = 'rgba(201,168,76,0.12)'}
-                    >
-                      📁 Upload Photo from Device
-                    </button>
-                  )}
-                </div>
-              )}
             {/* Tip card */}
             {!aiScanned && (
               <div style={{ background: 'white', borderRadius: 16, padding: '14px 16px', border: '1px solid #EDE9E1', display: 'flex', gap: 12, alignItems: 'flex-start' }}>
@@ -1323,7 +1346,6 @@ export default function ExplorePage() {
                 </div>
               </div>
             )}
-            </div>
           </div>
         )}
       </div>
@@ -1451,6 +1473,44 @@ export default function ExplorePage() {
       )}
 
       <style jsx global>{`
+        .ai-scanner-layout {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+          width: 100%;
+        }
+        .ai-scanner-layout.has-results {
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+        .ai-scanner-layout.has-results .camera-container {
+          height: 32vh !important;
+          min-height: 240px !important;
+        }
+        .ai-scanner-layout.has-results .results-container {
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+        }
+        @media (min-width: 768px) {
+          .ai-scanner-layout.has-results {
+            flex-direction: row;
+            align-items: stretch;
+          }
+          .ai-scanner-layout.has-results .camera-container {
+            width: 42% !important;
+            height: 74vh !important;
+            min-height: 520px !important;
+          }
+          .ai-scanner-layout.has-results .results-container {
+            width: 58% !important;
+            height: 74vh !important;
+            min-height: 520px !important;
+            max-height: 74vh !important;
+            overflow-y: auto;
+          }
+        }
         @keyframes scanLine {
           0% { top: 10px; }
           100% { top: 120px; }
