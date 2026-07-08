@@ -273,16 +273,10 @@ export default function ExplorePage() {
       }
 
       if (!usedDirectGemini) {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://krupim-model-production.up.railway.app'
-        const resp = await fetch(`${backendUrl}/api/scan`, {
+        // Use Vercel-native /api/scan route (Next.js Serverless Function) — no Railway needed
+        const resp = await fetch(`/api/scan`, {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json',
-            'x-ai-provider': activeProvider,
-            'x-gemini-key': geminiKey,
-            'x-openai-key': openaiKey,
-            'x-claude-key': claudeKey
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imageBase64: base64, mimeType })
         })
 
@@ -362,17 +356,10 @@ export default function ExplorePage() {
       const geminiKey = typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : ''
       const openaiKey = typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') || '' : ''
       const claudeKey = typeof window !== 'undefined' ? localStorage.getItem('claudeApiKey') || '' : ''
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://krupim-model-production.up.railway.app'
-      
-      const resp = await fetch(`${backendUrl}/api/scan`, {
+      // Use Vercel-native /api/scan route (Next.js Serverless Function)
+      const resp = await fetch(`/api/scan`, {
         method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'x-ai-provider': activeProvider,
-          'x-gemini-key': geminiKey,
-          'x-openai-key': openaiKey,
-          'x-claude-key': claudeKey
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg' })
       })
       if (!resp.ok) throw new Error('Scan failed')
