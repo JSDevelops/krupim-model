@@ -380,14 +380,20 @@ app.post('/api/scan', requireAuth, async (req, res) => {
       const genAI = getGemini(req)
       let result
       try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+        const model = genAI.getGenerativeModel({ 
+          model: 'gemini-2.0-flash',
+          tools: [{ googleSearch: {} }] as any
+        })
         const imagePart = {
           inlineData: { data: imageBase64, mimeType: mimeType || 'image/jpeg' }
         }
         result = await model.generateContent([systemPrompt, imagePart])
       } catch (err: any) {
         console.warn('Gemini 2.0 Flash failed, retrying with Gemini 1.5 Flash:', err.message)
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+        const model = genAI.getGenerativeModel({ 
+          model: 'gemini-1.5-flash',
+          tools: [{ googleSearch: {} }] as any
+        })
         const imagePart = {
           inlineData: { data: imageBase64, mimeType: mimeType || 'image/jpeg' }
         }
