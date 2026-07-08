@@ -121,7 +121,7 @@ export default function SimulationPage() {
     setFinished(true)
     setEvaluating(true)
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://krupim-model-production.up.railway.app'
       const resp = await fetch(`${backendUrl}/api/simulation/evaluate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

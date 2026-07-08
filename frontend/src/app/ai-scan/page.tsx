@@ -102,7 +102,7 @@ export default function AIScanPage() {
     setError('')
     
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://krupim-model-production.up.railway.app'
       const resp = await fetch(`${backendUrl}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -179,7 +179,7 @@ export default function AIScanPage() {
     setQuizAnswered(false)
     setActiveTab('F')
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://krupim-model-production.up.railway.app'
       const resp = await fetch(`${backendUrl}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

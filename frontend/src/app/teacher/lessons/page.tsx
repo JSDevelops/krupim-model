@@ -538,7 +538,7 @@ export default function TeacherLessonsDashboard() {
 
   // 12-Step Wizard Logic & Handlers
   async function runWizardAIGenerators() {
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://krupim-model-production.up.railway.app'
     try {
       const resp = await fetch(`${backendUrl}/api/blog/generate`, {
         method: 'POST',
@@ -1016,7 +1016,7 @@ export default function TeacherLessonsDashboard() {
     const planContext = linkedPlan ? `แผนการสอนเรื่อง: ${linkedPlan.title}. คลังคำศัพท์ที่เรียน: ${linkedPlan.vocabulary.join(', ')}` : ''
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://krupim-model-production.up.railway.app'
       const resp = await fetch(`${backendUrl}/api/blog/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1062,7 +1062,7 @@ export default function TeacherLessonsDashboard() {
     }
     setAiGenerating(true)
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://krupim-model-production.up.railway.app'
       const resp = await fetch(`${backendUrl}/api/blog/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1091,7 +1091,7 @@ export default function TeacherLessonsDashboard() {
     setAiGenerating(true)
     setAiStatusText('🔮 AI กำลังวิเคราะห์แนวคิดรูปทรง 3 มิติ...')
     
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://krupim-model-production.up.railway.app'
 
     try {
       const resp = await fetch(`${backendUrl}/api/blog/generate`, {

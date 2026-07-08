@@ -273,7 +273,7 @@ export default function ExplorePage() {
       }
 
       if (!usedDirectGemini) {
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://krupim-model-production.up.railway.app'
         const resp = await fetch(`${backendUrl}/api/scan`, {
           method: 'POST',
           headers: { 
@@ -362,7 +362,7 @@ export default function ExplorePage() {
       const geminiKey = typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : ''
       const openaiKey = typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') || '' : ''
       const claudeKey = typeof window !== 'undefined' ? localStorage.getItem('claudeApiKey') || '' : ''
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://krupim-model-production.up.railway.app'
       
       const resp = await fetch(`${backendUrl}/api/scan`, {
         method: 'POST',

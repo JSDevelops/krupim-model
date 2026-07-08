@@ -154,7 +154,7 @@ export default function ChatPage() {
       try { parsedUser = savedUserInfo ? JSON.parse(savedUserInfo) : null } catch {}
       const studentId = parsedUser?.id || 'student-001'
 
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001'
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://krupim-model-production.up.railway.app'
       const response = await fetch(`${backendUrl}/api/chat`, {
         method: 'POST',
         headers: { 
