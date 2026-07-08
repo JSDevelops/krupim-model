@@ -36,6 +36,30 @@ const SYSTEM_PROMPT = `คุณเป็น AI ผู้เชี่ยวช�
   }
 }`
 
+const MODELS = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-flash-8b']
+
+async function callGemini(geminiKey: string, model: string, imageBase64: string, mimeType: string) {
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: SYSTEM_PROMPT },
+              { inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } }
+            ]
+          }
+        ],
+        generationConfig: { responseMimeType: 'application/json' }
+      })
+    }
+  )
+  return response
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { imageBase64, mimeType } = await req.json()
@@ -45,46 +69,52 @@ export async function POST(req: NextRequest) {
     }
 
     const geminiKey = process.env.GEMINI_API_KEY || ''
-
     if (!geminiKey) {
       return NextResponse.json({ error: 'GEMINI_API_KEY not configured on server' }, { status: 500 })
     }
 
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [
-            {
-              parts: [
-                { text: SYSTEM_PROMPT },
-                { inlineData: { mimeType: mimeType || 'image/jpeg', data: imageBase64 } }
-              ]
-            }
-          ],
-          tools: [{ googleSearch: {} }],
-          generationConfig: { responseMimeType: 'application/json' }
-        })
+    // Try models in order, fallback on rate limit / quota errors
+    let lastError = ''
+    for (const model of MODELS) {
+      try {
+        const response = await callGemini(geminiKey, model, imageBase64, mimeType)
+        
+        if (response.status === 429 || response.status === 503) {
+          const errText = await response.text()
+          console.warn(`Model ${model} quota exceeded, trying next...`)
+          lastError = errText
+          continue
+        }
+
+        if (!response.ok) {
+          const errText = await response.text()
+          lastError = errText
+          continue
+        }
+
+        const resData = await response.json()
+        const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text || ''
+        const jsonMatch = rawText.match(/\{[\s\S]*\}/)
+
+        if (!jsonMatch) {
+          lastError = 'No JSON response from Gemini'
+          continue
+        }
+
+        const parsedData = JSON.parse(jsonMatch[0])
+        return NextResponse.json(parsedData)
+
+      } catch (err: any) {
+        lastError = err.message || 'Unknown error'
+        continue
       }
+    }
+
+    // All models failed — return quota exceeded error
+    return NextResponse.json(
+      { error: 'quota_exceeded', detail: lastError },
+      { status: 429 }
     )
-
-    if (!response.ok) {
-      const errText = await response.text()
-      return NextResponse.json({ error: 'Gemini API call failed', detail: errText }, { status: response.status })
-    }
-
-    const resData = await response.json()
-    const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text || ''
-    const jsonMatch = rawText.match(/\{[\s\S]*\}/)
-
-    if (!jsonMatch) {
-      return NextResponse.json({ error: 'No JSON response from Gemini', raw: rawText }, { status: 500 })
-    }
-
-    const parsedData = JSON.parse(jsonMatch[0])
-    return NextResponse.json(parsedData)
 
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Internal server error' }, { status: 500 })

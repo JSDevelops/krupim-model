@@ -281,7 +281,10 @@ export default function ExplorePage() {
         })
 
         if (!resp.ok) {
-          throw new Error('การสแกนล้มเหลว')
+          if (resp.status === 429) {
+            throw new Error('429')
+          }
+          throw new Error(`scan_failed_${resp.status}`)
         }
 
         data = await resp.json()
