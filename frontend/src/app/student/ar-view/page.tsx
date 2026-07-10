@@ -1,6 +1,7 @@
 'use client'
-import { useState, useEffect, useRef, Suspense } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 
 interface ARModel {
@@ -19,57 +20,34 @@ function ARViewerContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const id = searchParams.get('id')
-  const autoAR = searchParams.get('ar') === '1'
-
+  
   const [model, setModel] = useState<ARModel | null>(null)
   const [loading, setLoading] = useState(true)
-  const [isWebXRSupported, setIsWebXRSupported] = useState<boolean | null>(null)
-  const [isIOS, setIsIOS] = useState(false)
-  const [arLaunched, setArLaunched] = useState(false)
 
   // TTS & STT & Quiz States
   const [isListening, setIsListening] = useState(false)
   const [sttScore, setSttScore] = useState<number | null>(null)
   const [spokenText, setSpokenText] = useState('')
   const [showSttModal, setShowSttModal] = useState(false)
+
   const [showQuizModal, setShowQuizModal] = useState(false)
   const [quizAnswered, setQuizAnswered] = useState(false)
   const [quizSelectedOption, setQuizSelectedOption] = useState<string | null>(null)
   const [quizOptions, setQuizOptions] = useState<string[]>([])
 
-  const modelViewerRef = useRef<any>(null)
-  const arBtnRef = useRef<HTMLButtonElement>(null)
-
-  // ─── Detect Device & WebXR ───────────────────────────────────────────────
-  useEffect(() => {
-    const ua = navigator.userAgent
-    const ios = /iPad|iPhone|iPod/.test(ua) && !(window as any).MSStream
-    setIsIOS(ios)
-
-    if (ios) {
-      setIsWebXRSupported(false) // iOS ใช้ AR Quick Look แทน
-    } else if ('xr' in navigator) {
-      ;(navigator as any).xr.isSessionSupported('immersive-ar').then((supported: boolean) => {
-        setIsWebXRSupported(supported)
-      }).catch(() => setIsWebXRSupported(false))
-    } else {
-      setIsWebXRSupported(false)
-    }
-  }, [])
-
-  // ─── Load Model Data ──────────────────────────────────────────────────────
   useEffect(() => {
     if (typeof window !== 'undefined' && id) {
       async function loadModel() {
         const fallbackGlb = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
 
-        // ─── 1. ar_items (ตารางหลัก — ครูสร้างจากหน้า AR & 3D Items) ───
+        // ─── 1. Try ar_items table (ตารางหลัก — ครูสร้างผ่านหน้า AR & 3D Items) ───
         try {
           const { data, error } = await supabase
             .from('ar_items')
             .select('*')
             .eq('id', id)
             .single()
+
           if (data && !error) {
             setModel({
               id: data.id,
@@ -85,15 +63,18 @@ function ARViewerContent() {
             setLoading(false)
             return
           }
-        } catch (e) { console.warn('ar_items lookup failed:', e) }
+        } catch (e) {
+          console.warn('ar_items fetch failed, trying ai_scan_items:', e)
+        }
 
-        // ─── 2. ai_scan_items (AI Scan ผ่านกล้อง) ───
+        // ─── 2. Try ai_scan_items table (AI Scan ที่สแกนผ่านกล้อง) ───
         try {
           const { data, error } = await supabase
             .from('ai_scan_items')
             .select('id, name_th, name_en, description, service_tips, image_url, glb_url, usdz_url, pronounce')
             .eq('id', id)
             .single()
+
           if (data && !error) {
             setModel({
               id: data.id,
@@ -109,49 +90,65 @@ function ARViewerContent() {
             setLoading(false)
             return
           }
-        } catch (e) { console.warn('ai_scan_items lookup failed:', e) }
+        } catch (e) {
+          console.warn('ai_scan_items fetch failed, trying legacy store:', e)
+        }
 
-        // ─── 3. Legacy fine_lesson_plans ───
+        // ─── 3. Legacy: fine_lesson_plans 'ar-items-store' ───
         try {
           const { data, error } = await supabase
             .from('fine_lesson_plans')
             .select('vocabulary')
             .eq('id', 'ar-items-store')
             .single()
+
           if (data && data.vocabulary) {
             const items = data.vocabulary as any[]
-            const found = items.find((m: any) => m.id === id)
+            const found = items.find(m => m.id === id)
             if (found) {
-              setModel({ ...found, glbUrl: found.glbUrl || fallbackGlb })
+              setModel({
+                ...found,
+                glbUrl: found.glbUrl || fallbackGlb
+              })
               setLoading(false)
               return
             }
           }
-        } catch (e) { console.warn('fine_lesson_plans lookup failed:', e) }
+        } catch (e) {
+          console.warn('fine_lesson_plans fetch failed:', e)
+        }
 
-        // ─── 4. URL search params (QR embedded data) ───
+        // ─── 3. URL search parameters (for QR codes with embedded data) ───
         const qNameEn = searchParams.get('nameEn')
+        const qNameTh = searchParams.get('nameTh')
+        const qDesc = searchParams.get('desc')
+        const qGlbUrl = searchParams.get('glbUrl')
+        const qUsdzUrl = searchParams.get('usdzUrl')
+        const qPronounce = searchParams.get('pronounce')
+        const qSentence = searchParams.get('sentence')
+        const qImageUrl = searchParams.get('imageUrl')
+
         if (qNameEn) {
           setModel({
             id: id || '',
             nameEn: qNameEn,
-            nameTh: searchParams.get('nameTh') || '',
-            desc: searchParams.get('desc') || '',
-            glbUrl: searchParams.get('glbUrl') || fallbackGlb,
-            usdzUrl: searchParams.get('usdzUrl') || '',
-            pronounce: searchParams.get('pronounce') || '',
-            sentence: searchParams.get('sentence') || '',
-            imageUrl: searchParams.get('imageUrl') || ''
+            nameTh: qNameTh || '',
+            desc: qDesc || '',
+            glbUrl: qGlbUrl || fallbackGlb,
+            usdzUrl: qUsdzUrl || '',
+            pronounce: qPronounce || '',
+            sentence: qSentence || '',
+            imageUrl: qImageUrl || ''
           })
           setLoading(false)
           return
         }
 
-        // ─── 5. localStorage fallback ───
-        const stored = localStorage.getItem('arItems')
-        if (stored) {
+        // ─── 4. localStorage fallback ───
+        const storedModels = localStorage.getItem('arItems')
+        if (storedModels) {
           try {
-            const parsed = JSON.parse(stored)
+            const parsed = JSON.parse(storedModels)
             const found = parsed.find((m: any) => m.id === id)
             if (found) {
               setModel({ ...found, glbUrl: found.glbUrl || fallbackGlb })
@@ -167,383 +164,349 @@ function ARViewerContent() {
     }
   }, [id, searchParams])
 
-  // ─── Auto-click AR button when ?ar=1 ─────────────────────────────────────
-  useEffect(() => {
-    if (autoAR && model && arBtnRef.current && !arLaunched) {
-      const timer = setTimeout(() => {
-        arBtnRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      }, 800)
-      return () => clearTimeout(timer)
-    }
-  }, [autoAR, model, arLaunched])
-
-  // ─── Quiz options init ────────────────────────────────────────────────────
+  // Initialize Quiz options
   useEffect(() => {
     if (model) {
       const pool = [
-        'จานสลัดเดี่ยว', 'ช้อนตักแกง', 'ถ้วยน้ำจิ้ม', 'มีดหั่นเนื้อสเต็ก',
-        'แก้วเครื่องดื่มค็อกเทล', 'ถาดไม้วางจาน', 'ผ้าเช็ดปากลูกค้า',
+        'จานสลัดเดี่ยว', 'ช้อนตักแกง', 'ถ้วยน้ำจิ้ม', 'มีดหั่นเนื้อสเต็ก', 
+        'แก้วเครื่องดื่มค็อกเทล', 'ถาดไม้วางจาน', 'ผ้าเช็ดปากลูกค้า', 
         'เหยือกแก้วใส่น้ำ', 'ที่เปิดขวดไวน์', 'ชามใส่สลัดผัก',
         'ส้อมทานขนมหวาน', 'ถ้วยน้ำชาเซรามิก', 'เครื่องคั้นน้ำผลไม้'
       ]
-      const filtered = pool.filter(o => o !== model.nameTh)
-      const shuffled = filtered.sort(() => 0.5 - Math.random())
-      setQuizOptions([model.nameTh, shuffled[0], shuffled[1]].sort(() => 0.5 - Math.random()))
+      const filteredPool = pool.filter(o => o !== model.nameTh)
+      const shuffled = filteredPool.sort(() => 0.5 - Math.random())
+      const wrong1 = shuffled[0]
+      const wrong2 = shuffled[1]
+      const opts = [model.nameTh, wrong1, wrong2].sort(() => 0.5 - Math.random())
+      setQuizOptions(opts)
       setQuizAnswered(false)
       setQuizSelectedOption(null)
     }
   }, [model])
 
-  // ─── TTS ──────────────────────────────────────────────────────────────────
-  const speakText = (text: string) => {
+  // Text-To-Speech (TTS)
+  const speakText = (textToSpeak: string) => {
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel()
-      const u = new SpeechSynthesisUtterance(text)
-      u.lang = 'en-US'; u.rate = 0.85
-      window.speechSynthesis.speak(u)
+      const utterance = new SpeechSynthesisUtterance(textToSpeak)
+      utterance.lang = 'en-US'
+      utterance.rate = 0.85
+      window.speechSynthesis.speak(utterance)
+    } else {
+      alert('เบราว์เซอร์ของคุณไม่รองรับการออกเสียงแบบอัตโนมัติ')
     }
   }
 
-  // ─── STT ──────────────────────────────────────────────────────────────────
+  // Speech-To-Text (STT) Pronunciation Check
   const startSTT = () => {
     if (typeof window === 'undefined') return
-    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SR) { alert('เบราว์เซอร์ไม่รองรับ กรุณาใช้ Chrome หรือ Safari'); return }
-    setIsListening(true); setSpokenText(''); setSttScore(null); setShowSttModal(true)
-    const r = new SR()
-    r.lang = 'en-US'; r.interimResults = false; r.maxAlternatives = 1
-    r.onresult = (e: any) => {
-      const result = e.results[0][0].transcript
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      alert('เบราว์เซอร์ของคุณไม่สนับสนุนการจดจำเสียงพูด กรุณาใช้ Chrome หรือ Safari บนมือถือครับ')
+      return
+    }
+
+    setIsListening(true)
+    setSpokenText('')
+    setSttScore(null)
+    setShowSttModal(true)
+
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'en-US'
+    recognition.interimResults = false
+    recognition.maxAlternatives = 1
+
+    recognition.onresult = (event: any) => {
+      const result = event.results[0][0].transcript
       setSpokenText(result)
+
+      // Compare text
       const target = (model?.nameEn || '').toLowerCase().replace(/[^a-z0-9 ]/g, '').trim()
       const spoken = result.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim()
-      if (target === spoken) { setSttScore(100) } else {
-        const tw = target.split(' '), sw = spoken.split(' ')
-        const matches = tw.filter(w => sw.includes(w)).length
-        setSttScore(Math.round((matches / tw.length) * 100))
+
+      if (target === spoken) {
+        setSttScore(100)
+      } else {
+        const targetWords = target.split(' ')
+        const spokenWords = spoken.split(' ')
+        let matches = 0
+        targetWords.forEach(w => {
+          if (spokenWords.includes(w)) matches++
+        })
+        const score = Math.round((matches / targetWords.length) * 100)
+        setSttScore(score)
       }
     }
-    r.onerror = () => setIsListening(false)
-    r.onend = () => setIsListening(false)
-    r.start()
+
+    recognition.onerror = (e: any) => {
+      console.error(e)
+      setIsListening(false)
+    }
+
+    recognition.onend = () => {
+      setIsListening(false)
+    }
+
+    recognition.start()
   }
 
-  // ─── Loading Screen ───────────────────────────────────────────────────────
   if (loading) {
     return (
-      <div style={{
-        minHeight: '100vh', display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        background: 'linear-gradient(160deg, #040D07 0%, #0A1F12 50%, #102B1F 100%)',
-        color: '#C9A84C'
-      }}>
-        <div style={{ fontSize: '64px', marginBottom: '24px', animation: 'arPulse 1.5s ease-in-out infinite' }}>
-          🕶️
-        </div>
-        <div style={{ fontWeight: 800, fontSize: '18px', color: '#C9A84C', marginBottom: '8px' }}>
-          กำลังโหลดโมเดล 3 มิติ...
-        </div>
-        <div style={{ fontSize: '13px', color: 'rgba(201,168,76,0.6)' }}>เตรียม AR Experience</div>
-        <style>{`@keyframes arPulse { 0%,100% { transform: scale(1); opacity:1; } 50% { transform: scale(1.15); opacity:0.8; } }`}</style>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#F5F0E6', color: '#1E4D3A' }}>
+        <div style={{ fontSize: '32px', marginBottom: '16px', animation: 'spin 2s linear infinite' }}>🌀</div>
+        <div style={{ fontWeight: 700, fontSize: '18px' }}>กำลังดาวน์โหลดข้อมูล 3 มิติ...</div>
       </div>
     )
   }
 
-  // ─── Not Found ────────────────────────────────────────────────────────────
   if (!model) {
     return (
-      <div style={{
-        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'linear-gradient(160deg, #040D07 0%, #0A1F12 100%)', padding: '24px'
-      }}>
-        <div style={{
-          background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(201,168,76,0.2)',
-          borderRadius: '24px', padding: '40px', textAlign: 'center', maxWidth: '360px'
-        }}>
-          <div style={{ fontSize: '56px', marginBottom: '16px' }}>⚠️</div>
-          <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#FAA', marginBottom: '8px' }}>
-            ไม่พบโมเดล 3 มิติ
-          </h2>
-          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', marginBottom: '24px', lineHeight: 1.6 }}>
-            QR Code นี้อาจหมดอายุหรือโมเดลได้รับการปรับปรุงใหม่<br />กรุณาขอ QR Card ใหม่จากครู
-          </p>
-          <button onClick={() => router.push('/student/explore')}
-            style={{
-              width: '100%', padding: '14px', borderRadius: '16px', border: 'none',
-              background: 'linear-gradient(135deg, #C9A84C, #A6882A)',
-              color: '#102B1F', fontWeight: 800, fontSize: '15px', cursor: 'pointer'
-            }}>
-            ← กลับหน้าสำรวจ
+      <div className="student-container" style={{ background: '#F5F0E6', minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="glass-card" style={{ padding: '40px', textAlign: 'center', maxWidth: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
+          <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#8B2635', marginBottom: '8px' }}>ไม่พบโมเดล 3 มิติ</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '14px' }}>การ์ดคิวอาร์โค้ดนี้อาจไม่ถูกต้อง หรือโมเดลในระบบได้รับการปรับปรุงใหม่</p>
+          <button onClick={() => router.push('/student/scanner')} className="btn btn-primary" style={{ width: '100%', padding: '12px' }}>
+            กลับไปหน้าระบบสแกน
           </button>
         </div>
       </div>
     )
   }
 
-  // ─── Main AR View ─────────────────────────────────────────────────────────
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(160deg, #040D07 0%, #0A1F12 40%, #102B1F 100%)',
-      display: 'flex', flexDirection: 'column', overflow: 'hidden'
-    }}>
-
-      {/* ── Top Bar ── */}
-      <div style={{
-        position: 'fixed', top: 0, left: 0, right: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '16px 20px', zIndex: 300,
-        background: 'linear-gradient(to bottom, rgba(4,13,7,0.95), transparent)',
-        backdropFilter: 'blur(8px)'
-      }}>
-        <button onClick={() => router.push('/student/explore')}
-          style={{
-            width: '40px', height: '40px', borderRadius: '50%',
-            background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.3)',
-            color: '#C9A84C', fontSize: '18px', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-          ←
-        </button>
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            background: 'rgba(201,168,76,0.15)', border: '1px solid rgba(201,168,76,0.3)',
-            color: '#C9A84C', fontSize: '10px', fontWeight: 800, padding: '4px 12px',
-            borderRadius: '100px', letterSpacing: '1.5px'
-          }}>
-            🕶️ AR 3D VIEWER
-          </div>
-        </div>
-        <button onClick={() => speakText(model.nameEn)}
-          style={{
-            width: '40px', height: '40px', borderRadius: '50%',
-            background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.3)',
-            color: '#C9A84C', fontSize: '18px', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center'
-          }}>
-          🔊
-        </button>
-      </div>
-
-      {/* ── 3D Model Viewer ── */}
-      <div style={{ width: '100%', height: '55vh', position: 'relative', marginTop: '64px' }}>
+    <div style={{ position: 'relative', width: '100%', height: '100vh', background: 'radial-gradient(circle, #eef4f1 0%, #d4e3dc 100%)', overflow: 'hidden' }}>
+      
+      {/* 3D Viewer Container */}
+      <div style={{ width: '100%', height: '58vh', position: 'relative' }}>
         {/* @ts-ignore */}
         <model-viewer
-          ref={modelViewerRef}
           src={model.glbUrl}
           ios-src={model.usdzUrl || undefined}
           ar
           ar-modes="webxr scene-viewer quick-look"
           camera-controls
           auto-rotate
-          auto-rotate-delay="500"
-          rotation-per-second="20deg"
           shadow-intensity="1.5"
-          shadow-softness="0.8"
-          environment-image="neutral"
-          exposure="1.2"
-          style={{ width: '100%', height: '100%', background: 'transparent', '--poster-color': 'transparent' } as any}
+          shadow-softness="1"
+          style={{ width: '100%', height: '100%', backgroundColor: 'transparent' }}
         >
-          {/* ── Custom AR Button inside model-viewer slot ── */}
-          <button
-            ref={arBtnRef}
-            slot="ar-button"
-            onClick={() => setArLaunched(true)}
-            style={{
-              position: 'absolute',
-              bottom: '20px',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              padding: '16px 32px',
-              borderRadius: '100px',
-              background: 'linear-gradient(135deg, #C9A84C 0%, #A6882A 100%)',
-              color: '#0A1F12',
-              border: 'none',
-              fontWeight: 900,
-              fontSize: '16px',
-              boxShadow: '0 0 0 0 rgba(201,168,76,0.6)',
-              animation: 'arGlow 2s ease-in-out infinite',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              letterSpacing: '0.3px',
-              zIndex: 100
-            }}>
-            🕶️ เปิด AR วางในโลกจริง
+          <div className="progress-bar hide" slot="progress-bar">
+            <div className="update-bar"></div>
+          </div>
+          
+          {/* iOS / Android Native AR trigger button overlay */}
+          <button slot="ar-button" id="ar-button" style={{
+            position: 'absolute',
+            bottom: '20px',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            padding: '12px 28px',
+            borderRadius: '100px',
+            background: 'linear-gradient(135deg, #102B1F 0%, #1a4231 100%)',
+            color: '#C9A84C',
+            border: '2px solid #C9A84C',
+            fontWeight: 800,
+            fontSize: '15px',
+            boxShadow: '0 8px 24px rgba(0,0,0,0.3)',
+            zIndex: 100,
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            🕶️ นำไปวางในห้องเรียน (AR)
           </button>
-          {/* @ts-ignore */}
+        {/* @ts-ignore */}
         </model-viewer>
 
-        {/* Device instruction overlay */}
-        {!arLaunched && (
-          <div style={{
-            position: 'absolute', bottom: '80px', left: '50%',
-            transform: 'translateX(-50%)',
-            background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(8px)',
-            border: '1px solid rgba(201,168,76,0.2)',
-            borderRadius: '12px', padding: '8px 16px',
-            color: 'rgba(201,168,76,0.8)', fontSize: '11px', fontWeight: 700,
-            whiteSpace: 'nowrap', zIndex: 90
-          }}>
-            {isIOS
-              ? '📱 iOS: กด AR แล้วเปิดใน AR Quick Look'
-              : isWebXRSupported
-                ? '🤖 Android: กด AR แล้ววางบนพื้นหรือโต๊ะ'
-                : '👆 กดปุ่มสีทองด้านล่างเพื่อเปิด AR'}
-          </div>
-        )}
+        {/* Floating Scanner exit button */}
+        <button 
+          onClick={() => router.push('/student/explore')}
+          style={{
+            position: 'absolute',
+            top: '20px',
+            left: '20px',
+            width: '40px',
+            height: '40px',
+            borderRadius: '50%',
+            background: 'rgba(255,255,255,0.85)',
+            border: '1px solid rgba(0,0,0,0.1)',
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: '18px',
+            cursor: 'pointer',
+            zIndex: 200
+          }}
+        >
+          ✕
+        </button>
       </div>
 
-      {/* ── AR Instructions Card ── */}
-      {!arLaunched && (
-        <div style={{
-          margin: '0 16px 12px',
-          background: 'rgba(201,168,76,0.06)',
-          border: '1px solid rgba(201,168,76,0.15)',
-          borderRadius: '16px',
-          padding: '14px 16px',
-          display: 'flex',
-          gap: '12px',
-          alignItems: 'flex-start'
-        }}>
-          <span style={{ fontSize: '24px', flexShrink: 0 }}>💡</span>
-          <div>
-            <div style={{ fontSize: '12px', fontWeight: 800, color: '#C9A84C', marginBottom: '4px' }}>
-              วิธีใช้งาน AR
-            </div>
-            <div style={{ fontSize: '11.5px', color: 'rgba(255,255,255,0.55)', lineHeight: 1.6 }}>
-              {isIOS
-                ? '1. กดปุ่ม AR สีทอง → เลือก "Open in AR" → ชี้กล้องที่พื้น → แตะเพื่อวางวัตถุ'
-                : '1. กดปุ่ม AR สีทอง → ชี้กล้องไปที่พื้นหรือโต๊ะ → แตะหน้าจอเพื่อวางวัตถุ 3 มิติ'}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Info Card (bottom sheet) ── */}
+      {/* Glassmorphic Educational Overlay Card */}
       <div style={{
-        flex: 1,
-        background: 'rgba(255,255,255,0.04)',
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
+        height: '42vh',
+        background: 'rgba(255, 255, 255, 0.85)',
         backdropFilter: 'blur(20px)',
-        borderTop: '1px solid rgba(201,168,76,0.15)',
-        borderRadius: '28px 28px 0 0',
-        padding: '20px 20px 100px',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderTop: '2px solid rgba(255, 255, 255, 0.5)',
+        borderRadius: '32px 32px 0 0',
+        padding: '24px 20px',
+        boxShadow: '0 -10px 40px rgba(0,0,0,0.1)',
         display: 'flex',
         flexDirection: 'column',
-        gap: '14px'
+        justifyContent: 'space-between',
+        zIndex: 150
       }}>
-        {/* Name row */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-          <div>
-            <h2 style={{ fontSize: '26px', fontWeight: 900, color: '#FDFAF4', margin: 0, lineHeight: 1.1 }}>
-              {model.nameEn}
-            </h2>
-            {model.pronounce && (
-              <span style={{ fontSize: '13px', color: '#C9A84C', fontStyle: 'italic', fontWeight: 600 }}>
-                {model.pronounce}
-              </span>
-            )}
-            <div style={{ fontSize: '14px', fontWeight: 700, color: 'rgba(201,168,76,0.7)', marginTop: '2px' }}>
-              {model.nameTh}
+        
+        {/* Word Info & TTS Button */}
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 900, color: '#102B1F', margin: 0 }}>
+                {model.nameEn}
+              </h2>
+              {model.pronounce && (
+                <span style={{ fontSize: '14px', color: '#A6882A', fontStyle: 'italic', fontWeight: 600 }}>
+                  {model.pronounce}
+                </span>
+              )}
             </div>
+            {/* Pronounce Button */}
+            <button 
+              onClick={() => speakText(model.nameEn)}
+              style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '50%',
+                background: '#EAF3EE',
+                border: 'none',
+                color: '#1E4D3A',
+                fontSize: '18px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 8px rgba(30,77,58,0.15)'
+              }}
+              title="ฟังเสียงอ่านออกเสียง"
+            >
+              🔊
+            </button>
           </div>
-          <div style={{
-            background: 'rgba(201,168,76,0.1)', border: '1px solid rgba(201,168,76,0.25)',
-            borderRadius: '12px', padding: '8px 14px', fontSize: '11px',
-            fontWeight: 800, color: '#C9A84C', letterSpacing: '0.5px'
-          }}>
-            FINE MODEL
-          </div>
-        </div>
 
-        {/* Description */}
-        {model.desc && (
-          <p style={{
-            fontSize: '13px', color: 'rgba(255,255,255,0.55)', lineHeight: 1.7, margin: 0
-          }}>
+          <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#A6882A', margin: '0 0 10px 0' }}>
+            {model.nameTh}
+          </h3>
+
+          <p style={{ fontSize: '13.5px', color: 'var(--text-muted)', margin: '0 0 14px 0', lineHeight: 1.5 }}>
             {model.desc}
           </p>
-        )}
 
-        {/* Example sentence */}
-        {model.sentence && (
-          <div style={{
-            background: 'rgba(201,168,76,0.06)',
-            borderLeft: '3px solid #C9A84C',
-            padding: '12px 14px',
-            borderRadius: '0 12px 12px 0'
-          }}>
+          {/* Example Sentence Section */}
+          {model.sentence && (
             <div style={{
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px'
+              background: 'rgba(201,168,76,0.1)',
+              borderLeft: '4px solid #C9A84C',
+              padding: '10px 14px',
+              borderRadius: '0 12px 12px 0',
+              marginBottom: '10px'
             }}>
-              <span style={{ fontSize: '10px', color: '#C9A84C', fontWeight: 800, letterSpacing: '0.8px' }}>
-                EXAMPLE SENTENCE
-              </span>
-              <button onClick={() => speakText(model.sentence || '')}
-                style={{
-                  background: 'transparent', border: 'none', cursor: 'pointer',
-                  fontSize: '11px', color: '#C9A84C', fontWeight: 700
-                }}>
-                🔊 ฟัง
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+                <span style={{ fontSize: '10px', color: '#A6882A', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  Example Sentence (ตัวอย่างประโยคบริการ)
+                </span>
+                <button 
+                  onClick={() => speakText(model.sentence || '')}
+                  style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '12px' }}
+                >
+                  🔊 ฟังประโยค
+                </button>
+              </div>
+              <p style={{ fontStyle: 'italic', fontWeight: 600, color: '#102B1F', fontSize: '13px', margin: 0 }}>
+                "{model.sentence}"
+              </p>
             </div>
-            <p style={{ fontStyle: 'italic', fontWeight: 600, color: '#FDFAF4', fontSize: '13px', margin: 0 }}>
-              "{model.sentence}"
-            </p>
-          </div>
-        )}
+          )}
+        </div>
 
-        {/* Action buttons */}
-        <div style={{ display: 'flex', gap: '10px', marginTop: 'auto' }}>
-          <button onClick={startSTT} style={{
-            flex: 1, padding: '14px', borderRadius: '16px',
-            background: 'linear-gradient(135deg, #1E4D3A, #102B1F)',
-            color: '#C9A84C', border: '1px solid rgba(201,168,76,0.3)',
-            fontWeight: 800, fontSize: '14px', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.3)'
-          }}>
-            🎙️ ฝึกพูด
+        {/* Action Buttons Panel */}
+        <div style={{ display: 'flex', gap: '12px', width: '100%', marginTop: 'auto' }}>
+          <button 
+            onClick={startSTT}
+            style={{
+              flex: 1,
+              padding: '14px',
+              borderRadius: '16px',
+              background: 'linear-gradient(135deg, #1E4D3A 0%, #102B1F 100%)',
+              color: '#FFF',
+              border: 'none',
+              fontWeight: 800,
+              fontSize: '14px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 15px rgba(16,43,31,0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px'
+            }}
+          >
+            🎙️ ฝึกพูดคำศัพท์
           </button>
-          <button onClick={() => setShowQuizModal(true)} style={{
-            flex: 1, padding: '14px', borderRadius: '16px',
-            background: 'linear-gradient(135deg, rgba(201,168,76,0.15), rgba(201,168,76,0.05))',
-            color: '#C9A84C', border: '1px solid rgba(201,168,76,0.3)',
-            fontWeight: 800, fontSize: '14px', cursor: 'pointer',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.3)'
-          }}>
-            📝 ทดสอบ
+          
+          <button 
+            onClick={() => setShowQuizModal(true)}
+            style={{
+              flex: 1,
+              padding: '14px',
+              borderRadius: '16px',
+              background: 'linear-gradient(135deg, #C9A84C 0%, #A6882A 100%)',
+              color: '#FFF',
+              border: 'none',
+              fontWeight: 800,
+              fontSize: '14px',
+              cursor: 'pointer',
+              boxShadow: '0 4px 15px rgba(166,136,42,0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px'
+            }}
+          >
+            📝 ทดสอบความรู้
           </button>
         </div>
+
       </div>
 
-      {/* ── STT Modal ── */}
+      {/* 1. Speech Recognition Practice Modal */}
       {showSttModal && (
         <div style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(12px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: '20px'
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
         }}>
           <div style={{
-            width: '100%', maxWidth: '380px',
-            background: '#0F1E14', borderRadius: '28px', padding: '28px',
-            textAlign: 'center', border: '1px solid rgba(201,168,76,0.3)',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+            width: '90%', maxWidth: '380px', background: '#FFF',
+            borderRadius: '24px', padding: '24px', textAlign: 'center',
+            boxShadow: '0 12px 30px rgba(0,0,0,0.25)',
+            border: '2px solid #1E4D3A'
           }}>
-            <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#C9A84C', margin: '0 0 16px' }}>
-              🎙️ ทดสอบการออกเสียง
+            <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#1E4D3A', margin: '0 0 16px 0' }}>
+              🎙️ ทดสอบการออกเสียงของคุณ
             </h3>
-            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '16px' }}>
-              กดไมโครโฟนแล้วพูดว่า:
+            
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+              กดปุ่มไมโครโฟนแล้วพูดว่า:
             </p>
-            <div style={{
-              fontSize: '22px', fontWeight: 900, color: '#C9A84C',
-              background: 'rgba(201,168,76,0.08)', padding: '16px', borderRadius: '16px',
-              marginBottom: '24px', border: '1px solid rgba(201,168,76,0.2)'
-            }}>
+            
+            <div style={{ fontSize: '22px', fontWeight: 900, color: '#A6882A', background: '#F9F6F0', padding: '16px', borderRadius: '16px', marginBottom: '24px', letterSpacing: '0.5px' }}>
               {model.nameEn}
             </div>
 
@@ -551,29 +514,34 @@ function ARViewerContent() {
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', marginBottom: '24px' }}>
                 <div style={{
                   width: '64px', height: '64px', borderRadius: '50%',
-                  background: 'rgba(139,38,53,0.2)', display: 'flex', alignItems: 'center',
-                  justifyContent: 'center', fontSize: '28px', animation: 'sttPulse 1.2s infinite',
-                  border: '2px solid #8B2635'
-                }}>🎙️</div>
-                <span style={{ color: '#FAA', fontWeight: 700, fontSize: '14px' }}>กำลังฟัง...</span>
+                  background: '#FAE8EB', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '28px', animation: 'pulse 1.2s infinite'
+                }}>
+                  🔴
+                </div>
+                <span style={{ color: '#8B2635', fontWeight: 700, fontSize: '14px' }}>กำลังฟังเสียงพูดของคุณ...</span>
               </div>
             ) : (
               <div style={{ marginBottom: '24px' }}>
                 {spokenText && (
-                  <div style={{ marginBottom: '12px' }}>
-                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '4px' }}>คุณพูดว่า:</div>
-                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#FDFAF4' }}>"{spokenText}"</div>
+                  <div style={{ marginBottom: '16px' }}>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>คุณพูดว่า:</div>
+                    <div style={{ fontSize: '15px', fontWeight: 700, color: '#102B1F' }}>"{spokenText}"</div>
                   </div>
                 )}
+
                 {sttScore !== null && (
                   <div>
-                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>คะแนนความถูกต้อง</div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>คะแนนความถูกต้อง:</div>
                     <div style={{
-                      fontSize: '42px', fontWeight: 900, margin: '4px 0',
-                      color: sttScore >= 80 ? '#4ADE80' : sttScore >= 50 ? '#C9A84C' : '#F87171'
-                    }}>{sttScore}%</div>
-                    <div style={{ fontSize: '13px', fontWeight: 700, color: 'rgba(255,255,255,0.7)' }}>
-                      {sttScore >= 80 ? '🌟 ยอดเยี่ยม! สำเนียงถูกต้อง' : sttScore >= 50 ? '👍 เก่งมาก! ลองฝึกอีกครั้ง' : '💪 ลองพูดช้าๆ ชัดขึ้น'}
+                      fontSize: '36px', fontWeight: 900, 
+                      color: sttScore >= 80 ? '#1E4D3A' : sttScore >= 50 ? '#A6882A' : '#8B2635',
+                      margin: '4px 0'
+                    }}>
+                      {sttScore}%
+                    </div>
+                    <div style={{ fontSize: '13px', fontWeight: 700 }}>
+                      {sttScore >= 80 ? '🌟 ยอดเยี่ยมมาก! สำเนียงถูกต้อง' : sttScore >= 50 ? '👍 เก่งมาก! ลองออกเสียงให้ชัดเจนขึ้นอีกนิด' : '💪 ลองใหม่อีกครั้ง พยายามออกเสียงช้าๆ ชัดๆ'}
                     </div>
                   </div>
                 )}
@@ -581,148 +549,185 @@ function ARViewerContent() {
             )}
 
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={startSTT} disabled={isListening} style={{
-                flex: 1, padding: '12px', borderRadius: '12px',
-                background: '#1E4D3A', color: '#C9A84C', border: 'none',
-                fontWeight: 700, fontSize: '13px', cursor: 'pointer', opacity: isListening ? 0.5 : 1
-              }}>🔄 ลองใหม่</button>
-              <button onClick={() => setShowSttModal(false)} style={{
-                flex: 1, padding: '12px', borderRadius: '12px',
-                background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)',
-                border: 'none', fontWeight: 700, fontSize: '13px', cursor: 'pointer'
-              }}>ปิด</button>
+              <button 
+                onClick={startSTT}
+                disabled={isListening}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: '12px',
+                  background: '#1E4D3A', color: '#FFF', border: 'none',
+                  fontWeight: 700, fontSize: '13px', cursor: 'pointer',
+                  opacity: isListening ? 0.6 : 1
+                }}
+              >
+                🔄 ลองพูดใหม่
+              </button>
+              <button 
+                onClick={() => setShowSttModal(false)}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: '12px',
+                  background: '#F0EEE9', color: '#555', border: 'none',
+                  fontWeight: 700, fontSize: '13px', cursor: 'pointer'
+                }}
+              >
+                ปิดหน้าต่าง
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Quiz Modal ── */}
+      {/* 2. Quick Vocabulary Quiz Modal */}
       {showQuizModal && (
         <div style={{
-          position: 'fixed', inset: 0,
-          background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(12px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000, padding: '20px'
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
         }}>
           <div style={{
-            width: '100%', maxWidth: '380px',
-            background: '#0F1E14', borderRadius: '28px', padding: '28px',
-            textAlign: 'center', border: '1px solid rgba(201,168,76,0.3)',
-            boxShadow: '0 20px 60px rgba(0,0,0,0.5)'
+            width: '90%', maxWidth: '380px', background: '#FFF',
+            borderRadius: '24px', padding: '24px', textAlign: 'center',
+            boxShadow: '0 12px 30px rgba(0,0,0,0.25)',
+            border: '2px solid #C9A84C'
           }}>
-            <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#C9A84C', margin: '0 0 8px' }}>
-              📝 ทดสอบความรู้
+            <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#1E4D3A', margin: '0 0 8px 0' }}>
+              📝 แบบทดสอบความรู้สั้น
             </h3>
-            <p style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)', marginBottom: '20px' }}>
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px' }}>
               อุปกรณ์ชิ้นนี้ภาษาไทยเรียกว่าอะไร?
             </p>
-            <div style={{
-              fontSize: '22px', fontWeight: 900, color: '#FDFAF4',
-              background: 'rgba(201,168,76,0.08)', padding: '16px', borderRadius: '16px',
-              marginBottom: '20px', border: '1px solid rgba(201,168,76,0.2)'
-            }}>
+
+            <div style={{ fontSize: '22px', fontWeight: 900, color: '#1E4D3A', background: '#EAF3EE', padding: '16px', borderRadius: '16px', marginBottom: '24px' }}>
               {model.nameEn}
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
-              {quizOptions.map((opt, idx) => {
-                const isSelected = quizSelectedOption === opt
-                const isCorrect = opt === model.nameTh
-                let bg = 'rgba(255,255,255,0.04)'
-                let borderColor = 'rgba(255,255,255,0.1)'
-                let color = 'rgba(255,255,255,0.8)'
+            {/* Multiple Choice Options */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
+              {quizOptions.map((option, idx) => {
+                const isSelected = quizSelectedOption === option
+                const isCorrect = option === model.nameTh
+                let btnStyle: React.CSSProperties = {
+                  width: '100%',
+                  padding: '14px',
+                  borderRadius: '12px',
+                  border: '1.5px solid #EDE9E1',
+                  background: '#FFF',
+                  fontWeight: 600,
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  transition: 'all 0.2s'
+                }
+
                 if (quizAnswered) {
-                  if (isCorrect) { bg = 'rgba(74,222,128,0.15)'; borderColor = '#4ADE80'; color = '#4ADE80' }
-                  else if (isSelected) { bg = 'rgba(248,113,113,0.15)'; borderColor = '#F87171'; color = '#F87171' }
-                  else { bg = 'rgba(255,255,255,0.02)'; color = 'rgba(255,255,255,0.3)' }
-                } else if (isSelected) { bg = 'rgba(201,168,76,0.12)'; borderColor = '#C9A84C'; color = '#C9A84C' }
+                  if (isCorrect) {
+                    btnStyle = { ...btnStyle, background: '#EAF3EE', borderColor: '#1E4D3A', color: '#1E4D3A', fontWeight: 800 }
+                  } else if (isSelected) {
+                    btnStyle = { ...btnStyle, background: '#FAE8EB', borderColor: '#8B2635', color: '#8B2635' }
+                  } else {
+                    btnStyle = { ...btnStyle, opacity: 0.6 }
+                  }
+                } else if (isSelected) {
+                  btnStyle = { ...btnStyle, borderColor: '#C9A84C', background: '#FDFAF4' }
+                }
+
                 return (
-                  <button key={idx} disabled={quizAnswered} onClick={() => setQuizSelectedOption(opt)} style={{
-                    padding: '14px', borderRadius: '12px', border: `1.5px solid ${borderColor}`,
-                    background: bg, color, fontWeight: 700, fontSize: '14px',
-                    cursor: quizAnswered ? 'default' : 'pointer', textAlign: 'left',
-                    transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '10px'
-                  }}>
-                    <span style={{ fontSize: '12px', opacity: 0.6 }}>{['A', 'B', 'C'][idx]}.</span>
-                    {opt}
+                  <button 
+                    key={idx}
+                    disabled={quizAnswered}
+                    onClick={() => setQuizSelectedOption(option)}
+                    style={btnStyle}
+                  >
+                    <span style={{ marginRight: '8px', color: isSelected ? '#C9A84C' : '#999' }}>
+                      {idx === 0 ? 'A.' : idx === 1 ? 'B.' : 'C.'}
+                    </span>
+                    {option}
                   </button>
                 )
               })}
             </div>
 
+            {/* Answer Display */}
             {quizAnswered && (
               <div style={{
-                padding: '12px', borderRadius: '12px', marginBottom: '16px',
-                background: quizSelectedOption === model.nameTh ? 'rgba(74,222,128,0.1)' : 'rgba(248,113,113,0.1)',
-                color: quizSelectedOption === model.nameTh ? '#4ADE80' : '#F87171',
-                fontWeight: 700, fontSize: '13px'
+                background: quizSelectedOption === model.nameTh ? '#EAF3EE' : '#FAE8EB',
+                color: quizSelectedOption === model.nameTh ? '#1E4D3A' : '#8B2635',
+                padding: '12px', borderRadius: '12px', marginBottom: '24px', fontWeight: 700, fontSize: '13px'
               }}>
-                {quizSelectedOption === model.nameTh ? '🎉 ถูกต้อง! ยอดเยี่ยมมาก' : `❌ ผิด! คำตอบที่ถูกคือ "${model.nameTh}"`}
+                {quizSelectedOption === model.nameTh ? '🎉 ตอบถูก! คุณได้รับ 10 คะแนนความรู้' : '❌ ตอบผิด! ลองอ่านรายละเอียดแล้วตอบอีกครั้ง'}
               </div>
             )}
 
+            {/* Actions */}
             <div style={{ display: 'flex', gap: '8px' }}>
               {!quizAnswered ? (
-                <button disabled={!quizSelectedOption} onClick={() => setQuizAnswered(true)} style={{
-                  flex: 1, padding: '12px', borderRadius: '12px', border: 'none',
-                  background: quizSelectedOption ? 'linear-gradient(135deg, #C9A84C, #A6882A)' : 'rgba(255,255,255,0.08)',
-                  color: quizSelectedOption ? '#0A1F12' : 'rgba(255,255,255,0.3)',
-                  fontWeight: 800, fontSize: '13px', cursor: quizSelectedOption ? 'pointer' : 'default'
-                }}>ส่งคำตอบ</button>
+                <button 
+                  disabled={!quizSelectedOption}
+                  onClick={() => setQuizAnswered(true)}
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: '12px',
+                    background: quizSelectedOption ? '#1E4D3A' : '#CCC',
+                    color: '#FFF', border: 'none',
+                    fontWeight: 700, fontSize: '13px', cursor: quizSelectedOption ? 'pointer' : 'default'
+                  }}
+                >
+                  ส่งคำตอบ
+                </button>
               ) : (
-                <button onClick={() => {
-                  setQuizAnswered(false); setQuizSelectedOption(null)
-                  const pool = ['จานสลัดเดี่ยว', 'ช้อนตักแกง', 'ถ้วยน้ำจิ้ม', 'มีดหั่นเนื้อสเต็ก', 'แก้วเครื่องดื่มค็อกเทล']
-                  const f = pool.filter(o => o !== model.nameTh).sort(() => 0.5 - Math.random())
-                  setQuizOptions([model.nameTh, f[0], f[1]].sort(() => 0.5 - Math.random()))
-                }} style={{
-                  flex: 1, padding: '12px', borderRadius: '12px', border: 'none',
-                  background: 'linear-gradient(135deg, #C9A84C, #A6882A)',
-                  color: '#0A1F12', fontWeight: 800, fontSize: '13px', cursor: 'pointer'
-                }}>🔄 เล่นใหม่</button>
+                <button 
+                  onClick={() => {
+                    setQuizAnswered(false)
+                    setQuizSelectedOption(null)
+                    // Reshuffle options
+                    const pool = ['จานสลัดเดี่ยว', 'ช้อนตักแกง', 'ถ้วยน้ำจิ้ม', 'มีดหั่นเนื้อสเต็ก', 'แก้วเครื่องดื่มค็อกเทล']
+                    const filteredPool = pool.filter(o => o !== model.nameTh)
+                    const shuffled = filteredPool.sort(() => 0.5 - Math.random())
+                    const opts = [model.nameTh, shuffled[0], shuffled[1]].sort(() => 0.5 - Math.random())
+                    setQuizOptions(opts)
+                  }}
+                  style={{
+                    flex: 1, padding: '12px', borderRadius: '12px',
+                    background: '#1E4D3A', color: '#FFF', border: 'none',
+                    fontWeight: 700, fontSize: '13px', cursor: 'pointer'
+                  }}
+                >
+                  🔄 เล่นอีกครั้ง
+                </button>
               )}
-              <button onClick={() => setShowQuizModal(false)} style={{
-                flex: 1, padding: '12px', borderRadius: '12px', border: 'none',
-                background: 'rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.6)',
-                fontWeight: 700, fontSize: '13px', cursor: 'pointer'
-              }}>ปิด</button>
+              <button 
+                onClick={() => setShowQuizModal(false)}
+                style={{
+                  flex: 1, padding: '12px', borderRadius: '12px',
+                  background: '#F0EEE9', color: '#555', border: 'none',
+                  fontWeight: 700, fontSize: '13px', cursor: 'pointer'
+                }}
+              >
+                ปิดหน้าต่าง
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* ── Global Animations ── */}
+      {/* Embedded microphone animations */}
       <style>{`
-        @keyframes arGlow {
-          0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0.5), 0 8px 24px rgba(201,168,76,0.3); }
-          50% { box-shadow: 0 0 0 12px rgba(201,168,76,0), 0 12px 32px rgba(201,168,76,0.5); }
+        @keyframes pulse {
+          0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139,38,53, 0.4); }
+          70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(139,38,53, 0); }
+          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139,38,53, 0); }
         }
-        @keyframes sttPulse {
-          0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139,38,53,0.5); }
-          70% { transform: scale(1.1); box-shadow: 0 0 0 12px rgba(139,38,53,0); }
-          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(139,38,53,0); }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
         }
-        model-viewer {
-          --progress-bar-color: #C9A84C;
-          --progress-mask: transparent;
-        }
-        model-viewer::part(default-ar-button) { display: none; }
       `}</style>
+
     </div>
   )
 }
 
 export default function ARViewerPage() {
   return (
-    <Suspense fallback={
-      <div style={{
-        minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'linear-gradient(160deg, #040D07, #102B1F)', color: '#C9A84C',
-        fontSize: '18px', fontWeight: 700
-      }}>
-        🕶️ กำลังโหลด AR...
-      </div>
-    }>
+    <Suspense fallback={<div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>กำลังโหลดโมเดล 3 มิติ...</div>}>
       <ARViewerContent />
     </Suspense>
   )

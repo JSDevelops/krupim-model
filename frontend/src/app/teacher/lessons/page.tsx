@@ -2705,8 +2705,8 @@ export default function TeacherLessonsDashboard() {
       {/* 4.5.1 QR Code Modal for AR Items */}
       {showQrModal && selectedQrItem && (() => {
         const studentLink = typeof window !== 'undefined' 
-          ? `${window.location.origin}/student/ar-view?id=${selectedQrItem.id}&ar=1` 
-          : `/student/ar-view?id=${selectedQrItem.id}&ar=1`;
+          ? `${window.location.origin}/student/ar-view?id=${selectedQrItem.id}` 
+          : `/student/ar-view?id=${selectedQrItem.id}`;
         const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(studentLink)}`;
         
         return (
