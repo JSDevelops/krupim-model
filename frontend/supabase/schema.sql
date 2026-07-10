@@ -431,3 +431,34 @@ CREATE POLICY "Allow public read class_invites" ON class_invites FOR SELECT USIN
 CREATE POLICY "Teachers create class invites" ON class_invites
   FOR ALL WITH CHECK (auth.role() = 'authenticated');
 
+-- ============================================
+-- AR ITEMS (คลังอุปกรณ์ AR & 3D)
+-- สร้างโดยครู, อ่านได้โดยทุกคน
+-- ============================================
+CREATE TABLE ar_items (
+  id          TEXT PRIMARY KEY,                -- ใช้ item-{timestamp} เป็น PK
+  name_en     TEXT NOT NULL UNIQUE,            -- ชื่ออุปกรณ์ภาษาอังกฤษ (unique key)
+  name_th     TEXT NOT NULL,                   -- ชื่อภาษาไทย
+  pronounce   TEXT,                            -- คำอ่านสัทอักษร
+  sentence    TEXT,                            -- ตัวอย่างประโยคภาษาอังกฤษ
+  description TEXT,                            -- คำอธิบาย
+  image_url   TEXT,                            -- URL รูปภาพ thumbnail
+  glb_url     TEXT,                            -- URL ไฟล์ 3D (.glb)
+  usdz_url    TEXT,                            -- URL ไฟล์ AR iOS (.usdz)
+  blender_script TEXT,                         -- Blender Python Script (optional)
+  created_by  UUID REFERENCES profiles(id),    -- ครูผู้สร้าง
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE ar_items ENABLE ROW LEVEL SECURITY;
+
+-- นักเรียน/ทุกคน อ่านได้
+CREATE POLICY "Allow public read ar_items" ON ar_items
+  FOR SELECT USING (true);
+
+-- ผู้ใช้ที่ login (ครู/developer) จัดการได้
+CREATE POLICY "Authenticated users manage ar_items" ON ar_items
+  FOR ALL USING (auth.role() = 'authenticated')
+  WITH CHECK (auth.role() = 'authenticated');
+

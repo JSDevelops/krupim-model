@@ -354,20 +354,32 @@ export default function TeacherLessonsDashboard() {
 
       async function fetchARItems() {
         try {
+          // ✅ ดึงข้อมูลจากตาราง ar_items (แต่ละ row = 1 อุปกรณ์)
           const { data, error } = await supabase
-            .from('fine_lesson_plans')
-            .select('vocabulary')
-            .eq('id', 'ar-items-store')
-            .single()
+            .from('ar_items')
+            .select('*')
+            .order('created_at', { ascending: false })
           
-          if (data && data.vocabulary) {
-            const items = data.vocabulary as AR3DItem[]
+          if (!error && data && data.length > 0) {
+            // แปลง column ชื่อ snake_case → camelCase ให้ตรงกับ AR3DItem interface
+            const items: AR3DItem[] = data.map((row: any) => ({
+              id: row.id,
+              nameEn: row.name_en,
+              nameTh: row.name_th,
+              pronounce: row.pronounce || '',
+              sentence: row.sentence || '',
+              desc: row.description || '',
+              imageUrl: row.image_url || '',
+              glbUrl: row.glb_url || '',
+              usdzUrl: row.usdz_url || '',
+              blenderScript: row.blender_script || ''
+            }))
             setARItems(items)
             localStorage.setItem('arItems', JSON.stringify(items))
             return
           }
         } catch (e) {
-          console.error('Error fetching from Supabase:', e)
+          console.error('Error fetching ar_items from Supabase:', e)
         }
 
         // Fallback to localStorage
@@ -387,25 +399,10 @@ export default function TeacherLessonsDashboard() {
     }
   }, [])
 
-  // Sync AR items to localStorage & Supabase when changed
+  // Sync AR items to localStorage เท่านั้น (Supabase บันทึกทันทีใน handleAddARItem/handleDeleteARItem)
   useEffect(() => {
     if (typeof window !== 'undefined' && arItems.length > 0) {
       localStorage.setItem('arItems', JSON.stringify(arItems))
-      
-      async function syncToSupabase() {
-        try {
-          await supabase
-            .from('fine_lesson_plans')
-            .upsert({
-              id: 'ar-items-store',
-              title: 'AR 3D Items Repository',
-              vocabulary: arItems
-            })
-        } catch (e) {
-          console.error('Error syncing to Supabase:', e)
-        }
-      }
-      syncToSupabase()
     }
   }, [arItems])
 
@@ -1278,7 +1275,7 @@ export default function TeacherLessonsDashboard() {
   }
 
   // 4.5 AR Item Creator
-  function handleAddARItem(e: React.FormEvent) {
+  async function handleAddARItem(e: React.FormEvent) {
     e.preventDefault()
     if (!arEn || !arTh) return
 
@@ -1295,6 +1292,34 @@ export default function TeacherLessonsDashboard() {
       blenderScript: arBlenderScript
     }
 
+    // ✅ บันทึกลง Supabase ตาราง ar_items ทันที (upsert ตาม name_en)
+    try {
+      const { error } = await supabase
+        .from('ar_items')
+        .upsert({
+          id: newItem.id,
+          name_en: newItem.nameEn,
+          name_th: newItem.nameTh,
+          pronounce: newItem.pronounce,
+          sentence: newItem.sentence,
+          description: newItem.desc,
+          image_url: newItem.imageUrl || null,
+          glb_url: newItem.glbUrl || null,
+          usdz_url: newItem.usdzUrl || null,
+          blender_script: newItem.blenderScript || null
+        }, { onConflict: 'name_en' })
+
+      if (error) {
+        console.error('Supabase ar_items insert error:', error)
+        alert('⚠️ บันทึกลงฐานข้อมูลไม่สำเร็จ: ' + error.message)
+        return
+      }
+    } catch (err) {
+      console.error('Error saving AR item to Supabase:', err)
+      alert('⚠️ เกิดข้อผิดพลาดในการบันทึก กรุณาลองใหม่')
+      return
+    }
+
     setARItems(prev => [...prev, newItem])
     setAREn('')
     setARTh('')
@@ -1305,10 +1330,28 @@ export default function TeacherLessonsDashboard() {
     setArGlbUrl('')
     setArUsdzUrl('')
     setArBlenderScript('')
-    alert('เพิ่มโมเดล 3 มิติ และสแกนอุปกรณ์เข้าคลังสำเร็จ!')
+    alert('✅ เพิ่มโมเดล 3 มิติเข้าคลังและบันทึกลงฐานข้อมูลสำเร็จ!')
   }
 
-  function handleDeleteARItem(id: string) {
+  async function handleDeleteARItem(id: string) {
+    if (!confirm('คุณต้องการลบอุปกรณ์นี้ออกจากคลังและฐานข้อมูลหรือไม่?')) return
+
+    // ✅ ลบจาก Supabase ก่อน
+    try {
+      const { error } = await supabase
+        .from('ar_items')
+        .delete()
+        .eq('id', id)
+
+      if (error) {
+        console.error('Supabase ar_items delete error:', error)
+        alert('⚠️ ลบออกจากฐานข้อมูลไม่สำเร็จ: ' + error.message)
+        return
+      }
+    } catch (err) {
+      console.error('Error deleting AR item from Supabase:', err)
+    }
+
     setARItems(prev => prev.filter(i => i.id !== id))
   }
 
