@@ -1303,7 +1303,7 @@ export default function ExplorePage() {
                         </Link>
                       ) : (
                         <Link
-                          href="/chat"
+                          href={aiItem ? `/chat?q=${encodeURIComponent(`ช่วยแนะนำคำศัพท์ ประโยคสนทนาภาษาอังกฤษ และการจัดวาง/การบริการของ "${aiItem.name_en || aiItem.name || ''}" (${aiItem.name_th || aiItem.nameTh || ''}) ในฐานะบริกรโรงแรมให้หน่อยครับ`)}` : '/chat'}
                           style={{
                             flex: 1,
                             background: 'rgba(56, 189, 248, 0.25)',

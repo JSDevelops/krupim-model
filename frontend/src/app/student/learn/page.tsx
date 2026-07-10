@@ -299,7 +299,14 @@ export default function StudentLearnPage() {
                         {plan.activitiesI}
                       </p>
                       <div style={{ display: 'flex', gap: '6px' }}>
-                        <Link href="/chat" className="btn btn-primary" style={{ padding: '6px 16px', fontSize: '10px', borderRadius: '6px', textDecoration: 'none', fontWeight: 700, border: 'none' }}>
+                        <Link 
+                          href={plan.vocabulary && plan.vocabulary.length > 0 
+                            ? `/chat?q=${encodeURIComponent(`ช่วยแนะนำคำศัพท์และประโยคสนทนาภาษาอังกฤษสำหรับการจัดบริการในร้านอาหารเกี่ยวกับ: ${plan.vocabulary.join(', ')} ในฐานะบริกรให้หน่อยครับ`)}` 
+                            : '/chat'
+                          } 
+                          className="btn btn-primary" 
+                          style={{ padding: '6px 16px', fontSize: '10px', borderRadius: '6px', textDecoration: 'none', fontWeight: 700, border: 'none' }}
+                        >
                           💬 สนทนาอัจฉริยะ AI Chat
                         </Link>
                       </div>

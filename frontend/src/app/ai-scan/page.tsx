@@ -631,7 +631,7 @@ export default function AIScanPage() {
                   📱 ส่องกล้อง AR จริง
                 </Link>
               ) : (
-                <Link href="/chat" className="btn btn-primary" style={{flex:1, borderRadius: 14, background: 'linear-gradient(135deg, #C9A84C 0%, #A6882A 100%)', color: 'white', fontWeight: 800, textDecoration:'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-primary)'}}>
+                <Link href={result ? `/chat?q=${encodeURIComponent(`ช่วยแนะนำคำศัพท์ ประโยคสนทนาภาษาอังกฤษ และการจัดวาง/การบริการของ "${result.name_en}" (${result.name_th}) ในฐานะบริกรโรงแรมให้หน่อยครับ`)}` : '/chat'} className="btn btn-primary" style={{flex:1, borderRadius: 14, background: 'linear-gradient(135deg, #C9A84C 0%, #A6882A 100%)', color: 'white', fontWeight: 800, textDecoration:'none', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--font-primary)'}}>
                   💬 ถามผู้ช่วย AI
                 </Link>
               )}

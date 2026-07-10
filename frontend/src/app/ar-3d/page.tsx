@@ -353,7 +353,7 @@ export default function AR3DPage() {
  
               <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
                 <Link 
-                  href="/chat"
+                  href={selected ? `/chat?q=${encodeURIComponent(`ช่วยแนะนำคำศัพท์ ประโยคสนทนาภาษาอังกฤษ และการจัดวาง/การบริการของ "${selected.nameEn}" (${selected.nameTh}) ในฐานะบริกรโรงแรมให้หน่อยครับ`)}` : '/chat'}
                   style={{
                     flex: 1, padding: '12px', borderRadius: 14, border: '1.5px solid #1E4D3A',
                     background: 'transparent', color: '#1E4D3A', fontWeight: 800, fontSize: 13,

@@ -39,6 +39,20 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // ดึงค่าคำถามเริ่มต้นจาก query parameter (q) เช่น จากการกดปุ่ม "ถาม AI" ในหน้าสแกน
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const q = params.get('q')
+      if (q) {
+        const timer = setTimeout(() => {
+          sendMessage(q)
+        }, 400)
+        return () => clearTimeout(timer)
+      }
+    }
+  }, [])
+
   // Setup Web Speech APIs
   useEffect(() => {
     if (typeof window !== 'undefined') {
