@@ -40,7 +40,34 @@ function ARViewerContent() {
       async function loadModel() {
         const fallbackGlb = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
 
-        // ─── 1. Try ai_scan_items table (primary — teacher-created items) ───
+        // ─── 1. Try ar_items table (ตารางหลัก — ครูสร้างผ่านหน้า AR & 3D Items) ───
+        try {
+          const { data, error } = await supabase
+            .from('ar_items')
+            .select('*')
+            .eq('id', id)
+            .single()
+
+          if (data && !error) {
+            setModel({
+              id: data.id,
+              nameEn: data.name_en || '',
+              nameTh: data.name_th || '',
+              desc: data.description || '',
+              glbUrl: data.glb_url || fallbackGlb,
+              usdzUrl: data.usdz_url || '',
+              pronounce: data.pronounce || '',
+              sentence: data.sentence || '',
+              imageUrl: data.image_url || ''
+            })
+            setLoading(false)
+            return
+          }
+        } catch (e) {
+          console.warn('ar_items fetch failed, trying ai_scan_items:', e)
+        }
+
+        // ─── 2. Try ai_scan_items table (AI Scan ที่สแกนผ่านกล้อง) ───
         try {
           const { data, error } = await supabase
             .from('ai_scan_items')
@@ -67,7 +94,7 @@ function ARViewerContent() {
           console.warn('ai_scan_items fetch failed, trying legacy store:', e)
         }
 
-        // ─── 2. Legacy: fine_lesson_plans 'ar-items-store' ───
+        // ─── 3. Legacy: fine_lesson_plans 'ar-items-store' ───
         try {
           const { data, error } = await supabase
             .from('fine_lesson_plans')
