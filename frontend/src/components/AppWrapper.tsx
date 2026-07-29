@@ -24,7 +24,7 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
   const [profEmail, setProfEmail] = useState('')
   const [profAvatar, setProfAvatar] = useState('')
   const [apiKey, setApiKey] = useState('')
-  const [selectedModel, setSelectedModel] = useState('gemini-1.5-flash')
+  const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash')
 
   const [notifications, setNotifications] = useState([
     { id: 1, text: '👩‍🏫 ครูมานะ ดีงาม ขอยื่นอนุมัติการใช้งานใหม่', time: '5 นาทีที่แล้ว', read: false },
@@ -54,7 +54,7 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
     }
     if (typeof window !== 'undefined') {
       setApiKey(localStorage.getItem('geminiApiKey') || '')
-      setSelectedModel(localStorage.getItem('geminiModel') || 'gemini-1.5-flash')
+      setSelectedModel(localStorage.getItem('geminiModel') || 'gemini-2.0-flash')
     }
     setShowProfileSettings(true)
   }
