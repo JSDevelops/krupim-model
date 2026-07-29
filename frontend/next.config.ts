@@ -6,7 +6,7 @@ const nextConfig: NextConfig = {
   images: {
     remotePatterns: [
       // Supabase Storage (project avatars, thumbnails)
-      { protocol: 'https', hostname: 'zzkgzbdvyeansjxsylgw.supabase.co' },
+      { protocol: 'https', hostname: '*.supabase.co' },
       // GitHub raw content (3D sample models)
       { protocol: 'https', hostname: 'raw.githubusercontent.com' },
       // Google user avatars

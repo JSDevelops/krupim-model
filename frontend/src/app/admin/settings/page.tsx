@@ -43,7 +43,7 @@ export default function AdminSettingsPage() {
       setClaudeKey(localStorage.getItem('claudeApiKey') || '')
       setThreeDAIStudioKey(localStorage.getItem('threeDAIStudioKey') || '')
       setTripoApiKey(localStorage.getItem('tripoApiKey') || '')
-      setDbUrl(localStorage.getItem('supabaseUrl') || 'https://zzkgzbdvyeansjxsylgw.supabase.co')
+      setDbUrl(localStorage.getItem('supabaseUrl') || process.env.NEXT_PUBLIC_SUPABASE_URL || '')
       setDbKey(localStorage.getItem('supabaseAnonKey') || '')
       setSchoolName(localStorage.getItem('schoolName') || 'วิทยาลัยอาชีวศึกษากรุงเทพ')
       setMaintenance(localStorage.getItem('maintenanceMode') === 'true')
