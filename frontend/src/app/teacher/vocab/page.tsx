@@ -10,14 +10,104 @@ interface Equipment {
   ph?: string
 }
 
-// ข้อมูลเริ่มต้นใช้ Emoji แบบเดิมไปก่อน
+// ข้อมูลคำศัพท์เริ่มต้นครอบคลุมทั้ง 10 หมวดหมู่อุปกรณ์ห้องอาหาร (Restaurant Equipment)
 const initialVocabulary: Equipment[] = [
-  { name: 'ส้อมอาหาร', nameEn: 'Dinner Fork', emoji: '🍴', use: 'ใช้สำหรับรับประทานอาหารหลัก', sentence: 'This is a dinner fork. It is used for the main course.', ph: '/ˈkʌtləri/' },
-  { name: 'มีดอาหาร', nameEn: 'Dinner Knife', emoji: '🔪', use: 'ใช้สำหรับตัดอาหาร', sentence: 'This is a dinner knife. It is used for cutting food.', ph: '/ˈdɪnər naɪf/' },
-  { name: 'ช้อนซุป', nameEn: 'Soup Spoon', emoji: '🥄', use: 'ใช้สำหรับตักซุป', sentence: 'This is a soup spoon. It is used for drinking soup.', ph: '/suːp spuːn/' },
-  { name: 'แก้วน้ำ', nameEn: 'Water Goblet', emoji: '🍷', use: 'ใช้สำหรับบริการน้ำเปล่า', sentence: 'This is a water goblet. It is used for serving water.', ph: '/ˈwɔːtər ˈɡɒblət/' },
-  { name: 'ถ้วยกาแฟ', nameEn: 'Espresso Cup', emoji: '☕', use: 'ใช้สำหรับเสิร์ฟกาแฟเอสเพรสโซ่', sentence: 'This is an espresso cup. It is used for serving espresso.', ph: '/eˈspresəʊ kʌp/' },
-  { name: 'แก้วแชมเปญ', nameEn: 'Champagne Flute', emoji: '🥂', use: 'ใช้สำหรับเสิร์ฟแชมเปญ', sentence: 'This is a champagne flute. It is used for serving champagne.', ph: '/ʃæmˈpeɪn fluːt/' },
+  // หมวดที่ 1 อุปกรณ์เครื่องใช้บนโต๊ะอาหาร (Tableware)
+  { name: 'จานอาหารหลัก', nameEn: 'Dinner Plate', emoji: '🍽️', use: 'ใส่อาหารจานหลัก', sentence: 'The dinner plate is used for serving main courses.', ph: '/ˈdɪnər pleɪt/' },
+  { name: 'จานสลัด', nameEn: 'Salad Plate', emoji: '🥗', use: 'ใส่สลัดหรืออาหารเรียกน้ำย่อย', sentence: 'The salad plate is used for appetizers or salad.', ph: '/ˈsæləd pleɪt/' },
+  { name: 'จานขนมปัง', nameEn: 'Bread Plate', emoji: '🍞', use: 'วางขนมปังและเนย', sentence: 'The bread plate is placed on the left side of the setting.', ph: '/bred pleɪt/' },
+  { name: 'จานรองถ้วยชา', nameEn: 'Saucer', emoji: '☕', use: 'รองถ้วยชาและกาแฟ', sentence: 'Place the cup neatly on the saucer.', ph: '/ˈsɔːsər/' },
+  { name: 'ถ้วยซุป', nameEn: 'Soup Bowl', emoji: '🥣', use: 'ใส่ซุป', sentence: 'The soup bowl is used for serving hot soup.', ph: '/suːp bəʊl/' },
+  { name: 'ถ้วยกาแฟ', nameEn: 'Coffee Cup', emoji: '☕', use: 'ใส่กาแฟ', sentence: 'We serve freshly brewed coffee in a coffee cup.', ph: '/ˈkɒfi kʌp/' },
+  { name: 'ถ้วยชา', nameEn: 'Tea Cup', emoji: '🍵', use: 'ใส่ชา', sentence: 'Here is your tea cup for hot Jasmine tea.', ph: '/tiː kʌp/' },
+  { name: 'ชามของหวาน', nameEn: 'Dessert Bowl', emoji: '🍨', use: 'ใส่ของหวาน', sentence: 'The dessert bowl is ideal for ice cream and fruits.', ph: '/dɪˈzɜːt bəʊl/' },
+  { name: 'ถ้วยน้ำจิ้ม', nameEn: 'Sauce Dish', emoji: '🍲', use: 'ใส่น้ำจิ้ม', sentence: 'Pass the sauce dish to the guest.', ph: '/sɔːs dɪʃ/' },
+
+  // หมวดที่ 2 เครื่องเงินและช้อนส้อม (Flatware / Cutlery)
+  { name: 'มีดอาหารหลัก', nameEn: 'Dinner Knife', emoji: '🔪', use: 'ตัดอาหารจานหลัก', sentence: 'This is a dinner knife. It is used for cutting food.', ph: '/ˈdɪnər naɪf/' },
+  { name: 'ส้อมอาหารหลัก', nameEn: 'Dinner Fork', emoji: '🍴', use: 'รับประทานอาหารจานหลัก', sentence: 'This is a dinner fork. It is used for the main course.', ph: '/ˈdɪnər fɔːk/' },
+  { name: 'ช้อนอาหาร', nameEn: 'Dinner Spoon', emoji: '🥄', use: 'รับประทานอาหาร', sentence: 'The dinner spoon is used for rice or main food.', ph: '/ˈdɪnər spuːn/' },
+  { name: 'ช้อนซุป', nameEn: 'Soup Spoon', emoji: '🥄', use: 'รับประทานซุป', sentence: 'Use the soup spoon for drinking soup.', ph: '/suːp spuːn/' },
+  { name: 'มีดเนย', nameEn: 'Butter Knife', emoji: '🔪', use: 'ทาเนยบนขนมปัง', sentence: 'Use the butter knife to spread butter on your bread.', ph: '/ˈbʌtər naɪf/' },
+  { name: 'ส้อมสลัด', nameEn: 'Salad Fork', emoji: '🥗', use: 'รับประทานสลัด', sentence: 'The salad fork is slightly smaller than the dinner fork.', ph: '/ˈsæləd fɔːk/' },
+  { name: 'มีดปลา', nameEn: 'Fish Knife', emoji: '🐟', use: 'รับประทานปลา', sentence: 'The fish knife has a special blunt blade for lifting fish bones.', ph: '/fɪʃ naɪf/' },
+  { name: 'ส้อมปลา', nameEn: 'Fish Fork', emoji: '🐟', use: 'รับประทานปลา', sentence: 'Use the fish fork along with the fish knife.', ph: '/fɪʃ fɔːk/' },
+  { name: 'ช้อนของหวาน', nameEn: 'Dessert Spoon', emoji: '🍨', use: 'รับประทานของหวาน', sentence: 'The dessert spoon is served with puddings and cakes.', ph: '/dɪˈzɜːt spuːn/' },
+  { name: 'ส้อมของหวาน', nameEn: 'Dessert Fork', emoji: '🍰', use: 'รับประทานของหวาน', sentence: 'Use the dessert fork for fruit or cake.', ph: '/dɪˈzɜːt fɔːk/' },
+  { name: 'ช้อนชา', nameEn: 'Tea Spoon', emoji: '🥄', use: 'คนชา กาแฟ', sentence: 'Stir your hot tea gently with the tea spoon.', ph: '/tiː spuːn/' },
+  { name: 'ช้อนกาแฟ', nameEn: 'Coffee Spoon', emoji: '☕', use: 'คนกาแฟเอสเปรสโซ', sentence: 'The coffee spoon is designed for small espresso cups.', ph: '/ˈkɒfi spuːn/' },
+
+  // หมวดที่ 3 เครื่องแก้ว (Glassware)
+  { name: 'แก้วน้ำเปล่า', nameEn: 'Water Goblet', emoji: '🍷', use: 'ใช้สำหรับบริการน้ำเปล่า', sentence: 'Water goblet is filled with ice water.', ph: '/ˈwɔːtər ˈɡɒblət/' },
+  { name: 'แก้วไวน์แดง', nameEn: 'Red Wine Glass', emoji: '🍷', use: 'บริการไวน์แดง', sentence: 'Red wine glass has a large, round bowl.', ph: '/red waɪn ɡlɑːs/' },
+  { name: 'แก้วไวน์ขาว', nameEn: 'White Wine Glass', emoji: '🥂', use: 'บริการไวน์ขาว', sentence: 'White wine glass is smaller to preserve chilled temperature.', ph: '/waɪt waɪn ɡlɑːs/' },
+  { name: 'แก้วแชมเปญ', nameEn: 'Champagne Flute', emoji: '🥂', use: 'บริการแชมเปญ', sentence: 'Champagne flute keeps bubbles sparkling longer.', ph: '/ʃæmˈpeɪn fluːt/' },
+  { name: 'แก้วค็อกเทล', nameEn: 'Cocktail Glass', emoji: '🍸', use: 'บริการค็อกเทล', sentence: 'Cocktail glass is classic V-shaped glass.', ph: '/ˈkɒkteɪl ɡlɑːs/' },
+  { name: 'แก้วไฮบอล', nameEn: 'Highball Glass', emoji: '🥤', use: 'บริการเครื่องดื่มผสม', sentence: 'Highball glass is used for long drinks and juices.', ph: '/ˈhaɪbɔːl ɡlɑːs/' },
+  { name: 'แก้วร็อกส์', nameEn: 'Rocks Glass', emoji: '🥃', use: 'บริการวิสกี้', sentence: 'Rocks glass is used for spirits served on the rocks.', ph: '/rɒks ɡlɑːs/' },
+  { name: 'แก้วเบียร์', nameEn: 'Beer Glass', emoji: '🍺', use: 'บริการเบียร์', sentence: 'Pour beer carefully into the beer glass.', ph: '/bɪər ɡlɑːs/' },
+  { name: 'แก้วบรั่นดี', nameEn: 'Brandy Snifter', emoji: '🥃', use: 'บริการบรั่นดี', sentence: 'Hold the brandy snifter in your palm to warm it.', ph: '/ˈbrændi ˈsnɪf.tər/' },
+  { name: 'แก้วมาร์ตินี', nameEn: 'Martini Glass', emoji: '🍸', use: 'บริการมาร์ตินี', sentence: 'Serve chilled Martini in a martini glass with an olive.', ph: '/mɑːˈtiːni ɡlɑːs/' },
+
+  // หมวดที่ 4 เครื่องลินิน (Linen)
+  { name: 'ผ้าปูโต๊ะ', nameEn: 'Table Cloth', emoji: '🟫', use: 'ปูโต๊ะอาหาร', sentence: 'The table cloth must be clean and unwrinkled.', ph: '/ˈteɪbl klɒθ/' },
+  { name: 'ผ้ารองโต๊ะ', nameEn: 'Under Cloth', emoji: '⬛', use: 'รองผ้าปูโต๊ะเพื่อลดเสียง', sentence: 'Under cloth absorbs noise and softens the table surface.', ph: '/ˈʌndər klɒθ/' },
+  { name: 'ผ้าเช็ดปาก', nameEn: 'Napkin', emoji: '🎗️', use: 'เช็ดปากและตกแต่งโต๊ะ', sentence: 'Fold the napkin neatly on the guest plate.', ph: '/ˈnæpkɪn/' },
+  { name: 'ผ้าคลุมถาด', nameEn: 'Tray Cloth', emoji: '📐', use: 'รองถาดเสิร์ฟกันลื่น', sentence: 'Place a tray cloth to prevent glasses from slipping.', ph: '/treɪ klɒθ/' },
+  { name: 'ผ้าเช็ดแก้ว', nameEn: 'Glass Cloth', emoji: '🧺', use: 'เช็ดทำความสะอาดแก้ว', sentence: 'Polishing glasses with a lint-free glass cloth.', ph: '/ɡlɑːs klɒθ/' },
+  { name: 'ผ้าเช็ดเครื่องเงิน', nameEn: 'Polishing Cloth', emoji: '✨', use: 'เช็ดเครื่องเงินและช้อนส้อม', sentence: 'Use polishing cloth for shiny flatware.', ph: '/ˈpɒlɪʃɪŋ klɒθ/' },
+
+  // หมวดที่ 5 อุปกรณ์เครื่องปรุง (Condiment Set)
+  { name: 'ขวดเกลือ', nameEn: 'Salt Shaker', emoji: '🧂', use: 'ใส่เกลือปรุงรส', sentence: 'Salt shaker is placed next to pepper shaker.', ph: '/sɔːlt ˈʃeɪkər/' },
+  { name: 'ขวดพริกไทย', nameEn: 'Pepper Shaker', emoji: '🌶️', use: 'ใส่พริกไทยปรุงรส', sentence: 'Offer fresh pepper shaker to guests.', ph: '/ˈpepər ˈʃeɪkər/' },
+  { name: 'โถน้ำตาล', nameEn: 'Sugar Bowl', emoji: '🍯', use: 'ใส่น้ำตาล', sentence: 'Sugar bowl is served with coffee and tea service.', ph: '/ˈʃʊɡər bəʊl/' },
+  { name: 'ขวดซอส', nameEn: 'Sauce Bottle', emoji: '🍾', use: 'ใส่ซอสปรุงรส', sentence: 'Sauce bottle provides extra flavor for meals.', ph: '/sɔːs ˈbɒtl/' },
+  { name: 'ขวดน้ำส้มสายชู', nameEn: 'Vinegar Bottle', emoji: '🏺', use: 'ใส่น้ำส้มสายชู', sentence: 'Vinegar bottle is part of salad dressing condiments.', ph: '/ˈvɪnɪɡər ˈbɒtl/' },
+  { name: 'ขวดน้ำมันมะกอก', nameEn: 'Olive Oil Bottle', emoji: '🫒', use: 'ใส่น้ำมันมะกอก', sentence: 'Serve extra virgin olive oil bottle with bread.', ph: '/ˈɒlɪv ɔɪl ˈbɒtl/' },
+
+  // หมวดที่ 6 อุปกรณ์บริการอาหาร (Service Equipment)
+  { name: 'ถาดเสิร์ฟอาหาร', nameEn: 'Service Tray', emoji: '🪞', use: 'เสิร์ฟอาหาร', sentence: 'Carry food items safely using a service tray.', ph: '/ˈsɜːvɪs treɪ/' },
+  { name: 'ถาดเครื่องดื่ม', nameEn: 'Beverage Tray', emoji: '🍸', use: 'เสิร์ฟเครื่องดื่ม', sentence: 'Beverage tray should be held with one hand from below.', ph: '/ˈbevərɪdʒ treɪ/' },
+  { name: 'ถาดกลม', nameEn: 'Round Tray', emoji: '⭕', use: 'เสิร์ฟอาหารและแก้วน้ำ', sentence: 'Round tray is standard for beverage service.', ph: '/raʊnd treɪ/' },
+  { name: 'ถาดสี่เหลี่ยม', nameEn: 'Rectangular Tray', emoji: '▭', use: 'เสิร์ฟอาหารจานใหญ่', sentence: 'Rectangular tray carries multiple plates easily.', ph: '/rekˈtæŋɡjələr treɪ/' },
+  { name: 'เหยือกน้ำ', nameEn: 'Water Pitcher', emoji: '🫖', use: 'เติมน้ำเปล่า', sentence: 'Refill guests water glasses with water pitcher.', ph: '/ˈwɔːtər ˈpɪtʃər/' },
+  { name: 'เหยือกกาแฟ', nameEn: 'Coffee Pot', emoji: '☕', use: 'เสิร์ฟกาแฟร้อน', sentence: 'Pour hot coffee carefully from the coffee pot.', ph: '/ˈkɒfi pɒt/' },
+  { name: 'กาน้ำชา', nameEn: 'Tea Pot', emoji: '🫖', use: 'เสิร์ฟชาร้อน', sentence: 'Tea pot holds hot water for steeping tea.', ph: '/tiː pɒt/' },
+  { name: 'ถังน้ำแข็ง', nameEn: 'Ice Bucket', emoji: '🧊', use: 'แช่ไวน์และใส่น้ำแข็ง', sentence: 'Ice bucket keeps wine bottles nicely chilled.', ph: '/aɪs ˈbʌkɪt/' },
+  { name: 'คีมคีบน้ำแข็ง', nameEn: 'Ice Tong', emoji: '🥢', use: 'คีบน้ำแข็ง', sentence: 'Pick up ice cubes hygienically with ice tong.', ph: '/aɪs tɒŋ/' },
+  { name: 'ที่เปิดไวน์', nameEn: 'Wine Opener', emoji: '🍷', use: 'เปิดขวดไวน์', sentence: 'Servers should carry a wine opener at all times.', ph: '/waɪn ˈəʊpnər/' },
+
+  // หมวดที่ 7 อุปกรณ์สำหรับบริการไวน์และเครื่องดื่ม (Beverage Equipment)
+  { name: 'ตะกร้าไวน์', nameEn: 'Wine Basket', emoji: '🧺', use: 'วางขวดไวน์แดงวินเทจ', sentence: 'Wine basket presents aged red wine horizontally.', ph: '/waɪn ˈbɑːskɪt/' },
+  { name: 'ถังแช่ไวน์', nameEn: 'Wine Cooler', emoji: '🍾', use: 'แช่ไวน์ให้เย็น', sentence: 'Keep white wine cold in a wine cooler filled with ice.', ph: '/waɪn ˈkuːlər/' },
+  { name: 'จุกปิดขวดไวน์', nameEn: 'Wine Stopper', emoji: '🍾', use: 'ปิดขวดไวน์เพื่อรักษาคุณภาพ', sentence: 'Seal opened wine bottle with a wine stopper.', ph: '/waɪn ˈstɒpər/' },
+  { name: 'เครื่องรินไวน์', nameEn: 'Wine Pourer', emoji: '🍷', use: 'รินไวน์ไม่ให้หยดเลอะเทอะ', sentence: 'Wine pourer prevents dripping on the tablecloth.', ph: '/waɪn ˈpɔːrər/' },
+  { name: 'ที่เปิดขวด', nameEn: 'Bottle Opener', emoji: '🍾', use: 'เปิดฝาขวดเครื่องดื่ม', sentence: 'Use bottle opener for soda and beer bottles.', ph: '/ˈbɒtl ˈəʊpnər/' },
+  { name: 'ที่เปิดไวน์แบบเกลียว', nameEn: 'Corkscrew', emoji: '🔩', use: 'ถอดจุกคอร์กขวดไวน์', sentence: 'Insert corkscrew into the center of cork.', ph: '/ˈkɔːkskruː/' },
+
+  // หมวดที่ 8 อุปกรณ์ Gueridon (การบริการด้วยรถเข็น)
+  { name: 'รถเข็นบริการ', nameEn: 'Gueridon Trolley', emoji: '🛒', use: 'เตรียมและปรุงอาหารต่อหน้าลูกค้าที่โต๊ะ', sentence: 'Gueridon trolley is used for side-table cooking service.', ph: '/ˈɡerɪdɒn ˈtrɒli/' },
+  { name: 'เตาแอลกอฮอล์', nameEn: 'Spirit Lamp', emoji: '🔥', use: 'ให้ความร้อนบนรถเข็น', sentence: 'Spirit lamp provides flame for flambé dishes.', ph: '/ˈspɪrɪt læmp/' },
+  { name: 'กระทะฟลอมเบ', nameEn: 'Flambé Pan', emoji: '🍳', use: 'ทำอาหารฟลอมเบ (ราดเหล้าจุดไฟ)', sentence: 'Prepare Crepe Suzette using a flambé pan.', ph: '/flɒmˈbeɪ pæn/' },
+  { name: 'เขียงเตรียมอาหาร', nameEn: 'Cutting Board', emoji: '🪵', use: 'แล่เนื้อหรือหั่นเตรียมอาหาร', sentence: 'Carve roasted meat on a clean cutting board.', ph: '/ˈkʌtɪŋ bɔːd/' },
+  { name: 'มีดเชฟ', nameEn: 'Chef\'s Knife', emoji: '🔪', use: 'หั่นและตัดแล่ส่วนผสม', sentence: 'Chef\'s knife cuts meat smoothly for serving.', ph: '/ʃefs naɪf/' },
+  { name: 'คีมคีบอาหารบริการ', nameEn: 'Serving Tong', emoji: '🥢', use: 'คีบอาหารเสิร์ฟลูกค้า', sentence: 'Transfer food onto guest plates using serving tong.', ph: '/ˈsɜːvɪŋ tɒŋ/' },
+
+  // หมวดที่ 9 อุปกรณ์จัดโต๊ะ (Table Setting Accessories)
+  { name: 'เชิงเทียน', nameEn: 'Candle Holder', emoji: '🕯️', use: 'วางเทียนตกแต่งโต๊ะอาหาร', sentence: 'Candle holder adds romantic atmosphere to dinner.', ph: '/ˈkændl ˈhəʊldər/' },
+  { name: 'แจกันดอกไม้', nameEn: 'Flower Vase', emoji: '💐', use: 'ตกแต่งโต๊ะอาหาร', sentence: 'Flower vase centerpieces should not block guest eye lines.', ph: '/ˈflaʊər vɑːz/' },
+  { name: 'ป้ายหมายเลขโต๊ะ', nameEn: 'Table Number', emoji: '🔢', use: 'ระบุหมายเลขโต๊ะอาหาร', sentence: 'Table number helps servers identify guest tables.', ph: '/ˈteɪbl ˈnʌmbər/' },
+  { name: 'การ์ดเมนู', nameEn: 'Menu Card', emoji: '📜', use: 'แสดงรายการอาหารและเครื่องดื่ม', sentence: 'Present the menu card from the right side of guest.', ph: '/ˈmenjuː kɑːd/' },
+  { name: 'แผ่นจานรอง', nameEn: 'Charger Plate', emoji: '📀', use: 'รองจานอาหารเพื่อความสวยงาม', sentence: 'Charger plate remains on table until main course.', ph: '/ˈtʃɑːdʒər pleɪt/' },
+  { name: 'ที่รองแก้ว', nameEn: 'Coaster', emoji: '⭕', use: 'รองแก้วเครื่องดื่ม', sentence: 'Place a coaster under cold drink glasses.', ph: '/ˈkəʊstər/' },
+
+  // หมวดที่ 10 อุปกรณ์สถานีบริการ (Side Station Equipment)
+  { name: 'ตู้เก็บอุปกรณ์', nameEn: 'Sideboard', emoji: '🗄️', use: 'เก็บสำรองอุปกรณ์บริการ', sentence: 'Sideboard holds extra cutlery, napkins and glasses.', ph: '/ˈsaɪdbɔːd/' },
+  { name: 'ถังเก็บช้อนส้อม', nameEn: 'Cutlery Holder', emoji: '🍴', use: 'จัดเก็บช้อนส้อมเป็นหมวดหมู่', sentence: 'Keep clean spoons and forks sorted in cutlery holder.', ph: '/ˈkʌtləri ˈhəʊldər/' },
+  { name: 'ถังขยะบริการ', nameEn: 'Waste Bin', emoji: '🗑️', use: 'ทิ้งขยะเศษวัสดุ', sentence: 'Keep waste bin hidden inside side station cabinet.', ph: '/weɪst bɪn/' },
+  { name: 'ถังเก็บน้ำแข็ง', nameEn: 'Ice Bin', emoji: '🧊', use: 'เก็บสำรองน้ำแข็งสะอาด', sentence: 'Ice bin stores ice for beverage service.', ph: '/aɪs bɪn/' },
+  { name: 'ถาดเก็บจาน', nameEn: 'Plate Rack', emoji: '🍽️', use: 'จัดเก็บจานอาหาร', sentence: 'Stack clean plates carefully in the plate rack.', ph: '/pleɪt ræk/' },
+  { name: 'ตะกร้าเก็บผ้า', nameEn: 'Linen Basket', emoji: '🧺', use: 'เก็บผ้าเช็ดปากและผ้าปูโต๊ะที่ใช้แล้ว', sentence: 'Place used napkins in the linen basket.', ph: '/ˈlɪnɪn ˈbɑːskɪt/' }
 ]
 
 export default function TeacherVocabPage() {
@@ -49,6 +139,12 @@ export default function TeacherVocabPage() {
   function saveToLocalStorage(newList: Equipment[]) {
     setVocabList(newList)
     localStorage.setItem('teacherVocabulary', JSON.stringify(newList))
+  }
+
+  function handleResetDefault() {
+    if (confirm('คุณต้องการรีเซ็ตคลังคำศัพท์กลับเป็นชุดมาตรฐาน 10 หมวดหมู่จากเอกสาร PDF หรือไม่?')) {
+      saveToLocalStorage(initialVocabulary)
+    }
   }
 
   function openCreateModal() {
@@ -169,11 +265,23 @@ export default function TeacherVocabPage() {
           >
             ➕ เพิ่มคำศัพท์
           </button>
+          <button 
+            onClick={handleResetDefault}
+            style={{
+              padding: '0 14px', borderRadius: 14, border: '1px solid #7B1FA2',
+              background: '#F0EAF8',
+              color: '#68239F', fontSize: 12, fontWeight: 800, cursor: 'pointer',
+              whiteSpace: 'nowrap'
+            }}
+            title="โหลดคำศัพท์มาตรฐาน 10 หมวดหมู่จากเอกสาร PDF"
+          >
+            🔄 รีเซ็ตคลัง PDF
+          </button>
         </div>
 
         {/* Vocab count */}
         <div style={{ fontSize: 12, color: '#8C8272', fontWeight: 700 }}>
-          คำศัพท์ทั้งหมด {filteredVocab.length} รายการ
+          คำศัพท์ทั้งหมด {filteredVocab.length} รายการ (ครอบคลุมอุปกรณ์ 10 หมวดหมู่)
         </div>
 
         {/* Vocab cards list */}
