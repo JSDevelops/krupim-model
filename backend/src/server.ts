@@ -22,6 +22,9 @@ for (const key of REQUIRED_ENV) {
 const app = express()
 const port = process.env.PORT || 3001
 
+// Trust Railway/Vercel proxy so rate-limiter sees real client IP
+app.set('trust proxy', 1)
+
 // ─── Security Middleware ─────────────────────────────────────────────────────
 
 // 1. Helmet — sets security-related HTTP headers
@@ -46,17 +49,17 @@ app.use(cors({
       return
     }
 
-    // Allow localhost, local IP addresses, ngrok subdomains, and vercel subdomains
+    // Allow localhost and local IP addresses (dev only)
     if (
       origin.startsWith('http://localhost:') ||
       origin.startsWith('http://127.0.0.1:') ||
-      origin.endsWith('.ngrok-free.app') ||
-      origin.endsWith('.vercel.app')
+      origin.endsWith('.ngrok-free.app')
     ) {
       callback(null, true)
       return
     }
 
+    // ⚠️ Note: *.vercel.app wildcard removed — add your exact Vercel URL to ALLOWED_ORIGINS
     callback(new Error(`CORS: Origin "${origin}" is not allowed`))
   },
   credentials: true
@@ -276,7 +279,7 @@ app.post('/api/chat', requireAuth, async (req, res) => {
     res.json({ response: text, session_id: savedSessionId })
   } catch (error: any) {
     console.error('Chat API Error:', error)
-    res.status(500).json({ error: error.message || 'Failed to process chat' })
+    res.status(500).json({ error: 'Failed to process chat request. Please try again.' })
   }
 })
 
@@ -284,6 +287,27 @@ app.post('/api/chat', requireAuth, async (req, res) => {
 app.post('/api/scan', requireAuth, async (req, res) => {
   try {
     const { imageBase64, mimeType } = req.body
+
+    // Validate required fields
+    if (!imageBase64) {
+      res.status(400).json({ error: 'imageBase64 is required' })
+      return
+    }
+
+    // Validate mimeType whitelist
+    const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+    const resolvedMime = mimeType || 'image/jpeg'
+    if (!ALLOWED_MIME_TYPES.includes(resolvedMime)) {
+      res.status(400).json({ error: 'Invalid image type. Allowed: jpeg, png, webp, gif' })
+      return
+    }
+
+    // Validate base64 size (max ~8MB encoded = ~6MB image)
+    if (imageBase64.length > 10_000_000) {
+      res.status(400).json({ error: 'Image too large. Maximum size is 6MB.' })
+      return
+    }
+
     const provider = getActiveProvider(req)
 
     const systemPrompt = `คุณเป็น AI ผู้เชี่ยวชาญการวิเคราะห์และระบุวัตถุจากภาพถ่ายตามความเป็นจริง (Object Identification AI)
@@ -403,7 +427,6 @@ app.post('/api/scan', requireAuth, async (req, res) => {
     }
 
     // Parse JSON
-    console.log('AI Response Text:', text)
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (!jsonMatch) throw new Error('No JSON output from AI. Raw response: ' + text)
     const parsedData = JSON.parse(jsonMatch[0])
@@ -429,8 +452,8 @@ app.post('/api/scan', requireAuth, async (req, res) => {
 
     res.json(parsedData)
   } catch (error: any) {
-    console.error('Scan API Error:', error)
-    console.log('Gemini API is rate-limited or failed. Using high-quality mock teapot data for verification...')
+    console.error('Scan API Error:', error.message)
+    console.warn('AI scan failed. Using fallback data.')
     
     const fallbackTeapot = {
       name_th: "กาน้ำชาสเตนเลส",
@@ -502,6 +525,17 @@ app.post('/api/scan', requireAuth, async (req, res) => {
 app.post('/api/simulation/evaluate', requireAuth, async (req, res) => {
   try {
     const { messages, score, student_id, scenario_id } = req.body
+
+    // Validate and limit messages array size (prevent token burn)
+    if (!Array.isArray(messages)) {
+      res.status(400).json({ error: 'messages must be an array' })
+      return
+    }
+    if (messages.length > 50) {
+      res.status(400).json({ error: 'Too many messages. Maximum 50 messages per evaluation.' })
+      return
+    }
+
     const provider = getActiveProvider(req)
     const chatContent = messages.map((m: any) => `${m.role === 'user' ? 'บริกร' : 'ลูกค้า'}: ${m.text}`).join('\n')
 
@@ -564,7 +598,7 @@ ${chatContent}
     res.json({ ...parsed, score })
   } catch (error: any) {
     console.error('Simulation Evaluation Error:', error)
-    res.status(500).json({ error: error.message || 'Failed to evaluate simulation' })
+    res.status(500).json({ error: 'Failed to evaluate simulation. Please try again.' })
   }
 })
 
@@ -622,12 +656,12 @@ app.post('/api/blog/generate', requireAuth, async (req, res) => {
     res.json(parsed)
   } catch (error: any) {
     console.error('Blog Generation Error:', error)
-    res.status(500).json({ error: error.message || 'Failed to generate blog content' })
+    res.status(500).json({ error: 'Failed to generate blog content. Please try again.' })
   }
 })
 
 // 3D AI Studio Generation API Integration
-app.post('/api/3d/generate', async (req, res) => {
+app.post('/api/3d/generate', requireAuth, async (req, res) => {
   try {
     const { topic } = req.body
     if (!topic) {
@@ -762,7 +796,7 @@ app.post('/api/3d/generate', async (req, res) => {
 })
 
 // Blender Python Script Generator API
-app.post('/api/blender/generate', async (req, res) => {
+app.post('/api/blender/generate', requireAuth, async (req, res) => {
   try {
     const { topic } = req.body
     if (!topic) {
@@ -820,7 +854,7 @@ The script must:
 })
 
 // Connection Health Ping Monitor API
-app.get('/api/ping-all', async (req, res) => {
+app.get('/api/ping-all', requireAuth, aiLimiter, async (req, res) => {
   try {
     const startDb = Date.now()
     let dbStatus = 'offline'

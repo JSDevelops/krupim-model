@@ -33,7 +33,7 @@ export async function getSessionUser() {
 export async function getProfileFromDB(userId: string): Promise<Profile | null> {
   const { data, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select('id, name, role, avatar_url, school_id, phone, bio, created_at')
     .eq('id', userId)
     .single()
   if (error) {
