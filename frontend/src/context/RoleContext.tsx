@@ -59,18 +59,16 @@ export function RoleProvider({ children }: { children: ReactNode }) {
           localStorage.setItem('userRole', profile.role)
           localStorage.setItem('userInfo', JSON.stringify(userInfo))
         } else {
-          // fallback: ถ้าไม่มี profile ใน DB ให้อ่านจาก localStorage
-          const savedUser = localStorage.getItem('userInfo')
-          if (savedUser) {
-            try { setUserState(JSON.parse(savedUser)) } catch {}
-          }
+          // หากไม่มี profile ใน DB — ล้างสิทธิ์ที่ไม่ถูกต้อง
+          setUserState(null)
+          localStorage.removeItem('userRole')
+          localStorage.removeItem('userInfo')
         }
       } else {
-        // ไม่มี Supabase session — อ่านจาก localStorage (สำหรับ dev/offline mode)
-        const savedUser = localStorage.getItem('userInfo')
-        if (savedUser) {
-          try { setUserState(JSON.parse(savedUser)) } catch {}
-        }
+        // ไม่มี Supabase session — ไม่ใช้ localStorage fallback เพื่อความปลอดภัย
+        setUserState(null)
+        localStorage.removeItem('userRole')
+        localStorage.removeItem('userInfo')
       }
       setLoading(false)
     })
