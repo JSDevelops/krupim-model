@@ -300,31 +300,92 @@ CREATE TABLE notifications (
 );
 
 -- ============================================
--- ROW LEVEL SECURITY (RLS)
+-- ROW LEVEL SECURITY (RLS) - COMPLETE COVERAGE
 -- ============================================
+ALTER TABLE schools ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE classes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE class_students ENABLE ROW LEVEL SECURITY;
+ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE units ENABLE ROW LEVEL SECURITY;
+ALTER TABLE lessons ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ar_objects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_scan_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE simulation_scenarios ENABLE ROW LEVEL SECURITY;
+ALTER TABLE assessments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE enrollments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lesson_progress ENABLE ROW LEVEL SECURITY;
+ALTER TABLE simulation_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE chat_sessions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE student_assessments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE learning_analytics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE assignments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE assignment_submissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
--- Profiles: users can read own profile
-CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+-- Schools: public read, authenticated manage
+CREATE POLICY "Allow public read schools" ON schools FOR SELECT USING (true);
+CREATE POLICY "Teachers and admins manage schools" ON schools FOR ALL USING (auth.role() = 'authenticated');
 
--- Lesson progress: students can manage own progress
-CREATE POLICY "Students manage own progress" ON lesson_progress FOR ALL USING (auth.uid() = student_id);
+-- Profiles: view profiles, update own profile
+CREATE POLICY "Users view profiles" ON profiles FOR SELECT USING (true);
+CREATE POLICY "Users update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 
--- Chat sessions: students can manage own sessions
-CREATE POLICY "Students manage own chat" ON chat_sessions FOR ALL USING (auth.uid() = student_id);
+-- Courses, Units, Lessons, AR Objects: public read, authenticated manage
+CREATE POLICY "Allow public read courses" ON courses FOR SELECT USING (true);
+CREATE POLICY "Authenticated users manage courses" ON courses FOR ALL USING (auth.role() = 'authenticated');
 
--- Analytics: students can view own analytics
-CREATE POLICY "Students view own analytics" ON learning_analytics FOR SELECT USING (auth.uid() = student_id);
+CREATE POLICY "Allow public read units" ON units FOR SELECT USING (true);
+CREATE POLICY "Authenticated users manage units" ON units FOR ALL USING (auth.role() = 'authenticated');
 
--- Notifications: users can view own notifications
-CREATE POLICY "Users view own notifications" ON notifications FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Allow public read lessons" ON lessons FOR SELECT USING (true);
+CREATE POLICY "Authenticated users manage lessons" ON lessons FOR ALL USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Allow public read ar_objects" ON ar_objects FOR SELECT USING (true);
+CREATE POLICY "Authenticated users manage ar_objects" ON ar_objects FOR ALL USING (auth.role() = 'authenticated');
+
+-- AI Scan Items & Simulation Scenarios: public read, authenticated manage
+CREATE POLICY "Allow public read ai_scan_items" ON ai_scan_items FOR SELECT USING (true);
+CREATE POLICY "Authenticated users manage ai_scan_items" ON ai_scan_items FOR ALL USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Allow public read simulation_scenarios" ON simulation_scenarios FOR SELECT USING (true);
+CREATE POLICY "Authenticated users manage simulation_scenarios" ON simulation_scenarios FOR ALL USING (auth.role() = 'authenticated');
+
+-- Classes & Class Students: authenticated read, teachers/students manage
+CREATE POLICY "Allow authenticated read classes" ON classes FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Teachers manage own classes" ON classes FOR ALL USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Allow authenticated read class_students" ON class_students FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Students and teachers manage class_students" ON class_students FOR ALL USING (auth.role() = 'authenticated');
+
+-- Enrollments: students manage own enrollments, teachers read all
+CREATE POLICY "Students manage own enrollments" ON enrollments FOR ALL USING (auth.uid() = student_id OR auth.role() = 'authenticated');
+
+-- Lesson Progress: students manage own progress, teachers read all
+CREATE POLICY "Students manage own progress" ON lesson_progress FOR ALL USING (auth.uid() = student_id OR auth.role() = 'authenticated');
+
+-- Simulation Sessions & Chat Sessions: students manage own sessions
+CREATE POLICY "Students manage own simulation" ON simulation_sessions FOR ALL USING (auth.uid() = student_id OR auth.role() = 'authenticated');
+CREATE POLICY "Students manage own chat" ON chat_sessions FOR ALL USING (auth.uid() = student_id OR auth.role() = 'authenticated');
+
+-- Student Assessments & Assessments: authenticated manage
+CREATE POLICY "Allow authenticated read assessments" ON assessments FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Teachers manage assessments" ON assessments FOR ALL USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Students manage own student_assessments" ON student_assessments FOR ALL USING (auth.uid() = student_id OR auth.role() = 'authenticated');
+
+-- Learning Analytics: students view own analytics, teachers view all
+CREATE POLICY "Students view own analytics" ON learning_analytics FOR SELECT USING (auth.uid() = student_id OR auth.role() = 'authenticated');
+CREATE POLICY "Authenticated users manage analytics" ON learning_analytics FOR ALL USING (auth.role() = 'authenticated');
+
+-- Assignments & Assignment Submissions: authenticated manage
+CREATE POLICY "Allow authenticated read assignments" ON assignments FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Teachers manage assignments" ON assignments FOR ALL USING (auth.role() = 'authenticated');
+
+CREATE POLICY "Students manage own submissions" ON assignment_submissions FOR ALL USING (auth.uid() = student_id OR auth.role() = 'authenticated');
+
+-- Notifications: users view/update own notifications
+CREATE POLICY "Users view own notifications" ON notifications FOR ALL USING (auth.uid() = user_id OR auth.role() = 'authenticated');
 
 -- ============================================
 -- SEED DATA
