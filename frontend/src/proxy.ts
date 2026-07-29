@@ -12,7 +12,7 @@ const ROLE_GUARDS: Record<string, ('developer' | 'teacher' | 'student')[]> = {
 // Public routes that don't need auth
 const PUBLIC_PATHS = ['/', '/role-select', '/register-teacher', '/register-student']
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   let response = NextResponse.next({
     request: {
@@ -25,7 +25,7 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  // ── 2. Create server client (managing session cookies manually in middleware) ─
+  // ── 2. Create server client (managing session cookies manually in proxy) ─
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
