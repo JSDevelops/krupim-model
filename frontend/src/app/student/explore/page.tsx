@@ -13,12 +13,102 @@ interface Equipment {
 }
 
 const defaultEquipment: Equipment[] = [
-  { name: 'ส้อมอาหาร', nameEn: 'Dinner Fork', emoji: '🍴', use: 'ใช้สำหรับรับประทานอาหารหลัก', sentence: 'This is a dinner fork. It is used for the main course.' },
-  { name: 'มีดอาหาร', nameEn: 'Dinner Knife', emoji: '🔪', use: 'ใช้สำหรับตัดอาหาร', sentence: 'This is a dinner knife. It is used for cutting food.' },
-  { name: 'ช้อนซุป', nameEn: 'Soup Spoon', emoji: '🥄', use: 'ใช้สำหรับตักซุป', sentence: 'This is a soup spoon. It is used for drinking soup.' },
-  { name: 'แก้วน้ำ', nameEn: 'Water Goblet', emoji: '🍷', use: 'ใช้สำหรับบริการน้ำเปล่า', sentence: 'This is a water goblet. It is used for serving water.' },
-  { name: 'ถ้วยกาแฟ', nameEn: 'Espresso Cup', emoji: '☕', use: 'ใช้สำหรับเสิร์ฟกาแฟเอสเพรสโซ่', sentence: 'This is an espresso cup. It is used for serving espresso.' },
-  { name: 'แก้วแชมเปญ', nameEn: 'Champagne Flute', emoji: '🥂', use: 'ใช้สำหรับเสิร์ฟแชมเปญ', sentence: 'This is a champagne flute. It is used for serving champagne.' },
+  // หมวดที่ 1 อุปกรณ์เครื่องใช้บนโต๊ะอาหาร (Tableware)
+  { name: 'จานอาหารหลัก', nameEn: 'Dinner Plate', emoji: '🍽️', use: 'ใส่อาหารจานหลัก', sentence: 'The dinner plate is used for serving main courses.' },
+  { name: 'จานสลัด', nameEn: 'Salad Plate', emoji: '🥗', use: 'ใส่สลัดหรืออาหารเรียกน้ำย่อย', sentence: 'The salad plate is used for appetizers or salad.' },
+  { name: 'จานขนมปัง', nameEn: 'Bread Plate', emoji: '🍞', use: 'วางขนมปังและเนย', sentence: 'The bread plate is placed on the left side of the table setting.' },
+  { name: 'จานรองถ้วยชา', nameEn: 'Saucer', emoji: '☕', use: 'รองถ้วยชาและกาแฟ', sentence: 'Place the cup neatly on the saucer.' },
+  { name: 'ถ้วยซุป', nameEn: 'Soup Bowl', emoji: '🥣', use: 'ใส่ซุป', sentence: 'The soup bowl is used for serving hot soup.' },
+  { name: 'ถ้วยกาแฟ', nameEn: 'Coffee Cup', emoji: '☕', use: 'ใส่กาแฟ', sentence: 'We serve freshly brewed coffee in a coffee cup.' },
+  { name: 'ถ้วยชา', nameEn: 'Tea Cup', emoji: '🍵', use: 'ใส่ชา', sentence: 'Here is your tea cup for hot Jasmine tea.' },
+  { name: 'ชามของหวาน', nameEn: 'Dessert Bowl', emoji: '🍨', use: 'ใส่ของหวาน', sentence: 'The dessert bowl is ideal for ice cream and fruits.' },
+  { name: 'ถ้วยน้ำจิ้ม', nameEn: 'Sauce Dish', emoji: '🍲', use: 'ใส่น้ำจิ้ม', sentence: 'Pass the sauce dish to the guest.' },
+
+  // หมวดที่ 2 เครื่องเงินและช้อนส้อม (Flatware / Cutlery)
+  { name: 'มีดอาหารหลัก', nameEn: 'Dinner Knife', emoji: '🔪', use: 'ตัดอาหารจานหลัก', sentence: 'This is a dinner knife. It is used for cutting food.' },
+  { name: 'ส้อมอาหารหลัก', nameEn: 'Dinner Fork', emoji: '🍴', use: 'รับประทานอาหารจานหลัก', sentence: 'This is a dinner fork. It is used for the main course.' },
+  { name: 'ช้อนอาหาร', nameEn: 'Dinner Spoon', emoji: '🥄', use: 'รับประทานอาหาร', sentence: 'The dinner spoon is used for rice or main food.' },
+  { name: 'ช้อนซุป', nameEn: 'Soup Spoon', emoji: '🥄', use: 'รับประทานซุป', sentence: 'Use the soup spoon for drinking soup.' },
+  { name: 'มีดเนย', nameEn: 'Butter Knife', emoji: '🔪', use: 'ทาเนยบนขนมปัง', sentence: 'Use the butter knife to spread butter on your bread.' },
+  { name: 'ส้อมสลัด', nameEn: 'Salad Fork', emoji: '🥗', use: 'รับประทานสลัด', sentence: 'The salad fork is slightly smaller than the dinner fork.' },
+  { name: 'มีดปลา', nameEn: 'Fish Knife', emoji: '🐟', use: 'รับประทานปลา', sentence: 'The fish knife has a special blunt blade for lifting fish bones.' },
+  { name: 'ส้อมปลา', nameEn: 'Fish Fork', emoji: '🐟', use: 'รับประทานปลา', sentence: 'Use the fish fork along with the fish knife.' },
+  { name: 'ช้อนของหวาน', nameEn: 'Dessert Spoon', emoji: '🍨', use: 'รับประทานของหวาน', sentence: 'The dessert spoon is served with puddings and cakes.' },
+  { name: 'ส้อมของหวาน', nameEn: 'Dessert Fork', emoji: '🍰', use: 'รับประทานของหวาน', sentence: 'Use the dessert fork for fruit or cake.' },
+  { name: 'ช้อนชา', nameEn: 'Tea Spoon', emoji: '🥄', use: 'คนชา กาแฟ', sentence: 'Stir your hot tea gently with the tea spoon.' },
+  { name: 'ช้อนกาแฟ', nameEn: 'Coffee Spoon', emoji: '☕', use: 'คนกาแฟเอสเปรสโซ', sentence: 'The coffee spoon is designed for small espresso cups.' },
+
+  // หมวดที่ 3 เครื่องแก้ว (Glassware)
+  { name: 'แก้วน้ำเปล่า', nameEn: 'Water Goblet', emoji: '🍷', use: 'ใช้สำหรับบริการน้ำเปล่า', sentence: 'Water goblet is filled with ice water.' },
+  { name: 'แก้วไวน์แดง', nameEn: 'Red Wine Glass', emoji: '🍷', use: 'บริการไวน์แดง', sentence: 'Red wine glass has a large, round bowl.' },
+  { name: 'แก้วไวน์ขาว', nameEn: 'White Wine Glass', emoji: '🥂', use: 'บริการไวน์ขาว', sentence: 'White wine glass is smaller to preserve chilled temperature.' },
+  { name: 'แก้วแชมเปญ', nameEn: 'Champagne Flute', emoji: '🥂', use: 'บริการแชมเปญ', sentence: 'Champagne flute keeps bubbles sparkling longer.' },
+  { name: 'แก้วค็อกเทล', nameEn: 'Cocktail Glass', emoji: '🍸', use: 'บริการค็อกเทล', sentence: 'Cocktail glass is classic V-shaped glass.' },
+  { name: 'แก้วไฮบอล', nameEn: 'Highball Glass', emoji: '🥤', use: 'บริการเครื่องดื่มผสม', sentence: 'Highball glass is used for long drinks and juices.' },
+  { name: 'แก้วร็อกส์', nameEn: 'Rocks Glass', emoji: '🥃', use: 'บริการวิสกี้', sentence: 'Rocks glass is used for spirits served on the rocks.' },
+  { name: 'แก้วเบียร์', nameEn: 'Beer Glass', emoji: '🍺', use: 'บริการเบียร์', sentence: 'Pour beer carefully into the beer glass.' },
+  { name: 'แก้วบรั่นดี', nameEn: 'Brandy Snifter', emoji: '🥃', use: 'บริการบรั่นดี', sentence: 'Hold the brandy snifter in your palm to warm it.' },
+  { name: 'แก้วมาร์ตินี', nameEn: 'Martini Glass', emoji: '🍸', use: 'บริการมาร์ตินี', sentence: 'Serve chilled Martini in a martini glass with an olive.' },
+
+  // หมวดที่ 4 เครื่องลินิน (Linen)
+  { name: 'ผ้าปูโต๊ะ', nameEn: 'Table Cloth', emoji: '🟫', use: 'ปูโต๊ะอาหาร', sentence: 'The table cloth must be clean and unwrinkled.' },
+  { name: 'ผ้ารองโต๊ะ', nameEn: 'Under Cloth', emoji: '⬛', use: 'รองผ้าปูโต๊ะเพื่อลดเสียง', sentence: 'Under cloth absorbs noise and softens the table surface.' },
+  { name: 'ผ้าเช็ดปาก', nameEn: 'Napkin', emoji: '🎗️', use: 'เช็ดปากและตกแต่งโต๊ะ', sentence: 'Fold the napkin neatly on the guest plate.' },
+  { name: 'ผ้าคลุมถาด', nameEn: 'Tray Cloth', emoji: '📐', use: 'รองถาดเสิร์ฟกันลื่น', sentence: 'Place a tray cloth to prevent glasses from slipping.' },
+  { name: 'ผ้าเช็ดแก้ว', nameEn: 'Glass Cloth', emoji: '🧺', use: 'เช็ดทำความสะอาดแก้ว', sentence: 'Polishing glasses with a lint-free glass cloth.' },
+  { name: 'ผ้าเช็ดเครื่องเงิน', nameEn: 'Polishing Cloth', emoji: '✨', use: 'เช็ดเครื่องเงินและช้อนส้อม', sentence: 'Use polishing cloth for shiny flatware.' },
+
+  // หมวดที่ 5 อุปกรณ์เครื่องปรุง (Condiment Set)
+  { name: 'ขวดเกลือ', nameEn: 'Salt Shaker', emoji: '🧂', use: 'ใส่เกลือปรุงรส', sentence: 'Salt shaker is placed next to pepper shaker.' },
+  { name: 'ขวดพริกไทย', nameEn: 'Pepper Shaker', emoji: '🌶️', use: 'ใส่พริกไทยปรุงรส', sentence: 'Offer fresh pepper shaker to guests.' },
+  { name: 'โถน้ำตาล', nameEn: 'Sugar Bowl', emoji: '🍯', use: 'ใส่น้ำตาล', sentence: 'Sugar bowl is served with coffee and tea service.' },
+  { name: 'ขวดซอส', nameEn: 'Sauce Bottle', emoji: '🍾', use: 'ใส่ซอสปรุงรส', sentence: 'Sauce bottle provides extra flavor for meals.' },
+  { name: 'ขวดน้ำส้มสายชู', nameEn: 'Vinegar Bottle', emoji: '🏺', use: 'ใส่น้ำส้มสายชู', sentence: 'Vinegar bottle is part of salad dressing condiments.' },
+  { name: 'ขวดน้ำมันมะกอก', nameEn: 'Olive Oil Bottle', emoji: '🫒', use: 'ใส่น้ำมันมะกอก', sentence: 'Serve extra virgin olive oil bottle with bread.' },
+
+  // หมวดที่ 6 อุปกรณ์บริการอาหาร (Service Equipment)
+  { name: 'ถาดเสิร์ฟอาหาร', nameEn: 'Service Tray', emoji: '🪞', use: 'เสิร์ฟอาหาร', sentence: 'Carry food items safely using a service tray.' },
+  { name: 'ถาดเครื่องดื่ม', nameEn: 'Beverage Tray', emoji: '🍸', use: 'เสิร์ฟเครื่องดื่ม', sentence: 'Beverage tray should be held with one hand from below.' },
+  { name: 'ถาดกลม', nameEn: 'Round Tray', emoji: '⭕', use: 'เสิร์ฟอาหารและแก้วน้ำ', sentence: 'Round tray is standard for beverage service.' },
+  { name: 'ถาดสี่เหลี่ยม', nameEn: 'Rectangular Tray', emoji: '▭', use: 'เสิร์ฟอาหารจานใหญ่', sentence: 'Rectangular tray carries multiple plates easily.' },
+  { name: 'เหยือกน้ำ', nameEn: 'Water Pitcher', emoji: '🫖', use: 'เติมน้ำเปล่า', sentence: 'Refill guests water glasses with water pitcher.' },
+  { name: 'เหยือกกาแฟ', nameEn: 'Coffee Pot', emoji: '☕', use: 'เสิร์ฟกาแฟร้อน', sentence: 'Pour hot coffee carefully from the coffee pot.' },
+  { name: 'กาน้ำชา', nameEn: 'Tea Pot', emoji: '🫖', use: 'เสิร์ฟชาร้อน', sentence: 'Tea pot holds hot water for steeping tea.' },
+  { name: 'ถังน้ำแข็ง', nameEn: 'Ice Bucket', emoji: '🧊', use: 'แช่ไวน์และใส่น้ำแข็ง', sentence: 'Ice bucket keeps wine bottles nicely chilled.' },
+  { name: 'คีมคีบน้ำแข็ง', nameEn: 'Ice Tong', emoji: '🥢', use: 'คีบน้ำแข็ง', sentence: 'Pick up ice cubes hygienically with ice tong.' },
+  { name: 'ที่เปิดไวน์', nameEn: 'Wine Opener', emoji: '🍷', use: 'เปิดขวดไวน์', sentence: 'Servers should carry a wine opener at all times.' },
+
+  // หมวดที่ 7 อุปกรณ์สำหรับบริการไวน์และเครื่องดื่ม (Beverage Equipment)
+  { name: 'ตะกร้าไวน์', nameEn: 'Wine Basket', emoji: '🧺', use: 'วางขวดไวน์แดงวินเทจ', sentence: 'Wine basket presents aged red wine horizontally.' },
+  { name: 'ถังแช่ไวน์', nameEn: 'Wine Cooler', emoji: '🍾', use: 'แช่ไวน์ให้เย็น', sentence: 'Keep white wine cold in a wine cooler filled with ice.' },
+  { name: 'จุกปิดขวดไวน์', nameEn: 'Wine Stopper', emoji: '🍾', use: 'ปิดขวดไวน์เพื่อรักษาคุณภาพ', sentence: 'Seal opened wine bottle with a wine stopper.' },
+  { name: 'เครื่องรินไวน์', nameEn: 'Wine Pourer', emoji: '🍷', use: 'รินไวน์ไม่ให้หยดเลอะเทอะ', sentence: 'Wine pourer prevents dripping on the tablecloth.' },
+  { name: 'ที่เปิดขวด', nameEn: 'Bottle Opener', emoji: '🍾', use: 'เปิดฝาขวดเครื่องดื่ม', sentence: 'Use bottle opener for soda and beer bottles.' },
+  { name: 'ที่เปิดไวน์แบบเกลียว', nameEn: 'Corkscrew', emoji: '🔩', use: 'ถอดจุกคอร์กขวดไวน์', sentence: 'Insert corkscrew into the center of cork.' },
+
+  // หมวดที่ 8 อุปกรณ์ Gueridon (การบริการด้วยรถเข็น)
+  { name: 'รถเข็นบริการ', nameEn: 'Gueridon Trolley', emoji: '🛒', use: 'เตรียมและปรุงอาหารต่อหน้าลูกค้าที่โต๊ะ', sentence: 'Gueridon trolley is used for side-table cooking service.' },
+  { name: 'เตาแอลกอฮอล์', nameEn: 'Spirit Lamp', emoji: '🔥', use: 'ให้ความร้อนบนรถเข็น', sentence: 'Spirit lamp provides flame for flambé dishes.' },
+  { name: 'กระทะฟลอมเบ', nameEn: 'Flambé Pan', emoji: '🍳', use: 'ทำอาหารฟลอมเบ (ราดเหล้าจุดไฟ)', sentence: 'Prepare Crepe Suzette using a flambé pan.' },
+  { name: 'เขียงเตรียมอาหาร', nameEn: 'Cutting Board', emoji: '🪵', use: 'แล่เนื้อหรือหั่นเตรียมอาหาร', sentence: 'Carve roasted meat on a clean cutting board.' },
+  { name: 'มีดเชฟ', nameEn: 'Chef\'s Knife', emoji: '🔪', use: 'หั่นและตัดแล่ส่วนผสม', sentence: 'Chef\'s knife cuts meat smoothly for serving.' },
+  { name: 'คีมคีบอาหารบริการ', nameEn: 'Serving Tong', emoji: '🥢', use: 'คีบอาหารเสิร์ฟลูกค้า', sentence: 'Transfer food onto guest plates using serving tong.' },
+
+  // หมวดที่ 9 อุปกรณ์จัดโต๊ะ (Table Setting Accessories)
+  { name: 'เชิงเทียน', nameEn: 'Candle Holder', emoji: '🕯️', use: 'วางเทียนตกแต่งโต๊ะอาหาร', sentence: 'Candle holder adds romantic atmosphere to dinner.' },
+  { name: 'แจกันดอกไม้', nameEn: 'Flower Vase', emoji: '💐', use: 'ตกแต่งโต๊ะอาหาร', sentence: 'Flower vase centerpieces should not block guest eye lines.' },
+  { name: 'ป้ายหมายเลขโต๊ะ', nameEn: 'Table Number', emoji: '🔢', use: 'ระบุหมายเลขโต๊ะอาหาร', sentence: 'Table number helps servers identify guest tables.' },
+  { name: 'การ์ดเมนู', nameEn: 'Menu Card', emoji: '📜', use: 'แสดงรายการอาหารและเครื่องดื่ม', sentence: 'Present the menu card from the right side of guest.' },
+  { name: 'แผ่นจานรอง', nameEn: 'Charger Plate', emoji: '📀', use: 'รองจานอาหารเพื่อความสวยงาม', sentence: 'Charger plate remains on table until main course.' },
+  { name: 'ที่รองแก้ว', nameEn: 'Coaster', emoji: '⭕', use: 'รองแก้วเครื่องดื่ม', sentence: 'Place a coaster under cold drink glasses.' },
+
+  // หมวดที่ 10 อุปกรณ์สถานีบริการ (Side Station Equipment)
+  { name: 'ตู้เก็บอุปกรณ์', nameEn: 'Sideboard', emoji: '🗄️', use: 'เก็บสำรองอุปกรณ์บริการ', sentence: 'Sideboard holds extra cutlery, napkins and glasses.' },
+  { name: 'ถังเก็บช้อนส้อม', nameEn: 'Cutlery Holder', emoji: '🍴', use: 'จัดเก็บช้อนส้อมเป็นหมวดหมู่', sentence: 'Keep clean spoons and forks sorted in cutlery holder.' },
+  { name: 'ถังขยะบริการ', nameEn: 'Waste Bin', emoji: '🗑️', use: 'ทิ้งขยะเศษวัสดุ', sentence: 'Keep waste bin hidden inside side station cabinet.' },
+  { name: 'ถังเก็บน้ำแข็ง', nameEn: 'Ice Bin', emoji: '🧊', use: 'เก็บน้ำแข็ง', sentence: 'Ice bin stores ice for beverage service.' },
+  { name: 'ถาดเก็บจาน', nameEn: 'Plate Rack', emoji: '🍽️', use: 'จัดเก็บจานอาหาร', sentence: 'Stack clean plates carefully in the plate rack.' },
+  { name: 'ตะกร้าเก็บผ้า', nameEn: 'Linen Basket', emoji: '🧺', use: 'เก็บผ้าเช็ดปากและผ้าปูโต๊ะที่ใช้แล้ว', sentence: 'Place used napkins in the linen basket.' }
 ]
 
 const aiResults = [
@@ -76,40 +166,59 @@ export default function ExplorePage() {
     }
   }, [activeTab])
 
-  // Load real equipment items from Supabase
+  // Load real equipment items from Supabase, teacherVocabulary, and default list
   useEffect(() => {
     async function loadEquipment() {
-      const supabaseUrl = typeof window !== 'undefined' ? localStorage.getItem('supabaseUrl') : null
-      const supabaseAnonKey = typeof window !== 'undefined' ? localStorage.getItem('supabaseAnonKey') : null
-      if (supabaseUrl && supabaseAnonKey) {
-        try {
-          const { createClient } = await import('@supabase/supabase-js')
-          const client = createClient(supabaseUrl, supabaseAnonKey)
-          const { data, error } = await client
-            .from('ai_scan_items')
-            .select('*')
-            .order('created_at', { ascending: false })
-          
-          if (data && data.length > 0) {
-            const mapped = data.map((x: any) => ({
-              name: x.name_th,
-              nameEn: x.name_en,
-              emoji: x.image_url || (x.name_en.toLowerCase().includes('glass') || x.name_en.toLowerCase().includes('wine') ? '🍷' :
-                     x.name_en.toLowerCase().includes('teapot') || x.name_en.toLowerCase().includes('tea') ? '🫖' :
-                     x.name_en.toLowerCase().includes('spoon') || x.name_en.toLowerCase().includes('soup') ? '🥄' : '📦'),
-              use: x.description || 'ไม่มีรายละเอียดวิธีใช้งานสำหรับอุปกรณ์ชิ้นนี้',
-              sentence: x.service_tips || 'Please handle this item with care.'
-            }))
-            // Merge defaults and filter out duplicates
-            setEquipment(() => {
-              const existingNames = new Set(mapped.map(x => x.nameEn.toLowerCase()))
-              const filteredDefaults = defaultEquipment.filter(x => !existingNames.has(x.nameEn.toLowerCase()))
-              return [...mapped, ...filteredDefaults]
-            })
-          }
-        } catch (err) {
-          console.error('Failed to load dynamic equipment from Supabase:', err)
+      try {
+        let dbItems: Equipment[] = []
+
+        // 1. ดึงคำศัพท์จาก Supabase DB (ai_scan_items)
+        const { data, error } = await supabase
+          .from('ai_scan_items')
+          .select('*')
+          .order('created_at', { ascending: false })
+        
+        if (data && data.length > 0) {
+          dbItems = data.map((x: any) => ({
+            name: x.name_th,
+            nameEn: x.name_en,
+            emoji: x.image_url || (x.name_en.toLowerCase().includes('glass') || x.name_en.toLowerCase().includes('wine') ? '🍷' :
+                   x.name_en.toLowerCase().includes('teapot') || x.name_en.toLowerCase().includes('tea') ? '🫖' :
+                   x.name_en.toLowerCase().includes('spoon') || x.name_en.toLowerCase().includes('soup') ? '🥄' : '📦'),
+            use: x.description || 'ไม่มีรายละเอียดวิธีใช้งานสำหรับอุปกรณ์ชิ้นนี้',
+            sentence: x.service_tips || 'Please handle this item with care.'
+          }))
         }
+
+        // 2. ดึงคำศัพท์จาก teacherVocabulary (localStorage)
+        let teacherItems: Equipment[] = []
+        if (typeof window !== 'undefined') {
+          const stored = localStorage.getItem('teacherVocabulary')
+          if (stored) {
+            try { teacherItems = JSON.parse(stored) } catch (e) {}
+          }
+        }
+
+        // 3. รวมคำศัพท์ทั้งหมดเข้าด้วยกันโดยไม่ให้มีคำซ้ำ
+        setEquipment(() => {
+          const nameSet = new Set<string>()
+          const merged: Equipment[] = []
+
+          // รวมจาก dbItems -> teacherItems -> defaultEquipment ตามลำดับความสำคัญ
+          ;[...dbItems, ...teacherItems, ...defaultEquipment].forEach(item => {
+            const key = item.nameEn.toLowerCase()
+            if (!nameSet.has(key)) {
+              nameSet.add(key)
+              merged.push(item)
+            }
+          })
+
+          return merged
+        })
+      } catch (err) {
+        console.error('Failed to load dynamic equipment:', err)
+        // Fallback to defaultEquipment
+        setEquipment(defaultEquipment)
       }
     }
     loadEquipment()
