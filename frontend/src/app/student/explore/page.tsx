@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { analyzeImage as analyzeImageAPI } from '@/lib/gemini'
 
 interface Equipment {
   name: string
@@ -273,21 +274,8 @@ export default function ExplorePage() {
       }
 
       if (!usedDirectGemini) {
-        // Use Vercel-native /api/scan route (Next.js Serverless Function) — no Railway needed
-        const resp = await fetch(`/api/scan`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ imageBase64: base64, mimeType })
-        })
-
-        if (!resp.ok) {
-          if (resp.status === 429) {
-            throw new Error('429')
-          }
-          throw new Error(`scan_failed_${resp.status}`)
-        }
-
-        data = await resp.json()
+        // Use unified analyzeImage function (routes via Backend with Auth, Multi-LLM, & DB tracking)
+        data = await analyzeImageAPI(base64, mimeType)
       }
 
       if (!data) throw new Error('ไม่สามารถวิเคราะห์ข้อมูลได้')
@@ -355,18 +343,8 @@ export default function ExplorePage() {
     setScanError('')
     
     try {
-      const activeProvider = typeof window !== 'undefined' ? localStorage.getItem('activeAiProvider') || 'gemini' : 'gemini'
-      const geminiKey = typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : ''
-      const openaiKey = typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') || '' : ''
-      const claudeKey = typeof window !== 'undefined' ? localStorage.getItem('claudeApiKey') || '' : ''
-      // Use Vercel-native /api/scan route (Next.js Serverless Function)
-      const resp = await fetch(`/api/scan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg' })
-      })
-      if (!resp.ok) throw new Error('Scan failed')
-      const data = await resp.json()
+      // Use unified analyzeImage function (routes via Backend with Auth, Multi-LLM, & DB tracking)
+      const data = await analyzeImageAPI(base64, 'image/jpeg')
       
       if (data.confidence && data.confidence > 55) {
         setPreviewImage(dataUrl)
