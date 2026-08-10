@@ -11,7 +11,8 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TYPE user_role AS ENUM ('developer', 'teacher', 'student');
 CREATE TYPE content_type AS ENUM ('video', 'ar3d', 'text', 'quiz', 'simulation');
 CREATE TYPE lesson_status AS ENUM ('not_started', 'in_progress', 'completed');
-CREATE TYPE session_type AS ENUM ('gemini_chat', 'gemini_live', 'ai_scan');
+CREATE TYPE session_type AS ENUM ('gemini_chat', 'gemini_live', 'ai_scan', 'openai_chat', 'claude_chat', 'simulation');
+CREATE TYPE difficulty_level AS ENUM ('beginner', 'intermediate', 'advanced');
 
 -- ============================================
 -- USERS & SCHOOLS
@@ -300,8 +301,14 @@ CREATE TABLE notifications (
 );
 
 -- ============================================
--- ROW LEVEL SECURITY (RLS) - COMPLETE COVERAGE
+-- ROW LEVEL SECURITY (RLS) - ROLE-BASED POLICIES
 -- ============================================
+-- HELPER: ดึง role ของ user ปัจจุบัน (ใช้ใน policies)
+CREATE OR REPLACE FUNCTION auth_user_role()
+RETURNS TEXT LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT role::TEXT FROM profiles WHERE id = auth.uid()
+$$;
+
 ALTER TABLE schools ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE classes ENABLE ROW LEVEL SECURITY;
@@ -323,69 +330,112 @@ ALTER TABLE assignments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE assignment_submissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
 
--- Schools: public read, authenticated manage
+-- Schools: public read, developers manage
 CREATE POLICY "Allow public read schools" ON schools FOR SELECT USING (true);
-CREATE POLICY "Teachers and admins manage schools" ON schools FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Developers manage schools" ON schools
+  FOR ALL USING (auth_user_role() = 'developer') WITH CHECK (auth_user_role() = 'developer');
 
--- Profiles: view profiles, update own profile
+-- Profiles: public view, update own only
 CREATE POLICY "Users view profiles" ON profiles FOR SELECT USING (true);
 CREATE POLICY "Users update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
 
--- Courses, Units, Lessons, AR Objects: public read, authenticated manage
+-- Courses: public read, teachers+developers write
 CREATE POLICY "Allow public read courses" ON courses FOR SELECT USING (true);
-CREATE POLICY "Authenticated users manage courses" ON courses FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Teachers insert courses" ON courses
+  FOR INSERT WITH CHECK (auth_user_role() IN ('teacher', 'developer'));
+CREATE POLICY "Teachers update own courses" ON courses
+  FOR UPDATE USING (created_by = auth.uid() OR auth_user_role() = 'developer');
+CREATE POLICY "Teachers delete own courses" ON courses
+  FOR DELETE USING (created_by = auth.uid() OR auth_user_role() = 'developer');
 
+-- Units, Lessons, AR Objects: public read, teachers manage
 CREATE POLICY "Allow public read units" ON units FOR SELECT USING (true);
-CREATE POLICY "Authenticated users manage units" ON units FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Teachers manage units" ON units
+  FOR ALL USING (auth_user_role() IN ('teacher', 'developer'))
+  WITH CHECK (auth_user_role() IN ('teacher', 'developer'));
 
 CREATE POLICY "Allow public read lessons" ON lessons FOR SELECT USING (true);
-CREATE POLICY "Authenticated users manage lessons" ON lessons FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Teachers manage lessons" ON lessons
+  FOR ALL USING (auth_user_role() IN ('teacher', 'developer'))
+  WITH CHECK (auth_user_role() IN ('teacher', 'developer'));
 
 CREATE POLICY "Allow public read ar_objects" ON ar_objects FOR SELECT USING (true);
-CREATE POLICY "Authenticated users manage ar_objects" ON ar_objects FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Teachers manage ar_objects" ON ar_objects
+  FOR ALL USING (auth_user_role() IN ('teacher', 'developer'))
+  WITH CHECK (auth_user_role() IN ('teacher', 'developer'));
 
--- AI Scan Items & Simulation Scenarios: public read, authenticated manage
+-- AI Scan Items & Simulation Scenarios: public read, teachers manage
 CREATE POLICY "Allow public read ai_scan_items" ON ai_scan_items FOR SELECT USING (true);
-CREATE POLICY "Authenticated users manage ai_scan_items" ON ai_scan_items FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Teachers manage ai_scan_items" ON ai_scan_items
+  FOR ALL USING (auth_user_role() IN ('teacher', 'developer'))
+  WITH CHECK (auth_user_role() IN ('teacher', 'developer'));
 
 CREATE POLICY "Allow public read simulation_scenarios" ON simulation_scenarios FOR SELECT USING (true);
-CREATE POLICY "Authenticated users manage simulation_scenarios" ON simulation_scenarios FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Teachers manage simulation_scenarios" ON simulation_scenarios
+  FOR ALL USING (auth_user_role() IN ('teacher', 'developer'))
+  WITH CHECK (auth_user_role() IN ('teacher', 'developer'));
 
--- Classes & Class Students: authenticated read, teachers/students manage
+-- Classes: authenticated read, teachers manage own
 CREATE POLICY "Allow authenticated read classes" ON classes FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "Teachers manage own classes" ON classes FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Teachers manage own classes" ON classes
+  FOR ALL USING (teacher_id = auth.uid() OR auth_user_role() = 'developer')
+  WITH CHECK (teacher_id = auth.uid() OR auth_user_role() = 'developer');
 
 CREATE POLICY "Allow authenticated read class_students" ON class_students FOR SELECT USING (auth.role() = 'authenticated');
 CREATE POLICY "Students and teachers manage class_students" ON class_students FOR ALL USING (auth.role() = 'authenticated');
 
--- Enrollments: students manage own enrollments, teachers read all
-CREATE POLICY "Students manage own enrollments" ON enrollments FOR ALL USING (auth.uid() = student_id OR auth.role() = 'authenticated');
+-- Enrollments & Progress: students manage own
+CREATE POLICY "Students manage own enrollments" ON enrollments FOR ALL USING (auth.uid() = student_id OR auth_user_role() = 'developer');
+CREATE POLICY "Students manage own progress" ON lesson_progress FOR ALL USING (auth.uid() = student_id OR auth_user_role() IN ('teacher', 'developer'));
 
--- Lesson Progress: students manage own progress, teachers read all
-CREATE POLICY "Students manage own progress" ON lesson_progress FOR ALL USING (auth.uid() = student_id OR auth.role() = 'authenticated');
+-- Sessions: students manage own
+CREATE POLICY "Students manage own simulation" ON simulation_sessions FOR ALL USING (auth.uid() = student_id OR auth_user_role() IN ('teacher', 'developer'));
+CREATE POLICY "Students manage own chat" ON chat_sessions FOR ALL USING (auth.uid() = student_id OR auth_user_role() IN ('teacher', 'developer'));
 
--- Simulation Sessions & Chat Sessions: students manage own sessions
-CREATE POLICY "Students manage own simulation" ON simulation_sessions FOR ALL USING (auth.uid() = student_id OR auth.role() = 'authenticated');
-CREATE POLICY "Students manage own chat" ON chat_sessions FOR ALL USING (auth.uid() = student_id OR auth.role() = 'authenticated');
-
--- Student Assessments & Assessments: authenticated manage
+-- Assessments: teachers manage, students view/submit own
 CREATE POLICY "Allow authenticated read assessments" ON assessments FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "Teachers manage assessments" ON assessments FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Teachers manage assessments" ON assessments
+  FOR ALL USING (auth_user_role() IN ('teacher', 'developer'))
+  WITH CHECK (auth_user_role() IN ('teacher', 'developer'));
+CREATE POLICY "Students manage own student_assessments" ON student_assessments FOR ALL USING (auth.uid() = student_id OR auth_user_role() IN ('teacher', 'developer'));
 
-CREATE POLICY "Students manage own student_assessments" ON student_assessments FOR ALL USING (auth.uid() = student_id OR auth.role() = 'authenticated');
+-- Learning Analytics: students view own, teachers manage
+CREATE POLICY "Students view own analytics" ON learning_analytics FOR SELECT USING (auth.uid() = student_id OR auth_user_role() IN ('teacher', 'developer'));
+CREATE POLICY "Teachers and triggers manage analytics" ON learning_analytics
+  FOR ALL USING (auth_user_role() IN ('teacher', 'developer'))
+  WITH CHECK (auth_user_role() IN ('teacher', 'developer'));
 
--- Learning Analytics: students view own analytics, teachers view all
-CREATE POLICY "Students view own analytics" ON learning_analytics FOR SELECT USING (auth.uid() = student_id OR auth.role() = 'authenticated');
-CREATE POLICY "Authenticated users manage analytics" ON learning_analytics FOR ALL USING (auth.role() = 'authenticated');
-
--- Assignments & Assignment Submissions: authenticated manage
+-- Assignments: teachers manage, students submit own
 CREATE POLICY "Allow authenticated read assignments" ON assignments FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "Teachers manage assignments" ON assignments FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Teachers manage assignments" ON assignments
+  FOR ALL USING (auth_user_role() IN ('teacher', 'developer'))
+  WITH CHECK (auth_user_role() IN ('teacher', 'developer'));
+CREATE POLICY "Students manage own submissions" ON assignment_submissions FOR ALL USING (auth.uid() = student_id OR auth_user_role() IN ('teacher', 'developer'));
 
-CREATE POLICY "Students manage own submissions" ON assignment_submissions FOR ALL USING (auth.uid() = student_id OR auth.role() = 'authenticated');
+-- Notifications: users see/update own, teachers create for students
+CREATE POLICY "Users view own notifications" ON notifications FOR SELECT USING (user_id = auth.uid());
+CREATE POLICY "Users update own notifications" ON notifications
+  FOR UPDATE USING (user_id = auth.uid()) WITH CHECK (user_id = auth.uid());
+CREATE POLICY "Teachers create notifications" ON notifications
+  FOR INSERT WITH CHECK (auth_user_role() IN ('teacher', 'developer'));
 
--- Notifications: users view/update own notifications
-CREATE POLICY "Users view own notifications" ON notifications FOR ALL USING (auth.uid() = user_id OR auth.role() = 'authenticated');
+-- ============================================
+-- PERFORMANCE INDEXES
+-- ============================================
+CREATE INDEX IF NOT EXISTS idx_lesson_progress_student_id     ON lesson_progress(student_id);
+CREATE INDEX IF NOT EXISTS idx_lesson_progress_lesson_id      ON lesson_progress(lesson_id);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_student_id       ON chat_sessions(student_id);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_created_at       ON chat_sessions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_simulation_sessions_student_id ON simulation_sessions(student_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_student_id         ON enrollments(student_id);
+CREATE INDEX IF NOT EXISTS idx_enrollments_class_id           ON enrollments(class_id);
+CREATE INDEX IF NOT EXISTS idx_class_students_class_id        ON class_students(class_id);
+CREATE INDEX IF NOT EXISTS idx_class_students_student_id      ON class_students(student_id);
+CREATE INDEX IF NOT EXISTS idx_learning_analytics_student_id  ON learning_analytics(student_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id          ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_unread           ON notifications(user_id, is_read) WHERE is_read = false;
+CREATE INDEX IF NOT EXISTS idx_assignment_submissions_student ON assignment_submissions(student_id);
+
 
 -- ============================================
 -- SEED DATA
