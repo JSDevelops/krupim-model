@@ -3,6 +3,7 @@ import cors from 'cors'
 import helmet from 'helmet'
 import rateLimit from 'express-rate-limit'
 import dotenv from 'dotenv'
+import { z } from 'zod'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { OpenAI } from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
@@ -105,6 +106,58 @@ const defaultAnthropic = process.env.ANTHROPIC_API_KEY
   ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   : null
 
+// ─── Zod Validation Schemas ──────────────────────────────────────────────────
+const ChatSchema = z.object({
+  message: z.string().min(1, 'message is required').max(4000, 'message too long'),
+  history: z.array(z.object({
+    role: z.enum(['user', 'model']),
+    text: z.string()
+  })).optional().default([]),
+  student_id: z.string().uuid().optional(),
+  session_type: z.string().optional(),
+  topic: z.string().optional(),
+  session_id: z.string().uuid().optional()
+})
+
+const ScanSchema = z.object({
+  imageBase64: z.string().min(1, 'imageBase64 is required'),
+  mimeType: z.enum(['image/jpeg', 'image/png', 'image/webp', 'image/gif']).optional().default('image/jpeg')
+})
+
+const SimulationEvalSchema = z.object({
+  messages: z.array(z.object({
+    role: z.string(),
+    text: z.string()
+  })).min(1).max(50),
+  score: z.number().min(0).max(100).optional(),
+  student_id: z.string().uuid().optional(),
+  scenario_id: z.string().uuid().optional()
+})
+
+const BlogGenerateSchema = z.object({
+  topic: z.string().min(1, 'topic is required').max(200),
+  category: z.string().optional(),
+  tone: z.string().optional(),
+  keywords: z.string().optional()
+})
+
+const ThreeDGenerateSchema = z.object({
+  topic: z.string().min(1, 'topic is required').max(200)
+})
+
+// Helper: validate request body with zod
+function validate<T>(schema: z.ZodType<T>, req: express.Request, res: express.Response): T | null {
+  const result = schema.safeParse(req.body)
+  if (!result.success) {
+    res.status(400).json({
+      error: 'Invalid request body',
+      details: result.error.flatten().fieldErrors
+    })
+    return null
+  }
+  return result.data
+}
+
 // ─── JWT Auth Middleware (Supabase token verification) ──────────────────────
 // ใช้กับ endpoint ที่ต้องการ login เท่านั้น
 async function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
@@ -196,7 +249,9 @@ app.get('/api/status', (req, res) => {
 // Unified Multi-LLM Chat API  (🔐 requires Supabase JWT)
 app.post('/api/chat', requireAuth, async (req, res) => {
   try {
-    const { message, history, student_id, session_type, topic, session_id } = req.body
+    const body = validate(ChatSchema, req, res)
+    if (!body) return
+    const { message, history, student_id, session_type, topic, session_id } = body
     const provider = getActiveProvider(req)
     const systemPrompt = 'คุณคือผู้ช่วยสอนอัจฉริยะในแพลตฟอร์ม FINE MODEL ที่เชี่ยวชาญด้านศิลปะการบริการอาหารและเครื่องดื่ม การจัดโต๊ะอาหาร (Table Setting) และคำศัพท์ภาษาอังกฤษที่ใช้ในวิชาชีพนี้ ตอบผู้เรียนด้วยความสุภาพ กระชับ สนับสนุนการเรียนรู้ และมีตัวอย่างสถานการณ์จริงเสมอ'
     
@@ -286,21 +341,9 @@ app.post('/api/chat', requireAuth, async (req, res) => {
 // Unified Multi-LLM Vision Scan API  (🔐 requires Supabase JWT)
 app.post('/api/scan', requireAuth, async (req, res) => {
   try {
-    const { imageBase64, mimeType } = req.body
-
-    // Validate required fields
-    if (!imageBase64) {
-      res.status(400).json({ error: 'imageBase64 is required' })
-      return
-    }
-
-    // Validate mimeType whitelist
-    const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
-    const resolvedMime = mimeType || 'image/jpeg'
-    if (!ALLOWED_MIME_TYPES.includes(resolvedMime)) {
-      res.status(400).json({ error: 'Invalid image type. Allowed: jpeg, png, webp, gif' })
-      return
-    }
+    const body = validate(ScanSchema, req, res)
+    if (!body) return
+    const { imageBase64, mimeType: resolvedMime } = body
 
     // Validate base64 size (max ~8MB encoded = ~6MB image)
     if (imageBase64.length > 10_000_000) {
@@ -365,7 +408,7 @@ app.post('/api/scan', requireAuth, async (req, res) => {
               {
                 type: 'image_url',
                 image_url: {
-                  url: `data:${mimeType || 'image/jpeg'};base64,${imageBase64}`
+                  url: `data:${resolvedMime};base64,${imageBase64}`
                 }
               }
             ]
@@ -386,7 +429,7 @@ app.post('/api/scan', requireAuth, async (req, res) => {
                 type: 'image',
                 source: {
                   type: 'base64',
-                  media_type: mimeType || 'image/jpeg',
+                  media_type: resolvedMime as any,
                   data: imageBase64
                 }
               },
@@ -409,7 +452,7 @@ app.post('/api/scan', requireAuth, async (req, res) => {
           tools: [{ googleSearch: {} }] as any
         })
         const imagePart = {
-          inlineData: { data: imageBase64, mimeType: mimeType || 'image/jpeg' }
+          inlineData: { data: imageBase64, mimeType: resolvedMime }
         }
         result = await model.generateContent([systemPrompt, imagePart])
       } catch (err: any) {
@@ -419,7 +462,7 @@ app.post('/api/scan', requireAuth, async (req, res) => {
           tools: [{ googleSearch: {} }] as any
         })
         const imagePart = {
-          inlineData: { data: imageBase64, mimeType: mimeType || 'image/jpeg' }
+          inlineData: { data: imageBase64, mimeType: resolvedMime }
         }
         result = await model.generateContent([systemPrompt, imagePart])
       }
@@ -452,89 +495,23 @@ app.post('/api/scan', requireAuth, async (req, res) => {
 
     res.json(parsedData)
   } catch (error: any) {
+    // 🔴 แก้ไข: ไม่ส่ง fallback teapot ที่ทำให้ผู้ใช้เข้าใจผิด
+    // ส่ง error ที่ชัดเจนแทน เพื่อให้ frontend แสดง error state ที่ถูกต้อง
     console.error('Scan API Error:', error.message)
-    console.warn('AI scan failed. Using fallback data.')
-    
-    const fallbackTeapot = {
-      name_th: "กาน้ำชาสเตนเลส",
-      name_en: "Stainless Steel Teapot",
-      category: "tableware",
-      subcategory: "Beverage Service",
-      description: "กาน้ำชาสเตนเลสสำหรับบรรจุและบริการชาร้อนแก่ลูกค้าในห้องอาหาร รักษาความร้อนได้ดีและมีความทนทานสูง",
-      location: "จัดวางอยู่บนชั้นเตรียมอุปกรณ์ฝั่งบาร์น้ำ หรือนำเสิร์ฟพร้อมถ้วยชาบนโต๊ะลูกค้า",
-      service_tips: "ควรตรวจสอบความร้อนก่อนนำเสิร์ฟ และเช็ดทำความสะอาดคราบรอยนิ้วมือภายนอกให้แวววาวอยู่เสมอ",
-      english_phrases: [
-        "Would you like some more hot water in your teapot, sir?",
-        "Here is your hot Jasmine tea. Please be careful, the teapot is very hot."
-      ],
-      pronounce: "/ˈsteɪn.ləs stiːl ˈtiː.pɒt/",
-      confidence: 98,
-      fine_analysis: {
-        familiarize: {
-          desc: "กาน้ำชาทำจากสเตนเลสสตีลคุณภาพสูง มีปากพวยยาวสำหรับรินน้ำชาได้ง่ายโดยไม่หกเลอะเทอะ มาพร้อมหูจับฉนวนกันความร้อน",
-          location: "วางไว้บนบอร์ดเตรียมเครื่องดื่ม หรือบนโต๊ะลูกค้าฝั่งขวามือ"
-        },
-        interact: {
-          pronunciation: "สเตน-เลส-สตีล-ที-พ็อท",
-          english_phrases: [
-            "Would you like some more hot water in your teapot, sir?",
-            "Here is your hot Jasmine tea. Please be careful, the teapot is very hot."
-          ],
-          roleplay_prompt: "ฝึกพูดแนะนำการบริการเครื่องดื่มชาร้อนแก่ลูกค้า และการเติมน้ำร้อนเพิ่มเติมอย่างสุภาพ"
-        },
-        navigate: {
-          service_steps: [
-            "ลวกกาน้ำชาด้วยน้ำร้อนก่อนใส่ใบชาเพื่ออุ่นภาชนะ",
-            "เทน้ำร้อนอุณหภูมิประมาณ 90 องศาเซลเซียส แช่ใบชาไว้ 3-5 นาที",
-            "จัดวางกาน้ำชาลงบนจานรองพร้อมผ้าเช็ดมือสะอาดก่อนนำเสิร์ฟ"
-          ],
-          safety_rules: "ระมัดระวังการจับบริเวณตัวกาน้ำชาโดยตรงเพราะมีความร้อนสูงมาก ให้จับเฉพาะบริเวณหูจับที่เป็นฉนวนเท่านั้น"
-        },
-        exhibit: {
-          quiz_question: "อุณหภูมิของน้ำที่เหมาะสมที่สุดในการชงชาร้อนและเสิร์ฟด้วยกาน้ำชาคือประมาณกี่องศาเซลเซียส?",
-          quiz_options: ["70-80 °C", "90-95 °C", "100 °C ขึ้นไป"],
-          correct_answer: "90-95 °C"
-        }
-      }
-    }
-    
-    // Save fallback to Supabase if available
-    if (supabase) {
-      try {
-        await supabase.from('ai_scan_items').upsert({
-          name_th: fallbackTeapot.name_th,
-          name_en: fallbackTeapot.name_en,
-          category: fallbackTeapot.category,
-          subcategory: fallbackTeapot.subcategory,
-          description: fallbackTeapot.description,
-          location: fallbackTeapot.location,
-          service_tips: fallbackTeapot.service_tips,
-          english_phrases: fallbackTeapot.english_phrases,
-          pronounce: fallbackTeapot.pronounce
-        }, { onConflict: 'name_en' })
-      } catch (dbErr) {
-        console.error('Failed to save fallback scanned item to DB:', dbErr)
-      }
-    }
-
-    res.json(fallbackTeapot)
+    res.status(503).json({
+      error: 'AI scan service temporarily unavailable. Please try again.',
+      code: 'SCAN_AI_ERROR',
+      detail: process.env.NODE_ENV === 'development' ? error.message : undefined
+    })
   }
 })
 
 // Unified Simulation Evaluation API  (🔐 requires Supabase JWT)
 app.post('/api/simulation/evaluate', requireAuth, async (req, res) => {
   try {
-    const { messages, score, student_id, scenario_id } = req.body
-
-    // Validate and limit messages array size (prevent token burn)
-    if (!Array.isArray(messages)) {
-      res.status(400).json({ error: 'messages must be an array' })
-      return
-    }
-    if (messages.length > 50) {
-      res.status(400).json({ error: 'Too many messages. Maximum 50 messages per evaluation.' })
-      return
-    }
+    const body = validate(SimulationEvalSchema, req, res)
+    if (!body) return
+    const { messages, score, student_id, scenario_id } = body
 
     const provider = getActiveProvider(req)
     const chatContent = messages.map((m: any) => `${m.role === 'user' ? 'บริกร' : 'ลูกค้า'}: ${m.text}`).join('\n')
@@ -605,7 +582,9 @@ ${chatContent}
 // Unified AI Blog Generation API  (🔐 requires Supabase JWT)
 app.post('/api/blog/generate', requireAuth, async (req, res) => {
   try {
-    const { topic, category, tone, keywords } = req.body
+    const body = validate(BlogGenerateSchema, req, res)
+    if (!body) return
+    const { topic, category, tone, keywords } = body
     const provider = getActiveProvider(req)
 
     const prompt = `คุณเป็นบล็อกเกอร์ผู้เชี่ยวชาญด้านอาหาร เครื่องดื่ม และการโรงแรม
@@ -660,13 +639,15 @@ app.post('/api/blog/generate', requireAuth, async (req, res) => {
   }
 })
 
-// 3D AI Studio Generation API Integration
+// ─── In-memory store for Tripo3D async tasks ─────────────────────────────────
+const tripoTasks = new Map<string, { status: 'pending' | 'success' | 'failed', glbUrl?: string, topic?: string }>()
+
+// 3D AI Studio Generation API Integration (NON-BLOCKING)
 app.post('/api/3d/generate', requireAuth, async (req, res) => {
   try {
-    const { topic } = req.body
-    if (!topic) {
-      return res.status(400).json({ error: 'Topic is required' })
-    }
+    const body = validate(ThreeDGenerateSchema, req, res)
+    if (!body) return
+    const { topic } = body
 
     const apiKey = (req.headers['x-3d-ai-studio-key'] as string) || process.env.THREE_D_AI_STUDIO_API_KEY || ''
     const tripoKey = (req.headers['x-tripo-key'] as string) || process.env.TRIPO_API_KEY || ''
@@ -676,7 +657,7 @@ app.post('/api/3d/generate', requireAuth, async (req, res) => {
     let usdzUrl = ''
     let isMocked = true
 
-    // 1. Try Tripo3D API if tripoKey is available
+    // 1. Try Tripo3D API if tripoKey is available — NON-BLOCKING: submit task, return taskId immediately
     if (tripoKey && tripoKey !== 'your_tripo_api_key_here') {
       try {
         console.log(`Submitting Tripo3D task for: ${topic}`)
@@ -686,43 +667,43 @@ app.post('/api/3d/generate', requireAuth, async (req, res) => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${tripoKey}`
           },
-          body: JSON.stringify({
-            type: 'text_to_model',
-            prompt: topic
-          })
+          body: JSON.stringify({ type: 'text_to_model', prompt: topic })
         })
         if (tripoResp.ok) {
           const tripoData = (await tripoResp.json()) as any
-          if (tripoData.code === 0 && tripoData.data && tripoData.data.task_id) {
-            const taskId = tripoData.data.task_id
-            console.log(`Tripo3D task submitted successfully, taskId: ${taskId}`)
-            
-            // Poll for status (max 6 attempts, 3s interval)
-            for (let i = 0; i < 6; i++) {
-              await new Promise(resolve => setTimeout(resolve, 3000))
-              const pollResp = await fetch(`https://api.tripo3d.ai/v2/openapi/task/${taskId}`, {
-                method: 'GET',
-                headers: {
-                  'Authorization': `Bearer ${tripoKey}`
-                }
-              })
-              if (pollResp.ok) {
-                const pollData = (await pollResp.json()) as any
-                if (pollData.code === 0 && pollData.data) {
-                  const status = pollData.data.status
-                  console.log(`Tripo3D task ${taskId} status: ${status}`)
-                  if (status === 'success') {
-                    glbUrl = pollData.data.result?.model?.glb || ''
-                    usdzUrl = glbUrl
-                    isMocked = false
-                    break
-                  } else if (status === 'failed') {
-                    console.error('Tripo3D task failed')
-                    break
+          if (tripoData.code === 0 && tripoData.data?.task_id) {
+            const taskId = tripoData.data.task_id as string
+            console.log(`Tripo3D task submitted: ${taskId}`)
+            // Store pending task — background poll will update it
+            tripoTasks.set(taskId, { status: 'pending', topic })
+            // Background polling (non-blocking)
+            ;(async () => {
+              for (let i = 0; i < 10; i++) {
+                await new Promise(r => setTimeout(r, 5000))
+                try {
+                  const pollResp = await fetch(`https://api.tripo3d.ai/v2/openapi/task/${taskId}`, {
+                    headers: { 'Authorization': `Bearer ${tripoKey}` }
+                  })
+                  if (pollResp.ok) {
+                    const pollData = (await pollResp.json()) as any
+                    if (pollData.code === 0 && pollData.data) {
+                      const status = pollData.data.status
+                      if (status === 'success') {
+                        tripoTasks.set(taskId, { status: 'success', glbUrl: pollData.data.result?.model?.glb || '', topic })
+                        break
+                      } else if (status === 'failed') {
+                        tripoTasks.set(taskId, { status: 'failed', topic })
+                        break
+                      }
+                    }
                   }
+                } catch (pollErr) {
+                  console.error('Tripo3D poll error:', pollErr)
                 }
               }
-            }
+            })()
+            // Return taskId immediately — client can poll /api/3d/status/:taskId
+            return res.json({ success: true, topic, taskId, status: 'pending', provider: 'Tripo3D' })
           }
         }
       } catch (err) {
@@ -787,6 +768,7 @@ app.post('/api/3d/generate', requireAuth, async (req, res) => {
       topic,
       glbUrl,
       usdzUrl,
+      status: 'success',
       provider: isMocked ? '3D AI Studio (Simulated)' : '3D AI Studio API'
     })
   } catch (error: any) {
@@ -795,13 +777,22 @@ app.post('/api/3d/generate', requireAuth, async (req, res) => {
   }
 })
 
+// Tripo3D Async Status Check (client polls this after receiving taskId)
+app.get('/api/3d/status/:taskId', requireAuth, (req, res) => {
+  const { taskId } = req.params as { taskId: string }
+  const task = tripoTasks.get(taskId)
+  if (!task) {
+    return res.status(404).json({ error: 'Task not found' })
+  }
+  res.json({ taskId, ...task })
+})
+
 // Blender Python Script Generator API
 app.post('/api/blender/generate', requireAuth, async (req, res) => {
   try {
-    const { topic } = req.body
-    if (!topic) {
-      return res.status(400).json({ error: 'Topic is required' })
-    }
+    const body = validate(ThreeDGenerateSchema, req, res)
+    if (!body) return
+    const { topic } = body
     const provider = getActiveProvider(req)
 
     const prompt = `You are a Blender Python scripting expert.
@@ -853,62 +844,51 @@ The script must:
   }
 })
 
-// Connection Health Ping Monitor API
-app.get('/api/ping-all', requireAuth, aiLimiter, async (req, res) => {
+// Connection Health Ping Monitor API (🔐 requires JWT)
+// 🔴 แก้ไข: ไม่เรียก LLM จริงเพื่อประหยัด token — ตรวจแค่ API key format + DB ping
+app.get('/api/ping-all', requireAuth, async (req, res) => {
   try {
     const startDb = Date.now()
     let dbStatus = 'offline'
     let dbLatency = 0
     
-    // Check Supabase
+    // Check Supabase — lightweight SELECT เท่านั้น
     if (supabase && supabaseUrl) {
       try {
-        const { data, error } = await supabase.from('schools').select('id').limit(1).maybeSingle()
-        if (!error) {
-          dbStatus = 'online'
-        }
+        const { error } = await supabase.from('schools').select('id').limit(1).maybeSingle()
+        if (!error) dbStatus = 'online'
       } catch (e) {}
       dbLatency = Date.now() - startDb
     }
 
-    // Check Active Provider API status
+    // Check AI provider — ตรวจ key format เท่านั้น ไม่เรียก LLM จริง (ประหยัด token)
     const provider = getActiveProvider(req)
     let aiStatus = 'offline'
-    let aiLatency = 0
-    const startAI = Date.now()
-    try {
-      if (provider === 'openai') {
-        const client = getOpenAI(req)
-        await client.chat.completions.create({
-          model: 'gpt-4o-mini',
-          messages: [{ role: 'user', content: 'ping' }],
-          max_tokens: 5
-        })
-        aiStatus = 'online'
-      } else if (provider === 'claude') {
-        const client = getAnthropic(req)
-        await client.messages.create({
-          model: 'claude-3-5-sonnet-20241022',
-          messages: [{ role: 'user', content: 'ping' }],
-          max_tokens: 5
-        })
-        aiStatus = 'online'
-      } else {
-        const genAI = getGemini(req)
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
-        await model.generateContent("ping")
-        aiStatus = 'online'
-      }
-      aiLatency = Date.now() - startAI
-    } catch (e) {
-      console.error('Active AI ping check failed:', e)
+    let aiNote = ''
+
+    if (provider === 'openai') {
+      const customKey = req.headers['x-openai-key'] as string
+      const hasKey = (customKey?.startsWith('sk-')) || !!process.env.OPENAI_API_KEY
+      aiStatus = hasKey ? 'key_configured' : 'no_key'
+      aiNote = 'Key format check only (no token usage)'
+    } else if (provider === 'claude') {
+      const customKey = req.headers['x-claude-key'] as string
+      const hasKey = (customKey?.startsWith('sk-ant-')) || !!process.env.ANTHROPIC_API_KEY
+      aiStatus = hasKey ? 'key_configured' : 'no_key'
+      aiNote = 'Key format check only (no token usage)'
+    } else {
+      // Gemini
+      const customKey = req.headers['x-gemini-key'] as string
+      const hasKey = (customKey?.startsWith('AIzaSy')) || !!process.env.GEMINI_API_KEY
+      aiStatus = hasKey ? 'key_configured' : 'no_key'
+      aiNote = 'Key format check only (no token usage)'
     }
 
     res.json({
       timestamp: new Date().toISOString(),
       services: {
         database: { status: dbStatus, latency: `${dbLatency}ms` },
-        gemini: { status: aiStatus, latency: `${aiLatency}ms` }, // Compat key
+        ai: { status: aiStatus, provider, note: aiNote },
         backend: { status: 'online', latency: '1ms' }
       }
     })

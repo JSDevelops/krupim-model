@@ -1,8 +1,9 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useRole } from '@/context/RoleContext'
+import { supabase } from '@/lib/supabase'
 
 export default function AppWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
@@ -26,24 +27,56 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
   const [apiKey, setApiKey] = useState('')
   const [selectedModel, setSelectedModel] = useState('gemini-2.0-flash')
 
-  const [notifications, setNotifications] = useState([
-    { id: 1, text: '👩‍🏫 ครูมานะ ดีงาม ขอยื่นอนุมัติการใช้งานใหม่', time: '5 นาทีที่แล้ว', read: false },
-    { id: 2, text: '🔌 ระบบ API Connect: Gemini 2.0 ทำงานปกติ (Latency 195ms)', time: '1 ชั่วโมงที่แล้ว', read: true },
-    { id: 3, text: '📈 สถิติผลสัมฤทธิ์ปลายภาคเรียน Unit 2 ประมวลผลเรียบร้อย', time: '3 ชั่วโมงที่แล้ว', read: true }
-  ])
+  // ─── Notifications: ดึงจาก Supabase DB จริง ────────────────────────────────
+  const [notifications, setNotifications] = useState<{
+    id: string; title: string; message: string; type: string; is_read: boolean; created_at: string
+  }[]>([])
+  const [notifLoading, setNotifLoading] = useState(false)
+
+  const fetchNotifications = useCallback(async () => {
+    if (!user?.id) return
+    setNotifLoading(true)
+    try {
+      const { data, error } = await supabase
+        .from('notifications')
+        .select('id, title, message, type, is_read, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(20)
+      if (!error && data) setNotifications(data)
+    } catch (err) {
+      console.warn('Failed to fetch notifications:', err)
+    } finally {
+      setNotifLoading(false)
+    }
+  }, [user?.id])
+
+  useEffect(() => {
+    if (user?.id) fetchNotifications()
+  }, [fetchNotifications, user?.id])
+
+  const unreadCount = notifications.filter(n => !n.is_read).length
+
+  async function markAllAsRead() {
+    if (!user?.id) return
+    const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id)
+    if (unreadIds.length === 0) return
+    // อัพเดทใน DB
+    await supabase
+      .from('notifications')
+      .update({ is_read: true })
+      .in('id', unreadIds)
+    // อัพเดท local state
+    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+  }
 
   const isAdmin = pathname.startsWith('/admin')
   const isTeacher = pathname.startsWith('/teacher')
   const isERP = isAdmin || isTeacher
 
-  const unreadCount = notifications.filter(n => !n.read).length
-
   // NOTE: API keys are entered by the user in Profile Settings and stored in localStorage.
   // Do NOT hardcode any API keys here. Users must enter their own keys.
 
-  function markAllAsRead() {
-    setNotifications(prev => prev.map(n => ({ ...n, read: true })))
-  }
 
   function handleOpenProfile() {
     if (user) {
@@ -59,7 +92,7 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
     setShowProfileSettings(true)
   }
 
-  function handleSaveProfile(e: React.FormEvent) {
+  async function handleSaveProfile(e: React.FormEvent) {
     e.preventDefault()
     if (!user) return
 
@@ -71,29 +104,32 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
       avatar: profAvatar
     }
 
-    setUser(updatedUser)
+    // อัพเดทใน Supabase profiles table (source of truth)
+    if (user.id) {
+      const schoolsRes = await supabase
+        .from('schools')
+        .select('id')
+        .eq('name', profSchool)
+        .maybeSingle()
+      const schoolId = schoolsRes.data?.id || user.school_id
 
-    // บันทึกทับ registeredUsers เพื่อให้คงอยู่เมื่อเปิดหน้าเพจขึ้นมาใหม่
-    const registered = localStorage.getItem('registeredUsers')
-    if (registered) {
-      try {
-        const list = JSON.parse(registered)
-        const idx = list.findIndex((u: any) => u.email === user.email)
-        if (idx !== -1) {
-          list[idx].name = profName
-          list[idx].school = profSchool
-          list[idx].avatar = profAvatar
-          localStorage.setItem('registeredUsers', JSON.stringify(list))
-        }
-      } catch (err) {}
+      await supabase
+        .from('profiles')
+        .update({
+          name: profName,
+          ...(schoolId ? { school_id: schoolId } : {})
+        })
+        .eq('id', user.id)
     }
+
+    setUser(updatedUser)
 
     if (typeof window !== 'undefined') {
       localStorage.setItem('geminiApiKey', apiKey)
       localStorage.setItem('geminiModel', selectedModel)
     }
 
-    alert('บันทึกการตั้งค่าโปรไฟล์และข้อมูล AI API Key สำเร็จ! ⚙️')
+    alert('บันทึกการตั้งค่าโปรไฟล์สำเร็จ! ⚙️')
     setShowProfileSettings(false)
   }
 
@@ -261,7 +297,10 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
               {/* Notification Bell with Toggle */}
               <div style={{ position: 'relative' }}>
                 <button
-                  onClick={() => setShowNotifications(!showNotifications)}
+                  onClick={() => {
+                    setShowNotifications(!showNotifications)
+                    if (!showNotifications) fetchNotifications()
+                  }}
                   style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '20px', padding: '6px', position: 'relative', display: 'flex', alignItems: 'center' }}
                 >
                   🔔 {unreadCount > 0 && <span className="erp-badge-dot" />}
@@ -284,14 +323,23 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
                       )}
                     </div>
                     <div style={{ maxHeight: '280px', overflowY: 'auto' }}>
-                      {notifications.map(n => (
+                      {notifLoading ? (
+                        <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>⏳ กำลังโหลด...</div>
+                      ) : notifications.length === 0 ? (
+                        <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '12px' }}>📭 ไม่มีการแจ้งเตือน</div>
+                      ) : notifications.map(n => (
                         <div key={n.id} style={{
                           padding: '12px 16px', borderBottom: '1px solid #EDE9E1',
-                          background: n.read ? 'transparent' : 'rgba(201,168,76,0.06)',
+                          background: n.is_read ? 'transparent' : 'rgba(201,168,76,0.06)',
                           transition: 'background 0.2s'
                         }}>
-                          <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: n.read ? 400 : 600, lineHeight: 1.4 }}>{n.text}</div>
-                          <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>{n.time}</div>
+                          <div style={{ fontSize: '13px', color: 'var(--text-primary)', fontWeight: n.is_read ? 400 : 600, lineHeight: 1.4 }}>
+                            {n.type === 'success' ? '✅' : n.type === 'warning' ? '⚠️' : n.type === 'assignment' ? '📋' : 'ℹ️'} {n.title}
+                          </div>
+                          <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{n.message}</div>
+                          <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                            {new Date(n.created_at).toLocaleDateString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </div>
                         </div>
                       ))}
                     </div>
