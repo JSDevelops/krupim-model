@@ -61,7 +61,7 @@ export default function AdminNewsPage() {
     setContent('')
 
     try {
-      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://krupim-model-production.up.railway.app'
+      const backendUrl = '/api'
       const provider = localStorage.getItem('activeAiProvider') || 'gemini'
       const geminiKey = localStorage.getItem('geminiApiKey') || ''
       const openaiKey = localStorage.getItem('openaiApiKey') || ''

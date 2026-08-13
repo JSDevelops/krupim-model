@@ -12,7 +12,7 @@ export const FINE_SYSTEM_PROMPT = `คุณคือ AI ผู้ช่วย�
 
 ตอบแบบเป็นกันเอง กระชับ ชัดเจน และให้กำลังใจผู้เรียนเสมอ`
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://krupim-model-production.up.railway.app'
+const BACKEND_URL = '/api'
 
 // ดึง Supabase access token จาก session ปัจจุบัน
 async function getAccessToken(): Promise<string> {
