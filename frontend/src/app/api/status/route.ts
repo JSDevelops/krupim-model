@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getActiveProvider } from '../../_lib/ai'
+import { getActiveProvider } from '../_lib/ai'
 
 export async function GET(req: NextRequest) {
   const provider = getActiveProvider(req)

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '../../../_lib/auth'
+import { requireAuth } from '../../_lib/auth'
 
 // In-memory store for Tripo3D async tasks (resets on cold start — acceptable for serverless)
 const tripoTasks = new Map<string, { status: 'pending' | 'success' | 'failed'; glbUrl?: string; topic?: string }>()

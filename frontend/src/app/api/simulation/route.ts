@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth, getSupabase } from '../../_lib/auth'
-import { getActiveProvider, getGemini, getOpenAI, getAnthropic } from '../../_lib/ai'
+import { requireAuth, getSupabase } from '../_lib/auth'
+import { getActiveProvider, getGemini, getOpenAI, getAnthropic } from '../_lib/ai'
 
 export async function POST(req: NextRequest) {
   try {

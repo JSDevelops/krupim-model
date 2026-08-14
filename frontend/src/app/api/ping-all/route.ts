@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth, getSupabase } from '../../../_lib/auth'
-import { getActiveProvider } from '../../../_lib/ai'
+import { requireAuth, getSupabase } from '../_lib/auth'
+import { getActiveProvider } from '../_lib/ai'
 
 export async function GET(req: NextRequest) {
   try {
