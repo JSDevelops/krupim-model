@@ -67,7 +67,7 @@ export async function chatWithGemini(
   sessionId?: string
 ) {
   const headers = await getAIHeaders()
-  const response = await fetch(`${BACKEND_URL}/api/chat`, {
+  const response = await fetch(`${BACKEND_URL}/chat`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -91,7 +91,7 @@ export async function chatWithGemini(
 // AI Scan - analyze image (Routes via backend)
 export async function analyzeImage(imageBase64: string, mimeType: string = 'image/jpeg') {
   const headers = await getAIHeaders()
-  const response = await fetch(`${BACKEND_URL}/api/scan`, {
+  const response = await fetch(`${BACKEND_URL}/scan`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -115,7 +115,7 @@ export async function generateSimulationFeedback(
   scenarioId?: string
 ) {
   const headers = await getAIHeaders()
-  const response = await fetch(`${BACKEND_URL}/api/simulation/evaluate`, {
+  const response = await fetch(`${BACKEND_URL}/simulation`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
