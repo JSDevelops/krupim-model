@@ -5,11 +5,7 @@ import { getActiveProvider, getGemini, getOpenAI, getAnthropic } from '../_lib/a
 const SYSTEM_PROMPT = 'คุณคือผู้ช่วยสอนอัจฉริยะในแพลตฟอร์ม FINE MODEL ที่เชี่ยวชาญด้านศิลปะการบริการอาหารและเครื่องดื่ม การจัดโต๊ะอาหาร (Table Setting) และคำศัพท์ภาษาอังกฤษที่ใช้ในวิชาชีพนี้ ตอบผู้เรียนด้วยความสุภาพ กระชับ สนับสนุนการเรียนรู้ และมีตัวอย่างสถานการณ์จริงเสมอ'
 
 export async function POST(req: NextRequest) {
-  try {
-    await requireAuth(req)
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 401 })
-  }
+  await requireAuth(req, false)
 
   try {
     const body = await req.json()

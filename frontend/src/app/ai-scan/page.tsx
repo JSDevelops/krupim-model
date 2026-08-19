@@ -2,6 +2,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { analyzeImage as analyzeImageAPI } from '@/lib/gemini'
 
 interface FineAnalysis {
   familiarize?: {
@@ -179,14 +180,75 @@ export default function AIScanPage() {
     setQuizAnswered(false)
     setActiveTab('F')
     try {
-      const backendUrl = '/api'
-      const resp = await fetch(`${backendUrl}/api/scan`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: base64, mimeType })
-      })
-      if (!resp.ok) throw new Error('Scan failed')
-      const data = await resp.json()
+      const geminiKey = (typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : '') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || 'AIzaSyAkk92tJrfj-f5R40wPyHIRquBK1qdCIdE'
+      let data = null
+      let usedDirectGemini = false
+
+      if (geminiKey && geminiKey.trim().length > 10) {
+        try {
+          const systemPrompt = `คุณเป็น AI ผู้เชี่ยวชาญการวิเคราะห์และระบุวัตถุจากภาพถ่ายตามความเป็นจริง (Object Identification AI)
+วิเคราะห์ภาพวัตถุที่เห็นในภาพนี้ตามจริงที่ปรากฏ 100% และส่งค่ากลับมาเป็นรูปแบบ JSON เท่านั้น:
+{
+  "name_th": "ชื่อวัตถุภาษาไทยตามความจริง",
+  "name_en": "ชื่อวัตถุภาษาอังกฤษตามความจริง",
+  "category": "food หรือ beverage หรือ equipment หรือ tableware หรือ general",
+  "subcategory": "หมวดย่อยเชิงลึก",
+  "description": "คำอธิบายลักษณะ หน้าที่ และประโยชน์การใช้งานตามจริง",
+  "location": "ตำแหน่งหรือจุดที่เรามักจะพบเจอวัตถุชนิดนี้ในชีวิตจริง",
+  "service_tips": "เคล็ดลับการจัดเตรียม สุขอนามัย หรือทักษะการหยิบจับดูแลรักษา 1-2 ข้อ",
+  "english_phrases": ["ประโยคภาษาอังกฤษที่เกี่ยวข้อง 1", "ประโยคแนะนำ/สื่อสารที่ 2"],
+  "pronounce": "คำอ่านสัทอักษรภาษาอังกฤษ",
+  "confidence": 95,
+  "fine_analysis": {
+    "familiarize": { "desc": "คำอธิบายละเอียด", "location": "ตำแหน่งการวางจัดเตรียม" },
+    "interact": { "pronunciation": "คำอ่านออกเสียง", "english_phrases": ["ประโยค 1", "ประโยค 2"], "roleplay_prompt": "โจทย์ฝึกพูด" },
+    "navigate": { "service_steps": ["ขั้นตอน 1", "ขั้นตอน 2", "ขั้นตอน 3"], "safety_rules": "ข้อควรระวัง" },
+    "exhibit": { "quiz_question": "คำถามปรนัย 1 ข้อ", "quiz_options": ["ตัวเลือก 1", "ตัวเลือกถูก", "ตัวเลือก 2"], "correct_answer": "ตัวเลือกถูก" }
+  }
+}`
+          let resp = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey.trim()}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: systemPrompt }, { inlineData: { mimeType: mimeType || 'image/jpeg', data: base64 } }] }],
+                generationConfig: { responseMimeType: 'application/json' }
+              })
+            }
+          )
+          if (!resp.ok) {
+            resp = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey.trim()}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ parts: [{ text: systemPrompt }, { inlineData: { mimeType: mimeType || 'image/jpeg', data: base64 } }] }],
+                  generationConfig: { responseMimeType: 'application/json' }
+                })
+              }
+            )
+          }
+          if (resp.ok) {
+            const resData = await resp.json()
+            const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text || ''
+            const jsonMatch = rawText.match(/\{[\s\S]*\}/)
+            if (jsonMatch) {
+              data = JSON.parse(jsonMatch[0])
+              usedDirectGemini = true
+            }
+          }
+        } catch (directErr) {
+          console.warn('Direct Gemini call failed, falling back to API:', directErr)
+        }
+      }
+
+      if (!usedDirectGemini) {
+        data = await analyzeImageAPI(base64, mimeType)
+      }
+
+      if (!data) throw new Error('ไม่สามารถวิเคราะห์ข้อมูลได้')
       setResult(data)
 
       // Look up matching 3D model in database
@@ -202,8 +264,16 @@ export default function AIScanPage() {
       } catch (err) {
         console.error('Database match check error:', err)
       }
-    } catch (e) {
-      setError('ไม่สามารถวิเคราะห์ภาพได้ กรุณาลองใหม่')
+    } catch (e: any) {
+      console.error('Scan Error:', e)
+      const errStr = String(e?.message || e).toLowerCase()
+      if (errStr.includes('failed to fetch') || errStr.includes('load failed') || errStr.includes('networkerror')) {
+        setError('⚠️ ไม่สามารถสแกนได้: ไม่สามารถเชื่อมต่อกับระบบ AI ได้ (กรุณาใส่ Gemini API Key ในหน้าตั้งค่าโปรไฟล์)')
+      } else if (errStr.includes('api key') || errStr.includes('unauthorized') || errStr.includes('403') || errStr.includes('no gemini api key')) {
+        setError('⚠️ ยังไม่ได้ตั้งค่า Gemini API Key (กรุณากรอกคีย์ในหน้าตั้งค่าโปรไฟล์)')
+      } else {
+        setError(e?.message || 'ไม่สามารถวิเคราะห์ภาพได้ กรุณาลองใหม่อีกครั้ง')
+      }
     } finally {
       setScanning(false)
     }

@@ -25,12 +25,8 @@ const SCAN_SYSTEM_PROMPT = `คุณเป็น AI ผู้เชี่ยว
 }`
 
 export async function POST(req: NextRequest) {
-  // ── Auth ──────────────────────────────────────────────────────────────────────
-  try {
-    await requireAuth(req)
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 401 })
-  }
+  // ── Auth (optional/best-effort for scan learning) ───────────────────────────
+  await requireAuth(req, false)
 
   try {
     const body = await req.json()
@@ -113,10 +109,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(parsedData)
 
   } catch (err: any) {
-    console.error('Scan API Error:', err.message)
+    console.error('Scan API Error:', err?.message || err)
     return NextResponse.json({
-      error: 'AI scan service temporarily unavailable. Please try again.',
+      error: err?.message || 'AI scan service temporarily unavailable. Please try again.',
       code: 'SCAN_AI_ERROR'
-    }, { status: 503 })
+    }, { status: 500 })
   }
 }

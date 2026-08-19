@@ -274,7 +274,7 @@ export default function ExplorePage() {
     setFineTab('F')
     try {
       const activeProvider = typeof window !== 'undefined' ? localStorage.getItem('activeAiProvider') || 'gemini' : 'gemini'
-      const geminiKey = typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : ''
+      const geminiKey = (typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : '') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || 'AIzaSyAkk92tJrfj-f5R40wPyHIRquBK1qdCIdE'
       const openaiKey = typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') || '' : ''
       const claudeKey = typeof window !== 'undefined' ? localStorage.getItem('claudeApiKey') || '' : ''
       
@@ -282,8 +282,8 @@ export default function ExplorePage() {
       let usedDirectGemini = false
 
       // If a custom Gemini Key is saved in localStorage, call Gemini API directly from the browser!
-      // This bypasses any backend server issues (such as Railway suspensions).
-      if (geminiKey && geminiKey.trim().startsWith('AIzaSy')) {
+      // This bypasses any backend server issues (such as Railway suspensions or local server offline).
+      if (geminiKey && geminiKey.trim().length > 10) {
         try {
           console.log('Using direct client-side Gemini API call...');
           const systemPrompt = `คุณเป็น AI ผู้เชี่ยวชาญการวิเคราะห์และระบุวัตถุจากภาพถ่ายตามความเป็นจริง (Object Identification AI)
@@ -326,7 +326,7 @@ export default function ExplorePage() {
   }
 }`
 
-          const response = await fetch(
+          let response = await fetch(
             `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey.trim()}`,
             {
               method: 'POST',
@@ -340,15 +340,32 @@ export default function ExplorePage() {
                     ]
                   }
                 ],
-                tools: [
-                  {
-                    googleSearch: {}
-                  }
-                ],
                 generationConfig: { responseMimeType: 'application/json' }
               })
             }
           )
+
+          if (!response.ok) {
+            // Fallback model
+            response = await fetch(
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey.trim()}`,
+              {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [
+                    {
+                      parts: [
+                        { text: systemPrompt },
+                        { inlineData: { mimeType: mimeType || 'image/jpeg', data: base64 } }
+                      ]
+                    }
+                  ],
+                  generationConfig: { responseMimeType: 'application/json' }
+                })
+              }
+            )
+          }
 
           if (response.ok) {
             const resData = await response.json()
@@ -393,11 +410,11 @@ export default function ExplorePage() {
       const errStr = String(e.message || e).toLowerCase()
       
       if (errStr.includes('failed to fetch') || errStr.includes('load failed') || errStr.includes('networkerror')) {
-        errMsg = '⚠️ ไม่สามารถสแกนได้: ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์หลังบ้านได้ (เซิร์ฟเวอร์ออฟไลน์หรือปัญหาเครือข่าย)'
+        errMsg = '⚠️ ไม่สามารถสแกนได้: ไม่สามารถเชื่อมต่อกับระบบ AI ได้ (กรุณาใส่ Gemini API Key ในหน้าตั้งค่าโปรไฟล์ หรือตรวจสอบการเชื่อมต่ออินเทอร์เน็ต)'
       } else if (errStr.includes('429') || errStr.includes('quota') || errStr.includes('rate limit') || errStr.includes('too many requests')) {
         errMsg = '⚠️ ไม่สามารถสแกนได้: โควตาการใช้งานฟรีของ Gemini API เต็มแล้ว กรุณาใส่คีย์ส่วนตัวในหน้าตั้งค่าโปรไฟล์เพื่อใช้งานต่อ'
-      } else if (errStr.includes('api key') || errStr.includes('unauthorized') || errStr.includes('403') || errStr.includes('not found')) {
-        errMsg = '⚠️ ไม่สามารถสแกนได้: คีย์ API ไม่ถูกต้อง หมดอายุ หรือไม่มีสิทธิ์เข้าถึงโมเดลนี้'
+      } else if (errStr.includes('api key') || errStr.includes('unauthorized') || errStr.includes('403') || errStr.includes('not found') || errStr.includes('no gemini api key')) {
+        errMsg = '⚠️ ไม่สามารถสแกนได้: ยังไม่ได้ตั้งค่า Gemini API Key (กรุณากรอกคีย์ส่วนตัวในหน้าตั้งค่าโปรไฟล์ หรือตั้งค่าระบบหลังบ้าน)'
       } else if (e.message) {
         errMsg = `⚠️ ไม่สามารถสแกนได้: ${e.message}`
       }
@@ -430,14 +447,64 @@ export default function ExplorePage() {
     const base64 = dataUrl.split(',')[1]
     
     isRequestPendingRef.current = true
-    setScanAnim(true)
-    setScanError('')
     
     try {
-      // Use unified analyzeImage function (routes via Backend with Auth, Multi-LLM, & DB tracking)
-      const data = await analyzeImageAPI(base64, 'image/jpeg')
+      const geminiKey = (typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : '') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || 'AIzaSyAkk92tJrfj-f5R40wPyHIRquBK1qdCIdE'
+      let data = null
+      let usedDirectGemini = false
+
+      if (geminiKey && geminiKey.trim().length > 10) {
+        try {
+          const systemPrompt = `คุณเป็น AI ผู้เชี่ยวชาญการวิเคราะห์และระบุวัตถุจากภาพถ่ายตามความเป็นจริง (Object Identification AI)
+วิเคราะห์ภาพวัตถุที่เห็นในภาพนี้ตามจริงที่ปรากฏ 100% และส่งค่ากลับมาเป็นรูปแบบ JSON เท่านั้น:
+{
+  "name_th": "ชื่อวัตถุภาษาไทยตามความจริง",
+  "name_en": "ชื่อวัตถุภาษาอังกฤษตามความจริง",
+  "category": "food หรือ beverage หรือ equipment หรือ tableware หรือ general",
+  "subcategory": "หมวดย่อย",
+  "description": "คำอธิบายลักษณะและประโยชน์",
+  "location": "ตำแหน่งที่พบเจอ",
+  "service_tips": "เคล็ดลับการจัดเตรียม",
+  "english_phrases": ["ประโยคภาษาอังกฤษ 1", "ประโยคแนะนำ 2"],
+  "pronounce": "คำอ่านสัทอักษรภาษาอังกฤษ",
+  "confidence": 90,
+  "fine_analysis": {
+    "familiarize": { "desc": "คำอธิบายละเอียด", "location": "ตำแหน่งจัดเตรียม" },
+    "interact": { "pronunciation": "คำอ่าน", "english_phrases": ["ประโยค 1", "ประโยค 2"], "roleplay_prompt": "โจทย์ฝึกพูด" },
+    "navigate": { "service_steps": ["ขั้นตอน 1", "ขั้นตอน 2", "ขั้นตอน 3"], "safety_rules": "ข้อควรระวัง" },
+    "exhibit": { "quiz_question": "คำถามปรนัย 1 ข้อ", "quiz_options": ["ตัวเลือก 1", "ตัวเลือกถูก", "ตัวเลือก 2"], "correct_answer": "ตัวเลือกถูก" }
+  }
+}`
+          const response = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey.trim()}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: systemPrompt }, { inlineData: { mimeType: 'image/jpeg', data: base64 } }] }],
+                generationConfig: { responseMimeType: 'application/json' }
+              })
+            }
+          )
+          if (response.ok) {
+            const resData = await response.json()
+            const rawText = resData.candidates?.[0]?.content?.parts?.[0]?.text || ''
+            const jsonMatch = rawText.match(/\{[\s\S]*\}/)
+            if (jsonMatch) {
+              data = JSON.parse(jsonMatch[0])
+              usedDirectGemini = true
+            }
+          }
+        } catch (err) {
+          console.warn('Auto-scan direct Gemini failed:', err)
+        }
+      }
+
+      if (!usedDirectGemini) {
+        data = await analyzeImageAPI(base64, 'image/jpeg')
+      }
       
-      if (data.confidence && data.confidence > 55) {
+      if (data && data.confidence && data.confidence > 55) {
         setPreviewImage(dataUrl)
         setAiItem(data)
         setAiScanned(true)
@@ -464,7 +531,6 @@ export default function ExplorePage() {
     } catch (e) {
       console.warn('Real-time frame scan error:', e)
     } finally {
-      setScanAnim(false)
       isRequestPendingRef.current = false
     }
   }

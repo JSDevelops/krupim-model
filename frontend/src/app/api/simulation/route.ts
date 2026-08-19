@@ -3,11 +3,7 @@ import { requireAuth, getSupabase } from '../_lib/auth'
 import { getActiveProvider, getGemini, getOpenAI, getAnthropic } from '../_lib/ai'
 
 export async function POST(req: NextRequest) {
-  try {
-    await requireAuth(req)
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 401 })
-  }
+  await requireAuth(req, false)
 
   try {
     const body = await req.json()
