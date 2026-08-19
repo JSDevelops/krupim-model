@@ -71,7 +71,7 @@ export default function AdminDashboard() {
   async function handlePing() {
     setPinging(true)
     try {
-      const backendUrl = '/api'
+      const backendUrl = ''
       const provider = typeof window !== 'undefined' ? localStorage.getItem('activeAiProvider') || 'gemini' : 'gemini'
       const geminiKey = typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : ''
       const openaiKey = typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') || '' : ''

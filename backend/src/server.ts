@@ -443,27 +443,30 @@ app.post('/api/scan', requireAuth, async (req, res) => {
       })
       text = completion.content[0].type === 'text' ? completion.content[0].text : ''
     } else {
-      // Default: Gemini
+      // Default: Gemini 2.0 Flash (Optimized for Fast Real-time Vision)
       const genAI = getGemini(req)
       let result
+      const imagePart = {
+        inlineData: { data: imageBase64, mimeType: resolvedMime }
+      }
       try {
         const model = genAI.getGenerativeModel({ 
           model: 'gemini-2.0-flash',
-          tools: [{ googleSearch: {} }] as any
+          generationConfig: {
+            responseMimeType: 'application/json',
+            temperature: 0.2,
+          }
         })
-        const imagePart = {
-          inlineData: { data: imageBase64, mimeType: resolvedMime }
-        }
         result = await model.generateContent([systemPrompt, imagePart])
       } catch (err: any) {
         console.warn('Gemini 2.0 Flash failed, retrying with Gemini 1.5 Flash:', err.message)
         const model = genAI.getGenerativeModel({ 
           model: 'gemini-1.5-flash',
-          tools: [{ googleSearch: {} }] as any
+          generationConfig: {
+            responseMimeType: 'application/json',
+            temperature: 0.2,
+          }
         })
-        const imagePart = {
-          inlineData: { data: imageBase64, mimeType: resolvedMime }
-        }
         result = await model.generateContent([systemPrompt, imagePart])
       }
       text = result.response.text()

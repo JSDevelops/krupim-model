@@ -101,21 +101,6 @@ CREATE TABLE lessons (
 );
 
 -- ============================================
--- AR 3D OBJECTS
--- ============================================
-CREATE TABLE ar_objects (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  unit_id UUID REFERENCES units(id),
-  name TEXT NOT NULL,
-  name_en TEXT,
-  description TEXT,
-  model_url TEXT NOT NULL,
-  thumbnail_url TEXT,
-  category TEXT,
-  tags TEXT[],
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
 -- ============================================
 -- AI SCAN ITEMS (Knowledge Base)
 -- ============================================
@@ -316,7 +301,6 @@ ALTER TABLE class_students ENABLE ROW LEVEL SECURITY;
 ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE units ENABLE ROW LEVEL SECURITY;
 ALTER TABLE lessons ENABLE ROW LEVEL SECURITY;
-ALTER TABLE ar_objects ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_scan_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE simulation_scenarios ENABLE ROW LEVEL SECURITY;
 ALTER TABLE assessments ENABLE ROW LEVEL SECURITY;
@@ -356,11 +340,6 @@ CREATE POLICY "Teachers manage units" ON units
 
 CREATE POLICY "Allow public read lessons" ON lessons FOR SELECT USING (true);
 CREATE POLICY "Teachers manage lessons" ON lessons
-  FOR ALL USING (auth_user_role() IN ('teacher', 'developer'))
-  WITH CHECK (auth_user_role() IN ('teacher', 'developer'));
-
-CREATE POLICY "Allow public read ar_objects" ON ar_objects FOR SELECT USING (true);
-CREATE POLICY "Teachers manage ar_objects" ON ar_objects
   FOR ALL USING (auth_user_role() IN ('teacher', 'developer'))
   WITH CHECK (auth_user_role() IN ('teacher', 'developer'));
 

@@ -121,8 +121,7 @@ export default function SimulationPage() {
     setFinished(true)
     setEvaluating(true)
     try {
-      const backendUrl = '/api'
-      const resp = await fetch(`${backendUrl}/api/simulation/evaluate`, {
+      const resp = await fetch('/api/simulation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 

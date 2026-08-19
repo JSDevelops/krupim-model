@@ -535,7 +535,7 @@ export default function TeacherLessonsDashboard() {
 
   // 12-Step Wizard Logic & Handlers
   async function runWizardAIGenerators() {
-    const backendUrl = '/api'
+    const backendUrl = ''
     try {
       const resp = await fetch(`${backendUrl}/api/blog/generate`, {
         method: 'POST',
@@ -1013,7 +1013,7 @@ export default function TeacherLessonsDashboard() {
     const planContext = linkedPlan ? `แผนการสอนเรื่อง: ${linkedPlan.title}. คลังคำศัพท์ที่เรียน: ${linkedPlan.vocabulary.join(', ')}` : ''
 
     try {
-      const backendUrl = '/api'
+      const backendUrl = ''
       const resp = await fetch(`${backendUrl}/api/blog/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1059,7 +1059,7 @@ export default function TeacherLessonsDashboard() {
     }
     setAiGenerating(true)
     try {
-      const backendUrl = '/api'
+      const backendUrl = ''
       const resp = await fetch(`${backendUrl}/api/blog/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1088,7 +1088,7 @@ export default function TeacherLessonsDashboard() {
     setAiGenerating(true)
     setAiStatusText('🔮 AI กำลังวิเคราะห์แนวคิดรูปทรง 3 มิติ...')
     
-    const backendUrl = '/api'
+    const backendUrl = ''
 
     try {
       const resp = await fetch(`${backendUrl}/api/blog/generate`, {

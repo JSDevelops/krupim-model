@@ -73,7 +73,7 @@ export default function LivePage() {
       try { parsedUser = savedUserInfo ? JSON.parse(savedUserInfo) : null } catch {}
       const studentId = parsedUser?.id || 'student-001'
       
-      const backendUrl = '/api'
+      const backendUrl = ''
       const resp = await fetch(`${backendUrl}/api/chat`, {
         method: 'POST',
         headers: { 

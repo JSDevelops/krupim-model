@@ -85,17 +85,27 @@ export default function AIScanPage() {
     const canvas = canvasRef.current
     const video = videoRef.current
     
-    // Safety check for video dimensions
-    if (video.videoWidth === 0 || video.videoHeight === 0) return
-    
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
+    // Resize canvas dimensions to max 1024px for fast AI transfer
+    const MAX_DIM = 1024
+    let w = video.videoWidth
+    let h = video.videoHeight
+    if (w > MAX_DIM || h > MAX_DIM) {
+      if (w > h) {
+        h = Math.round((h * MAX_DIM) / w)
+        w = MAX_DIM
+      } else {
+        w = Math.round((w * MAX_DIM) / h)
+        h = MAX_DIM
+      }
+    }
+    canvas.width = w
+    canvas.height = h
     
     const ctx = canvas.getContext('2d')
     if (!ctx) return
     
-    ctx.drawImage(video, 0, 0)
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+    ctx.drawImage(video, 0, 0, w, h)
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.75)
     const base64 = dataUrl.split(',')[1]
     
     isRequestPendingRef.current = true
@@ -103,7 +113,7 @@ export default function AIScanPage() {
     setError('')
     
     try {
-      const backendUrl = '/api'
+      const backendUrl = ''
       const resp = await fetch(`${backendUrl}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -180,7 +190,7 @@ export default function AIScanPage() {
     setQuizAnswered(false)
     setActiveTab('F')
     try {
-      const geminiKey = (typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : '') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || 'AIzaSyAkk92tJrfj-f5R40wPyHIRquBK1qdCIdE'
+      const geminiKey = (typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : '') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
       let data = null
       let usedDirectGemini = false
 
@@ -213,7 +223,7 @@ export default function AIScanPage() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 contents: [{ parts: [{ text: systemPrompt }, { inlineData: { mimeType: mimeType || 'image/jpeg', data: base64 } }] }],
-                generationConfig: { responseMimeType: 'application/json' }
+                generationConfig: { responseMimeType: 'application/json', temperature: 0.2 }
               })
             }
           )
@@ -225,7 +235,7 @@ export default function AIScanPage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                   contents: [{ parts: [{ text: systemPrompt }, { inlineData: { mimeType: mimeType || 'image/jpeg', data: base64 } }] }],
-                  generationConfig: { responseMimeType: 'application/json' }
+                  generationConfig: { responseMimeType: 'application/json', temperature: 0.2 }
                 })
               }
             )
@@ -285,9 +295,38 @@ export default function AIScanPage() {
     const reader = new FileReader()
     reader.onload = async ev => {
       const dataUrl = ev.target?.result as string
-      setPreview(dataUrl)
-      const base64 = dataUrl.split(',')[1]
-      await analyzeImage(base64, file.type)
+      // Compress image before analysis
+      const img = new Image()
+      img.onload = async () => {
+        const canvas = document.createElement('canvas')
+        const MAX_DIM = 1024
+        let w = img.width
+        let h = img.height
+        if (w > MAX_DIM || h > MAX_DIM) {
+          if (w > h) {
+            h = Math.round((h * MAX_DIM) / w)
+            w = MAX_DIM
+          } else {
+            w = Math.round((w * MAX_DIM) / h)
+            h = MAX_DIM
+          }
+        }
+        canvas.width = w
+        canvas.height = h
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, w, h)
+          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.75)
+          setPreview(compressedDataUrl)
+          const base64 = compressedDataUrl.split(',')[1]
+          await analyzeImage(base64, 'image/jpeg')
+        } else {
+          setPreview(dataUrl)
+          const base64 = dataUrl.split(',')[1]
+          await analyzeImage(base64, file.type)
+        }
+      }
+      img.src = dataUrl
     }
     reader.readAsDataURL(file)
   }
@@ -306,10 +345,24 @@ export default function AIScanPage() {
   async function capturePhoto() {
     if (!videoRef.current || !canvasRef.current) return
     const canvas = canvasRef.current
-    canvas.width = videoRef.current.videoWidth
-    canvas.height = videoRef.current.videoHeight
-    canvas.getContext('2d')?.drawImage(videoRef.current, 0, 0)
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.85)
+    const video = videoRef.current
+    
+    const MAX_DIM = 1024
+    let w = video.videoWidth
+    let h = video.videoHeight
+    if (w > MAX_DIM || h > MAX_DIM) {
+      if (w > h) {
+        h = Math.round((h * MAX_DIM) / w)
+        w = MAX_DIM
+      } else {
+        w = Math.round((w * MAX_DIM) / h)
+        h = MAX_DIM
+      }
+    }
+    canvas.width = w
+    canvas.height = h
+    canvas.getContext('2d')?.drawImage(video, 0, 0, w, h)
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.75)
     setPreview(dataUrl)
     const base64 = dataUrl.split(',')[1]
     

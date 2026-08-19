@@ -71,15 +71,33 @@ export async function POST(req: NextRequest) {
       })
       text = completion.content[0].type === 'text' ? completion.content[0].text : ''
     } else {
-      // Default: Gemini
+      // Default: Gemini 2.0 Flash (Optimized for Fast & Accurate Real-time Vision)
       const genAI = getGemini(req)
       let result
       try {
-        const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
-        result = await model.generateContent([SCAN_SYSTEM_PROMPT, { inlineData: { data: imageBase64, mimeType } }])
+        const model = genAI.getGenerativeModel({
+          model: 'gemini-2.0-flash',
+          generationConfig: {
+            responseMimeType: 'application/json',
+            temperature: 0.2,
+          }
+        })
+        result = await model.generateContent([
+          SCAN_SYSTEM_PROMPT,
+          { inlineData: { data: imageBase64, mimeType } }
+        ])
       } catch {
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
-        result = await model.generateContent([SCAN_SYSTEM_PROMPT, { inlineData: { data: imageBase64, mimeType } }])
+        const model = genAI.getGenerativeModel({
+          model: 'gemini-1.5-flash',
+          generationConfig: {
+            responseMimeType: 'application/json',
+            temperature: 0.2,
+          }
+        })
+        result = await model.generateContent([
+          SCAN_SYSTEM_PROMPT,
+          { inlineData: { data: imageBase64, mimeType } }
+        ])
       }
       text = result.response.text()
     }

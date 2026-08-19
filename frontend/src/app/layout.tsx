@@ -5,6 +5,7 @@ import { RoleProvider } from '@/context/RoleContext'
 import AppWrapper from '@/components/AppWrapper'
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://finemodel.app'),
   title: 'FINE MODEL — AR 3D + AI Learning',
   description: 'แพลตฟอร์มการเรียนรู้แบบบูรณาการ 3 มิติ ผ่าน AR + AI สำหรับพัฒนาสมรรถนะการบริการอาหารและเครื่องดื่ม',
   manifest: '/manifest.json',

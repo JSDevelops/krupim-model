@@ -61,7 +61,7 @@ export default function AdminNewsPage() {
     setContent('')
 
     try {
-      const backendUrl = '/api'
+      const backendUrl = ''
       const provider = localStorage.getItem('activeAiProvider') || 'gemini'
       const geminiKey = localStorage.getItem('geminiApiKey') || ''
       const openaiKey = localStorage.getItem('openaiApiKey') || ''

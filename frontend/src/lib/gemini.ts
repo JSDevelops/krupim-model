@@ -43,7 +43,7 @@ export async function getAIHeaders(): Promise<Record<string, string>> {
   }
 
   const activeProvider = localStorage.getItem('activeAiProvider') || 'gemini'
-  const geminiKey = localStorage.getItem('geminiApiKey') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || 'AIzaSyAkk92tJrfj-f5R40wPyHIRquBK1qdCIdE'
+  const geminiKey = localStorage.getItem('geminiApiKey') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
   const openaiKey = localStorage.getItem('openaiApiKey') || ''
   const claudeKey = localStorage.getItem('claudeApiKey') || ''
 
