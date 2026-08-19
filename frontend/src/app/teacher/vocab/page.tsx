@@ -113,14 +113,14 @@ const initialVocabulary: Equipment[] = [
 export default function TeacherVocabPage() {
   const [vocabList, setVocabList] = useState<Equipment[]>([])
   const [searchTerm, setSearchTerm] = useState('')
-  const [editingIndex, setEditingIndex] = useState<number | null>(null)
+  const [editingTargetNameEn, setEditingTargetNameEn] = useState<string | null>(null)
   
   // States สำหรับ Modal ฟอร์ม
   const [showModal, setShowModal] = useState(false)
   const [nameEn, setNameEn] = useState('')
   const [name, setName] = useState('')
   const [ph, setPh] = useState('')
-  const [emoji, setEmoji] = useState('🍴') // ใช้เก็บ Base64 หรือ Emoji
+  const [emoji, setEmoji] = useState('🍴') // ใช้เก็บ Base64 หรือ Emoji หรือ URL
   const [use, setUse] = useState('')
   const [sentence, setSentence] = useState('')
 
@@ -138,7 +138,12 @@ export default function TeacherVocabPage() {
 
   function saveToLocalStorage(newList: Equipment[]) {
     setVocabList(newList)
-    localStorage.setItem('teacherVocabulary', JSON.stringify(newList))
+    try {
+      localStorage.setItem('teacherVocabulary', JSON.stringify(newList))
+    } catch (e: any) {
+      console.error('Storage error:', e)
+      alert('⚠️ หน่วยความจำเครื่องเต็ม ไม่สามารถบันทึกได้ โปรดใช้รูปภาพที่มีขนาดเล็กลง')
+    }
   }
 
   function handleResetDefault() {
@@ -148,7 +153,7 @@ export default function TeacherVocabPage() {
   }
 
   function openCreateModal() {
-    setEditingIndex(null)
+    setEditingTargetNameEn(null)
     setNameEn('')
     setName('')
     setPh('')
@@ -158,8 +163,8 @@ export default function TeacherVocabPage() {
     setShowModal(true)
   }
 
-  function openEditModal(index: number, item: Equipment) {
-    setEditingIndex(index)
+  function openEditModal(item: Equipment) {
+    setEditingTargetNameEn(item.nameEn)
     setNameEn(item.nameEn)
     setName(item.name)
     setPh(item.ph || '')
@@ -169,23 +174,36 @@ export default function TeacherVocabPage() {
     setShowModal(true)
   }
 
+  // 📸 บีบอัดรูปภาพอัตโนมัติเป็นสี่เหลี่ยมจัตุรัส 1:1 ขนาด 256x256 (ลดขนาดเหลือ ~20KB หมดปัญหา Storage เต็ม)
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
 
-    // 1. ตรวจเช็คขนาดไฟล์ไม่เกิน 2 MB
-    const maxSize = 2 * 1024 * 1024 // 2 Megabytes
-    if (file.size > maxSize) {
-      alert('ขนาดไฟล์ภาพใหญ่เกิน 2 MB! โปรดลดขนาดรูปภาพหรือเลือกรูปภาพอื่นที่มีขนาดเล็กลง')
-      e.target.value = '' // Clear input
-      return
-    }
-
-    // 2. แปลงรูปเป็น Base64 (1:1 จะจัดการโดยการใช้ CSS Object-Fit: cover ในตัวแสดงผล)
     const reader = new FileReader()
     reader.onload = (event) => {
-      const base64 = event.target?.result as string
-      setEmoji(base64)
+      const rawDataUrl = event.target?.result as string
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        const TARGET_SIZE = 256
+        canvas.width = TARGET_SIZE
+        canvas.height = TARGET_SIZE
+        const ctx = canvas.getContext('2d')
+        if (!ctx) {
+          setEmoji(rawDataUrl)
+          return
+        }
+
+        // Crop 1:1 square center
+        const minDim = Math.min(img.width, img.height)
+        const sx = (img.width - minDim) / 2
+        const sy = (img.height - minDim) / 2
+        ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, TARGET_SIZE, TARGET_SIZE)
+        
+        const compressedBase64 = canvas.toDataURL('image/jpeg', 0.82)
+        setEmoji(compressedBase64)
+      }
+      img.src = rawDataUrl
     }
     reader.readAsDataURL(file)
   }
@@ -197,19 +215,31 @@ export default function TeacherVocabPage() {
     const newItem: Equipment = { name, nameEn, emoji, use, sentence, ph }
     let updated = [...vocabList]
 
-    if (editingIndex !== null) {
-      updated[editingIndex] = newItem
+    if (editingTargetNameEn !== null) {
+      const targetIdx = updated.findIndex(v => v.nameEn.toLowerCase() === editingTargetNameEn.toLowerCase())
+      if (targetIdx !== -1) {
+        updated[targetIdx] = newItem
+      } else {
+        updated.unshift(newItem)
+      }
     } else {
-      updated.unshift(newItem)
+      // Check if already exists
+      const existingIdx = updated.findIndex(v => v.nameEn.toLowerCase() === nameEn.toLowerCase())
+      if (existingIdx !== -1) {
+        updated[existingIdx] = newItem
+      } else {
+        updated.unshift(newItem)
+      }
     }
 
     saveToLocalStorage(updated)
     setShowModal(false)
+    alert('✅ บันทึกคำศัพท์และรูปภาพเรียบร้อยแล้ว!')
   }
 
-  function handleDelete(index: number) {
-    if (confirm('คุณต้องการลบคำศัพท์นี้ออกจากคลังหรือไม่?')) {
-      const updated = vocabList.filter((_, i) => i !== index)
+  function handleDelete(itemToDelete: Equipment) {
+    if (confirm(`คุณต้องการลบคำศัพท์ "${itemToDelete.nameEn} (${itemToDelete.name})" ออกจากคลังหรือไม่?`)) {
+      const updated = vocabList.filter(v => v.nameEn.toLowerCase() !== itemToDelete.nameEn.toLowerCase())
       saveToLocalStorage(updated)
     }
   }
@@ -301,7 +331,7 @@ export default function TeacherVocabPage() {
                 borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
                 overflow: 'hidden', border: '1.5px solid rgba(123,31,162,0.1)', flexShrink: 0
               }}>
-                {item.emoji && item.emoji.startsWith('data:image') ? (
+                {item.emoji && (item.emoji.startsWith('data:image') || item.emoji.startsWith('http') || item.emoji.startsWith('/')) ? (
                   <img src={item.emoji} alt={item.nameEn} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
                   <span style={{ fontSize: 26 }}>{item.emoji}</span>
@@ -322,7 +352,7 @@ export default function TeacherVocabPage() {
               {/* Actions */}
               <div style={{ display: 'flex', gap: 6 }}>
                 <button 
-                  onClick={() => openEditModal(index, item)}
+                  onClick={() => openEditModal(item)}
                   style={{
                     width: 32, height: 32, borderRadius: 10, border: 'none',
                     background: '#F0EAF8', color: '#68239F', cursor: 'pointer',
@@ -333,7 +363,7 @@ export default function TeacherVocabPage() {
                   ✏️
                 </button>
                 <button 
-                  onClick={() => handleDelete(index)}
+                  onClick={() => handleDelete(item)}
                   style={{
                     width: 32, height: 32, borderRadius: 10, border: 'none',
                     background: '#FAE8EB', color: '#8B2635', cursor: 'pointer',
@@ -366,9 +396,9 @@ export default function TeacherVocabPage() {
           >
             <div>
               <h3 style={{ fontSize: 17, fontWeight: 900, color: '#4A126B', margin: 0 }}>
-                {editingIndex !== null ? '✏️ แก้ไขคำศัพท์' : '➕ เพิ่มคำศัพท์ใหม่'}
+                {editingTargetNameEn !== null ? '✏️ แก้ไขคำศัพท์' : '➕ เพิ่มคำศัพท์ใหม่'}
               </h3>
-              <p style={{ fontSize: 11.5, color: '#8C8272', margin: '2px 0 0' }}>อัปเดตรูปภาพจริงขนาด 1:1 (ไม่เกิน 2MB) พร้อมความหมายคำศัพท์</p>
+              <p style={{ fontSize: 11.5, color: '#8C8272', margin: '2px 0 0' }}>อัปเดตรูปภาพจริงขนาด 1:1 พร้อมความหมายคำศัพท์</p>
             </div>
 
             {/* Inputs */}
@@ -381,7 +411,7 @@ export default function TeacherVocabPage() {
                   border: '1.5px solid #EDE9E1', display: 'flex', alignItems: 'center', justifyContent: 'center',
                   overflow: 'hidden', position: 'relative'
                 }}>
-                  {emoji && emoji.startsWith('data:image') ? (
+                  {emoji && (emoji.startsWith('data:image') || emoji.startsWith('http') || emoji.startsWith('/')) ? (
                     <img src={emoji} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                   ) : (
                     <span style={{ fontSize: 32 }}>{emoji || '🍴'}</span>

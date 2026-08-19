@@ -806,8 +806,14 @@ export default function ExplorePage() {
                     <div style={{
                       width: 48, height: 48, background: '#EAF3EE',
                       borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: 24, flexShrink: 0,
-                    }}>{item.emoji}</div>
+                      flexShrink: 0, overflow: 'hidden'
+                    }}>
+                      {item.emoji && (item.emoji.startsWith('data:image') || item.emoji.startsWith('http') || item.emoji.startsWith('/')) ? (
+                        <img src={item.emoji} alt={item.nameEn} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <span style={{ fontSize: 24 }}>{item.emoji}</span>
+                      )}
+                    </div>
                     <div style={{ flex: 1 }}>
                       <div style={{ fontWeight: 800, fontSize: 14, color: '#1E4D3A', marginBottom: 2 }}>{item.nameEn}</div>
                       <div style={{ fontSize: 11.5, color: '#6B7280' }}>{item.name}</div>
@@ -1528,7 +1534,7 @@ export default function ExplorePage() {
                     borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                     overflow: 'hidden', border: '1px solid rgba(0,0,0,0.05)'
                   }}>
-                    {item.emoji && item.emoji.startsWith('data:image') ? (
+                    {item.emoji && (item.emoji.startsWith('data:image') || item.emoji.startsWith('http') || item.emoji.startsWith('/')) ? (
                       <img src={item.emoji} alt={item.nameEn} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                     ) : (
                       <span style={{ fontSize: 22 }}>{item.emoji}</span>
