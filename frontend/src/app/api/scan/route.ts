@@ -71,12 +71,12 @@ export async function POST(req: NextRequest) {
       })
       text = completion.content[0].type === 'text' ? completion.content[0].text : ''
     } else {
-      // Default: Gemini 2.0 Flash (Optimized for Fast & Accurate Real-time Vision)
+      // Default: Gemini Flash Latest (Optimized for Fast & Accurate Real-time Vision)
       const genAI = getGemini(req)
       let result
       try {
         const model = genAI.getGenerativeModel({
-          model: 'gemini-2.0-flash',
+          model: 'gemini-flash-latest',
           generationConfig: {
             responseMimeType: 'application/json',
             temperature: 0.2,
@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
         ])
       } catch {
         const model = genAI.getGenerativeModel({
-          model: 'gemini-1.5-flash',
+          model: 'gemini-3-flash-preview',
           generationConfig: {
             responseMimeType: 'application/json',
             temperature: 0.2,

@@ -55,12 +55,13 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
     if (user?.id) fetchNotifications()
   }, [fetchNotifications, user?.id])
 
-  // Initialize default Gemini API Key for smooth experience
+  // Initialize default Gemini API Key from environment
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const defaultKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
       const existingKey = localStorage.getItem('geminiApiKey')
-      if (!existingKey || existingKey.trim().length < 10) {
-        localStorage.setItem('geminiApiKey', 'AIzaSyAkk92tJrfj-f5R40wPyHIRquBK1qdCIdE')
+      if (defaultKey && (!existingKey || existingKey.trim().length < 10 || existingKey.startsWith('AIzaSyAkk92tJrfj'))) {
+        localStorage.setItem('geminiApiKey', defaultKey)
       }
     }
   }, [])
@@ -92,8 +93,8 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
       setProfAvatar(user.avatar || '👩‍🏫')
     }
     if (typeof window !== 'undefined') {
-      setApiKey(localStorage.getItem('geminiApiKey') || 'AIzaSyAkk92tJrfj-f5R40wPyHIRquBK1qdCIdE')
-      setSelectedModel(localStorage.getItem('geminiModel') || 'gemini-2.0-flash')
+      setApiKey(localStorage.getItem('geminiApiKey') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || '')
+      setSelectedModel(localStorage.getItem('geminiModel') || 'gemini-flash-latest')
     }
     setShowProfileSettings(true)
   }

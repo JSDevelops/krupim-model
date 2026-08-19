@@ -274,7 +274,7 @@ export default function ExplorePage() {
     setFineTab('F')
     try {
       const activeProvider = typeof window !== 'undefined' ? localStorage.getItem('activeAiProvider') || 'gemini' : 'gemini'
-      const geminiKey = (typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : '') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || 'AIzaSyAkk92tJrfj-f5R40wPyHIRquBK1qdCIdE'
+      const geminiKey = (typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : '') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
       const openaiKey = typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') || '' : ''
       const claudeKey = typeof window !== 'undefined' ? localStorage.getItem('claudeApiKey') || '' : ''
       
@@ -326,7 +326,7 @@ export default function ExplorePage() {
 }`
 
           let response = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey.trim()}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${geminiKey.trim()}`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -339,7 +339,7 @@ export default function ExplorePage() {
                     ]
                   }
                 ],
-                generationConfig: { responseMimeType: 'application/json' }
+                generationConfig: { responseMimeType: 'application/json', temperature: 0.2 }
               })
             }
           )
@@ -347,7 +347,7 @@ export default function ExplorePage() {
           if (!response.ok) {
             // Fallback model
             response = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey.trim()}`,
+              `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${geminiKey.trim()}`,
               {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -360,7 +360,7 @@ export default function ExplorePage() {
                       ]
                     }
                   ],
-                  generationConfig: { responseMimeType: 'application/json' }
+                  generationConfig: { responseMimeType: 'application/json', temperature: 0.2 }
                 })
               }
             )

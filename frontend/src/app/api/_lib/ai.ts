@@ -10,7 +10,7 @@ export function getActiveProvider(req: NextRequest): AIProvider {
   return 'gemini'
 }
 
-const DEFAULT_GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || 'AIzaSyAkk92tJrfj-f5R40wPyHIRquBK1qdCIdE'
+const DEFAULT_GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
 
 /** ดึง Gemini client — ลอง header key ก่อน ถ้าไม่มีใช้ env หรือ default key */
 export function getGemini(req: NextRequest): GoogleGenerativeAI {
