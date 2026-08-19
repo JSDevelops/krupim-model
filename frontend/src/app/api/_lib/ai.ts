@@ -10,10 +10,12 @@ export function getActiveProvider(req: NextRequest): AIProvider {
   return 'gemini'
 }
 
-/** ดึง Gemini client — ลอง header key ก่อน ถ้าไม่มีใช้ env */
+const DEFAULT_GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || 'AIzaSyAkk92tJrfj-f5R40wPyHIRquBK1qdCIdE'
+
+/** ดึง Gemini client — ลอง header key ก่อน ถ้าไม่มีใช้ env หรือ default key */
 export function getGemini(req: NextRequest): GoogleGenerativeAI {
   const headerKey = (req.headers.get('x-gemini-key') || '').trim()
-  const key = (headerKey.length > 10 ? headerKey : '') || process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
+  const key = (headerKey.length > 10 ? headerKey : '') || DEFAULT_GEMINI_KEY
   if (!key) throw new Error('No Gemini API key configured. Set GEMINI_API_KEY in environment or provide your key in Settings.')
   return new GoogleGenerativeAI(key)
 }

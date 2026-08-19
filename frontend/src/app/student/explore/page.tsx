@@ -274,15 +274,14 @@ export default function ExplorePage() {
     setFineTab('F')
     try {
       const activeProvider = typeof window !== 'undefined' ? localStorage.getItem('activeAiProvider') || 'gemini' : 'gemini'
-      const geminiKey = (typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : '') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || 'AIzaSyAkk92tJrfj-f5R40wPyHIRquBK1qdCIdE'
+      const geminiKey = (typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : '') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
       const openaiKey = typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') || '' : ''
       const claudeKey = typeof window !== 'undefined' ? localStorage.getItem('claudeApiKey') || '' : ''
       
       let data = null
       let usedDirectGemini = false
 
-      // If a custom Gemini Key is saved in localStorage, call Gemini API directly from the browser!
-      // This bypasses any backend server issues (such as Railway suspensions or local server offline).
+      // If a custom Gemini Key is saved in localStorage, call Gemini API directly
       if (geminiKey && geminiKey.trim().length > 10) {
         try {
           console.log('Using direct client-side Gemini API call...');
