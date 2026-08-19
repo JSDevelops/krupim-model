@@ -552,3 +552,32 @@ CREATE POLICY "Authenticated users manage ar_items" ON ar_items
   FOR ALL USING (auth.role() = 'authenticated')
   WITH CHECK (auth.role() = 'authenticated');
 
+-- ============================================
+-- VOCABULARY ITEMS (คลังคำศัพท์มาตรฐาน 10 หมวดหมู่)
+-- ============================================
+CREATE TABLE IF NOT EXISTS vocabulary_items (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name_en     TEXT NOT NULL UNIQUE,
+  name_th     TEXT NOT NULL,
+  category    TEXT DEFAULT 'tableware',
+  category_th TEXT DEFAULT 'อุปกรณ์บนโต๊ะอาหาร',
+  emoji       TEXT DEFAULT '🍴',
+  pronounce   TEXT,
+  use_desc    TEXT NOT NULL,
+  sentence    TEXT NOT NULL,
+  glb_url     TEXT,
+  usdz_url    TEXT,
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_vocab_name_en ON vocabulary_items(name_en);
+CREATE INDEX IF NOT EXISTS idx_vocab_category ON vocabulary_items(category);
+
+ALTER TABLE vocabulary_items ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read vocabulary_items" ON vocabulary_items FOR SELECT USING (true);
+CREATE POLICY "Authenticated users manage vocabulary_items" ON vocabulary_items 
+  FOR ALL USING (auth.role() = 'authenticated')
+  WITH CHECK (auth.role() = 'authenticated');
+

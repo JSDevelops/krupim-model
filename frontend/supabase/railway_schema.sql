@@ -341,3 +341,24 @@ CREATE INDEX IF NOT EXISTS idx_enrollments_student ON enrollments(student_id);
 CREATE INDEX IF NOT EXISTS idx_ar_items_name_en ON ar_items(name_en);
 CREATE INDEX IF NOT EXISTS idx_ai_scan_items_cat ON ai_scan_items(category);
 CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read);
+
+-- ── 15. VOCABULARY ITEMS (คลังคำศัพท์มาตรฐาน 10 หมวดหมู่) ────────────────────
+CREATE TABLE IF NOT EXISTS vocabulary_items (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name_en     TEXT NOT NULL UNIQUE,
+  name_th     TEXT NOT NULL,
+  category    TEXT DEFAULT 'tableware',
+  category_th TEXT DEFAULT 'อุปกรณ์บนโต๊ะอาหาร',
+  emoji       TEXT DEFAULT '🍴',
+  pronounce   TEXT,
+  use_desc    TEXT NOT NULL,
+  sentence    TEXT NOT NULL,
+  glb_url     TEXT,
+  usdz_url    TEXT,
+  created_at  TIMESTAMPTZ DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_vocab_name_en ON vocabulary_items(name_en);
+CREATE INDEX IF NOT EXISTS idx_vocab_category ON vocabulary_items(category);
+
