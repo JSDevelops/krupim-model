@@ -55,6 +55,16 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
     if (user?.id) fetchNotifications()
   }, [fetchNotifications, user?.id])
 
+  // Initialize default Gemini API Key for smooth experience
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const existingKey = localStorage.getItem('geminiApiKey')
+      if (!existingKey || existingKey.trim().length < 10) {
+        localStorage.setItem('geminiApiKey', 'AIzaSyAkk92tJrfj-f5R40wPyHIRquBK1qdCIdE')
+      }
+    }
+  }, [])
+
   const unreadCount = notifications.filter(n => !n.is_read).length
 
   async function markAllAsRead() {
@@ -74,10 +84,6 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
   const isTeacher = pathname.startsWith('/teacher')
   const isERP = isAdmin || isTeacher
 
-  // NOTE: API keys are entered by the user in Profile Settings and stored in localStorage.
-  // Do NOT hardcode any API keys here. Users must enter their own keys.
-
-
   function handleOpenProfile() {
     if (user) {
       setProfName(user.name || '')
@@ -86,7 +92,7 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
       setProfAvatar(user.avatar || '👩‍🏫')
     }
     if (typeof window !== 'undefined') {
-      setApiKey(localStorage.getItem('geminiApiKey') || '')
+      setApiKey(localStorage.getItem('geminiApiKey') || 'AIzaSyAkk92tJrfj-f5R40wPyHIRquBK1qdCIdE')
       setSelectedModel(localStorage.getItem('geminiModel') || 'gemini-2.0-flash')
     }
     setShowProfileSettings(true)

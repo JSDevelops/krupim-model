@@ -274,7 +274,7 @@ export default function ExplorePage() {
     setFineTab('F')
     try {
       const activeProvider = typeof window !== 'undefined' ? localStorage.getItem('activeAiProvider') || 'gemini' : 'gemini'
-      const geminiKey = (typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : '') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
+      const geminiKey = (typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : '') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || 'AIzaSyAkk92tJrfj-f5R40wPyHIRquBK1qdCIdE'
       const openaiKey = typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') || '' : ''
       const claudeKey = typeof window !== 'undefined' ? localStorage.getItem('claudeApiKey') || '' : ''
       

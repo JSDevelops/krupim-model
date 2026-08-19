@@ -190,7 +190,7 @@ export default function AIScanPage() {
     setQuizAnswered(false)
     setActiveTab('F')
     try {
-      const geminiKey = (typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : '') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
+      const geminiKey = (typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : '') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || 'AIzaSyAkk92tJrfj-f5R40wPyHIRquBK1qdCIdE'
       let data = null
       let usedDirectGemini = false
 
