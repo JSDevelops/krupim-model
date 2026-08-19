@@ -152,16 +152,34 @@ export default function ExplorePage() {
   useEffect(() => {
     async function loadEquipment() {
       try {
-        let dbItems: Equipment[] = []
+        let vocabDbItems: Equipment[] = []
+        let scanDbItems: Equipment[] = []
 
-        // 1. ดึงคำศัพท์จาก Supabase DB (ai_scan_items)
-        const { data, error } = await supabase
+        // 1. ดึงคำศัพท์ที่คุณครูสร้าง/แก้ไขจาก Supabase DB (vocabulary_items)
+        const { data: vocabData } = await supabase
+          .from('vocabulary_items')
+          .select('*')
+          .order('updated_at', { ascending: false })
+
+        if (vocabData && vocabData.length > 0) {
+          vocabDbItems = vocabData.map((x: any) => ({
+            name: x.name_th,
+            nameEn: x.name_en,
+            emoji: x.emoji || '🍴',
+            use: x.use_desc || 'ไม่มีรายละเอียดวิธีใช้งานสำหรับอุปกรณ์ชิ้นนี้',
+            sentence: x.sentence || 'Please handle this item with care.',
+            ph: x.pronounce || ''
+          }))
+        }
+
+        // 2. ดึงคำศัพท์จากการสแกน AI (ai_scan_items)
+        const { data: scanData } = await supabase
           .from('ai_scan_items')
           .select('*')
           .order('created_at', { ascending: false })
         
-        if (data && data.length > 0) {
-          dbItems = data.map((x: any) => ({
+        if (scanData && scanData.length > 0) {
+          scanDbItems = scanData.map((x: any) => ({
             name: x.name_th,
             nameEn: x.name_en,
             emoji: x.image_url || (x.name_en.toLowerCase().includes('glass') || x.name_en.toLowerCase().includes('wine') ? '🍷' :
@@ -172,7 +190,7 @@ export default function ExplorePage() {
           }))
         }
 
-        // 2. ดึงคำศัพท์จาก teacherVocabulary (localStorage)
+        // 3. ดึงคำศัพท์จาก teacherVocabulary (localStorage สำรอง)
         let teacherItems: Equipment[] = []
         if (typeof window !== 'undefined') {
           const stored = localStorage.getItem('teacherVocabulary')
@@ -181,13 +199,12 @@ export default function ExplorePage() {
           }
         }
 
-        // 3. รวมคำศัพท์ทั้งหมดเข้าด้วยกันโดยไม่ให้มีคำซ้ำ
+        // 4. รวมคำศัพท์ทั้งหมดเข้าด้วยกันโดยไม่ให้มีคำซ้ำ (จัดลำดับ: ครูแก้ใน DB -> AI Scan DB -> Local Storage -> Default)
         setEquipment(() => {
           const nameSet = new Set<string>()
           const merged: Equipment[] = []
 
-          // รวมจาก dbItems -> teacherItems -> defaultEquipment ตามลำดับความสำคัญ
-          ;[...dbItems, ...teacherItems, ...defaultEquipment].forEach(item => {
+          ;[...vocabDbItems, ...teacherItems, ...scanDbItems, ...defaultEquipment].forEach(item => {
             const key = item.nameEn.toLowerCase()
             if (!nameSet.has(key)) {
               nameSet.add(key)
@@ -199,7 +216,6 @@ export default function ExplorePage() {
         })
       } catch (err) {
         console.error('Failed to load dynamic equipment:', err)
-        // Fallback to defaultEquipment
         setEquipment(defaultEquipment)
       }
     }

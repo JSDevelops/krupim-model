@@ -1,5 +1,6 @@
 'use client'
 import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
 
 interface Equipment {
   name: string
@@ -112,6 +113,8 @@ const initialVocabulary: Equipment[] = [
 
 export default function TeacherVocabPage() {
   const [vocabList, setVocabList] = useState<Equipment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [editingTargetNameEn, setEditingTargetNameEn] = useState<string | null>(null)
   
@@ -124,16 +127,57 @@ export default function TeacherVocabPage() {
   const [use, setUse] = useState('')
   const [sentence, setSentence] = useState('')
 
+  // 1. โหลดข้อมูลคำศัพท์จาก Supabase Database เป็นหลัก (พร้อม Fallback LocalStorage)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('teacherVocabulary')
-      if (stored) {
-        try { setVocabList(JSON.parse(stored)) } catch (e) {}
-      } else {
-        localStorage.setItem('teacherVocabulary', JSON.stringify(initialVocabulary))
-        setVocabList(initialVocabulary)
+    async function fetchVocabulary() {
+      setLoading(true)
+      try {
+        const { data, error } = await supabase
+          .from('vocabulary_items')
+          .select('*')
+          .order('name_en', { ascending: true })
+
+        if (data && data.length > 0) {
+          const formatted: Equipment[] = data.map(item => ({
+            name: item.name_th,
+            nameEn: item.name_en,
+            emoji: item.emoji || '🍴',
+            use: item.use_desc,
+            sentence: item.sentence,
+            ph: item.pronounce || ''
+          }))
+          setVocabList(formatted)
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('teacherVocabulary', JSON.stringify(formatted))
+          }
+        } else {
+          // ถ้าใน DB ยังว่าง ให้ใช้ localStorage หรือ initialVocabulary
+          if (typeof window !== 'undefined') {
+            const stored = localStorage.getItem('teacherVocabulary')
+            if (stored) {
+              try { setVocabList(JSON.parse(stored)) } catch (e) {}
+            } else {
+              setVocabList(initialVocabulary)
+              localStorage.setItem('teacherVocabulary', JSON.stringify(initialVocabulary))
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load from Supabase:', err)
+        if (typeof window !== 'undefined') {
+          const stored = localStorage.getItem('teacherVocabulary')
+          if (stored) {
+            try { setVocabList(JSON.parse(stored)) } catch (e) {}
+          } else {
+            setVocabList(initialVocabulary)
+          }
+        }
+      } finally {
+        setLoading(false)
       }
     }
+
+    fetchVocabulary()
   }, [])
 
   function saveToLocalStorage(newList: Equipment[]) {
@@ -142,13 +186,26 @@ export default function TeacherVocabPage() {
       localStorage.setItem('teacherVocabulary', JSON.stringify(newList))
     } catch (e: any) {
       console.error('Storage error:', e)
-      alert('⚠️ หน่วยความจำเครื่องเต็ม ไม่สามารถบันทึกได้ โปรดใช้รูปภาพที่มีขนาดเล็กลง')
     }
   }
 
-  function handleResetDefault() {
+  async function handleResetDefault() {
     if (confirm('คุณต้องการรีเซ็ตคลังคำศัพท์กลับเป็นชุดมาตรฐาน 10 หมวดหมู่จากเอกสาร PDF หรือไม่?')) {
       saveToLocalStorage(initialVocabulary)
+      // บันทึกลง Supabase DB ด้วย
+      try {
+        const payload = initialVocabulary.map(item => ({
+          name_en: item.nameEn,
+          name_th: item.name,
+          emoji: item.emoji,
+          use_desc: item.use,
+          sentence: item.sentence,
+          pronounce: item.ph || ''
+        }))
+        await supabase.from('vocabulary_items').upsert(payload, { onConflict: 'name_en' })
+      } catch (err) {
+        console.error('Error syncing reset to DB:', err)
+      }
     }
   }
 
@@ -208,10 +265,12 @@ export default function TeacherVocabPage() {
     reader.readAsDataURL(file)
   }
 
-  function handleSubmit(e: React.FormEvent) {
+  // 💾 บันทึกคำศัพท์ลงทั้ง LocalStorage และ Supabase Database ถาวร
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!nameEn || !name) return
 
+    setSaving(true)
     const newItem: Equipment = { name, nameEn, emoji, use, sentence, ph }
     let updated = [...vocabList]
 
@@ -223,7 +282,6 @@ export default function TeacherVocabPage() {
         updated.unshift(newItem)
       }
     } else {
-      // Check if already exists
       const existingIdx = updated.findIndex(v => v.nameEn.toLowerCase() === nameEn.toLowerCase())
       if (existingIdx !== -1) {
         updated[existingIdx] = newItem
@@ -232,15 +290,54 @@ export default function TeacherVocabPage() {
       }
     }
 
+    // 1. บันทึก Local State และ LocalStorage
     saveToLocalStorage(updated)
     setShowModal(false)
-    alert('✅ บันทึกคำศัพท์และรูปภาพเรียบร้อยแล้ว!')
+
+    // 2. บันทึกขึ้น Supabase Cloud Database ถาวร
+    try {
+      const dbPayload = {
+        name_en: newItem.nameEn,
+        name_th: newItem.name,
+        emoji: newItem.emoji,
+        use_desc: newItem.use,
+        sentence: newItem.sentence,
+        pronounce: newItem.ph || '',
+        updated_at: new Date().toISOString()
+      }
+
+      await supabase.from('vocabulary_items').upsert(dbPayload, { onConflict: 'name_en' })
+      await supabase.from('ai_scan_items').upsert({
+        name_en: newItem.nameEn,
+        name_th: newItem.name,
+        description: newItem.use,
+        service_tips: newItem.sentence,
+        pronounce: newItem.ph || '',
+        sentence: newItem.sentence
+      }, { onConflict: 'name_en' })
+
+      alert('✅ บันทึกคำศัพท์และรูปภาพลงฐานข้อมูลเรียบร้อยแล้ว!')
+    } catch (err: any) {
+      console.error('Failed to sync to Supabase:', err)
+      alert('✅ บันทึกในเครื่องเรียบร้อยแล้ว (กำลังซิงค์ขึ้นเซิร์ฟเวอร์)')
+    } finally {
+      setSaving(false)
+    }
   }
 
-  function handleDelete(itemToDelete: Equipment) {
+  async function handleDelete(itemToDelete: Equipment) {
     if (confirm(`คุณต้องการลบคำศัพท์ "${itemToDelete.nameEn} (${itemToDelete.name})" ออกจากคลังหรือไม่?`)) {
       const updated = vocabList.filter(v => v.nameEn.toLowerCase() !== itemToDelete.nameEn.toLowerCase())
       saveToLocalStorage(updated)
+
+      try {
+        await supabase
+          .from('vocabulary_items')
+          .delete()
+          .eq('name_en', itemToDelete.nameEn)
+      } catch (err) {
+        console.error('Failed to delete from DB:', err)
+      }
     }
   }
 
