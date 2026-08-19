@@ -277,10 +277,12 @@ export default function AIScanPage() {
     } catch (e: any) {
       console.error('Scan Error:', e)
       const errStr = String(e?.message || e).toLowerCase()
-      if (errStr.includes('failed to fetch') || errStr.includes('load failed') || errStr.includes('networkerror')) {
-        setError('⚠️ ไม่สามารถสแกนได้: ไม่สามารถเชื่อมต่อกับระบบ AI ได้ (กรุณาใส่ Gemini API Key ในหน้าตั้งค่าโปรไฟล์)')
+      if (errStr.includes('leaked') || errStr.includes('revoked')) {
+        setError('⚠️ คีย์ Gemini API นี้ถูก Google ระงับเนื่องจากเป็นคีย์สาธารณะ กรุณาสร้างคีย์ใหม่ฟรีที่ aistudio.google.com')
+      } else if (errStr.includes('failed to fetch') || errStr.includes('load failed') || errStr.includes('networkerror')) {
+        setError('⚠️ ไม่สามารถสแกนได้: ไม่สามารถเชื่อมต่อกับระบบ AI ได้ (กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต)')
       } else if (errStr.includes('api key') || errStr.includes('unauthorized') || errStr.includes('403') || errStr.includes('no gemini api key')) {
-        setError('⚠️ ยังไม่ได้ตั้งค่า Gemini API Key (กรุณากรอกคีย์ในหน้าตั้งค่าโปรไฟล์)')
+        setError('⚠️ Gemini API Key ไม่ถูกต้องหรือหมดอายุ (กรุณาสร้างคีย์ใหม่ใน aistudio.google.com)')
       } else {
         setError(e?.message || 'ไม่สามารถวิเคราะห์ภาพได้ กรุณาลองใหม่อีกครั้ง')
       }

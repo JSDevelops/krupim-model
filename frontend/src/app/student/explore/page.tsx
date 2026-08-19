@@ -405,15 +405,17 @@ export default function ExplorePage() {
     } catch (e: any) {
       console.error('Scan Error in frontend:', e)
       
-      let errMsg = 'ไม่สามารถวิเคราะห์ชิ้นอุปกรณ์นี้ได้ กรุณาลองใหม่อีกครั้ง'
-      const errStr = String(e.message || e).toLowerCase()
-      
-      if (errStr.includes('failed to fetch') || errStr.includes('load failed') || errStr.includes('networkerror')) {
-        errMsg = '⚠️ ไม่สามารถสแกนได้: ไม่สามารถเชื่อมต่อกับระบบ AI ได้ (กรุณาใส่ Gemini API Key ในหน้าตั้งค่าโปรไฟล์ หรือตรวจสอบการเชื่อมต่ออินเทอร์เน็ต)'
+      let errMsg = 'ไม่สามารถวิเคราะห์ภาพได้ กรุณาลองใหม่อีกครั้ง'
+      const errStr = String(e?.message || e).toLowerCase()
+
+      if (errStr.includes('leaked') || errStr.includes('revoked')) {
+        errMsg = '⚠️ คีย์ Gemini API นี้ถูก Google ระงับเนื่องจากเป็นคีย์สาธารณะ กรุณาสร้างคีย์ใหม่ฟรีที่ aistudio.google.com แล้วใส่ในหน้าโปรไฟล์'
+      } else if (errStr.includes('failed to fetch') || errStr.includes('load failed') || errStr.includes('networkerror')) {
+        errMsg = '⚠️ ไม่สามารถสแกนได้: ไม่สามารถเชื่อมต่อกับระบบ AI ได้ (กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ต)'
       } else if (errStr.includes('429') || errStr.includes('quota') || errStr.includes('rate limit') || errStr.includes('too many requests')) {
-        errMsg = '⚠️ ไม่สามารถสแกนได้: โควตาการใช้งานฟรีของ Gemini API เต็มแล้ว กรุณาใส่คีย์ส่วนตัวในหน้าตั้งค่าโปรไฟล์เพื่อใช้งานต่อ'
-      } else if (errStr.includes('api key') || errStr.includes('unauthorized') || errStr.includes('403') || errStr.includes('not found') || errStr.includes('no gemini api key')) {
-        errMsg = '⚠️ ไม่สามารถสแกนได้: ยังไม่ได้ตั้งค่า Gemini API Key (กรุณากรอกคีย์ส่วนตัวในหน้าตั้งค่าโปรไฟล์ หรือตั้งค่าระบบหลังบ้าน)'
+        errMsg = '⚠️ โควตาการใช้งานฟรีของ Gemini API เต็มชั่วคราว กรุณาลองใหม่อีกครั้งใน 1 นาที หรือใส่คีย์ใหม่ในหน้าโปรไฟล์'
+      } else if (errStr.includes('api key') || errStr.includes('unauthorized') || errStr.includes('403') || errStr.includes('no gemini api key')) {
+        errMsg = '⚠️ Gemini API Key ไม่ถูกต้องหรือหมดอายุ กรุณาสร้างคีย์ใหม่จาก Google AI Studio แล้วใส่ในหน้าโปรไฟล์'
       } else if (e.message) {
         errMsg = `⚠️ ไม่สามารถสแกนได้: ${e.message}`
       }
