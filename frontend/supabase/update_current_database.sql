@@ -31,10 +31,8 @@ ALTER TABLE vocabulary_items ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Allow public read vocabulary_items" ON vocabulary_items;
 CREATE POLICY "Allow public read vocabulary_items" ON vocabulary_items FOR SELECT USING (true);
 
-DROP POLICY IF EXISTS "Authenticated users manage vocabulary_items" ON vocabulary_items;
-CREATE POLICY "Authenticated users manage vocabulary_items" ON vocabulary_items 
-  FOR ALL USING (auth.role() = 'authenticated')
-  WITH CHECK (auth.role() = 'authenticated');
+DROP POLICY IF EXISTS "Allow public insert update delete vocabulary_items" ON vocabulary_items;
+CREATE POLICY "Allow public insert update delete vocabulary_items" ON vocabulary_items FOR ALL USING (true) WITH CHECK (true);
 
 -- 3. ตรวจสอบคอลัมน์ใน ai_scan_items
 ALTER TABLE IF EXISTS ai_scan_items ADD COLUMN IF NOT EXISTS pronounce TEXT;

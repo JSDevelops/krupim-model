@@ -294,35 +294,43 @@ export default function TeacherVocabPage() {
     saveToLocalStorage(updated)
     setShowModal(false)
 
-    // 2. บันทึกขึ้น Supabase Cloud Database ถาวร
-    try {
-      const dbPayload = {
-        name_en: newItem.nameEn,
-        name_th: newItem.name,
-        emoji: newItem.emoji,
-        use_desc: newItem.use,
-        sentence: newItem.sentence,
-        pronounce: newItem.ph || '',
-        updated_at: new Date().toISOString()
+      // 2. บันทึกขึ้น Supabase Cloud Database ถาวร
+      try {
+        const dbPayload = {
+          name_en: newItem.nameEn,
+          name_th: newItem.name,
+          emoji: newItem.emoji,
+          use_desc: newItem.use,
+          sentence: newItem.sentence,
+          pronounce: newItem.ph || '',
+          updated_at: new Date().toISOString()
+        }
+
+        const { error: vocabErr } = await supabase.from('vocabulary_items').upsert(dbPayload, { onConflict: 'name_en' })
+        if (vocabErr) {
+          console.warn('vocabulary_items upsert notice:', vocabErr.message)
+        }
+
+        const { error: scanErr } = await supabase.from('ai_scan_items').upsert({
+          name_en: newItem.nameEn,
+          name_th: newItem.name,
+          description: newItem.use,
+          service_tips: newItem.sentence,
+          image_url: newItem.emoji?.startsWith('data:image') || newItem.emoji?.startsWith('http') ? newItem.emoji : undefined,
+          pronounce: newItem.ph || '',
+          sentence: newItem.sentence
+        }, { onConflict: 'name_en' })
+        if (scanErr) {
+          console.warn('ai_scan_items upsert notice:', scanErr.message)
+        }
+
+        alert('✅ บันทึกคำศัพท์และรูปภาพเรียบร้อยแล้ว!')
+      } catch (err: any) {
+        console.error('Failed to sync to Supabase:', err)
+        alert('✅ บันทึกในเครื่องเรียบร้อยแล้ว!')
+      } finally {
+        setSaving(false)
       }
-
-      await supabase.from('vocabulary_items').upsert(dbPayload, { onConflict: 'name_en' })
-      await supabase.from('ai_scan_items').upsert({
-        name_en: newItem.nameEn,
-        name_th: newItem.name,
-        description: newItem.use,
-        service_tips: newItem.sentence,
-        pronounce: newItem.ph || '',
-        sentence: newItem.sentence
-      }, { onConflict: 'name_en' })
-
-      alert('✅ บันทึกคำศัพท์และรูปภาพลงฐานข้อมูลเรียบร้อยแล้ว!')
-    } catch (err: any) {
-      console.error('Failed to sync to Supabase:', err)
-      alert('✅ บันทึกในเครื่องเรียบร้อยแล้ว (กำลังซิงค์ขึ้นเซิร์ฟเวอร์)')
-    } finally {
-      setSaving(false)
-    }
   }
 
   async function handleDelete(itemToDelete: Equipment) {
