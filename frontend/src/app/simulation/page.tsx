@@ -3,6 +3,8 @@ import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import StudentFINENav from '@/components/StudentFINENav'
 import { useRole } from '@/context/RoleContext'
+import { authenticatedFetch } from '@/lib/api'
+import { toast } from 'sonner'
 
 interface Message { role: 'user' | 'ai'; text: string }
 
@@ -121,13 +123,12 @@ export default function SimulationPage() {
     setFinished(true)
     setEvaluating(true)
     try {
-      const resp = await fetch('/api/simulation', {
+      const resp = await authenticatedFetch('/api/simulation', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           messages: messages.map(m => ({ role: m.role, text: m.text })), 
           score,
-          student_id: user?.id || 'student-001',
           scenario_id: '44444444-4444-4444-4444-444444444441'
         })
       })
@@ -185,7 +186,7 @@ export default function SimulationPage() {
               <span style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.75)', fontSize: 10, fontWeight: 700, padding: '4px 12px', borderRadius: 100 }}>BEGINNER</span>
             </div>
 
-            <h1 style={{ color: 'white', fontSize: 26, fontWeight: 800, margin: '0 0 6px', fontFamily: "'Playfair Display',serif", letterSpacing: '-0.3px' }}>
+            <h1 style={{ color: 'white', fontSize: 26, fontWeight: 800, margin: '0 0 6px', fontFamily: 'var(--font-display), var(--font-primary)', letterSpacing: '-0.3px' }}>
               {scenario.title}
             </h1>
             <p style={{ color: 'rgba(255,255,255,0.60)', fontSize: 12, margin: 0 }}>{scenario.subtitle}</p>
@@ -545,7 +546,7 @@ export default function SimulationPage() {
             if (typeof window !== 'undefined') {
               const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
               if (!SpeechRecognition) {
-                alert('เบราว์เซอร์ของคุณไม่รองรับการพูด หรือต้องเปิดสิทธิ์การเข้าถึงไมโครโฟน')
+                toast.warning('ไม่สามารถใช้งานไมโครโฟนได้', { description: 'เบราว์เซอร์อาจไม่รองรับหรือยังไม่ได้รับสิทธิ์เข้าถึงไมโครโฟน' })
                 return
               }
 

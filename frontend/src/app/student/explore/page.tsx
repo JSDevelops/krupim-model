@@ -1,8 +1,9 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
+import { localData } from '@/lib/localData'
 import { analyzeImage as analyzeImageAPI } from '@/lib/gemini'
+import { toast } from 'sonner'
 
 interface Equipment {
   name: string
@@ -148,15 +149,15 @@ export default function ExplorePage() {
     }
   }, [activeTab])
 
-  // Load real equipment items from Supabase, teacherVocabulary, and default list
+  // Load real equipment items from Local PostgreSQL, teacherVocabulary, and default list
   useEffect(() => {
     async function loadEquipment() {
       try {
         let vocabDbItems: Equipment[] = []
         let scanDbItems: Equipment[] = []
 
-        // 1. ดึงคำศัพท์ที่คุณครูสร้าง/แก้ไขจาก Supabase DB (vocabulary_items)
-        const { data: vocabData } = await supabase
+        // 1. ดึงคำศัพท์ที่คุณครูสร้าง/แก้ไขจาก Local PostgreSQL DB (vocabulary_items)
+        const { data: vocabData } = await localData
           .from('vocabulary_items')
           .select('*')
           .order('updated_at', { ascending: false })
@@ -173,7 +174,7 @@ export default function ExplorePage() {
         }
 
         // 2. ดึงคำศัพท์จากการสแกน AI (ai_scan_items)
-        const { data: scanData } = await supabase
+        const { data: scanData } = await localData
           .from('ai_scan_items')
           .select('*')
           .order('created_at', { ascending: false })
@@ -289,10 +290,7 @@ export default function ExplorePage() {
     setQuizAnswered(false)
     setFineTab('F')
     try {
-      const activeProvider = typeof window !== 'undefined' ? localStorage.getItem('activeAiProvider') || 'gemini' : 'gemini'
-      const geminiKey = (typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : '') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
-      const openaiKey = typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') || '' : ''
-      const claudeKey = typeof window !== 'undefined' ? localStorage.getItem('claudeApiKey') || '' : ''
+      const geminiKey: string = '' // Secrets are server-only; direct browser calls are intentionally disabled.
       
       let data = null
       let usedDirectGemini = false
@@ -407,7 +405,7 @@ export default function ExplorePage() {
       setAiScanned(true)
       stopVRCamera()
       try {
-        const { data: matchedItem } = await supabase
+        const { data: matchedItem } = await localData
           .from('ai_scan_items')
           .select('id, glb_url')
           .eq('name_en', data.name_en)
@@ -466,7 +464,7 @@ export default function ExplorePage() {
     isRequestPendingRef.current = true
     
     try {
-      const geminiKey = (typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : '') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || 'AIzaSyAkk92tJrfj-f5R40wPyHIRquBK1qdCIdE'
+      const geminiKey: string = '' // Secrets are server-only; direct browser calls are intentionally disabled.
       let data = null
       let usedDirectGemini = false
 
@@ -533,7 +531,7 @@ export default function ExplorePage() {
         setFineTab('F')
         
         try {
-          const { data: matchedItem } = await supabase
+          const { data: matchedItem } = await localData
             .from('ai_scan_items')
             .select('id, glb_url')
             .eq('name_en', data.name_en)
@@ -634,7 +632,7 @@ export default function ExplorePage() {
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SpeechRecognition) {
-      alert('บราวเซอร์ของคุณไม่สนับสนุนการทำงาน Web Speech API คลื่นเสียงวิเคราะห์')
+      toast.warning('เบราว์เซอร์ไม่รองรับ Web Speech API', { description: 'ไม่สามารถเริ่มการวิเคราะห์เสียงในอุปกรณ์นี้ได้' })
       setIsRecording(false)
       return
     }

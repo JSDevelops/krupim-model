@@ -1,6 +1,6 @@
 'use client'
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
-import { supabase, getProfileFromDB } from '@/lib/supabase'
+import { localData, getProfileFromDB } from '@/lib/localData'
 
 export type UserRole = 'developer' | 'teacher' | 'student'
 
@@ -40,20 +40,20 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // 1. ดึง session ปัจจุบันจาก Supabase Auth
-    supabase.auth.getSession().then(async ({ data }: any) => {
-      const supabaseUser = data.session?.user
-      if (supabaseUser) {
+    // 1. ดึง session ปัจจุบันจาก Local PostgreSQL Auth
+    localData.auth.getSession().then(async ({ data }) => {
+      const sessionUser = data.session?.user
+      if (sessionUser) {
         // ดึง profile จาก DB เพื่อรับ role
-        const profile = await getProfileFromDB(supabaseUser.id)
-        if (profile) {
+        const profile = data.profile ?? await getProfileFromDB(sessionUser.id)
+        if (profile?.approval_status === 'active' || (profile && !profile.approval_status)) {
           const userInfo: UserInfo = {
             id: profile.id,
             name: profile.name,
             role: profile.role,
             avatar_url: profile.avatar_url,
             school_id: profile.school_id,
-            email: supabaseUser.email
+            email: sessionUser.email
           }
           setUserState(userInfo)
           localStorage.setItem('userRole', profile.role)
@@ -65,7 +65,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem('userInfo')
         }
       } else {
-        // ไม่มี Supabase session — ไม่ใช้ localStorage fallback เพื่อความปลอดภัย
+        // ไม่มี Local PostgreSQL session — ไม่ใช้ localStorage fallback เพื่อความปลอดภัย
         setUserState(null)
         localStorage.removeItem('userRole')
         localStorage.removeItem('userInfo')
@@ -74,7 +74,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     })
 
     // 2. ฟัง Auth state changes (login/logout จาก tab อื่น)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: any, session: any) => {
+    const { data: { subscription } } = localData.auth.onAuthStateChange(async (event: any, session: any) => {
       if (event === 'SIGNED_OUT') {
         setUserState(null)
         localStorage.removeItem('userRole')
@@ -82,7 +82,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       } else if (event === 'SIGNED_IN' && session?.user) {
         const profile = await getProfileFromDB(session.user.id)
 
-        if (profile) {
+        if (profile?.approval_status === 'active' || (profile && !profile.approval_status)) {
           const userInfo: UserInfo = {
             id: profile.id,
             name: profile.name,
@@ -94,6 +94,10 @@ export function RoleProvider({ children }: { children: ReactNode }) {
           setUserState(userInfo)
           localStorage.setItem('userRole', profile.role)
           localStorage.setItem('userInfo', JSON.stringify(userInfo))
+        } else {
+          setUserState(null)
+          localStorage.removeItem('userRole')
+          localStorage.removeItem('userInfo')
         }
       }
     })
@@ -108,7 +112,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
   }
 
   async function logout() {
-    await supabase.auth.signOut()
+    await localData.auth.signOut()
     setUserState(null)
     localStorage.removeItem('userRole')
     localStorage.removeItem('userInfo')

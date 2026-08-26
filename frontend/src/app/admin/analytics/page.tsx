@@ -1,149 +1,276 @@
 'use client'
-import { useState } from 'react'
 
-const analyticsData = {
-  totalSessions: 1248, weekSessions: 183,
-  avgScore: 78, completionRate: 72,
-  weeklyScores: [65, 72, 70, 78, 82, 75, 85],
-  ksa: [
-    { k: 'K', label: 'Knowledge (ความรู้)', score: 80, color: '#1565C0' },
-    { k: 'S', label: 'Skills (ทักษะ)', score: 72, color: '#7B1FA2' },
-    { k: 'A', label: 'Attitude (เจตคติ)', score: 85, color: '#00897B' },
-    { k: 'C', label: 'Competency (สมรรถนะ)', score: 68, color: '#E65100' }
-  ],
-  featureUsage: [
-    { name: 'Gemini Chat', sessions: 456, pct: 90, color: '#1565C0', icon: '💬' },
-    { name: 'AI Scan', sessions: 312, pct: 65, color: '#7B1FA2', icon: '🤖' },
-    { name: 'Simulation', sessions: 278, pct: 55, color: '#C62828', icon: '🎭' },
-    { name: 'AR 3D Object', sessions: 202, pct: 40, color: '#E65100', icon: '📦' },
-  ],
-  topStudents: [
-    { name: 'นายพิทักษ์ ดีเลิศ', score: 95, class: 'ม.5/1', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', avatar: '👨‍🎓' },
-    { name: 'นางสาวมาลี สวยงาม', score: 92, class: 'ม.5/1', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', avatar: '👩‍🎓' },
-    { name: 'นายสมพร เก่งมาก', score: 88, class: 'ม.5/2', school: 'วิทยาลัยอาชีวศึกษานครปฐม', avatar: '👨‍🎓' },
-  ],
+import { useEffect, useState } from 'react'
+import { authenticatedFetch } from '@/lib/api'
+import AdminIcon, { type AdminIconName } from '@/components/admin/AdminIcon'
+import styles from './page.module.css'
+
+type AnalyticsData = {
+  summary: {
+    total_activities: number
+    period_activities: number
+    average_score: number
+    completion_rate: number
+    active_schools: number
+  }
+  ksa: {
+    knowledge: number
+    skills: number
+    attitude: number
+    competency: number
+  }
+  features: {
+    chat: number
+    assessment: number
+    simulation: number
+    ar3d: number
+  }
+  weekly: Array<{
+    date: string
+    average_score: number
+    activities: number
+  }>
+  topStudents: Array<{
+    id: string
+    name: string
+    school_name: string | null
+    class_name: string | null
+    average_score: number
+    lessons_completed: number
+  }>
+  generatedAt: string
 }
-const days = ['จันทร์', 'อังคาร', 'พุธ', 'พฤหัสบดี', 'ศุกร์', 'เสาร์', 'อาทิตย์']
+
+const metricDefinitions: Array<{
+  key: keyof AnalyticsData['summary']
+  label: string
+  caption: string
+  icon: AdminIconName
+  suffix?: string
+}> = [
+  { key: 'total_activities', label: 'กิจกรรมการเรียนรู้', caption: 'สะสมจากทุกฟีเจอร์', icon: 'activity' },
+  { key: 'average_score', label: 'คะแนนเฉลี่ย', caption: 'ผลสัมฤทธิ์ทั้งระบบ', icon: 'score', suffix: '%' },
+  { key: 'completion_rate', label: 'อัตราเรียนสำเร็จ', caption: 'บทเรียนที่ทำเสร็จ', icon: 'check', suffix: '%' },
+  { key: 'active_schools', label: 'สถานศึกษาที่ใช้งาน', caption: 'เครือข่ายที่มีผู้ใช้', icon: 'school' },
+]
+
+const ksaDefinitions: Array<{
+  key: keyof AnalyticsData['ksa']
+  code: string
+  label: string
+  description: string
+}> = [
+  { key: 'knowledge', code: 'K', label: 'ความรู้', description: 'Knowledge' },
+  { key: 'skills', code: 'S', label: 'ทักษะ', description: 'Skills' },
+  { key: 'attitude', code: 'A', label: 'เจตคติ', description: 'Attitude' },
+  { key: 'competency', code: 'C', label: 'สมรรถนะ', description: 'Competency' },
+]
+
+const featureDefinitions: Array<{
+  key: keyof AnalyticsData['features']
+  label: string
+  description: string
+  icon: AdminIconName
+}> = [
+  { key: 'chat', label: 'AI Conversation', description: 'การสนทนาฝึกภาษา', icon: 'announcement' },
+  { key: 'assessment', label: 'AI Assessment', description: 'การประเมินผลผู้เรียน', icon: 'score' },
+  { key: 'simulation', label: 'Simulation', description: 'สถานการณ์งานบริการ', icon: 'activity' },
+  { key: 'ar3d', label: 'AR 3D Learning', description: 'บทเรียนโมเดลสามมิติ', icon: 'content' },
+]
+
+function initials(name: string) {
+  return name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'ST'
+}
+
+async function fetchAnalytics(signal?: AbortSignal) {
+  const response = await authenticatedFetch('/api/admin/analytics', { cache: 'no-store', signal })
+  if (!response.ok) throw new Error('ไม่สามารถโหลดข้อมูลวิเคราะห์ได้')
+  return response.json() as Promise<AnalyticsData>
+}
 
 export default function AdminAnalyticsPage() {
+  const [data, setData] = useState<AnalyticsData | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [error, setError] = useState('')
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void fetchAnalytics(controller.signal)
+      .then(result => {
+        setData(result)
+        setError('')
+      })
+      .catch(loadError => {
+        if (loadError instanceof Error && loadError.name !== 'AbortError') setError(loadError.message)
+      })
+      .finally(() => setLoading(false))
+    return () => controller.abort()
+  }, [])
+
+  async function refresh() {
+    if (refreshing) return
+    setRefreshing(true)
+    try {
+      setData(await fetchAnalytics())
+      setError('')
+    } catch (refreshError) {
+      setError(refreshError instanceof Error ? refreshError.message : 'ไม่สามารถโหลดข้อมูลวิเคราะห์ได้')
+    } finally {
+      setRefreshing(false)
+    }
+  }
+
+  const maxActivities = Math.max(...(data?.weekly.map(item => Number(item.activities) || 0) ?? [0]), 1)
+  const totalFeatureUsage = featureDefinitions.reduce((sum, item) => sum + Number(data?.features[item.key] ?? 0), 0)
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Header */}
-      <div className="erp-card">
-        <h2 style={{ fontSize: '20px', fontWeight: 700 }}>📈 ระบบรายงานการวิเคราะห์และประเมินผลสัมฤทธิ์ (System Analytics)</h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '4px' }}>
-          ข้อมูลเชิงลึกด้านพัฒนาการการเรียนรู้ อัตราการเข้าใช้ระบบ อัตราความสำเร็จ และสถิติความมั่นใจการวิเคราะห์ AI
-        </p>
-      </div>
+    <div className={styles.analytics}>
+      <header className={styles.pageHeader}>
+        <div>
+          <p>ข้อมูลเชิงลึก</p>
+          <h1>รายงานวิเคราะห์การเรียนรู้</h1>
+          <span>ติดตามผลสัมฤทธิ์ พฤติกรรมการใช้งาน และสมรรถนะของผู้เรียนจากข้อมูลจริง</span>
+          {data?.generatedAt && <small>อัปเดตล่าสุด {new Date(data.generatedAt).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })}</small>}
+        </div>
+        <button type="button" onClick={() => void refresh()} disabled={refreshing}>
+          <AdminIcon name="refresh" size={17} />
+          <span>{refreshing ? 'กำลังอัปเดต...' : 'อัปเดตข้อมูล'}</span>
+        </button>
+      </header>
 
-      {/* Grid Stats cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
-        {[
-          { label: 'การใช้เรียนรวม (Sessions)', val: analyticsData.totalSessions, desc: `+${analyticsData.weekSessions} สัปดาห์นี้`, color: '#1565C0' },
-          { label: 'คะแนนเฉลี่ยทั้งระบบ', val: `${analyticsData.avgScore}%`, desc: 'เกณฑ์ความรู้-ทักษะ F&B', color: '#7B1FA2' },
-          { label: 'อัตราเรียนสำเร็จรายคน', val: `${analyticsData.completionRate}%`, desc: 'วัดผลแบบ KSA-C', color: '#00897B' },
-          { label: 'Active โรงเรียน', val: '3 แห่ง', desc: 'ลงทะเบียนเรียนจริง', color: '#E65100' },
-        ].map(card => (
-          <div key={card.label} className="erp-card" style={{ borderLeft: `4px solid ${card.color}` }}>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>{card.label}</div>
-            <div style={{ fontSize: '24px', fontWeight: 700, color: card.color, marginTop: '4px' }}>{card.val}</div>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{card.desc}</div>
-          </div>
+      {error && (
+        <div className={styles.error} role="alert">
+          <AdminIcon name="activity" size={18} />
+          <span>{error}</span>
+          <button type="button" onClick={() => void refresh()}>ลองอีกครั้ง</button>
+        </div>
+      )}
+
+      <section className={styles.metrics} aria-label="ตัวชี้วัดสำคัญ">
+        {metricDefinitions.map(metric => (
+          <article className={styles.metricCard} data-metric={metric.key} key={metric.key}>
+            <span className={styles.metricIcon}><AdminIcon name={metric.icon} size={21} /></span>
+            <span>
+              <small>{metric.label}</small>
+              <strong>{loading ? '—' : Number(data?.summary[metric.key] ?? 0).toLocaleString('th-TH')}{metric.suffix}</strong>
+              <span>{metric.caption}</span>
+            </span>
+          </article>
         ))}
-      </div>
+      </section>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '24px' }}>
-        {/* Left Side: KSA-C & Feature usage */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {/* KSA-C Breakdown */}
-          <div className="erp-card">
-            <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>📊 ผลประเมินกรอบ KSA-C รายด้าน</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {analyticsData.ksa.map(item => (
-                <div key={item.k}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <span style={{ fontWeight: 700, fontSize: '14px' }}>{item.label}</span>
-                    <span style={{ fontWeight: 700, color: item.color }}>{item.score}%</span>
+      <section className={styles.primaryGrid}>
+        <article className={`${styles.panel} ${styles.weeklyPanel}`}>
+          <header className={styles.panelHeader}>
+            <div>
+              <span><AdminIcon name="analytics" size={18} /></span>
+              <div><h2>กิจกรรมย้อนหลัง 7 วัน</h2><p>จำนวนกิจกรรมและคะแนนเฉลี่ยรายวัน</p></div>
+            </div>
+            <strong>{data?.summary.period_activities ?? 0}<small>กิจกรรมในช่วงนี้</small></strong>
+          </header>
+
+          <div className={styles.weeklyChart}>
+            {(data?.weekly ?? Array.from({ length: 7 }, (_, index) => ({ date: String(index), average_score: 0, activities: 0 }))).map(point => {
+              const activities = Number(point.activities) || 0
+              const score = Number(point.average_score) || 0
+              const label = data ? new Date(point.date + 'T00:00:00').toLocaleDateString('th-TH', { weekday: 'short' }) : '—'
+              return (
+                <div className={styles.dayColumn} key={point.date}>
+                  <span>{activities}</span>
+                  <div className={styles.barTrack}>
+                    <div style={{ height: activities > 0 ? Math.max((activities / maxActivities) * 100, 6) + '%' : '3%' }} />
                   </div>
-                  <div className="progress-bar-wrap" style={{ height: '8px' }}>
-                    <div className="progress-bar-fill" style={{ width: `${item.score}%`, background: item.color }} />
-                  </div>
+                  <strong>{score}%</strong>
+                  <small>{label}</small>
                 </div>
-              ))}
-            </div>
+              )
+            })}
           </div>
 
-          {/* Feature Usage Stats */}
-          <div className="erp-card">
-            <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>📱 สถิติกิจกรรมการเรียนรู้แยกตามประเภทฟีเจอร์</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {analyticsData.featureUsage.map(f => (
-                <div key={f.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '20px' }}>{f.icon}</span>
-                    <span style={{ fontWeight: 600, fontSize: '14px' }}>{f.name}</span>
+          <div className={styles.chartLegend}>
+            <span><i className={styles.activityLegend} />จำนวนกิจกรรม</span>
+            <span><i className={styles.scoreLegend} />คะแนนเฉลี่ย</span>
+          </div>
+        </article>
+
+        <article className={`${styles.panel} ${styles.ksaPanel}`}>
+          <header className={styles.panelHeader}>
+            <div>
+              <span><AdminIcon name="score" size={18} /></span>
+              <div><h2>กรอบประเมิน KSA-C</h2><p>คะแนนเฉลี่ยแยกตามสมรรถนะ</p></div>
+            </div>
+          </header>
+
+          <div className={styles.ksaList}>
+            {ksaDefinitions.map(item => {
+              const score = Number(data?.ksa[item.key] ?? 0)
+              return (
+                <div className={styles.ksaItem} data-dimension={item.key} key={item.key}>
+                  <span className={styles.ksaCode}>{item.code}</span>
+                  <span className={styles.ksaCopy}><strong>{item.label}</strong><small>{item.description}</small></span>
+                  <div className={styles.progressTrack} role="progressbar" aria-label={item.label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={score}>
+                    <span style={{ width: score + '%' }} />
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', width: '220px' }}>
-                    <div className="progress-bar-wrap" style={{ flex: 1, height: '6px' }}>
-                      <div className="progress-bar-fill" style={{ width: `${f.pct}%`, background: f.color }} />
-                    </div>
-                    <span style={{ fontSize: '12px', fontWeight: 700, width: '90px', textAlign: 'right' }}>
-                      {f.sessions} Sessions
-                    </span>
-                  </div>
+                  <b>{score}%</b>
                 </div>
-              ))}
-            </div>
+              )
+            })}
           </div>
-        </div>
+        </article>
+      </section>
 
-        {/* Right Side: Weekly Activity & Top Students */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
-          {/* Weekly chart */}
-          <div className="erp-card">
-            <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>🗓️ กิจกรรมรายสัปดาห์ (Weekly Activity)</h3>
-            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', height: '140px', padding: '0 20px' }}>
-              {analyticsData.weeklyScores.map((v, i) => (
-                <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px', flex: 1 }}>
-                  <div style={{ width: '24px', background: 'linear-gradient(180deg, #1976D2, #BBDEFB)', height: `${v * 1.2}px`, borderRadius: '4px 4px 0 0' }} />
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{days[i]}</span>
+      <section className={styles.secondaryGrid}>
+        <article className={`${styles.panel} ${styles.featurePanel}`}>
+          <header className={styles.panelHeader}>
+            <div>
+              <span><AdminIcon name="activity" size={18} /></span>
+              <div><h2>การใช้งานแต่ละฟีเจอร์</h2><p>สัดส่วนกิจกรรมการเรียนรู้ทั้งหมด</p></div>
+            </div>
+          </header>
+
+          <div className={styles.featureList}>
+            {featureDefinitions.map(feature => {
+              const count = Number(data?.features[feature.key] ?? 0)
+              const percentage = totalFeatureUsage ? Math.round((count / totalFeatureUsage) * 100) : 0
+              return (
+                <div className={styles.featureRow} data-feature={feature.key} key={feature.key}>
+                  <span className={styles.featureIcon}><AdminIcon name={feature.icon} size={18} /></span>
+                  <span className={styles.featureCopy}><strong>{feature.label}</strong><small>{feature.description}</small></span>
+                  <div className={styles.featureProgress}><span style={{ width: percentage + '%' }} /></div>
+                  <span className={styles.featureValue}><strong>{count.toLocaleString('th-TH')}</strong><small>{percentage}%</small></span>
                 </div>
-              ))}
-            </div>
+              )
+            })}
           </div>
+        </article>
 
-          {/* Top Students Table */}
-          <div className="erp-card">
-            <h3 style={{ fontSize: '16px', fontWeight: 700, marginBottom: '16px' }}>🏆 นักเรียนผลสัมฤทธิ์ดีเด่น (Top Performers)</h3>
-            <div className="erp-table-container">
-              <table className="erp-table">
-                <thead>
-                  <tr>
-                    <th>ลำดับ</th>
-                    <th>นักเรียน</th>
-                    <th>ชั้นเรียน</th>
-                    <th>วิทยาลัย</th>
-                    <th style={{ textAlign: 'center' }}>คะแนนสะสม</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {analyticsData.topStudents.map((s, idx) => (
-                    <tr key={idx}>
-                      <td style={{ fontWeight: 700 }}>{['🥇', '🥈', '🥉'][idx]}</td>
-                      <td style={{ fontWeight: 700 }}>{s.name}</td>
-                      <td>{s.class}</td>
-                      <td>{s.school}</td>
-                      <td style={{ textAlign: 'center', fontWeight: 700, color: 'var(--primary)', fontSize: '15px' }}>{s.score}%</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <article className={`${styles.panel} ${styles.studentPanel}`}>
+          <header className={styles.panelHeader}>
+            <div>
+              <span><AdminIcon name="student" size={18} /></span>
+              <div><h2>ผู้เรียนที่มีผลสัมฤทธิ์สูง</h2><p>เรียงจากคะแนนเฉลี่ยสะสม</p></div>
             </div>
-          </div>
+          </header>
 
-        </div>
-      </div>
+          <div className={styles.studentList}>
+            {data?.topStudents.length ? data.topStudents.map((student, index) => (
+              <div className={styles.studentRow} key={student.id}>
+                <span className={styles.rank}>{String(index + 1).padStart(2, '0')}</span>
+                <span className={styles.avatar}>{initials(student.name)}</span>
+                <span className={styles.studentIdentity}>
+                  <strong>{student.name}</strong>
+                  <small>{student.class_name || 'ยังไม่ระบุชั้นเรียน'} · {student.school_name || 'ยังไม่ระบุสถานศึกษา'}</small>
+                </span>
+                <span className={styles.lessonCount}>{student.lessons_completed}<small>บทเรียน</small></span>
+                <strong className={styles.studentScore}>{student.average_score}%</strong>
+              </div>
+            )) : (
+              <p className={styles.emptyState}>{loading ? 'กำลังโหลดข้อมูล...' : 'ยังไม่มีข้อมูลผลสัมฤทธิ์ของผู้เรียน'}</p>
+            )}
+          </div>
+        </article>
+      </section>
     </div>
   )
 }

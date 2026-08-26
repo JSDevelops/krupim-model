@@ -1,23 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '../../_lib/auth'
-import { getActiveProvider, getGemini, getOpenAI, getAnthropic } from '../../_lib/ai'
+import { apiErrorResponse, getErrorMessage, guardApi } from '../../_lib/auth'
+import { getActiveProvider, getConfiguredModel, getGemini, getOpenAI, getAnthropic } from '../../_lib/ai'
 
 export async function POST(req: NextRequest) {
   try {
-    await requireAuth(req)
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 401 })
+    await guardApi(req, { roles: ['teacher', 'developer'], maxRequests: 6 })
+  } catch (error) {
+    return apiErrorResponse(error)
   }
 
   try {
     const body = await req.json()
     const { topic, category, tone, keywords } = body
 
-    if (!topic) {
-      return NextResponse.json({ error: 'topic is required' }, { status: 400 })
+    if (typeof topic !== 'string' || !topic.trim() || topic.length > 1000) {
+      return NextResponse.json({ error: 'topic must be between 1 and 1000 characters' }, { status: 400 })
     }
 
-    const provider = getActiveProvider(req)
+    const provider = await getActiveProvider(req)
+    const configuredModel = await getConfiguredModel(provider)
     const prompt = `คุณเป็นบล็อกเกอร์ผู้เชี่ยวชาญด้านอาหาร เครื่องดื่ม และการโรงแรม
 เขียนบทความการศึกษาภาษาไทยหัวข้อ: "${topic}"
 - หมวดหมู่บทความ: ${category || 'การบริการอาหารและเครื่องดื่ม'}
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
     if (provider === 'openai') {
       const client = await getOpenAI(req)
       const completion = await client.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: configuredModel,
         response_format: { type: 'json_object' },
         messages: [{ role: 'user', content: prompt }]
       })
@@ -47,14 +48,14 @@ export async function POST(req: NextRequest) {
     } else if (provider === 'claude') {
       const client = await getAnthropic(req)
       const completion = await client.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+        model: configuredModel,
         max_tokens: 3000,
         messages: [{ role: 'user', content: prompt }]
       })
       text = completion.content[0].type === 'text' ? completion.content[0].text : ''
     } else {
-      const genAI = getGemini(req)
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+      const genAI = await getGemini(req)
+      const model = genAI.getGenerativeModel({ model: configuredModel })
       const result = await model.generateContent(prompt)
       text = result.response.text()
     }
@@ -62,8 +63,8 @@ export async function POST(req: NextRequest) {
     const jsonMatch = text.match(/\{[\s\S]*\}/)
     if (!jsonMatch) throw new Error('No JSON output from AI')
     return NextResponse.json(JSON.parse(jsonMatch[0]))
-  } catch (err: any) {
-    console.error('Blog Generation Error:', err.message)
+  } catch (err: unknown) {
+    console.error('Blog Generation Error:', getErrorMessage(err))
     return NextResponse.json({ error: 'Failed to generate blog content. Please try again.' }, { status: 500 })
   }
 }

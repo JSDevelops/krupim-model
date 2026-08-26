@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import StudentFINENav from '@/components/StudentFINENav'
-import { supabase } from '@/lib/supabase'
+import { localData } from '@/lib/localData'
+import { toast } from 'sonner'
 
 interface Scenario {
   id: string
@@ -55,7 +56,7 @@ export default function NavigatePage() {
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SpeechRecognition) {
-      alert('เบราว์เซอร์ของคุณไม่รองรับระบบประเมินเสียงพูด โปรดใช้ Google Chrome')
+      toast.warning('เบราว์เซอร์ไม่รองรับระบบประเมินเสียงพูด', { description: 'โปรดเปิดหน้านี้ด้วย Google Chrome' })
       return
     }
 
@@ -119,7 +120,7 @@ export default function NavigatePage() {
 
   useEffect(() => {
     async function loadScenarios() {
-      const { data } = await supabase.from('fine_lesson_plans').select('*')
+      const { data } = await localData.from('fine_lesson_plans').select('*')
       if (data && data.length > 0) {
         const mapped = data.map((p: any, idx: number) => ({
           id: `plan-${idx}`,
@@ -219,8 +220,8 @@ export default function NavigatePage() {
             }}>N — NAVIGATE</span>
           </div>
 
-          <h1 style={{ color: 'white', fontSize: 20, fontWeight: 800, margin: '0 0 4px', fontFamily: "'Playfair Display', serif" }}>{activeScenario.title}</h1>
-          <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, margin: '0 0 8px', fontFamily: "'Kanit', sans-serif" }}>{activeScenario.titleTh}</p>
+          <h1 style={{ color: 'white', fontSize: 20, fontWeight: 800, margin: '0 0 4px', fontFamily: 'var(--font-display), var(--font-primary)' }}>{activeScenario.title}</h1>
+          <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, margin: '0 0 8px', fontFamily: 'var(--font-primary)' }}>{activeScenario.titleTh}</p>
           <span style={{ background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)', fontSize: 10.5, fontWeight: 700, padding: '4px 12px', borderRadius: 100, display: 'inline-block', marginBottom: 16 }}>👔 บทบาท: {activeScenario.role}</span>
 
           {/* Sub-tabs */}
@@ -481,8 +482,8 @@ export default function NavigatePage() {
         </div>
 
         <div style={{ position: 'relative', zIndex: 1 }}>
-          <h1 style={{ color: 'white', fontSize: 22, fontWeight: 800, margin: '0 0 4px', fontFamily: "'Playfair Display', serif" }}>Navigate</h1>
-          <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, margin: '0 0 20px', fontFamily: "'Kanit', sans-serif" }}>จำลองสถานการณ์และฝึกคำศัพท์</p>
+          <h1 style={{ color: 'white', fontSize: 22, fontWeight: 800, margin: '0 0 4px', fontFamily: 'var(--font-display), var(--font-primary)' }}>Navigate</h1>
+          <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, margin: '0 0 20px', fontFamily: 'var(--font-primary)' }}>จำลองสถานการณ์และฝึกคำศัพท์</p>
         </div>
         <svg viewBox="0 0 500 28" style={{ display: 'block', marginTop: 4, width: '100%' }} preserveAspectRatio="none">
           <path d="M0 28 Q125 0 250 16 Q375 32 500 8 L500 28 Z" fill="#F3EFE6"/>

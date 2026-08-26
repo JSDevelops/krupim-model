@@ -14,20 +14,20 @@ export const FINE_SYSTEM_PROMPT = `คุณคือ AI ผู้ช่วย�
 
 const BACKEND_URL = '/api'
 
-// ดึง Supabase access token จาก session ปัจจุบัน
+// ดึง Local PostgreSQL access token จาก session ปัจจุบัน
 async function getAccessToken(): Promise<string> {
   if (typeof window === 'undefined') return ''
   try {
     // dynamic import เพื่อหลีกเลี่ยง circular dependency
-    const { supabase } = await import('@/lib/supabase')
-    const { data } = await supabase.auth.getSession()
+    const { localData } = await import('@/lib/localData')
+    const { data } = await localData.auth.getSession()
     return data.session?.access_token ?? ''
   } catch {
     return ''
   }
 }
 
-// Helper to get active AI headers from localStorage + Supabase JWT
+// Helper to get the active provider and verified Local PostgreSQL JWT. API keys stay server-side.
 export async function getAIHeaders(): Promise<Record<string, string>> {
   const token = await getAccessToken()
 
@@ -35,25 +35,15 @@ export async function getAIHeaders(): Promise<Record<string, string>> {
     return {
       'Content-Type': 'application/json',
       'Authorization': token ? `Bearer ${token}` : '',
-      'x-ai-provider': 'gemini',
-      'x-gemini-key': '',
-      'x-openai-key': '',
-      'x-claude-key': ''
+      'x-ai-provider': 'gemini'
     }
   }
 
   const activeProvider = localStorage.getItem('activeAiProvider') || 'gemini'
-  const geminiKey = localStorage.getItem('geminiApiKey') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
-  const openaiKey = localStorage.getItem('openaiApiKey') || ''
-  const claudeKey = localStorage.getItem('claudeApiKey') || ''
-
   return {
     'Content-Type': 'application/json',
     'Authorization': token ? `Bearer ${token}` : '',
-    'x-ai-provider': activeProvider,
-    'x-gemini-key': geminiKey,
-    'x-openai-key': openaiKey,
-    'x-claude-key': claudeKey
+    'x-ai-provider': activeProvider
   }
 }
 

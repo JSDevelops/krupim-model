@@ -2,7 +2,8 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import StudentFINENav from '@/components/StudentFINENav'
-import { supabase } from '@/lib/supabase'
+import { localData } from '@/lib/localData'
+import { toast } from 'sonner'
 
 interface Prompt {
   en: string
@@ -35,7 +36,7 @@ export default function IInteractPage() {
 
   useEffect(() => {
     async function loadPrompts() {
-      const { data } = await supabase.from('fine_lesson_plans').select('sentences').limit(1)
+      const { data } = await localData.from('fine_lesson_plans').select('sentences').limit(1)
       if (data && data.length > 0 && data[0].sentences && data[0].sentences.length > 0) {
         const sentences = data[0].sentences
         const parsed: Prompt[] = sentences.map((s: string) => ({
@@ -72,7 +73,7 @@ export default function IInteractPage() {
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SpeechRecognition) {
-      alert('เบราว์เซอร์ของคุณไม่รองรับระบบประเมินเสียงพูด โปรดเปิดใช้บน Google Chrome')
+      toast.warning('เบราว์เซอร์ไม่รองรับระบบประเมินเสียงพูด', { description: 'โปรดเปิดหน้านี้ด้วย Google Chrome' })
       return
     }
 

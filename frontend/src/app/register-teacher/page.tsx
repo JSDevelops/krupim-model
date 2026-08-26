@@ -1,18 +1,16 @@
 'use client'
-import { useState, useEffect, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, Suspense } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
+import { signUpLocal } from '@/lib/localData'
 
 function RegisterForm() {
   const router = useRouter()
-  const searchParams = useSearchParams()
   
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [school, setSchool] = useState('')
-  const [role] = useState<'teacher'>('teacher')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -22,46 +20,23 @@ function RegisterForm() {
     setLoading(true)
     setError('')
 
-    // Basic Validation
     if (!name || !email || !password || !school) {
       setError('กรุณากรอกข้อมูลให้ครบถ้วนทุกช่อง')
       setLoading(false)
       return
     }
 
-    setTimeout(() => {
-      const existingUsersRaw = localStorage.getItem('registeredUsers')
-      const existingUsers = existingUsersRaw ? JSON.parse(existingUsersRaw) : []
-      
-      const userExists = existingUsers.some((u: any) => u.email === email)
-      if (userExists) {
-        setError('อีเมลนี้ถูกใช้งานในระบบแล้ว')
-        setLoading(false)
-        return
-      }
-
-      const newUser = {
-        name,
-        email,
-        password,
-        school,
-        role: 'teacher',
-        avatar: '👩‍🏫',
-        id: `usr-${Date.now()}`,
-        status: 'pending' // Teacher must be approved by admin
-      }
-
-      existingUsers.push(newUser)
-      localStorage.setItem('registeredUsers', JSON.stringify(existingUsers))
-
+    try {
+      await signUpLocal({ email, password, name, requestedRole: 'teacher', school })
       setSuccess(true)
-      setLoading(false)
-
-      // Redirect to login page to show pending message
       setTimeout(() => {
         router.push('/')
       }, 1500)
-    }, 1200)
+    } catch (registrationError) {
+      setError(registrationError instanceof Error ? registrationError.message : 'ไม่สามารถลงทะเบียนได้')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -137,7 +112,7 @@ function RegisterForm() {
               placeholder="รหัสผ่านของคุณ (ขั้นต่ำ 6 ตัว)"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              minLength={6}
+              minLength={8}
               required
             />
           </div>
@@ -179,7 +154,7 @@ function RegisterForm() {
           color: #1E4D3A;
           letter-spacing: 0.15em;
           margin-bottom: var(--space-5);
-          font-family: 'Playfair Display', serif;
+          font-family: var(--font-display), var(--font-primary);
         }
         .btn-luxury {
           width: 100%;
@@ -355,7 +330,7 @@ export default function RegisterPage() {
           line-height: 1.1;
           letter-spacing: 3px;
           text-transform: uppercase;
-          font-family: 'Playfair Display', serif;
+          font-family: var(--font-display), var(--font-primary);
         }
         .login-brand-sub {
           font-size: var(--font-size-xs);

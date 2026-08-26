@@ -1,6 +1,8 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { authenticatedFetch } from '@/lib/api'
+import { toast } from 'sonner'
 
 export default function LivePage() {
   const [status, setStatus] = useState<'idle' | 'listening' | 'responding' | 'ended'>('idle')
@@ -65,28 +67,16 @@ export default function LivePage() {
   async function sendToGemini(text: string) {
     try {
       const activeProvider = typeof window !== 'undefined' ? localStorage.getItem('activeAiProvider') || 'gemini' : 'gemini'
-      const geminiKey = typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : ''
-      const openaiKey = typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') || '' : ''
-      const claudeKey = typeof window !== 'undefined' ? localStorage.getItem('claudeApiKey') || '' : ''
-      const savedUserInfo = typeof window !== 'undefined' ? localStorage.getItem('userInfo') : null
-      let parsedUser: any = null
-      try { parsedUser = savedUserInfo ? JSON.parse(savedUserInfo) : null } catch {}
-      const studentId = parsedUser?.id || 'student-001'
-      
       const backendUrl = ''
-      const resp = await fetch(`${backendUrl}/api/chat`, {
+      const resp = await authenticatedFetch(`${backendUrl}/api/chat`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-ai-provider': activeProvider,
-          'x-gemini-key': geminiKey,
-          'x-openai-key': openaiKey,
-          'x-claude-key': claudeKey
+          'x-ai-provider': activeProvider
         },
         body: JSON.stringify({
           message: `ในฐานะลูกค้าในสถานการณ์จำลองโรงแรม 5 ดาว โต้ตอบกับเด็กเสิร์ฟสั้นๆ 1-2 ประโยค (ตอบเป็นภาษาอังกฤษอย่างเดียวเท่านั้นและห้ามพิมพ์ข้อความกำกับอื่นๆ) เมื่อเขาพูดประโยคนี้: "${text}"`,
           history: [],
-          student_id: studentId,
           session_type: 'gemini_live',
           topic: 'Live Interactive Roleplay',
           session_id: sessionId
@@ -142,7 +132,7 @@ export default function LivePage() {
         setTimeout(() => recognitionRef.current.start(), 300)
       }
     } else {
-      alert('เบราว์เซอร์นี้ไม่รองรับการดักจับเสียงพูดของแอป! โปรดใช้ Google Chrome หรือ Safari เวอร์ชันใหม่')
+      toast.warning('เบราว์เซอร์นี้ไม่รองรับการรับเสียงพูด', { description: 'โปรดใช้ Google Chrome หรือ Safari เวอร์ชันล่าสุด' })
     }
   }
 

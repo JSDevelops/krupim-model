@@ -1,36 +1,50 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# FINE MODEL frontend
 
-## Getting Started
+Next.js 16 application using local PostgreSQL for development.
 
-First, run the development server:
+## Local setup with Laragon
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+1. Start PostgreSQL in Laragon. The default setup expects `127.0.0.1:5432` and user `postgres` without a password.
+2. Copy `.env.example` to `.env.local`, then set unique `AUTH_SECRET` and `AI_SETTINGS_ENCRYPTION_KEY` values. Environment AI keys remain optional fallbacks.
+3. Create/update the dedicated `krupim_local` database:
+
+```powershell
+npm run db:setup
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+4. Install and start the app:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm ci
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The app is available at `http://localhost:3000`.
 
-## Learn More
+Local bootstrap login:
 
-To learn more about Next.js, take a look at the following resources:
+- Email: `admin@local.test`
+- Password: `Admin123!`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Change the bootstrap password from `/admin/users` after the first login. Do not reuse this local password in production.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Security model
 
-## Deploy on Vercel
+- Passwords are hashed with bcrypt and stored only in PostgreSQL; browser storage never contains passwords.
+- Authentication uses an eight-hour signed JWT in an HttpOnly, SameSite cookie.
+- New student accounts are active immediately for local development.
+- New teacher accounts remain pending until a developer approves them in `/admin/users`.
+- AI credentials entered in `/admin/settings` are encrypted with AES-256-GCM before PostgreSQL storage. Full keys never return to the browser; server environment keys remain supported as fallbacks.
+- Protected API routes validate the local JWT, current account status, role permissions, and rate limits.
+- Browser data operations pass through `/api/data`; the browser never connects directly to PostgreSQL.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Verification
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run build
+npm run lint
+npm run lint:security
+npm run db:setup
+```
+
+The optional Express backend lives in `../backend`. Copy `backend/.env.example` to `backend/.env` and use the same `DATABASE_URL` and `AUTH_SECRET` as the frontend.

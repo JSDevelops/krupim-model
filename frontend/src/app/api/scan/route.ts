@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth, getSupabase } from '../_lib/auth'
-import { getActiveProvider, getGemini, getOpenAI, getAnthropic } from '../_lib/ai'
+import { apiErrorResponse, getErrorMessage, guardApi, getDatabase } from '../_lib/auth'
+import { getActiveProvider, getConfiguredModel, getGemini, getOpenAI, getAnthropic } from '../_lib/ai'
 
 const SCAN_SYSTEM_PROMPT = `คุณเป็น AI ผู้เชี่ยวชาญการวิเคราะห์และระบุวัตถุจากภาพถ่ายตามความเป็นจริง (Object Identification AI)
 วิเคราะห์ภาพวัตถุที่เห็นในภาพนี้ตามจริงที่ปรากฏ 100% (ตัวอย่างเช่น หากเห็นเป็นขวดน้ำพลาสติก ขวดกาแฟ แก้วพลาสติก ของเล่น โทรศัพท์มือถือ หรือสิ่งของทั่วไป ให้ระบุชื่อที่เป็นสิ่งนั้นจริงๆ โดยตรงตามความจริงที่กล้องจับภาพได้)
@@ -26,26 +26,36 @@ const SCAN_SYSTEM_PROMPT = `คุณเป็น AI ผู้เชี่ยว
 
 export async function POST(req: NextRequest) {
   // ── Auth (optional/best-effort for scan learning) ───────────────────────────
-  await requireAuth(req, false)
+  let authUser
+  try {
+    authUser = await guardApi(req, { maxRequests: 6 })
+  } catch (error) {
+    return apiErrorResponse(error)
+  }
 
   try {
     const body = await req.json()
     const { imageBase64, mimeType = 'image/jpeg' } = body
 
-    if (!imageBase64) {
+    if (typeof imageBase64 !== 'string' || !imageBase64) {
       return NextResponse.json({ error: 'imageBase64 is required' }, { status: 400 })
     }
     if (imageBase64.length > 10_000_000) {
       return NextResponse.json({ error: 'Image too large. Maximum size is 6MB.' }, { status: 400 })
     }
+    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(mimeType)) {
+      return NextResponse.json({ error: 'Unsupported image type' }, { status: 400 })
+    }
+    const resolvedMimeType = mimeType as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif'
 
-    const provider = getActiveProvider(req)
+    const provider = await getActiveProvider(req)
+    const configuredModel = await getConfiguredModel(provider)
     let text = ''
 
     if (provider === 'openai') {
       const client = await getOpenAI(req)
       const completion = await client.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: configuredModel,
         response_format: { type: 'json_object' },
         messages: [{
           role: 'user',
@@ -59,46 +69,30 @@ export async function POST(req: NextRequest) {
     } else if (provider === 'claude') {
       const client = await getAnthropic(req)
       const completion = await client.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+        model: configuredModel,
         max_tokens: 2000,
         messages: [{
           role: 'user',
           content: [
-            { type: 'image', source: { type: 'base64', media_type: mimeType as any, data: imageBase64 } },
+            { type: 'image', source: { type: 'base64', media_type: resolvedMimeType, data: imageBase64 } },
             { type: 'text', text: SCAN_SYSTEM_PROMPT }
           ]
         }]
       })
       text = completion.content[0].type === 'text' ? completion.content[0].text : ''
     } else {
-      // Default: Gemini Flash Latest (Optimized for Fast & Accurate Real-time Vision)
-      const genAI = getGemini(req)
-      let result
-      try {
-        const model = genAI.getGenerativeModel({
-          model: 'gemini-flash-latest',
-          generationConfig: {
-            responseMimeType: 'application/json',
-            temperature: 0.2,
-          }
-        })
-        result = await model.generateContent([
-          SCAN_SYSTEM_PROMPT,
-          { inlineData: { data: imageBase64, mimeType } }
-        ])
-      } catch {
-        const model = genAI.getGenerativeModel({
-          model: 'gemini-3-flash-preview',
-          generationConfig: {
-            responseMimeType: 'application/json',
-            temperature: 0.2,
-          }
-        })
-        result = await model.generateContent([
-          SCAN_SYSTEM_PROMPT,
-          { inlineData: { data: imageBase64, mimeType } }
-        ])
-      }
+      const genAI = await getGemini(req)
+      const model = genAI.getGenerativeModel({
+        model: configuredModel,
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.2,
+        }
+      })
+      const result = await model.generateContent([
+        SCAN_SYSTEM_PROMPT,
+        { inlineData: { data: imageBase64, mimeType } }
+      ])
       text = result.response.text()
     }
 
@@ -106,10 +100,10 @@ export async function POST(req: NextRequest) {
     if (!jsonMatch) throw new Error('No JSON output from AI')
     const parsedData = JSON.parse(jsonMatch[0])
 
-    // Save to Supabase (best-effort)
-    try {
-      const supabase = getSupabase()
-      await supabase.from('ai_scan_items').upsert({
+    // Only trusted content managers may promote scan output into the shared knowledge base.
+    if (authUser.role === 'teacher' || authUser.role === 'developer') try {
+      const localData = getDatabase()
+      await localData.from('ai_scan_items').upsert({
         name_th: parsedData.name_th,
         name_en: parsedData.name_en,
         category: parsedData.category || 'tableware',
@@ -120,16 +114,17 @@ export async function POST(req: NextRequest) {
         english_phrases: parsedData.english_phrases || parsedData.fine_analysis?.interact?.english_phrases || [],
         pronounce: parsedData.pronounce || parsedData.fine_analysis?.interact?.pronunciation || ''
       }, { onConflict: 'name_en' })
-    } catch (dbErr: any) {
-      console.error('Failed to save scanned item to DB:', dbErr.message)
+    } catch (dbErr: unknown) {
+      console.error('Failed to save scanned item to DB:', getErrorMessage(dbErr))
     }
 
     return NextResponse.json(parsedData)
 
-  } catch (err: any) {
-    console.error('Scan API Error:', err?.message || err)
+  } catch (err: unknown) {
+    const message = getErrorMessage(err)
+    console.error('Scan API Error:', message)
     return NextResponse.json({
-      error: err?.message || 'AI scan service temporarily unavailable. Please try again.',
+      error: message || 'AI scan service temporarily unavailable. Please try again.',
       code: 'SCAN_AI_ERROR'
     }, { status: 500 })
   }

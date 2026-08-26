@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRole } from '@/context/RoleContext'
+import { toast } from 'sonner'
 
 interface Task {
   id: string
@@ -143,18 +144,6 @@ export default function PortfolioPage() {
                   const base64 = event.target?.result as string
                   // 1. อัปเดตเข้าระบบหลัก
                   setUser({ ...user, avatar: base64 })
-                  // 2. อัปเดตรายชื่อ registeredUsers เพื่อไม่ให้หายตอนล๊อกอินใหม่
-                  const registered = localStorage.getItem('registeredUsers')
-                  if (registered) {
-                    try {
-                      const list = JSON.parse(registered)
-                      const idx = list.findIndex((u: any) => u.email === user.email)
-                      if (idx !== -1) {
-                        list[idx].avatar = base64
-                        localStorage.setItem('registeredUsers', JSON.stringify(list))
-                      }
-                    } catch (err) {}
-                  }
                 }
                 reader.readAsDataURL(file)
               }
@@ -397,7 +386,7 @@ export default function PortfolioPage() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => alert('กำลังส่งไปยังคำสั่งพิมพ์...')} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#102B1F,#1E4D3A)', color: 'white', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--font-primary)' }}>🖨️ พิมพ์ PDF</button>
+              <button onClick={() => toast.info('กำลังเตรียมคำสั่งพิมพ์...')} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#102B1F,#1E4D3A)', color: 'white', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--font-primary)' }}>พิมพ์ PDF</button>
               <button onClick={() => setShowCert(false)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1.5px solid #EDE9E1', background: 'white', color: '#8C8272', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-primary)' }}>ปิด</button>
             </div>
           </div>

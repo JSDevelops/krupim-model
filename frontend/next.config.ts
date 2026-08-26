@@ -2,11 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  serverExternalPackages: ['@google/generative-ai'],
+  serverExternalPackages: ['@google/generative-ai', 'pg'],
   images: {
     remotePatterns: [
-      // Supabase Storage (project avatars, thumbnails)
-      { protocol: 'https', hostname: '*.supabase.co' },
       // GitHub raw content (3D sample models)
       { protocol: 'https', hostname: 'raw.githubusercontent.com' },
       // Google user avatars

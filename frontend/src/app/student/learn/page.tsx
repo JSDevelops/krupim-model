@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRole } from '@/context/RoleContext'
-import { supabase } from '@/lib/supabase'
+import { localData } from '@/lib/localData'
 
 interface LessonPlan {
   id: string
@@ -89,7 +89,7 @@ export default function StudentLearnPage() {
     async function fetchPlans() {
       const studentTeacher = user?.teacherName || 'ครูสมหญิง รักเรียน'
       
-      const { data } = await supabase.from('fine_lesson_plans').select('*')
+      const { data } = await localData.from('fine_lesson_plans').select('*')
       let list: LessonPlan[] = []
       
       if (data && data.length > 0) {

@@ -1,28 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '../../_lib/auth'
+import { apiErrorResponse, getErrorMessage, guardApi } from '../../_lib/auth'
 
-// In-memory store for Tripo3D async tasks (resets on cold start — acceptable for serverless)
-const tripoTasks = new Map<string, { status: 'pending' | 'success' | 'failed'; glbUrl?: string; topic?: string }>()
-
+type TripoResponse = {
+  code?: number
+  data?: {
+    task_id?: string
+    status?: 'success' | 'failed' | string
+    result?: { model?: { glb?: string } }
+  }
+}
 export async function POST(req: NextRequest) {
   try {
-    await requireAuth(req)
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 401 })
+    await guardApi(req, { roles: ['teacher', 'developer'], maxRequests: 4 })
+  } catch (error) {
+    return apiErrorResponse(error)
   }
 
   try {
     const body = await req.json()
     const { topic } = body
 
-    if (!topic) {
-      return NextResponse.json({ error: 'topic is required' }, { status: 400 })
+    if (typeof topic !== 'string' || !topic.trim() || topic.length > 200) {
+      return NextResponse.json({ error: 'topic must be between 1 and 200 characters' }, { status: 400 })
     }
 
-    const tripoKey = (req.headers.get('x-tripo-key') || process.env.TRIPO_API_KEY || '').trim()
+    const tripoKey = (process.env.TRIPO_API_KEY || '').trim()
     let glbUrl = ''
     let usdzUrl = ''
-    let isMocked = true
+    const isMocked = true
+    let submittedTaskId: string | undefined
 
     // 1. Try Tripo3D API — NON-BLOCKING: submit task, return taskId immediately
     if (tripoKey && tripoKey !== 'your_tripo_api_key_here') {
@@ -33,38 +39,14 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify({ type: 'text_to_model', prompt: topic })
         })
         if (tripoResp.ok) {
-          const tripoData = await tripoResp.json() as any
+          const tripoData = await tripoResp.json() as TripoResponse
           if (tripoData.code === 0 && tripoData.data?.task_id) {
             const taskId = tripoData.data.task_id as string
-            tripoTasks.set(taskId, { status: 'pending', topic })
-            // Background polling (non-blocking)
-            ;(async () => {
-              for (let i = 0; i < 10; i++) {
-                await new Promise(r => setTimeout(r, 5000))
-                try {
-                  const pollResp = await fetch(`https://api.tripo3d.ai/v2/openapi/task/${taskId}`, {
-                    headers: { 'Authorization': `Bearer ${tripoKey}` }
-                  })
-                  if (pollResp.ok) {
-                    const pollData = await pollResp.json() as any
-                    if (pollData.code === 0 && pollData.data) {
-                      if (pollData.data.status === 'success') {
-                        tripoTasks.set(taskId, { status: 'success', glbUrl: pollData.data.result?.model?.glb || '', topic })
-                        break
-                      } else if (pollData.data.status === 'failed') {
-                        tripoTasks.set(taskId, { status: 'failed', topic })
-                        break
-                      }
-                    }
-                  }
-                } catch { /* ignore poll errors */ }
-              }
-            })()
-            return NextResponse.json({ success: true, topic, taskId, status: 'pending', provider: 'Tripo3D' })
+            submittedTaskId = taskId
           }
         }
-      } catch (err: any) {
-        console.error('Tripo3D API error:', err.message)
+      } catch (err: unknown) {
+        console.error('Tripo3D API error:', getErrorMessage(err))
       }
     }
 
@@ -91,14 +73,13 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true, topic, glbUrl, usdzUrl,
-      status: 'success',
-      provider: '3D Sample Model'
+      status: submittedTaskId ? 'pending' : 'success',
+      taskId: submittedTaskId,
+      provider: submittedTaskId ? 'Tripo3D (sample shown while processing)' : '3D Sample Model'
     })
-  } catch (err: any) {
-    console.error('3D Generation Error:', err.message)
-    return NextResponse.json({ error: err.message || 'Failed to generate 3D model' }, { status: 500 })
+  } catch (err: unknown) {
+    const message = getErrorMessage(err)
+    console.error('3D Generation Error:', message)
+    return NextResponse.json({ error: message || 'Failed to generate 3D model' }, { status: 500 })
   }
 }
-
-// Export tripoTasks for status route
-export { tripoTasks }

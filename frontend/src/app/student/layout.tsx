@@ -1,17 +1,24 @@
 'use client'
 import StudentFINENav from '@/components/StudentFINENav'
+import { useRole } from '@/context/RoleContext'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
+  const { user, role, loading } = useRole()
   const router = useRouter()
 
   useEffect(() => {
-    const saved = localStorage.getItem('userRole')
-    if (!saved) {
-      router.replace('/')
+    if (loading) return
+    if (!user || (role !== 'student' && role !== 'developer')) {
+      if (role === 'teacher') router.replace('/teacher/dashboard')
+      else router.replace('/')
     }
-  }, [])
+  }, [user, role, loading, router])
+
+  if (loading) {
+    return <div className="min-h-screen bg-[#0F291E] text-white flex items-center justify-center p-4">กำลังโหลด...</div>
+  }
 
   return (
     <>

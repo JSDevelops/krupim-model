@@ -1,572 +1,422 @@
 'use client'
-import { useState, useEffect } from 'react'
+
+import { FormEvent, useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import AdminIcon from '@/components/admin/AdminIcon'
+import AiProviderLogo, { type AiProviderKey } from '@/components/admin/AiProviderLogo'
+import { applyFontPreference, applyTextSizePreference, type AppFontKey, type AppTextSize } from '@/components/FontPreferenceSync'
+import { AI_MODEL_OPTIONS, DEFAULT_AI_MODELS } from '@/lib/aiModels'
+import styles from '../adminPages.module.css'
+
+type SettingsTab = 'system' | 'appearance'
+type AiProvider = AiProviderKey
+
+const providers: Array<{ key: AiProvider; name: string; tone: string }> = [
+  { key: 'gemini', name: 'Google Gemini', tone: 'blue' },
+  { key: 'openai', name: 'OpenAI', tone: 'green' },
+  { key: 'claude', name: 'Anthropic Claude', tone: 'purple' },
+]
+
+type ProviderSetting = {
+  model: string
+  keyConfigured: boolean
+  keyHint: string | null
+  source: 'database' | 'environment' | 'none'
+}
+
+type ProviderSettings = Record<AiProvider, ProviderSetting>
+
+type PublicProviderSetting = ProviderSetting & {
+  provider: AiProvider
+  active: boolean
+}
+
+type AISettingsResponse = {
+  error?: string
+  settings?: PublicProviderSetting[]
+}
+
+const initialProviderSettings: ProviderSettings = {
+  gemini: { model: DEFAULT_AI_MODELS.gemini, keyConfigured: false, keyHint: null, source: 'none' },
+  openai: { model: DEFAULT_AI_MODELS.openai, keyConfigured: false, keyHint: null, source: 'none' },
+  claude: { model: DEFAULT_AI_MODELS.claude, keyConfigured: false, keyHint: null, source: 'none' },
+}
+
+const emptyApiKeys: Record<AiProvider, string> = { gemini: '', openai: '', claude: '' }
+
+const thaiFonts: Array<{ key: AppFontKey; name: string; description: string }> = [
+  { key: 'kanit', name: 'Kanit', description: 'ทันสมัย กระชับ เหมาะกับหน้าจอและ Dashboard' },
+  { key: 'sarabun', name: 'Sarabun', description: 'อ่านง่าย เป็นทางการ เหมาะกับบทเรียนและเอกสาร' },
+  { key: 'prompt', name: 'Prompt', description: 'เป็นมิตร สมดุล เหมาะกับระบบการเรียนรู้' },
+  { key: 'noto-sans-thai', name: 'Noto Sans Thai', description: 'เป็นกลาง รองรับภาษาไทยและอักขระได้ครอบคลุม' },
+]
+
+const legacySecretKeys = [
+  'geminiApiKey',
+  'openaiApiKey',
+  'claudeApiKey',
+  'threeDAIStudioKey',
+  'tripoApiKey',
+  'supabaseUrl',
+  'supabaseAnonKey',
+]
+
+function removeLegacyApiKeys() {
+  legacySecretKeys.forEach(key => window.localStorage.removeItem(key))
+}
 
 export default function AdminSettingsPage() {
-  // Tabs: 'security' or 'uxui'
-  const [settingsTab, setSettingsTab] = useState<'security' | 'uxui'>('security')
-  const [isSaved, setIsSaved] = useState(false)
-
-  // 🔐 1. Security & Core States
-  const [activeProvider, setActiveProvider] = useState('gemini')
-  const [geminiKey, setGeminiKey] = useState('')
-  const [openaiKey, setOpenaiKey] = useState('')
-  const [claudeKey, setClaudeKey] = useState('')
-  const [dbUrl, setDbUrl] = useState('')
-  const [dbKey, setDbKey] = useState('')
+  const [activeTab, setActiveTab] = useState<SettingsTab>('system')
+  const [activeProvider, setActiveProvider] = useState<AiProvider>('gemini')
+  const [providerSettings, setProviderSettings] = useState<ProviderSettings>(initialProviderSettings)
+  const [apiKeyInputs, setApiKeyInputs] = useState(emptyApiKeys)
+  const [showApiKey, setShowApiKey] = useState(false)
+  const [loadingAISettings, setLoadingAISettings] = useState(true)
+  const [savingSystem, setSavingSystem] = useState(false)
   const [schoolName, setSchoolName] = useState('วิทยาลัยอาชีวศึกษากรุงเทพ')
   const [maintenance, setMaintenance] = useState(false)
-  const [showGemini, setShowGemini] = useState(false)
-  const [showOpenai, setShowOpenai] = useState(false)
-  const [showClaude, setShowClaude] = useState(false)
-  const [threeDAIStudioKey, setThreeDAIStudioKey] = useState('')
-  const [showThreeDAIStudio, setShowThreeDAIStudio] = useState(false)
-  const [tripoApiKey, setTripoApiKey] = useState('')
-  const [showTripo, setShowTripo] = useState(false)
-
-  // 🎨 2. UX/UI Preferences States (เวอร์ชันเต็มสมบูรณ์ที่สุด)
   const [themeMode, setThemeMode] = useState('forest-gold')
-  const [fontFamily, setFontFamily] = useState('kanit')
-  const [textSize, setTextSize] = useState('normal')
+  const [fontFamily, setFontFamily] = useState<AppFontKey>('kanit')
+  const [textSize, setTextSize] = useState<AppTextSize>('normal')
   const [transitionStyle, setTransitionStyle] = useState('smooth')
   const [layoutDensity, setLayoutDensity] = useState('comfortable')
   const [arQuality, setArQuality] = useState('hd')
   const [showArHelp, setShowArHelp] = useState('once')
   const [microInteractions, setMicroInteractions] = useState(true)
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
 
-  // Load configs on mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      // Security
-      setActiveProvider(localStorage.getItem('activeAiProvider') || 'gemini')
-      setGeminiKey(localStorage.getItem('geminiApiKey') || '')
-      setOpenaiKey(localStorage.getItem('openaiApiKey') || '')
-      setClaudeKey(localStorage.getItem('claudeApiKey') || '')
-      setThreeDAIStudioKey(localStorage.getItem('threeDAIStudioKey') || '')
-      setTripoApiKey(localStorage.getItem('tripoApiKey') || '')
-      setDbUrl(localStorage.getItem('supabaseUrl') || process.env.NEXT_PUBLIC_SUPABASE_URL || '')
-      setDbKey(localStorage.getItem('supabaseAnonKey') || '')
-      setSchoolName(localStorage.getItem('schoolName') || 'วิทยาลัยอาชีวศึกษากรุงเทพ')
-      setMaintenance(localStorage.getItem('maintenanceMode') === 'true')
+    void Promise.resolve().then(() => {
+      removeLegacyApiKeys()
+      const storedProvider = window.localStorage.getItem('activeAiProvider')
+      if (storedProvider === 'gemini' || storedProvider === 'openai' || storedProvider === 'claude') setActiveProvider(storedProvider)
+      setSchoolName(window.localStorage.getItem('schoolName') || 'วิทยาลัยอาชีวศึกษากรุงเทพ')
+      setMaintenance(window.localStorage.getItem('maintenanceMode') === 'true')
+      setThemeMode(window.localStorage.getItem('uxThemeMode') || 'forest-gold')
+      const storedFont = window.localStorage.getItem('uxFontFamily')
+      setFontFamily(thaiFonts.some(font => font.key === storedFont) ? storedFont as AppFontKey : 'kanit')
+      const storedTextSize = window.localStorage.getItem('uxTextSize')
+      setTextSize(['normal', 'large', 'xlarge'].includes(storedTextSize || '') ? storedTextSize as AppTextSize : 'normal')
+      setTransitionStyle(window.localStorage.getItem('uxTransitionStyle') || 'smooth')
+      setLayoutDensity(window.localStorage.getItem('uxLayoutDensity') || 'comfortable')
+      setArQuality(window.localStorage.getItem('uxArQuality') || 'hd')
+      setShowArHelp(window.localStorage.getItem('uxShowArHelp') || 'once')
+      setMicroInteractions(window.localStorage.getItem('uxMicroInteractions') !== 'false')
+    })
 
-      // UX/UI
-      setThemeMode(localStorage.getItem('uxThemeMode') || 'forest-gold')
-      setFontFamily(localStorage.getItem('uxFontFamily') || 'kanit')
-      setTextSize(localStorage.getItem('uxTextSize') || 'normal')
-      setTransitionStyle(localStorage.getItem('uxTransitionStyle') || 'smooth')
-      setLayoutDensity(localStorage.getItem('uxLayoutDensity') || 'comfortable')
-      setArQuality(localStorage.getItem('uxArQuality') || 'hd')
-      setShowArHelp(localStorage.getItem('uxShowArHelp') || 'once')
-      setMicroInteractions(localStorage.getItem('uxMicroInteractions') !== 'false')
-    }
+    void fetch('/api/admin/ai-settings', { headers: { Accept: 'application/json' } })
+      .then(async response => {
+        const payload = await response.json() as AISettingsResponse
+        if (!response.ok) throw new Error(payload.error || 'โหลดการตั้งค่า AI ไม่สำเร็จ')
+        const nextSettings = { ...initialProviderSettings }
+        for (const setting of payload.settings || []) {
+          if (setting.provider !== 'gemini' && setting.provider !== 'openai' && setting.provider !== 'claude') continue
+          nextSettings[setting.provider] = {
+            model: setting.model,
+            keyConfigured: Boolean(setting.keyConfigured),
+            keyHint: setting.keyHint || null,
+            source: setting.source || 'none',
+          }
+          if (setting.active) setActiveProvider(setting.provider)
+        }
+        setProviderSettings(nextSettings)
+      })
+      .catch(error => toast.error('โหลดการตั้งค่า AI ไม่สำเร็จ', {
+        description: error instanceof Error ? error.message : 'กรุณาลองใหม่อีกครั้ง',
+      }))
+      .finally(() => setLoadingAISettings(false))
   }, [])
 
-  function handleSaveSecurity(e: React.FormEvent) {
-    e.preventDefault()
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('activeAiProvider', activeProvider)
-      localStorage.setItem('geminiApiKey', geminiKey.trim())
-      localStorage.setItem('openaiApiKey', openaiKey.trim())
-      localStorage.setItem('claudeApiKey', claudeKey.trim())
-      localStorage.setItem('threeDAIStudioKey', threeDAIStudioKey.trim())
-      localStorage.setItem('tripoApiKey', tripoApiKey.trim())
-      localStorage.setItem('supabaseUrl', dbUrl.trim())
-      localStorage.setItem('supabaseAnonKey', dbKey.trim())
-      localStorage.setItem('schoolName', schoolName.trim())
-      localStorage.setItem('maintenanceMode', maintenance.toString())
-      
-      if (dbUrl) (window as any).NEXT_PUBLIC_SUPABASE_URL = dbUrl.trim()
-      if (dbKey) (window as any).NEXT_PUBLIC_SUPABASE_ANON_KEY = dbKey.trim()
-    }
-    setIsSaved(true)
-    setTimeout(() => setIsSaved(false), 3000)
-  }
+  async function handleSaveSystem(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSavingSystem(true)
+    const toastId = toast.loading('กำลังบันทึกการตั้งค่า AI...')
+    try {
+      const response = await fetch('/api/admin/ai-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          provider: activeProvider,
+          model: providerSettings[activeProvider].model,
+          apiKey: apiKeyInputs[activeProvider].trim() || undefined,
+          active: true,
+        }),
+      })
+      const payload = await response.json() as AISettingsResponse
+      if (!response.ok) throw new Error(payload.error || 'บันทึกการตั้งค่า AI ไม่สำเร็จ')
 
-  function handleSaveUXUI(e: React.FormEvent) {
-    e.preventDefault()
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('uxThemeMode', themeMode)
-      localStorage.setItem('uxFontFamily', fontFamily)
-      localStorage.setItem('uxTextSize', textSize)
-      localStorage.setItem('uxTransitionStyle', transitionStyle)
-      localStorage.setItem('uxLayoutDensity', layoutDensity)
-      localStorage.setItem('uxArQuality', arQuality)
-      localStorage.setItem('uxShowArHelp', showArHelp)
-      localStorage.setItem('uxMicroInteractions', microInteractions.toString())
-
-      // Immediately apply CSS styles & classes to document body
-      if (typeof document !== 'undefined') {
-        // Clear old classes
-        document.body.className = document.body.className
-          .split(' ')
-          .filter(c => !c.startsWith('theme-') && !c.startsWith('font-') && !c.startsWith('density-'))
-          .join(' ')
-
-        // Add active settings classes
-        document.body.classList.add(`theme-${themeMode}`)
-        document.body.classList.add(`font-${textSize}`)
-        document.body.classList.add(`density-${layoutDensity}`)
-
-        // Set fontFamily variable on root body
-        const fontsMap: Record<string, string> = {
-          kanit: "'Kanit', sans-serif",
-          sarabun: "'Sarabun', sans-serif",
-          inter: "'Inter', sans-serif"
+      const nextSettings = { ...providerSettings }
+      for (const setting of payload.settings || []) {
+        if (setting.provider !== 'gemini' && setting.provider !== 'openai' && setting.provider !== 'claude') continue
+        nextSettings[setting.provider] = {
+          model: setting.model,
+          keyConfigured: Boolean(setting.keyConfigured),
+          keyHint: setting.keyHint || null,
+          source: setting.source || 'none',
         }
-        document.body.style.fontFamily = fontsMap[fontFamily] || 'sans-serif'
       }
-    }
-    setIsSaved(true)
-    setTimeout(() => setIsSaved(false), 3000)
-  }
-
-  const [clearing, setClearing] = useState(false)
-
-  function handleClearCache() {
-    if (confirm('คุณต้องการล้างแคชไฟล์ขยะ ข้อมูลการจำลองสถานการณ์ชั่วคราว และประวัติบันทึกความหน่วง API Ping บนเบราว์เซอร์เพื่อคืนพื้นที่ความจำหรือไม่? (ข้อมูลบัญชีผู้ใช้ คะแนนสมรรถนะนักเรียน และคีย์ AI จะถูกเก็บรักษาอย่างปลอดภัย)')) {
-      setClearing(true)
-      setTimeout(() => {
-        if (typeof window !== 'undefined') {
-          const savedKeys = [
-            'registeredUsers',
-            'schoolName',
-            'supabaseUrl',
-            'supabaseAnonKey',
-            'activeAiProvider',
-            'geminiApiKey',
-            'openaiApiKey',
-            'claudeApiKey',
-            'threeDAIStudioKey',
-            'tripoApiKey',
-            'classroomStudents',
-            'uxThemeMode',
-            'uxFontFamily',
-            'uxTextSize',
-            'uxTransitionStyle',
-            'uxLayoutDensity',
-            'uxArQuality',
-            'uxShowArHelp',
-            'uxMicroInteractions',
-            'systemNews'
-          ]
-          
-          const keysToDelete: string[] = []
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i)
-            if (key && !savedKeys.includes(key)) {
-              keysToDelete.push(key)
-            }
-          }
-          keysToDelete.forEach(k => localStorage.removeItem(k))
-          sessionStorage.clear()
-        }
-        setClearing(false)
-        alert('🧹 ล้างข้อมูลแคชขยะชั่วคราวสำเร็จ! (กู้คืนพื้นที่เบราว์เซอร์และหน่วยความจำโมเดล 3D ได้ลื่นไหลขึ้น)')
-      }, 1200)
+      setProviderSettings(nextSettings)
+      setApiKeyInputs(current => ({ ...current, [activeProvider]: '' }))
+      removeLegacyApiKeys()
+      window.localStorage.setItem('activeAiProvider', activeProvider)
+      window.localStorage.setItem('schoolName', schoolName.trim())
+      window.localStorage.setItem('maintenanceMode', String(maintenance))
+      toast.success('บันทึกการตั้งค่า AI แล้ว', {
+        id: toastId,
+        description: `${selectedProvider.name} · ${nextSettings[activeProvider].model}`,
+      })
+    } catch (error) {
+      toast.error('บันทึกการตั้งค่าไม่สำเร็จ', {
+        id: toastId,
+        description: error instanceof Error ? error.message : 'กรุณาตรวจสอบข้อมูลแล้วลองใหม่',
+      })
+    } finally {
+      setSavingSystem(false)
     }
   }
+
+  function handleSaveAppearance(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    window.localStorage.setItem('uxThemeMode', themeMode)
+    window.localStorage.setItem('uxFontFamily', fontFamily)
+    window.localStorage.setItem('uxTextSize', textSize)
+    window.localStorage.setItem('uxTransitionStyle', transitionStyle)
+    window.localStorage.setItem('uxLayoutDensity', layoutDensity)
+    window.localStorage.setItem('uxArQuality', arQuality)
+    window.localStorage.setItem('uxShowArHelp', showArHelp)
+    window.localStorage.setItem('uxMicroInteractions', String(microInteractions))
+
+    document.body.className = document.body.className
+      .split(' ')
+      .filter(className => !className.startsWith('theme-') && !className.startsWith('density-'))
+      .join(' ')
+    document.body.classList.add(`theme-${themeMode}`, `density-${layoutDensity}`)
+    applyTextSizePreference(textSize)
+    applyFontPreference(fontFamily)
+    toast.success('บันทึกการตั้งค่าหน้าจอแล้ว', {
+      description: 'ฟอนต์ ขนาดตัวอักษร และรูปแบบการแสดงผลถูกนำไปใช้แล้ว',
+    })
+  }
+
+  function clearTemporaryData() {
+    const protectedKeys = new Set([
+      'schoolName',
+      'activeAiProvider',
+      'maintenanceMode',
+      'uxThemeMode',
+      'uxFontFamily',
+      'uxTextSize',
+      'uxTransitionStyle',
+      'uxLayoutDensity',
+      'uxArQuality',
+      'uxShowArHelp',
+      'uxMicroInteractions',
+      'systemNews',
+    ])
+    const keysToDelete: string[] = []
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index)
+      if (key && !protectedKeys.has(key)) keysToDelete.push(key)
+    }
+    keysToDelete.forEach(key => window.localStorage.removeItem(key))
+    window.sessionStorage.clear()
+    removeLegacyApiKeys()
+    setClearConfirmOpen(false)
+    toast.success('ล้างข้อมูลชั่วคราวแล้ว', {
+      description: `${keysToDelete.length.toLocaleString('th-TH')} รายการถูกนำออกจากอุปกรณ์นี้`,
+    })
+  }
+
+  const selectedProvider = providers.find(provider => provider.key === activeProvider) ?? providers[0]
+  const selectedSetting = providerSettings[activeProvider]
+  const selectedModel = AI_MODEL_OPTIONS[activeProvider].find(model => model.id === selectedSetting.model) ?? AI_MODEL_OPTIONS[activeProvider][0]
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '850px', padding: '16px' }}>
-      
-      {/* Header Banner */}
-      <div className="erp-card" style={{ background: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #EDE9E1' }}>
-        <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#1E4D3A' }}>⚙️ แผงตั้งค่าผู้ดูแลระบบควบคุมหลัก (Developer Console)</h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '4px' }}>
-          ปรับแต่งระบบหลังบ้าน เชื่อมโยงกุญแจความปลอดภัย และจัดการสกินส่วนแสดงผลติดต่อผู้เรียนระบบ FINE Model
-        </p>
-      </div>
+    <main className={styles.adminPage}>
+      <header className={styles.pageHeader}>
+        <div>
+          <p>ADMIN SETTINGS</p>
+          <h1>ตั้งค่าระบบ</h1>
+          <span>ควบคุมบริการหลัก ความปลอดภัย และประสบการณ์ใช้งานของแพลตฟอร์ม</span>
+        </div>
+      </header>
 
-      {isSaved && (
-        <div style={{ padding: '16px', background: '#EAF3EE', border: '1.5px solid #22c55e', color: '#1E4D3A', borderRadius: '12px', fontWeight: 700 }}>
-          ✓ บันทึกการอัปเดตการกำหนดค่าระบบสำเร็จแล้ว! ข้อมูลจะนำส่งกระจายไปยังฝั่งผู้ใช้ทันที
+      <section className={styles.settingsStatus} aria-label="สถานะการตั้งค่า">
+        <article className={styles.statusCard} data-tone="blue">
+          <span className={styles.providerStatusLogo} data-provider={activeProvider}><AiProviderLogo provider={activeProvider} size={22} /></span>
+          <div><small>AI Provider</small><strong>{selectedProvider.name}</strong><p>{selectedModel.name}</p></div>
+        </article>
+        <article className={styles.statusCard} data-tone="green">
+          <span><AdminIcon name="database" size={19} /></span>
+          <div><small>ฐานข้อมูล</small><strong>Local PostgreSQL</strong><p>เชื่อมต่อผ่าน Server</p></div>
+        </article>
+        <article className={styles.statusCard} data-tone={maintenance ? 'red' : 'gold'}>
+          <span><AdminIcon name={maintenance ? 'pause' : 'check'} size={19} /></span>
+          <div><small>สถานะระบบ</small><strong>{maintenance ? 'Maintenance' : 'พร้อมใช้งาน'}</strong><p>{maintenance ? 'จำกัดการเข้าใช้งาน' : 'ให้บริการตามปกติ'}</p></div>
+        </article>
+      </section>
+
+      <section className={styles.settingsWorkspace}>
+        <div className={styles.settingsTabs} role="tablist" aria-label="หมวดการตั้งค่า">
+          <button type="button" role="tab" aria-selected={activeTab === 'system'} onClick={() => setActiveTab('system')}><AdminIcon name="shield" size={17} /><span>ระบบและความปลอดภัย</span></button>
+          <button type="button" role="tab" aria-selected={activeTab === 'appearance'} onClick={() => setActiveTab('appearance')}><AdminIcon name="palette" size={17} /><span>หน้าจอและประสิทธิภาพ</span></button>
+        </div>
+
+        {activeTab === 'system' ? (
+          <form className={styles.settingsForm} onSubmit={handleSaveSystem}>
+            <section className={styles.settingsSection} data-tone="blue">
+              <header className={styles.sectionHeader}>
+                <span><AdminIcon name="sparkles" size={18} /></span>
+                <div><h2>ผู้ให้บริการ AI</h2><p>เลือกบริการหลักสำหรับสร้างเนื้อหาและสนทนา</p></div>
+              </header>
+              <div className={styles.sectionBody}>
+                <div className={styles.providerGrid}>
+                  {providers.map(provider => (
+                    <button key={provider.key} type="button" data-tone={provider.tone} aria-pressed={activeProvider === provider.key} onClick={() => { setActiveProvider(provider.key); setShowApiKey(false) }}>
+                      <span className={styles.providerLogo} data-provider={provider.key}><AiProviderLogo provider={provider.key} size={21} /></span>
+                      <div><strong>{provider.name}</strong><small>{AI_MODEL_OPTIONS[provider.key].find(model => model.id === providerSettings[provider.key].model)?.name || providerSettings[provider.key].model}</small></div>
+                      <i>{activeProvider === provider.key && <AdminIcon name="check" size={13} />}</i>
+                    </button>
+                  ))}
+                </div>
+                <div className={styles.aiConfigPanel} data-provider={activeProvider}>
+                  <div className={styles.aiConfigHeader}>
+                    <span className={styles.providerLogo} data-provider={activeProvider}><AiProviderLogo provider={activeProvider} size={23} /></span>
+                    <div><strong>ตั้งค่า {selectedProvider.name}</strong><p>{selectedModel.description}</p></div>
+                    <span className={styles.keyStatus} data-configured={selectedSetting.keyConfigured}>
+                      <AdminIcon name={selectedSetting.keyConfigured ? 'check' : 'key'} size={13} />
+                      {loadingAISettings ? 'กำลังตรวจสอบ' : selectedSetting.keyConfigured ? `ตั้งค่าแล้ว ${selectedSetting.keyHint || ''}` : 'ยังไม่มี API Key'}
+                    </span>
+                  </div>
+                  <div className={styles.aiConfigGrid}>
+                    <label className={styles.field}>
+                      <span>โมเดลที่ใช้ทั้งระบบ</span>
+                      <select
+                        value={selectedSetting.model}
+                        disabled={loadingAISettings || savingSystem}
+                        onChange={event => setProviderSettings(current => ({
+                          ...current,
+                          [activeProvider]: { ...current[activeProvider], model: event.target.value },
+                        }))}
+                      >
+                        {AI_MODEL_OPTIONS[activeProvider].map(model => <option key={model.id} value={model.id}>{model.name} — {model.id}</option>)}
+                      </select>
+                      <small>{selectedModel.description}</small>
+                    </label>
+                    <label className={styles.field}>
+                      <span>API Key {selectedSetting.keyConfigured && <em>เว้นว่างเพื่อใช้คีย์เดิม</em>}</span>
+                      <div className={styles.secretInput}>
+                        <AdminIcon name="key" size={16} />
+                        <input
+                          type={showApiKey ? 'text' : 'password'}
+                          value={apiKeyInputs[activeProvider]}
+                          disabled={loadingAISettings || savingSystem}
+                          autoComplete="new-password"
+                          spellCheck={false}
+                          placeholder={selectedSetting.keyConfigured ? `คีย์ปัจจุบัน ${selectedSetting.keyHint || ''}` : `วาง ${selectedProvider.name} API Key`}
+                          onChange={event => setApiKeyInputs(current => ({ ...current, [activeProvider]: event.target.value }))}
+                        />
+                        <button type="button" onClick={() => setShowApiKey(current => !current)} aria-label={showApiKey ? 'ซ่อน API Key' : 'แสดง API Key'}>{showApiKey ? 'ซ่อน' : 'แสดง'}</button>
+                      </div>
+                      <small>คีย์ใหม่จะถูกเข้ารหัสก่อนบันทึก และระบบจะไม่ส่งคีย์เต็มกลับมาที่หน้านี้</small>
+                    </label>
+                  </div>
+                </div>
+                <div className={styles.infoBanner}><AdminIcon name="shield" size={17} /><div><strong>Secret อยู่ฝั่ง Server เท่านั้น</strong><p>หน้าเว็บส่งคีย์ผ่าน API ที่จำกัดสิทธิ์เฉพาะผู้ดูแล จากนั้น PostgreSQL จะเก็บเฉพาะข้อมูลที่เข้ารหัส</p></div></div>
+              </div>
+            </section>
+
+            <div className={styles.settingsTwoColumns}>
+              <section className={styles.settingsSection} data-tone="green">
+                <header className={styles.sectionHeader}><span><AdminIcon name="database" size={18} /></span><div><h2>ฐานข้อมูล</h2><p>การเชื่อมต่อสำหรับพัฒนาในเครื่อง</p></div></header>
+                <div className={styles.sectionBody}>
+                  <div className={styles.readonlyField}><span>Database engine</span><strong>PostgreSQL</strong></div>
+                  <div className={styles.readonlyField}><span>Connection</span><strong>127.0.0.1:5432 / krupim_local</strong></div>
+                  <div className={styles.readonlyField}><span>Access policy</span><strong>Server-side only</strong></div>
+                </div>
+              </section>
+
+              <section className={styles.settingsSection} data-tone="purple">
+                <header className={styles.sectionHeader}><span><AdminIcon name="school" size={18} /></span><div><h2>ข้อมูลองค์กร</h2><p>ชื่อสถานศึกษาหลักที่แสดงในระบบ</p></div></header>
+                <div className={styles.sectionBody}><label className={styles.field}><span>ชื่อสถานศึกษา</span><input required value={schoolName} onChange={event => setSchoolName(event.target.value)} /></label></div>
+              </section>
+            </div>
+
+            <section className={styles.settingsSection} data-tone={maintenance ? 'red' : 'gold'}>
+              <header className={styles.sectionHeader}><span><AdminIcon name="shield" size={18} /></span><div><h2>การบำรุงรักษาระบบ</h2><p>ควบคุมการเข้าใช้งานของครูและนักเรียนชั่วคราว</p></div></header>
+              <div className={styles.toggleRow}>
+                <div><strong>Maintenance Mode</strong><p>{maintenance ? 'ระบบอยู่ในโหมดบำรุงรักษา ผู้ใช้ทั่วไปอาจถูกจำกัดการเข้าใช้งาน' : 'ระบบเปิดให้ผู้ใช้ทุกบทบาทเข้าใช้งานตามปกติ'}</p></div>
+                <button className={styles.switch} type="button" role="switch" aria-checked={maintenance} aria-label="เปิดหรือปิด Maintenance Mode" onClick={() => setMaintenance(current => !current)}><span /></button>
+              </div>
+            </section>
+
+            <div className={styles.settingsFooter}><button className={styles.primaryButton} type="submit" disabled={loadingAISettings || savingSystem}><AdminIcon name={savingSystem ? 'refresh' : 'check'} size={16} />{savingSystem ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่าระบบ'}</button></div>
+          </form>
+        ) : (
+          <form className={styles.settingsForm} onSubmit={handleSaveAppearance}>
+            <section className={styles.settingsSection} data-tone="purple">
+              <header className={styles.sectionHeader}><span><AdminIcon name="palette" size={18} /></span><div><h2>ธีมและตัวอักษร</h2><p>กำหนดภาพลักษณ์และความสบายในการอ่าน</p></div></header>
+              <div className={styles.sectionBody}>
+                <div className={styles.formGrid}>
+                  <label className={styles.field}><span>โทนสีระบบ</span><select value={themeMode} onChange={event => setThemeMode(event.target.value)}><option value="forest-gold">Forest Gold</option><option value="dark-night">Obsidian Dark</option><option value="royal-blue">Royal Blue</option><option value="cherry-blossom">Cherry Blossom</option></select></label>
+                  <label className={styles.field}><span>ขนาดตัวอักษร</span><select value={textSize} onChange={event => { const size = event.target.value as AppTextSize; setTextSize(size); applyTextSizePreference(size) }}><option value="normal">มาตรฐาน 100%</option><option value="large">ขนาดใหญ่ 115%</option><option value="xlarge">ขนาดใหญ่พิเศษ 130%</option></select></label>
+                  <label className={styles.field}><span>ความหนาแน่นของหน้า</span><select value={layoutDensity} onChange={event => setLayoutDensity(event.target.value)}><option value="comfortable">Comfortable</option><option value="compact">Compact</option></select></label>
+                </div>
+                <fieldset className={styles.fontFieldset}>
+                  <legend>Google Fonts ภาษาไทย</legend>
+                  <div className={styles.fontOptions}>
+                    {thaiFonts.map(font => (
+                      <button key={font.key} type="button" data-font={font.key} aria-pressed={fontFamily === font.key} onClick={() => { setFontFamily(font.key); applyFontPreference(font.key) }}>
+                        <span>กข</span>
+                        <div><strong>{font.name}</strong><p>{font.description}</p><small>ครูพิมพ์ · การเรียนรู้ด้วย AR และ AI</small></div>
+                        <i>{fontFamily === font.key && <AdminIcon name="check" size={13} />}</i>
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+              </div>
+            </section>
+
+            <div className={styles.settingsTwoColumns}>
+              <section className={styles.settingsSection} data-tone="blue">
+                <header className={styles.sectionHeader}><span><AdminIcon name="monitor" size={18} /></span><div><h2>การเคลื่อนไหว</h2><p>ปรับประสิทธิภาพให้เหมาะกับอุปกรณ์</p></div></header>
+                <div className={styles.sectionBody}>
+                  <label className={styles.field}><span>เอฟเฟกต์เปลี่ยนหน้า</span><select value={transitionStyle} onChange={event => setTransitionStyle(event.target.value)}><option value="smooth">Smooth 60 FPS</option><option value="fade">Fade only</option><option value="none">ไม่ใช้ Animation</option></select></label>
+                  <div className={styles.toggleRow}><div><strong>Micro-interactions</strong><p>แสดง feedback ขนาดเล็กเมื่อกดปุ่มหรือเปลี่ยนสถานะ</p></div><button className={styles.switch} type="button" role="switch" aria-checked={microInteractions} aria-label="เปิดหรือปิด Micro-interactions" onClick={() => setMicroInteractions(current => !current)}><span /></button></div>
+                </div>
+              </section>
+
+              <section className={styles.settingsSection} data-tone="green">
+                <header className={styles.sectionHeader}><span><AdminIcon name="cube" size={18} /></span><div><h2>AR และโมเดล 3 มิติ</h2><p>สมดุลคุณภาพภาพและความเร็วโหลด</p></div></header>
+                <div className={styles.sectionBody}>
+                  <label className={styles.field}><span>คุณภาพโมเดล</span><select value={arQuality} onChange={event => setArQuality(event.target.value)}><option value="hd">High Definition</option><option value="sd">Standard Definition</option></select></label>
+                  <label className={styles.field}><span>แสดงคู่มือ AR</span><select value={showArHelp} onChange={event => setShowArHelp(event.target.value)}><option value="always">ทุกครั้ง</option><option value="once">เฉพาะครั้งแรก</option><option value="never">ไม่แสดง</option></select></label>
+                </div>
+              </section>
+            </div>
+
+            <section className={styles.settingsSection} data-tone="red">
+              <header className={styles.sectionHeader}><span><AdminIcon name="archive" size={18} /></span><div><h2>ข้อมูลชั่วคราวของเบราว์เซอร์</h2><p>ล้าง session และ cache ที่ไม่ใช่ข้อมูลบัญชีหรือการตั้งค่าหลัก</p></div></header>
+              <div className={styles.cacheRow}><div><strong>ล้างข้อมูลชั่วคราว</strong><p>ช่วยแก้ปัญหาข้อมูลค้างและคืนพื้นที่จัดเก็บ โดยเก็บประกาศและค่าระบบไว้</p></div><button className={styles.dangerOutlineButton} type="button" onClick={() => setClearConfirmOpen(true)}><AdminIcon name="trash" size={15} />ล้างข้อมูล</button></div>
+            </section>
+
+            <div className={styles.settingsFooter}><button className={styles.primaryButton} type="submit"><AdminIcon name="check" size={16} />บันทึกและนำไปใช้</button></div>
+          </form>
+        )}
+      </section>
+
+      {clearConfirmOpen && (
+        <div className={styles.modalOverlay} onMouseDown={event => {
+          if (event.target === event.currentTarget) setClearConfirmOpen(false)
+        }}>
+          <section className={`${styles.modal} ${styles.confirmModal}`} role="alertdialog" aria-modal="true" aria-labelledby="clear-cache-title">
+            <div className={styles.confirmIcon}><AdminIcon name="archive" size={22} /></div>
+            <h2 id="clear-cache-title">ล้างข้อมูลชั่วคราวหรือไม่</h2>
+            <p>Session และข้อมูล cache ที่ไม่จำเป็นจะถูกลบ แต่ประกาศและการตั้งค่าหลักจะยังคงอยู่</p>
+            <div className={styles.modalActions}><button type="button" onClick={() => setClearConfirmOpen(false)}>ยกเลิก</button><button className={styles.dangerButton} type="button" onClick={clearTemporaryData}>ล้างข้อมูล</button></div>
+          </section>
         </div>
       )}
-
-      {/* Tabs Selector */}
-      <div style={{ display: 'flex', gap: '8px', borderBottom: '2px solid #EDE9E1', paddingBottom: '2px' }}>
-        <button
-          onClick={() => setSettingsTab('security')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            fontSize: '14.5px',
-            fontWeight: settingsTab === 'security' ? 800 : 500,
-            color: settingsTab === 'security' ? '#1E4D3A' : 'var(--text-muted)',
-            cursor: 'pointer',
-            padding: '12px 24px',
-            borderBottom: settingsTab === 'security' ? '3px solid #1E4D3A' : 'none',
-            transition: 'all 0.2s'
-          }}
-        >
-          🔐 ตั้งค่าระบบและความปลอดภัย
-        </button>
-        <button
-          onClick={() => setSettingsTab('uxui')}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            fontSize: '14.5px',
-            fontWeight: settingsTab === 'uxui' ? 800 : 500,
-            color: settingsTab === 'uxui' ? '#1E4D3A' : 'var(--text-muted)',
-            cursor: 'pointer',
-            padding: '12px 24px',
-            borderBottom: settingsTab === 'uxui' ? '3px solid #1E4D3A' : 'none',
-            transition: 'all 0.2s'
-          }}
-        >
-          🎨 ปรับแต่งหน้าจอ UX/UI (เวอร์ชันเต็ม)
-        </button>
-      </div>
-
-      {/* Content Form Blocks */}
-      {settingsTab === 'security' ? (
-        <form onSubmit={handleSaveSecurity} className="erp-card" style={{ background: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #EDE9E1', display: 'flex', flexDirection: 'column', gap: '22px' }}>
-          
-          {/* Active AI Provider Selector */}
-          <div>
-            <h3 style={{ fontSize: '15px', fontWeight: 800, marginBottom: '12px', color: '#1E4D3A' }}>🤖 ตั้งค่าการประมวลผลปัญญาประดิษฐ์ (Active AI Provider)</h3>
-            
-            <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '16px' }}>
-              <label className="erp-label" style={{ fontWeight: 700, fontSize: '13px' }}>เลือกค่าย AI ที่ต้องการเปิดใช้งานหลัก</label>
-              <select
-                style={{ padding: '10px', borderRadius: '8px', border: '1.5px solid #1E4D3A', fontSize: '13.5px', background: '#fff', fontWeight: 700, color: '#1E4D3A', cursor: 'pointer' }}
-                value={activeProvider}
-                onChange={e => setActiveProvider(e.target.value)}
-              >
-                <option value="gemini">Google Gemini (Model: gemini-2.0-flash)</option>
-                <option value="openai">OpenAI (Model: gpt-4o-mini)</option>
-                <option value="claude">Anthropic Claude (Model: claude-3-5-sonnet)</option>
-              </select>
-            </div>
-
-            {/* AI Keys Inputs */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', background: '#FBFBFA', padding: '16px', borderRadius: '12px', border: '1px dashed #C9A84C' }}>
-              
-              {/* Google Gemini Key */}
-              <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label className="erp-label" style={{ fontWeight: 700, fontSize: '12px', color: activeProvider === 'gemini' ? '#3b82f6' : '#6B6A5B' }}>
-                  1. Google Gemini API Key {activeProvider === 'gemini' && '🟢 (กำลังใช้งาน)'}
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type={showGemini ? 'text' : 'password'}
-                    className="erp-input"
-                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1', fontSize: '13px' }}
-                    value={geminiKey}
-                    onChange={e => setGeminiKey(e.target.value)}
-                    placeholder="กรอกคีย์ AIzaSy..."
-                  />
-                  <button type="button" onClick={() => setShowGemini(!showGemini)} style={{ padding: '0 12px', background: '#F5F5F0', border: '1px solid #EDE9E1', borderRadius: '8px', cursor: 'pointer', fontSize: '12px' }}>
-                    {showGemini ? 'ซ่อน' : 'แสดง'}
-                  </button>
-                </div>
-              </div>
-
-              {/* OpenAI Key */}
-              <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label className="erp-label" style={{ fontWeight: 700, fontSize: '12px', color: activeProvider === 'openai' ? '#10b981' : '#6B6A5B' }}>
-                  2. OpenAI API Key {activeProvider === 'openai' && '🟢 (กำลังใช้งาน)'}
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type={showOpenai ? 'text' : 'password'}
-                    className="erp-input"
-                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1', fontSize: '13px' }}
-                    value={openaiKey}
-                    onChange={e => setOpenaiKey(e.target.value)}
-                    placeholder="กรอกคีย์ sk-proj-... หรือ sk-..."
-                  />
-                  <button type="button" onClick={() => setShowOpenai(!showOpenai)} style={{ padding: '0 12px', background: '#F5F5F0', border: '1px solid #EDE9E1', borderRadius: '8px', cursor: 'pointer', fontSize: '12px' }}>
-                    {showOpenai ? 'ซ่อน' : 'แสดง'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Anthropic Claude Key */}
-              <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label className="erp-label" style={{ fontWeight: 700, fontSize: '12px', color: activeProvider === 'claude' ? '#a78bfa' : '#6B6A5B' }}>
-                  3. Anthropic Claude API Key {activeProvider === 'claude' && '🟢 (กำลังใช้งาน)'}
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type={showClaude ? 'text' : 'password'}
-                    className="erp-input"
-                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1', fontSize: '13px' }}
-                    value={claudeKey}
-                    onChange={e => setClaudeKey(e.target.value)}
-                    placeholder="กรอกคีย์ sk-ant-..."
-                  />
-                  <button type="button" onClick={() => setShowClaude(!showClaude)} style={{ padding: '0 12px', background: '#F5F5F0', border: '1px solid #EDE9E1', borderRadius: '8px', cursor: 'pointer', fontSize: '12px' }}>
-                    {showClaude ? 'ซ่อน' : 'แสดง'}
-                  </button>
-                </div>
-              </div>
-
-              {/* 3D AI Studio API Key */}
-              <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label className="erp-label" style={{ fontWeight: 700, fontSize: '12px', color: '#c9a84c' }}>
-                  4. 3D AI Studio API Key 🟡 (เชื่อมโยงสำหรับการเจนโมเดล .glb & .usdz ด้วย AI)
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type={showThreeDAIStudio ? 'text' : 'password'}
-                    className="erp-input"
-                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1', fontSize: '13px' }}
-                    value={threeDAIStudioKey}
-                    onChange={e => setThreeDAIStudioKey(e.target.value)}
-                    placeholder="กรอก API Key จาก 3daistudio.com..."
-                  />
-                  <button type="button" onClick={() => setShowThreeDAIStudio(!showThreeDAIStudio)} style={{ padding: '0 12px', background: '#F5F5F0', border: '1px solid #EDE9E1', borderRadius: '8px', cursor: 'pointer', fontSize: '12px' }}>
-                    {showThreeDAIStudio ? 'ซ่อน' : 'แสดง'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Tripo3D API Key */}
-              <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                <label className="erp-label" style={{ fontWeight: 700, fontSize: '12px', color: '#c9a84c' }}>
-                  5. Tripo3D API Key 🟢 (เชื่อมโยงสำหรับการเจนโมเดล .glb ความเร็วสูงด้วย AI)
-                </label>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <input
-                    type={showTripo ? 'text' : 'password'}
-                    className="erp-input"
-                    style={{ flex: 1, padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1', fontSize: '13px' }}
-                    value={tripoApiKey}
-                    onChange={e => setTripoApiKey(e.target.value)}
-                    placeholder="กรอก API Key จาก tripo3d.ai..."
-                  />
-                  <button type="button" onClick={() => setShowTripo(!showTripo)} style={{ padding: '0 12px', background: '#F5F5F0', border: '1px solid #EDE9E1', borderRadius: '8px', cursor: 'pointer', fontSize: '12px' }}>
-                    {showTripo ? 'ซ่อน' : 'แสดง'}
-                  </button>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-          {/* Database Info */}
-          <div style={{ borderTop: '1px solid #EDE9E1', paddingTop: '20px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 800, marginBottom: '12px', color: '#1E4D3A' }}>🗄️ การเชื่อมต่อฐานข้อมูล (Database Connection)</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label className="erp-label">Supabase Project URL</label>
-                <input className="erp-input" style={{ padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1' }} value={dbUrl} onChange={e => setDbUrl(e.target.value)} />
-              </div>
-              <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label className="erp-label">Supabase Anonymous Key</label>
-                <input type="password" className="erp-input" style={{ padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1' }} value={dbKey} onChange={e => setDbKey(e.target.value)} />
-              </div>
-            </div>
-          </div>
-
-          {/* School Name */}
-          <div style={{ borderTop: '1px solid #EDE9E1', paddingTop: '20px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 800, marginBottom: '12px', color: '#1E4D3A' }}>🏫 ข้อมูลทั่วไปขององค์กร (Organization Profile)</h3>
-            <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label className="erp-label">ชื่อสถาบันหลัก (Default School)</label>
-              <input className="erp-input" style={{ padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1' }} value={schoolName} onChange={e => setSchoolName(e.target.value)} />
-            </div>
-          </div>
-
-          {/* Maintenance */}
-          <div style={{ borderTop: '1px solid #EDE9E1', paddingTop: '20px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 800, marginBottom: '12px', color: '#1E4D3A' }}>🔒 ความปลอดภัยและการตรวจสอบ (System Operations)</h3>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px', background: '#FBF6E9', borderRadius: '12px', border: '1px solid rgba(201,168,76,0.3)' }}>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: '13px', color: '#A6882A' }}>เปิดใช้งาน Maintenance Mode</div>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>เมื่อเปิดใช้งาน นักเรียนและครูจะไม่สามารถเข้าใช้งานแพลตฟอร์มได้ชั่วคราว</div>
-              </div>
-              <input type="checkbox" style={{ width: '20px', height: '20px', cursor: 'pointer' }} checked={maintenance} onChange={e => setMaintenance(e.target.checked)} />
-            </div>
-          </div>
-
-          <button type="submit" style={{ padding: '14px', background: 'linear-gradient(135deg, #1E4D3A 0%, #103024 100%)', color: 'white', borderRadius: '8px', border: 'none', fontWeight: 700, cursor: 'pointer' }}>
-            บันทึกการเชื่อมต่อและความปลอดภัย
-          </button>
-        </form>
-      ) : (
-        /* 🎨 UX/UI preferences FULL VERSION */
-        <form onSubmit={handleSaveUXUI} className="erp-card" style={{ background: '#fff', padding: '24px', borderRadius: '16px', border: '1px solid #EDE9E1', display: 'flex', flexDirection: 'column', gap: '22px' }}>
-          
-          {/* Section 1: Themes & Branding */}
-          <div>
-            <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#1E4D3A', borderBottom: '1.5px solid #EDE9E1', paddingBottom: '8px', marginBottom: '14px' }}>
-              🎨 สกินสีและภาพลักษณ์ (Themes & Branding)
-            </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label className="erp-label" style={{ fontWeight: 700, fontSize: '13px' }}>โทนสีของระบบ (Visual Theme Mode)</label>
-                <select
-                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1', fontSize: '13px', background: '#fff', cursor: 'pointer' }}
-                  value={themeMode}
-                  onChange={e => setThemeMode(e.target.value)}
-                >
-                  <option value="forest-gold">🌲 Forest Gold (สีเขียว-ทองดั้งเดิมหรูหรา)</option>
-                  <option value="dark-night">🌑 Obsidian Dark (โหมดมืดสนิทถนอมสายตา)</option>
-                  <option value="royal-blue">👑 Royal Blue (น้ำเงินเข้มภูมิฐานระดับสูง)</option>
-                  <option value="cherry-blossom">🌸 Cherry Blossom (ชมพูพาสเทล อ่อนโยน เข้าถึงง่าย)</option>
-                </select>
-              </div>
-
-              <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label className="erp-label" style={{ fontWeight: 700, fontSize: '13px' }}>ตระกูลแบบตัวอักษร (System Font Family)</label>
-                <select
-                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1', fontSize: '13px', background: '#fff', cursor: 'pointer' }}
-                  value={fontFamily}
-                  onChange={e => setFontFamily(e.target.value)}
-                >
-                  <option value="kanit">✏️ Kanit (โมเดิร์น โค้งมน ทันสมัยนิยม)</option>
-                  <option value="sarabun">✏️ Sarabun (สารบรรณ ทางการ เรียบร้อย)</option>
-                  <option value="inter">✏️ Inter / Outfit (สากล เรียบหรู สะอาดตา)</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Section 2: Layout & Accessibility */}
-          <div style={{ borderTop: '1px solid #EDE9E1', paddingTop: '20px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#1E4D3A', borderBottom: '1.5px solid #EDE9E1', paddingBottom: '8px', marginBottom: '14px' }}>
-              📏 รูปเลย์เอาต์และการเข้าถึง (Layout & Accessibility)
-            </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label className="erp-label" style={{ fontWeight: 700, fontSize: '13px' }}>ขนาดอักษรแสดงผล (Base Font Size)</label>
-                <select
-                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1', fontSize: '13px', background: '#fff', cursor: 'pointer' }}
-                  value={textSize}
-                  onChange={e => setTextSize(e.target.value)}
-                >
-                  <option value="normal">Normal (มาตรฐาน 100% - คล่องตัว)</option>
-                  <option value="large">Large (ขนาดใหญ่ 115% - อ่านสบายตา)</option>
-                  <option value="xlarge">Extra Large (ขนาดใหญ่พิเศษ 130% - คมชัดสูง)</option>
-                </select>
-              </div>
-
-              <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label className="erp-label" style={{ fontWeight: 700, fontSize: '13px' }}>ความหนาแน่นโครงสร้างหน้า (Card Layout Density)</label>
-                <select
-                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1', fontSize: '13px', background: '#fff', cursor: 'pointer' }}
-                  value={layoutDensity}
-                  onChange={e => setLayoutDensity(e.target.value)}
-                >
-                  <option value="comfortable">Comfortable (ผ่อนคลาย สวยงาม เว้นระยะพอเหมาะ)</option>
-                  <option value="compact">Compact (กระชับ เก็บข้อมูลเยอะ ประหยัดการเลื่อนหน้า)</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Section 3: Animations & Speeds */}
-          <div style={{ borderTop: '1px solid #EDE9E1', paddingTop: '20px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#1E4D3A', borderBottom: '1.5px solid #EDE9E1', paddingBottom: '8px', marginBottom: '14px' }}>
-              ⚡ ความลื่นไหลและแอนิเมชัน (Performance & Transition Styles)
-            </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '14px' }}>
-              
-              <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label className="erp-label" style={{ fontWeight: 700, fontSize: '13px' }}>สไตล์เอฟเฟกต์การเปลี่ยนหน้า (Transition Effect)</label>
-                <select
-                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1', fontSize: '13px', background: '#fff', cursor: 'pointer' }}
-                  value={transitionStyle}
-                  onChange={e => setTransitionStyle(e.target.value)}
-                >
-                  <option value="smooth">Slide Smooth 60FPS (เคลื่อนไหวลื่นไหลสมบูรณ์แบบ)</option>
-                  <option value="fade">Fade Only (เลือนจาง - ประหยัดพลังงาน CPU)</option>
-                  <option value="none">None / Instant (ทันทีทันใด - เหมาะสำหรับเครื่องสเปกต่ำ)</option>
-                </select>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FDFBF7', padding: '10px 14px', borderRadius: '8px', border: '1px solid #EDE9E1', height: '42px', marginTop: '24px' }}>
-                <div>
-                  <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#4A4138' }}>เปิดแอนิเมชันปุ่มสั่นไหวแบบสั่นเบา (Micro-interactions)</span>
-                </div>
-                <input
-                  type="checkbox"
-                  style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                  checked={microInteractions}
-                  onChange={e => setMicroInteractions(e.target.checked)}
-                />
-              </div>
-
-            </div>
-          </div>
-
-          {/* Section 4: 3D AR & Helper Overlays */}
-          <div style={{ borderTop: '1px solid #EDE9E1', paddingTop: '20px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#1E4D3A', borderBottom: '1.5px solid #EDE9E1', paddingBottom: '8px', marginBottom: '14px' }}>
-              📦 เทคโนโลยี AR และการเรนเดอร์สามมิติ (AR & 3D Object settings)
-            </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-              
-              <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label className="erp-label" style={{ fontWeight: 700, fontSize: '13px' }}>คุณภาพพื้นผิววัตถุสามมิติ (3D AR Model Quality)</label>
-                <select
-                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1', fontSize: '13px', background: '#fff', cursor: 'pointer' }}
-                  value={arQuality}
-                  onChange={e => setArQuality(e.target.value)}
-                >
-                  <option value="hd">High Definition (สวยงามสมจริง คมชัดสูงสุด 1080p)</option>
-                  <option value="sd">Standard Definition (โหลดเร็วขึ้น 50% เหมาะสำหรับเน็ตความเร็วต่ำ)</option>
-                </select>
-              </div>
-
-              <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label className="erp-label" style={{ fontWeight: 700, fontSize: '13px' }}>แสดงคู่มือช่วยสอนการหมุนขยาย AR (Helper Guidelines Overlay)</label>
-                <select
-                  style={{ padding: '10px', borderRadius: '8px', border: '1px solid #EDE9E1', fontSize: '13px', background: '#fff', cursor: 'pointer' }}
-                  value={showArHelp}
-                  onChange={e => setShowArHelp(e.target.value)}
-                >
-                  <option value="always">แสดงทุกครั้งที่เริ่มใช้งานกล้อง AR</option>
-                  <option value="once">แสดงเฉพาะการเปิดใช้งานครั้งแรกเท่านั้น</option>
-                  <option value="never">ซ่อนแถบนำทางช่วยเหลือทั้งหมดถาวร</option>
-                </select>
-              </div>
-
-            </div>
-          </div>
-
-          {/* Section 5: Cache Cleaner */}
-          <div style={{ borderTop: '1px solid #EDE9E1', paddingTop: '20px' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#1E4D3A', borderBottom: '1.5px solid #EDE9E1', paddingBottom: '8px', marginBottom: '14px' }}>
-              🧹 การบำรุงรักษาเครื่องผู้ใช้ (Client-Side Cache Cleaning)
-            </h3>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', background: '#FFFDF6', border: '1.5px solid #C9A84C', borderRadius: '12px' }}>
-              <div style={{ flex: 1, paddingRight: '16px' }}>
-                <span style={{ fontSize: '13px', fontWeight: 700, color: '#A6882A' }}>ล้างไฟล์ขยะ แคชจำลองสถานการณ์ และเซสชันชั่วคราว</span>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px', lineHeight: 1.5 }}>
-                  ล้างความหน่วงทดสอบ Latency, แคชโมเดล AR ค้างหน้าจอ, และประวัติการกดคำแนะนำ เพื่อเพิ่มพื้นที่ความจำและช่วยลดความหน่วงสะสมของเบราว์เซอร์ (ข้อมูลบัญชี คะแนนนักเรียน และกุญแจ AI ปลอดภัย 100%)
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={handleClearCache}
-                disabled={clearing}
-                style={{
-                  padding: '12px 20px',
-                  background: '#8B2635',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  fontWeight: 700,
-                  fontSize: '12.5px',
-                  cursor: clearing ? 'not-allowed' : 'pointer',
-                  boxShadow: '0 4px 10px rgba(139,38,53,0.15)',
-                  flexShrink: 0
-                }}
-              >
-                {clearing ? 'กำลังล้างแคช...' : '🧹 ล้างแคชขยะความจำ'}
-              </button>
-            </div>
-          </div>
-
-          <button type="submit" style={{ padding: '14px', background: 'linear-gradient(135deg, #1E4D3A 0%, #103024 100%)', color: 'white', borderRadius: '8px', border: 'none', fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 12px rgba(16,48,36,0.2)' }}>
-            บันทึกการปรับแต่ง UX/UI และบังคับใช้
-          </button>
-        </form>
-      )}
-
-    </div>
+    </main>
   )
 }

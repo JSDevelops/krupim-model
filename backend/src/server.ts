@@ -7,12 +7,13 @@ import { z } from 'zod'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { OpenAI } from 'openai'
 import Anthropic from '@anthropic-ai/sdk'
-import { createClient } from '@supabase/supabase-js'
+import { Pool } from 'pg'
+import { jwtVerify } from 'jose'
 
 dotenv.config()
 
 // ─── Startup validation (Fail Fast) ─────────────────────────────────────────
-const REQUIRED_ENV = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY'] as const
+const REQUIRED_ENV = ['DATABASE_URL', 'AUTH_SECRET'] as const
 for (const key of REQUIRED_ENV) {
   if (!process.env[key]) {
     console.error(`[STARTUP ERROR] Missing required env var: ${key}`)
@@ -51,11 +52,11 @@ app.use(cors({
     }
 
     // Allow localhost and local IP addresses (dev only)
-    if (
+    if (process.env.NODE_ENV !== 'production' && (
       origin.startsWith('http://localhost:') ||
       origin.startsWith('http://127.0.0.1:') ||
       origin.endsWith('.ngrok-free.app')
-    ) {
+    )) {
       callback(null, true)
       return
     }
@@ -90,10 +91,10 @@ app.use('/api/simulation', aiLimiter)
 
 app.use(express.json({ limit: '10mb' }))
 
-// ─── Initialize Supabase Client (Service Role — bypasses RLS for backend writes) ─
-const supabaseUrl = process.env.SUPABASE_URL || ''
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
+// Initialize the server-only local PostgreSQL connection pool.
+const databaseUrl = process.env.DATABASE_URL || ''
+const database = new Pool({ connectionString: databaseUrl, max: 10 })
+const authSecret = new TextEncoder().encode(process.env.AUTH_SECRET || '')
 
 // Initialize Default AI Clients — only if key is present, otherwise null (guarded in helper functions)
 const defaultGenAI = process.env.GEMINI_API_KEY
@@ -113,8 +114,7 @@ const ChatSchema = z.object({
     role: z.enum(['user', 'model']),
     text: z.string()
   })).optional().default([]),
-  student_id: z.string().uuid().optional(),
-  session_type: z.string().optional(),
+  session_type: z.enum(['gemini_chat', 'openai_chat', 'claude_chat']).optional(),
   topic: z.string().optional(),
   session_id: z.string().uuid().optional()
 })
@@ -130,7 +130,6 @@ const SimulationEvalSchema = z.object({
     text: z.string()
   })).min(1).max(50),
   score: z.number().min(0).max(100).optional(),
-  student_id: z.string().uuid().optional(),
   scenario_id: z.string().uuid().optional()
 })
 
@@ -158,7 +157,7 @@ function validate<T>(schema: z.ZodType<T>, req: express.Request, res: express.Re
   return result.data
 }
 
-// ─── JWT Auth Middleware (Supabase token verification) ──────────────────────
+// JWT authentication shared with the Next.js frontend.
 // ใช้กับ endpoint ที่ต้องการ login เท่านั้น
 async function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
   const authHeader = req.headers['authorization']
@@ -169,17 +168,42 @@ async function requireAuth(req: express.Request, res: express.Response, next: ex
 
   const token = authHeader.slice(7)
   try {
-    // ตรวจสอบ JWT กับ Supabase
-    const { data: { user }, error } = await supabase.auth.getUser(token)
-    if (error || !user) {
-      res.status(401).json({ error: 'Unauthorized: Invalid or expired session token' })
+    const { payload } = await jwtVerify(token, authSecret, {
+      algorithms: ['HS256'],
+      issuer: 'krupim-local',
+      audience: 'krupim-app'
+    })
+    if (!payload.sub || typeof payload.role !== 'string') {
+      res.status(401).json({ error: 'Unauthorized: Invalid session payload' })
       return
     }
-    // ส่ง userId ต่อให้ handler ใช้งาน
-    ;(req as any).userId = user.id
+    const result = await database.query<{ role: UserRole; approval_status: string }>(
+      'SELECT role, approval_status FROM profiles WHERE id = $1 LIMIT 1',
+      [payload.sub]
+    )
+    const profile = result.rows[0]
+    if (!profile || profile.approval_status !== 'active' || profile.role !== payload.role) {
+      res.status(403).json({ error: 'Forbidden: Account is not active' })
+      return
+    }
+
+    ;(req as any).userId = payload.sub
+    ;(req as any).userRole = profile.role
     next()
   } catch (err) {
     res.status(401).json({ error: 'Unauthorized: Token verification failed' })
+  }
+}
+
+type UserRole = 'developer' | 'teacher' | 'student'
+
+function requireRole(...allowedRoles: UserRole[]) {
+  return (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (!allowedRoles.includes((req as any).userRole)) {
+      res.status(403).json({ error: 'Forbidden: Insufficient permissions' })
+      return
+    }
+    next()
   }
 }
 
@@ -193,65 +217,51 @@ function getActiveProvider(req: express.Request): 'gemini' | 'openai' | 'claude'
   return 'gemini' // default
 }
 
-// Helper function to extract user's API Key from request headers dynamically (fallback to default)
-function getGemini(req: express.Request): GoogleGenerativeAI {
-  const customKey = req.headers['x-gemini-key'] as string
-  if (customKey && customKey.trim().startsWith('AIzaSy')) {
-    return new GoogleGenerativeAI(customKey.trim())
-  }
+// API keys are server-side secrets and are never accepted from request headers.
+function getGemini(_req: express.Request): GoogleGenerativeAI {
   if (defaultGenAI) return defaultGenAI
-  throw new Error('No Gemini API key configured. Please set GEMINI_API_KEY in .env or provide x-gemini-key header.')
+  throw new Error('No Gemini API key configured. Please set GEMINI_API_KEY in .env.')
 }
 
-function getOpenAI(req: express.Request): OpenAI {
-  const customKey = req.headers['x-openai-key'] as string
-  if (customKey && customKey.trim().startsWith('sk-')) {
-    return new OpenAI({ apiKey: customKey.trim() })
-  }
+function getOpenAI(_req: express.Request): OpenAI {
   if (defaultOpenAI) return defaultOpenAI
-  throw new Error('No OpenAI API key configured. Please set OPENAI_API_KEY in .env or provide x-openai-key header.')
+  throw new Error('No OpenAI API key configured. Please set OPENAI_API_KEY in .env.')
 }
 
-function getAnthropic(req: express.Request): Anthropic {
-  const customKey = req.headers['x-claude-key'] as string
-  if (customKey && customKey.trim().startsWith('sk-ant-')) {
-    return new Anthropic({ apiKey: customKey.trim() })
-  }
+function getAnthropic(_req: express.Request): Anthropic {
   if (defaultAnthropic) return defaultAnthropic
-  throw new Error('No Anthropic API key configured. Please set ANTHROPIC_API_KEY in .env or provide x-claude-key header.')
+  throw new Error('No Anthropic API key configured. Please set ANTHROPIC_API_KEY in .env.')
 }
 
 // System status endpoint
-app.get('/api/status', (req, res) => {
+app.get('/api/status', requireAuth, (req, res) => {
   const provider = getActiveProvider(req)
   let initialized = false
   
   if (provider === 'openai') {
-    const customKey = req.headers['x-openai-key'] as string
-    initialized = (customKey && customKey.trim().startsWith('sk-')) || !!process.env.OPENAI_API_KEY
+    initialized = !!process.env.OPENAI_API_KEY
   } else if (provider === 'claude') {
-    const customKey = req.headers['x-claude-key'] as string
-    initialized = (customKey && customKey.trim().startsWith('sk-ant-')) || !!process.env.ANTHROPIC_API_KEY
+    initialized = !!process.env.ANTHROPIC_API_KEY
   } else {
-    const customKey = req.headers['x-gemini-key'] as string
-    initialized = (customKey && customKey.trim().startsWith('AIzaSy')) || !!process.env.GEMINI_API_KEY
+    initialized = !!process.env.GEMINI_API_KEY
   }
   
   res.json({
     status: 'online',
-    supabaseConnected: !!supabaseUrl,
+    databaseConnected: !!databaseUrl,
     activeProvider: provider,
     aiInitialized: initialized,
     timestamp: new Date().toISOString()
   })
 })
 
-// Unified Multi-LLM Chat API  (🔐 requires Supabase JWT)
+// Unified Multi-LLM Chat API (requires the local application JWT)
 app.post('/api/chat', requireAuth, async (req, res) => {
   try {
     const body = validate(ChatSchema, req, res)
     if (!body) return
-    const { message, history, student_id, session_type, topic, session_id } = body
+    const { message, history, session_type, topic, session_id } = body
+    const ownerId = (req as any).userId as string
     const provider = getActiveProvider(req)
     const systemPrompt = 'คุณคือผู้ช่วยสอนอัจฉริยะในแพลตฟอร์ม FINE MODEL ที่เชี่ยวชาญด้านศิลปะการบริการอาหารและเครื่องดื่ม การจัดโต๊ะอาหาร (Table Setting) และคำศัพท์ภาษาอังกฤษที่ใช้ในวิชาชีพนี้ ตอบผู้เรียนด้วยความสุภาพ กระชับ สนับสนุนการเรียนรู้ และมีตัวอย่างสถานการณ์จริงเสมอ'
     
@@ -304,27 +314,23 @@ app.post('/api/chat', requireAuth, async (req, res) => {
       text = result.response.text()
     }
 
-    // Save to Supabase if student_id is provided
+    // Persist only to the authenticated student's own record.
     let savedSessionId = session_id
-    if (supabase && student_id) {
+    if ((req as any).userRole === 'student') {
       try {
         const fullMessages = [...(history || []), { role: 'user', text: message }, { role: 'model', text }]
         if (savedSessionId) {
-          await supabase.from('chat_sessions').update({
-            messages_json: fullMessages,
-            ended_at: new Date().toISOString()
-          }).eq('id', savedSessionId)
+          await database.query(
+            'UPDATE chat_sessions SET messages_json = $1, ended_at = NOW() WHERE id = $2 AND student_id = $3',
+            [JSON.stringify(fullMessages), savedSessionId, ownerId]
+          )
         } else {
-          const { data, error } = await supabase.from('chat_sessions').insert({
-            student_id,
-            session_type: session_type || 'gemini_chat',
-            topic: topic || 'General Conversation',
-            messages_json: fullMessages
-          }).select('id').single()
-          
-          if (data) {
-            savedSessionId = data.id
-          }
+          const inserted = await database.query<{ id: string }>(`
+            INSERT INTO chat_sessions (student_id, session_type, topic, messages_json)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id
+          `, [ownerId, session_type || 'gemini_chat', topic || 'General Conversation', JSON.stringify(fullMessages)])
+          savedSessionId = inserted.rows[0]?.id
         }
       } catch (dbErr) {
         console.error('Failed to save chat session:', dbErr)
@@ -338,7 +344,7 @@ app.post('/api/chat', requireAuth, async (req, res) => {
   }
 })
 
-// Unified Multi-LLM Vision Scan API  (🔐 requires Supabase JWT)
+// Unified Multi-LLM Vision Scan API (requires the local application JWT)
 app.post('/api/scan', requireAuth, async (req, res) => {
   try {
     const body = validate(ScanSchema, req, res)
@@ -477,20 +483,34 @@ app.post('/api/scan', requireAuth, async (req, res) => {
     if (!jsonMatch) throw new Error('No JSON output from AI. Raw response: ' + text)
     const parsedData = JSON.parse(jsonMatch[0])
 
-    // Save to Supabase DB
-    if (supabase) {
+    // Save to Local PostgreSQL DB
+    if (['teacher', 'developer'].includes((req as any).userRole)) {
       try {
-        await supabase.from('ai_scan_items').upsert({
-          name_th: parsedData.name_th,
-          name_en: parsedData.name_en,
-          category: parsedData.category || 'tableware',
-          subcategory: parsedData.subcategory || '',
-          description: parsedData.description || (parsedData.fine_analysis?.familiarize?.desc || ''),
-          location: parsedData.location || (parsedData.fine_analysis?.familiarize?.location || ''),
-          service_tips: parsedData.service_tips || (parsedData.fine_analysis?.navigate?.service_steps?.join('\n') || ''),
-          english_phrases: parsedData.english_phrases || (parsedData.fine_analysis?.interact?.english_phrases || []),
-          pronounce: parsedData.pronounce || (parsedData.fine_analysis?.interact?.pronunciation || '')
-        }, { onConflict: 'name_en' })
+        await database.query(`
+          INSERT INTO ai_scan_items (
+            name_th, name_en, category, subcategory, description, location,
+            service_tips, english_phrases, pronounce
+          ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+          ON CONFLICT (name_en) DO UPDATE SET
+            name_th = EXCLUDED.name_th,
+            category = EXCLUDED.category,
+            subcategory = EXCLUDED.subcategory,
+            description = EXCLUDED.description,
+            location = EXCLUDED.location,
+            service_tips = EXCLUDED.service_tips,
+            english_phrases = EXCLUDED.english_phrases,
+            pronounce = EXCLUDED.pronounce
+        `, [
+          parsedData.name_th,
+          parsedData.name_en,
+          parsedData.category || 'tableware',
+          parsedData.subcategory || '',
+          parsedData.description || (parsedData.fine_analysis?.familiarize?.desc || ''),
+          parsedData.location || (parsedData.fine_analysis?.familiarize?.location || ''),
+          parsedData.service_tips || (parsedData.fine_analysis?.navigate?.service_steps?.join('\n') || ''),
+          parsedData.english_phrases || (parsedData.fine_analysis?.interact?.english_phrases || []),
+          parsedData.pronounce || (parsedData.fine_analysis?.interact?.pronunciation || '')
+        ])
       } catch (dbErr) {
         console.error('Failed to save scanned item to DB:', dbErr)
       }
@@ -509,12 +529,13 @@ app.post('/api/scan', requireAuth, async (req, res) => {
   }
 })
 
-// Unified Simulation Evaluation API  (🔐 requires Supabase JWT)
+// Unified Simulation Evaluation API (requires the local application JWT)
 app.post('/api/simulation/evaluate', requireAuth, async (req, res) => {
   try {
     const body = validate(SimulationEvalSchema, req, res)
     if (!body) return
-    const { messages, score, student_id, scenario_id } = body
+    const { messages, score, scenario_id } = body
+    const ownerId = (req as any).userId as string
 
     const provider = getActiveProvider(req)
     const chatContent = messages.map((m: any) => `${m.role === 'user' ? 'บริกร' : 'ลูกค้า'}: ${m.text}`).join('\n')
@@ -559,17 +580,14 @@ ${chatContent}
     if (!jsonMatch) throw new Error('No JSON output from AI')
     const parsed = JSON.parse(jsonMatch[0])
 
-    // Save to Supabase
-    if (supabase && student_id && scenario_id) {
+    // Save to Local PostgreSQL
+    if ((req as any).userRole === 'student' && scenario_id) {
       try {
-        await supabase.from('simulation_sessions').insert({
-          student_id,
-          scenario_id,
-          score: score || 0,
-          max_score: 100,
-          feedback_json: parsed,
-          conversation_json: messages
-        })
+        await database.query(`
+          INSERT INTO simulation_sessions (
+            student_id, scenario_id, score, max_score, feedback_json, conversation_json
+          ) VALUES ($1, $2, $3, 100, $4, $5)
+        `, [ownerId, scenario_id, score || 0, JSON.stringify(parsed), JSON.stringify(messages)])
       } catch (dbErr) {
         console.error('Failed to save simulation session:', dbErr)
       }
@@ -582,8 +600,8 @@ ${chatContent}
   }
 })
 
-// Unified AI Blog Generation API  (🔐 requires Supabase JWT)
-app.post('/api/blog/generate', requireAuth, async (req, res) => {
+// Unified AI Blog Generation API (requires the local application JWT)
+app.post('/api/blog/generate', requireAuth, requireRole('teacher', 'developer'), async (req, res) => {
   try {
     const body = validate(BlogGenerateSchema, req, res)
     if (!body) return
@@ -643,17 +661,18 @@ app.post('/api/blog/generate', requireAuth, async (req, res) => {
 })
 
 // ─── In-memory store for Tripo3D async tasks ─────────────────────────────────
-const tripoTasks = new Map<string, { status: 'pending' | 'success' | 'failed', glbUrl?: string, topic?: string }>()
+const tripoTasks = new Map<string, { status: 'pending' | 'success' | 'failed', ownerId: string, glbUrl?: string, topic?: string }>()
 
 // 3D AI Studio Generation API Integration (NON-BLOCKING)
-app.post('/api/3d/generate', requireAuth, async (req, res) => {
+app.post('/api/3d/generate', requireAuth, requireRole('teacher', 'developer'), async (req, res) => {
   try {
     const body = validate(ThreeDGenerateSchema, req, res)
     if (!body) return
     const { topic } = body
 
-    const apiKey = (req.headers['x-3d-ai-studio-key'] as string) || process.env.THREE_D_AI_STUDIO_API_KEY || ''
-    const tripoKey = (req.headers['x-tripo-key'] as string) || process.env.TRIPO_API_KEY || ''
+    const ownerId = (req as any).userId as string
+    const apiKey = process.env.THREE_D_AI_STUDIO_API_KEY || ''
+    const tripoKey = process.env.TRIPO_API_KEY || ''
     console.log(`Generating 3D model for: ${topic}`)
 
     let glbUrl = ''
@@ -678,7 +697,7 @@ app.post('/api/3d/generate', requireAuth, async (req, res) => {
             const taskId = tripoData.data.task_id as string
             console.log(`Tripo3D task submitted: ${taskId}`)
             // Store pending task — background poll will update it
-            tripoTasks.set(taskId, { status: 'pending', topic })
+            tripoTasks.set(taskId, { status: 'pending', ownerId, topic })
             // Background polling (non-blocking)
             ;(async () => {
               for (let i = 0; i < 10; i++) {
@@ -692,10 +711,10 @@ app.post('/api/3d/generate', requireAuth, async (req, res) => {
                     if (pollData.code === 0 && pollData.data) {
                       const status = pollData.data.status
                       if (status === 'success') {
-                        tripoTasks.set(taskId, { status: 'success', glbUrl: pollData.data.result?.model?.glb || '', topic })
+                        tripoTasks.set(taskId, { status: 'success', ownerId, glbUrl: pollData.data.result?.model?.glb || '', topic })
                         break
                       } else if (status === 'failed') {
-                        tripoTasks.set(taskId, { status: 'failed', topic })
+                        tripoTasks.set(taskId, { status: 'failed', ownerId, topic })
                         break
                       }
                     }
@@ -706,7 +725,15 @@ app.post('/api/3d/generate', requireAuth, async (req, res) => {
               }
             })()
             // Return taskId immediately — client can poll /api/3d/status/:taskId
-            return res.json({ success: true, topic, taskId, status: 'pending', provider: 'Tripo3D' })
+            return res.json({
+              success: true,
+              topic,
+              taskId,
+              status: 'pending',
+              provider: 'Tripo3D (sample shown while processing)',
+              glbUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+              usdzUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.usdz'
+            })
           }
         }
       } catch (err) {
@@ -781,17 +808,18 @@ app.post('/api/3d/generate', requireAuth, async (req, res) => {
 })
 
 // Tripo3D Async Status Check (client polls this after receiving taskId)
-app.get('/api/3d/status/:taskId', requireAuth, (req, res) => {
+app.get('/api/3d/status/:taskId', requireAuth, requireRole('teacher', 'developer'), (req, res) => {
   const { taskId } = req.params as { taskId: string }
   const task = tripoTasks.get(taskId)
-  if (!task) {
+  if (!task || (task.ownerId !== (req as any).userId && (req as any).userRole !== 'developer')) {
     return res.status(404).json({ error: 'Task not found' })
   }
-  res.json({ taskId, ...task })
+  const { ownerId: _ownerId, ...publicTask } = task
+  res.json({ taskId, ...publicTask })
 })
 
 // Blender Python Script Generator API
-app.post('/api/blender/generate', requireAuth, async (req, res) => {
+app.post('/api/blender/generate', requireAuth, requireRole('teacher', 'developer'), async (req, res) => {
   try {
     const body = validate(ThreeDGenerateSchema, req, res)
     if (!body) return
@@ -849,20 +877,17 @@ The script must:
 
 // Connection Health Ping Monitor API (🔐 requires JWT)
 // 🔴 แก้ไข: ไม่เรียก LLM จริงเพื่อประหยัด token — ตรวจแค่ API key format + DB ping
-app.get('/api/ping-all', requireAuth, async (req, res) => {
+app.get('/api/ping-all', requireAuth, requireRole('developer'), async (req, res) => {
   try {
     const startDb = Date.now()
     let dbStatus = 'offline'
     let dbLatency = 0
     
-    // Check Supabase — lightweight SELECT เท่านั้น
-    if (supabase && supabaseUrl) {
-      try {
-        const { error } = await supabase.from('schools').select('id').limit(1).maybeSingle()
-        if (!error) dbStatus = 'online'
-      } catch (e) {}
-      dbLatency = Date.now() - startDb
-    }
+    try {
+      await database.query('SELECT 1')
+      dbStatus = 'online'
+    } catch {}
+    dbLatency = Date.now() - startDb
 
     // Check AI provider — ตรวจ key format เท่านั้น ไม่เรียก LLM จริง (ประหยัด token)
     const provider = getActiveProvider(req)
@@ -870,19 +895,16 @@ app.get('/api/ping-all', requireAuth, async (req, res) => {
     let aiNote = ''
 
     if (provider === 'openai') {
-      const customKey = req.headers['x-openai-key'] as string
-      const hasKey = (customKey?.startsWith('sk-')) || !!process.env.OPENAI_API_KEY
+      const hasKey = !!process.env.OPENAI_API_KEY
       aiStatus = hasKey ? 'key_configured' : 'no_key'
       aiNote = 'Key format check only (no token usage)'
     } else if (provider === 'claude') {
-      const customKey = req.headers['x-claude-key'] as string
-      const hasKey = (customKey?.startsWith('sk-ant-')) || !!process.env.ANTHROPIC_API_KEY
+      const hasKey = !!process.env.ANTHROPIC_API_KEY
       aiStatus = hasKey ? 'key_configured' : 'no_key'
       aiNote = 'Key format check only (no token usage)'
     } else {
       // Gemini
-      const customKey = req.headers['x-gemini-key'] as string
-      const hasKey = (customKey?.startsWith('AIzaSy')) || !!process.env.GEMINI_API_KEY
+      const hasKey = !!process.env.GEMINI_API_KEY
       aiStatus = hasKey ? 'key_configured' : 'no_key'
       aiNote = 'Key format check only (no token usage)'
     }

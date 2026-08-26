@@ -1,6 +1,8 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { authenticatedFetch } from '@/lib/api'
+import { toast } from 'sonner'
 
 interface Message {
   role: 'user' | 'model'
@@ -95,7 +97,7 @@ export default function ChatPage() {
   // ฟังก์ชันสลับเปิดปิดไมค์บันทึกเสียง
   function handleToggleMic() {
     if (!recognitionRef.current) {
-      alert('บราวเซอร์นี้ไม่สนับสนุนการวิเคราะห์เสียงพูด! กรุณาใช้ Google Chrome')
+      toast.warning('เบราว์เซอร์นี้ไม่รองรับการวิเคราะห์เสียงพูด', { description: 'กรุณาใช้ Google Chrome เวอร์ชันล่าสุด' })
       return
     }
 
@@ -160,28 +162,16 @@ export default function ChatPage() {
 
     try {
       const activeProvider = typeof window !== 'undefined' ? localStorage.getItem('activeAiProvider') || 'gemini' : 'gemini'
-      const geminiKey = typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : ''
-      const openaiKey = typeof window !== 'undefined' ? localStorage.getItem('openaiApiKey') || '' : ''
-      const claudeKey = typeof window !== 'undefined' ? localStorage.getItem('claudeApiKey') || '' : ''
-      const savedUserInfo = typeof window !== 'undefined' ? localStorage.getItem('userInfo') : null
-      let parsedUser: any = null
-      try { parsedUser = savedUserInfo ? JSON.parse(savedUserInfo) : null } catch {}
-      const studentId = parsedUser?.id || 'student-001'
-
       const backendUrl = ''
-      const response = await fetch(`${backendUrl}/api/chat`, {
+      const response = await authenticatedFetch(`${backendUrl}/api/chat`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-ai-provider': activeProvider,
-          'x-gemini-key': geminiKey,
-          'x-openai-key': openaiKey,
-          'x-claude-key': claudeKey
+          'x-ai-provider': activeProvider
         },
         body: JSON.stringify({
           message: msg,
           history: messages.map(m => ({ role: m.role, text: m.text })),
-          student_id: studentId,
           session_type: 'gemini_chat',
           topic: 'Learning Conversation',
           session_id: sessionId

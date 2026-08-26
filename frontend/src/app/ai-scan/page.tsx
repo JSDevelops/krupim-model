@@ -1,8 +1,9 @@
 'use client'
 import { useState, useRef, useCallback, useEffect } from 'react'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
+import { localData } from '@/lib/localData'
 import { analyzeImage as analyzeImageAPI } from '@/lib/gemini'
+import { authenticatedFetch } from '@/lib/api'
 
 interface FineAnalysis {
   familiarize?: {
@@ -114,7 +115,7 @@ export default function AIScanPage() {
     
     try {
       const backendUrl = ''
-      const resp = await fetch(`${backendUrl}/api/scan`, {
+      const resp = await authenticatedFetch(`${backendUrl}/api/scan`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageBase64: base64, mimeType: 'image/jpeg' })
@@ -142,7 +143,7 @@ export default function AIScanPage() {
         
         // Look up matching 3D model in database
         try {
-          const { data: matchedItem } = await supabase
+          const { data: matchedItem } = await localData
             .from('ai_scan_items')
             .select('id, glb_url')
             .eq('name_en', data.name_en)
@@ -190,7 +191,7 @@ export default function AIScanPage() {
     setQuizAnswered(false)
     setActiveTab('F')
     try {
-      const geminiKey = (typeof window !== 'undefined' ? localStorage.getItem('geminiApiKey') || '' : '') || process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
+      const geminiKey: string = '' // Secrets are server-only; direct browser calls are intentionally disabled.
       let data = null
       let usedDirectGemini = false
 
@@ -263,7 +264,7 @@ export default function AIScanPage() {
 
       // Look up matching 3D model in database
       try {
-        const { data: matchedItem } = await supabase
+        const { data: matchedItem } = await localData
           .from('ai_scan_items')
           .select('id, glb_url')
           .eq('name_en', data.name_en)

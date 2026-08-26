@@ -1,8 +1,43 @@
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
+import { Cormorant_Garamond, Kanit, Noto_Sans_Thai, Playfair_Display, Prompt, Sarabun } from 'next/font/google'
 import './globals.css'
 import { RoleProvider } from '@/context/RoleContext'
 import AppWrapper from '@/components/AppWrapper'
+import FontPreferenceSync from '@/components/FontPreferenceSync'
+import AppToaster from '@/components/AppToaster'
+import AppConfirmDialog from '@/components/AppConfirmDialog'
+
+const kanit = Kanit({
+  subsets: ['thai', 'latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-kanit',
+  display: 'swap',
+})
+
+const sarabun = Sarabun({
+  subsets: ['thai', 'latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-sarabun',
+  display: 'swap',
+})
+
+const prompt = Prompt({
+  subsets: ['thai', 'latin'],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-prompt',
+  display: 'swap',
+})
+
+const notoSansThai = Noto_Sans_Thai({
+  subsets: ['thai', 'latin'],
+  weight: 'variable',
+  variable: '--font-noto-sans-thai',
+  display: 'swap',
+})
+
+const playfairDisplay = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair', display: 'swap' })
+const cormorantGaramond = Cormorant_Garamond({ subsets: ['latin'], variable: '--font-cormorant', display: 'swap' })
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://finemodel.app'),
@@ -52,10 +87,17 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="th">
+    <html
+      lang="th"
+      data-app-font="kanit"
+      data-text-size="normal"
+      suppressHydrationWarning
+      className={`${kanit.variable} ${sarabun.variable} ${prompt.variable} ${notoSansThai.variable} ${playfairDisplay.variable} ${cormorantGaramond.variable}`}
+    >
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <Script id="appearance-preference" strategy="beforeInteractive">
+          {`try{var f=localStorage.getItem('uxFontFamily');var s=localStorage.getItem('uxTextSize');if(['kanit','sarabun','prompt','noto-sans-thai'].includes(f)){document.documentElement.dataset.appFont=f}if(['normal','large','xlarge'].includes(s)){document.documentElement.dataset.textSize=s}}catch(e){}`}
+        </Script>
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -65,6 +107,9 @@ export default function RootLayout({
         <link rel="shortcut icon" href="/favicon.ico" />
       </head>
       <body>
+        <FontPreferenceSync />
+        <AppToaster />
+        <AppConfirmDialog />
         <Script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js" strategy="lazyOnload" />
         <RoleProvider>
           <AppWrapper>

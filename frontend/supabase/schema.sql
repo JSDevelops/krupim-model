@@ -29,8 +29,12 @@ CREATE TABLE schools (
 CREATE TABLE profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   school_id UUID REFERENCES schools(id),
+  school_name TEXT,
   name TEXT NOT NULL,
+  email TEXT,
   role user_role NOT NULL DEFAULT 'student',
+  requested_role user_role NOT NULL DEFAULT 'student',
+  approval_status TEXT NOT NULL DEFAULT 'active' CHECK (approval_status IN ('pending', 'active', 'inactive')),
   avatar_url TEXT,
   phone TEXT,
   bio TEXT,
@@ -291,8 +295,35 @@ CREATE TABLE notifications (
 -- HELPER: ดึง role ของ user ปัจจุบัน (ใช้ใน policies)
 CREATE OR REPLACE FUNCTION auth_user_role()
 RETURNS TEXT LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = public AS $$
-  SELECT role::TEXT FROM profiles WHERE id = auth.uid()
+  SELECT role::TEXT FROM profiles WHERE id = auth.uid() AND approval_status = 'active'
 $$;
+
+CREATE OR REPLACE FUNCTION handle_new_auth_user()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+DECLARE
+  requested user_role;
+BEGIN
+  requested := CASE
+    WHEN NEW.raw_user_meta_data->>'requested_role' = 'teacher' THEN 'teacher'::user_role
+    ELSE 'student'::user_role
+  END;
+  INSERT INTO profiles (id, name, email, role, requested_role, approval_status, school_name)
+  VALUES (
+    NEW.id,
+    COALESCE(NULLIF(BTRIM(NEW.raw_user_meta_data->>'name'), ''), NEW.email, 'User'),
+    NEW.email,
+    'student',
+    requested,
+    CASE WHEN requested = 'teacher' THEN 'pending' ELSE 'active' END,
+    NULLIF(BTRIM(NEW.raw_user_meta_data->>'school_name'), '')
+  ) ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_new_auth_user();
 
 ALTER TABLE schools ENABLE ROW LEVEL SECURITY;
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
@@ -319,9 +350,16 @@ CREATE POLICY "Allow public read schools" ON schools FOR SELECT USING (true);
 CREATE POLICY "Developers manage schools" ON schools
   FOR ALL USING (auth_user_role() = 'developer') WITH CHECK (auth_user_role() = 'developer');
 
--- Profiles: public view, update own only
-CREATE POLICY "Users view profiles" ON profiles FOR SELECT USING (true);
-CREATE POLICY "Users update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+-- Profiles: private by default; browser clients cannot change role or approval.
+CREATE POLICY "Users view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Staff view profiles" ON profiles FOR SELECT USING (auth_user_role() IN ('teacher', 'developer'));
+CREATE POLICY "Users update own safe profile" ON profiles
+  FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
+CREATE POLICY "Developers manage profiles" ON profiles
+  FOR ALL USING (auth_user_role() = 'developer') WITH CHECK (auth_user_role() = 'developer');
+REVOKE INSERT, UPDATE, DELETE ON profiles FROM anon, authenticated;
+GRANT SELECT ON profiles TO authenticated;
+GRANT UPDATE (name, avatar_url, phone, bio, school_name) ON profiles TO authenticated;
 
 -- Courses: public read, teachers+developers write
 CREATE POLICY "Allow public read courses" ON courses FOR SELECT USING (true);
@@ -360,8 +398,17 @@ CREATE POLICY "Teachers manage own classes" ON classes
   FOR ALL USING (teacher_id = auth.uid() OR auth_user_role() = 'developer')
   WITH CHECK (teacher_id = auth.uid() OR auth_user_role() = 'developer');
 
-CREATE POLICY "Allow authenticated read class_students" ON class_students FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "Students and teachers manage class_students" ON class_students FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Members view class_students" ON class_students FOR SELECT USING (
+  student_id = auth.uid() OR auth_user_role() = 'developer'
+  OR EXISTS (SELECT 1 FROM classes c WHERE c.id = class_id AND c.teacher_id = auth.uid())
+);
+CREATE POLICY "Teachers manage class_students" ON class_students FOR ALL USING (
+  auth_user_role() = 'developer'
+  OR EXISTS (SELECT 1 FROM classes c WHERE c.id = class_id AND c.teacher_id = auth.uid())
+) WITH CHECK (
+  auth_user_role() = 'developer'
+  OR EXISTS (SELECT 1 FROM classes c WHERE c.id = class_id AND c.teacher_id = auth.uid())
+);
 
 -- Enrollments & Progress: students manage own
 CREATE POLICY "Students manage own enrollments" ON enrollments FOR ALL USING (auth.uid() = student_id OR auth_user_role() = 'developer');
@@ -513,13 +560,16 @@ ALTER TABLE class_invites ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Allow public read fine_lesson_plans" ON fine_lesson_plans FOR SELECT USING (true);
 CREATE POLICY "Teachers manage own lesson plans" ON fine_lesson_plans
   FOR ALL USING (
-    (auth.jwt()->>'email' = teacher_email) 
-    OR (auth.jwt()->'user_metadata'->>'role' = 'developer')
+    (auth_user_role() = 'teacher' AND auth.jwt()->>'email' = teacher_email)
+    OR auth_user_role() = 'developer'
+  ) WITH CHECK (
+    (auth_user_role() = 'teacher' AND auth.jwt()->>'email' = teacher_email)
+    OR auth_user_role() = 'developer'
   );
 
-CREATE POLICY "Allow public read class_invites" ON class_invites FOR SELECT USING (true);
 CREATE POLICY "Teachers create class invites" ON class_invites
-  FOR ALL WITH CHECK (auth.role() = 'authenticated');
+  FOR ALL USING (auth_user_role() IN ('teacher', 'developer'))
+  WITH CHECK (auth_user_role() IN ('teacher', 'developer'));
 
 -- ============================================
 -- AR ITEMS (คลังอุปกรณ์ AR & 3D)
@@ -548,9 +598,9 @@ CREATE POLICY "Allow public read ar_items" ON ar_items
   FOR SELECT USING (true);
 
 -- ผู้ใช้ที่ login (ครู/developer) จัดการได้
-CREATE POLICY "Authenticated users manage ar_items" ON ar_items
-  FOR ALL USING (auth.role() = 'authenticated')
-  WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Teachers manage ar_items" ON ar_items
+  FOR ALL USING (auth_user_role() = 'developer' OR (auth_user_role() = 'teacher' AND created_by = auth.uid()))
+  WITH CHECK (auth_user_role() = 'developer' OR (auth_user_role() = 'teacher' AND created_by = auth.uid()));
 
 -- ============================================
 -- VOCABULARY ITEMS (คลังคำศัพท์มาตรฐาน 10 หมวดหมู่)
@@ -577,7 +627,7 @@ CREATE INDEX IF NOT EXISTS idx_vocab_category ON vocabulary_items(category);
 ALTER TABLE vocabulary_items ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Allow public read vocabulary_items" ON vocabulary_items FOR SELECT USING (true);
-CREATE POLICY "Authenticated users manage vocabulary_items" ON vocabulary_items 
-  FOR ALL USING (auth.role() = 'authenticated')
-  WITH CHECK (auth.role() = 'authenticated');
+CREATE POLICY "Teachers manage vocabulary_items" ON vocabulary_items
+  FOR ALL USING (auth_user_role() IN ('teacher', 'developer'))
+  WITH CHECK (auth_user_role() IN ('teacher', 'developer'));
 

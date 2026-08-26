@@ -238,7 +238,7 @@ export default function StudentFINENav() {
                   fontWeight: 900,
                   color: isActive ? '#C9A84C' : 'rgba(180,168,148,0.50)',
                   textShadow: isActive ? `0 0 8px rgba(201,168,76,0.50)` : 'none',
-                  fontFamily: "'Playfair Display', 'Georgia', serif",
+                  fontFamily: 'var(--font-display), var(--font-primary)',
                   lineHeight: 1,
                 }}>
                   {tab.letter}
@@ -254,7 +254,7 @@ export default function StudentFINENav() {
                   fontSize: '9px',
                   fontWeight: 700,
                   color: isActive ? 'rgba(255,255,255,0.90)' : 'rgba(180,168,148,0.45)',
-                  fontFamily: "'Kanit', 'Noto Sans Thai', sans-serif",
+                  fontFamily: 'var(--font-primary)',
                   lineHeight: 1,
                   letterSpacing: '0.1px',
                 }}>

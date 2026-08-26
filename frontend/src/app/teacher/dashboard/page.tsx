@@ -1,25 +1,42 @@
 'use client'
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { useRole } from '@/context/RoleContext'
 
-interface StudentRecord {
+import Link from 'next/link'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { toast } from 'sonner'
+import AdminIcon, { type AdminIconName } from '@/components/admin/AdminIcon'
+import { useRole } from '@/context/RoleContext'
+import { authenticatedFetch } from '@/lib/api'
+import styles from './page.module.css'
+
+type TeacherAnnouncement = {
+  id: string
+  title: string
+  content: string
+  priority: 'urgent' | 'general' | 'event'
+  publishedAt: string
+  linkUrl?: string
+}
+
+type AnnouncementRecord = {
+  id: string
+  title: string
+  content: string
+  priority: TeacherAnnouncement['priority']
+  link_url: string | null
+  published_at: string
+}
+
+type StudentRecord = {
   id: string
   name: string
   class: string
   school: string
   sessions: number
-  ksa: {
-    K: number
-    S: number
-    A: number
-    C: number
-  }
+  ksa: { K: number; S: number; A: number; C: number }
   lastActive: string
-  avatar: string
 }
 
-interface PendingGradingItem {
+type PendingGradingItem = {
   id: string
   studentId: string
   studentName: string
@@ -28,582 +45,293 @@ interface PendingGradingItem {
   type: 'Familiarize' | 'Interact' | 'Navigate' | 'Exhibit'
   unit: string
   submittedAt: string
-  avatar: string
+}
+
+const defaultStudents: StudentRecord[] = [
+  { id: 'std-001', name: 'นายสมชาย ใจดี', class: 'ปวช.1/1', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', sessions: 45, ksa: { K: 80, S: 75, A: 82, C: 70 }, lastActive: '10 นาทีที่แล้ว' },
+  { id: 'std-002', name: 'นางสาวมาลี สวยงาม', class: 'ปวช.1/1', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', sessions: 62, ksa: { K: 95, S: 90, A: 94, C: 88 }, lastActive: '1 ชั่วโมงที่แล้ว' },
+  { id: 'std-003', name: 'นายพิชัย นักเรียน', class: 'ปวช.1/2', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', sessions: 18, ksa: { K: 50, S: 42, A: 48, C: 38 }, lastActive: '3 ชั่วโมงที่แล้ว' },
+  { id: 'std-004', name: 'นางสาวกาญจนา ดีใจ', class: 'ปวช.1/2', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', sessions: 33, ksa: { K: 68, S: 62, A: 70, C: 58 }, lastActive: 'เมื่อวานนี้' },
+  { id: 'std-005', name: 'นายอนันต์ มีใจ', class: 'ปวช.1/1', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', sessions: 55, ksa: { K: 90, S: 85, A: 92, C: 82 }, lastActive: '2 ชั่วโมงที่แล้ว' },
+]
+
+const defaultPending: PendingGradingItem[] = [
+  { id: 'grad-001', studentId: 'std-001', studentName: 'นายสมชาย ใจดี', class: 'ปวช.1/1', taskName: 'รับคำสั่งอาหารจากลูกค้า', type: 'Navigate', unit: 'Unit 2 · Hospitality Service', submittedAt: '10 นาทีที่แล้ว' },
+  { id: 'grad-002', studentId: 'std-002', studentName: 'นางสาวมาลี สวยงาม', class: 'ปวช.1/1', taskName: 'วิเคราะห์อุปกรณ์จัดบาร์', type: 'Familiarize', unit: 'Unit 1 · Table Setting', submittedAt: '1 ชั่วโมงที่แล้ว' },
+  { id: 'grad-003', studentId: 'std-003', studentName: 'นายพิชัย นักเรียน', class: 'ปวช.1/2', taskName: 'สนทนาต้อนรับลูกค้า', type: 'Interact', unit: 'Unit 1 · Reception English', submittedAt: '3 ชั่วโมงที่แล้ว' },
+]
+
+const scoreDefinitions = [
+  { key: 'K', label: 'Knowledge', detail: 'ความรู้และคำศัพท์', color: '#347553' },
+  { key: 'S', label: 'Skills', detail: 'ทักษะการสื่อสาร', color: '#35688c' },
+  { key: 'A', label: 'Attribute', detail: 'บุคลิกภาพและจิตบริการ', color: '#947420' },
+  { key: 'C', label: 'Competency', detail: 'สมรรถนะการปฏิบัติงาน', color: '#70558b' },
+] as const
+
+function initials(name: string) {
+  return name.trim().split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase() || 'ST'
+}
+
+function weightedScore(student: StudentRecord) {
+  return Math.round(student.ksa.K * 0.2 + student.ksa.S * 0.3 + student.ksa.A * 0.1 + student.ksa.C * 0.4)
+}
+
+function readStoredList<T>(key: string, fallback: T[]) {
+  try {
+    const stored = localStorage.getItem(key)
+    if (!stored) return fallback
+    const parsed = JSON.parse(stored)
+    return Array.isArray(parsed) && parsed.length ? parsed as T[] : fallback
+  } catch {
+    return fallback
+  }
 }
 
 export default function TeacherDashboard() {
   const { user } = useRole()
-  const [announcements, setAnnouncements] = useState<any[]>([])
-  
-  // Dynamic Datasets
-  const [students, setStudents] = useState<StudentRecord[]>([])
-  const [pendingList, setPendingList] = useState<PendingGradingItem[]>([])
-  const [classFilter, setClassFilter] = useState<string>('all')
-
-  // Grading Modal States
+  const [announcements, setAnnouncements] = useState<TeacherAnnouncement[]>([])
+  const [students, setStudents] = useState<StudentRecord[]>(defaultStudents)
+  const [pendingList, setPendingList] = useState<PendingGradingItem[]>(defaultPending)
+  const [classFilter, setClassFilter] = useState('all')
   const [selectedGrading, setSelectedGrading] = useState<PendingGradingItem | null>(null)
-  const [scoreK, setScoreK] = useState<number>(80)
-  const [scoreS, setScoreS] = useState<number>(75)
-  const [scoreA, setScoreA] = useState<number>(85)
-  const [scoreC, setScoreC] = useState<number>(70)
-  const [gradingNotes, setGradingNotes] = useState<string>('ผ่านเกณฑ์การประเมินสมรรถนะสะสมเบื้องต้น')
+  const [scores, setScores] = useState({ K: 80, S: 75, A: 85, C: 70 })
+  const [gradingNotes, setGradingNotes] = useState('ผ่านเกณฑ์การประเมินสมรรถนะสะสมเบื้องต้น')
 
-  // Initialize and load data
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      // 1. Announcements
-      const storedNews = localStorage.getItem('systemNews')
-      if (storedNews) {
-        try { setAnnouncements(JSON.parse(storedNews)) } catch (e) {}
-      }
+    const controller = new AbortController()
+    void authenticatedFetch('/api/announcements', { signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error('ไม่สามารถโหลดประกาศได้')
+        return response.json() as Promise<{ announcements?: AnnouncementRecord[] }>
+      })
+      .then(payload => setAnnouncements((payload.announcements ?? []).slice(0, 3).map(item => ({
+        id: item.id,
+        title: item.title,
+        content: item.content,
+        priority: item.priority,
+        linkUrl: item.link_url || undefined,
+        publishedAt: new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(item.published_at)),
+      }))))
+      .catch(error => {
+        if (error instanceof Error && error.name !== 'AbortError') toast.error('โหลดประกาศล่าสุดไม่สำเร็จ')
+      })
 
-      // 2. Classroom Students
-      const storedStudents = localStorage.getItem('classroomStudents')
-      let studentList: StudentRecord[] = []
-      if (storedStudents) {
-        try {
-          studentList = JSON.parse(storedStudents)
-        } catch (e) {}
-      }
-      
-      // Fallback default populated student roster if empty
-      if (studentList.length === 0) {
-        studentList = [
-          { id: 'std-001', name: 'นายสมชาย ใจดี', class: 'ปวช.1/1', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', sessions: 45, ksa: { K: 80, S: 75, A: 82, C: 70 }, lastActive: '10 นาทีที่แล้ว', avatar: '👨‍🎓' },
-          { id: 'std-002', name: 'นางสาวมาลี สวยงาม', class: 'ปวช.1/1', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', sessions: 62, ksa: { K: 95, S: 90, A: 94, C: 88 }, lastActive: '1 ชั่วโมงที่แล้ว', avatar: '👩‍🎓' },
-          { id: 'std-003', name: 'นายพิชัย นักเรียน', class: 'ปวช.1/2', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', sessions: 18, ksa: { K: 50, S: 42, A: 48, C: 38 }, lastActive: '3 ชั่วโมงที่แล้ว', avatar: '👨‍🎓' },
-          { id: 'std-004', name: 'นางสาวกาญจนา ดีใจ', class: 'ปวช.1/2', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', sessions: 33, ksa: { K: 68, S: 62, A: 70, C: 58 }, lastActive: 'เมื่อวานนี้', avatar: '👩‍🎓' },
-          { id: 'std-005', name: 'นายอนันต์ มีใจ', class: 'ปวช.1/1', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', sessions: 55, ksa: { K: 90, S: 85, A: 92, C: 82 }, lastActive: '2 ชั่วโมงที่แล้ว', avatar: '👨‍🎓' },
-          { id: 'std-006', name: 'นายมานะ ตั้งเรียน', class: 'ปวช.1/1', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', sessions: 12, ksa: { K: 58, S: 55, A: 62, C: 58 }, lastActive: '3 วันที่แล้ว', avatar: '👨‍🎓' },
-          { id: 'std-007', name: 'นางสาวสายใจ รักสงบ', class: 'ปวช.1/2', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', sessions: 25, ksa: { K: 64, S: 58, A: 72, C: 62 }, lastActive: '5 วันที่แล้ว', avatar: '👩‍🎓' }
-        ]
-        localStorage.setItem('classroomStudents', JSON.stringify(studentList))
-      }
+    const studentList = readStoredList('classroomStudents', defaultStudents)
+    const gradingList = readStoredList('pendingGradings', defaultPending)
+    const storageTimer = window.setTimeout(() => {
       setStudents(studentList)
-
-      // 3. Pending Rubric Reviews
-      const storedPending = localStorage.getItem('pendingGradings')
-      let pendingListItems: PendingGradingItem[] = []
-      if (storedPending) {
-        try { pendingListItems = JSON.parse(storedPending) } catch (e) {}
-      } else {
-        pendingListItems = [
-          { id: 'grad-001', studentId: 'std-001', studentName: 'นายสมชาย ใจดี', class: 'ปวช.1/1', taskName: 'Simulation: รับคำสั่งอาหาร (Taking Food Orders)', type: 'Navigate', unit: 'Unit 2 - Hospitality service', submittedAt: '10 นาทีที่แล้ว', avatar: '👨‍🎓' },
-          { id: 'grad-002', studentId: 'std-002', studentName: 'นางสาววิภา ดีใจ', class: 'ปวช.1/1', taskName: 'AI Scan: ตรวจวิเคราะห์อุปกรณ์จัดบาร์แก้วเครื่องดื่ม', type: 'Familiarize', unit: 'Unit 1 - Table Setting', submittedAt: '1 ชั่วโมงที่แล้ว', avatar: '👩‍🎓' },
-          { id: 'grad-003', studentId: 'std-003', studentName: 'นายพิชัย นักเรียน', class: 'ปวช.1/2', taskName: 'Gemini Conversation: ทักทายลูกค้าเป็นภาษาอังกฤษ (Greeting)', type: 'Interact', unit: 'Unit 1 - Reception English', submittedAt: '3 ชั่วโมงที่แล้ว', avatar: '👨‍🎓' }
-        ]
-        localStorage.setItem('pendingGradings', JSON.stringify(pendingListItems))
-      }
-      setPendingList(pendingListItems)
+      setPendingList(gradingList)
+    }, 0)
+    if (!localStorage.getItem('classroomStudents')) localStorage.setItem('classroomStudents', JSON.stringify(studentList))
+    if (!localStorage.getItem('pendingGradings')) localStorage.setItem('pendingGradings', JSON.stringify(gradingList))
+    return () => {
+      controller.abort()
+      window.clearTimeout(storageTimer)
     }
   }, [])
 
-  // Filter students and pending items by class
-  const filteredStudents = classFilter === 'all' 
-    ? students 
-    : students.filter(s => s.class === classFilter)
+  const classes = useMemo(() => Array.from(new Set(students.map(student => student.class))).sort(), [students])
+  const filteredStudents = useMemo(() => classFilter === 'all' ? students : students.filter(student => student.class === classFilter), [classFilter, students])
+  const filteredPending = useMemo(() => classFilter === 'all' ? pendingList : pendingList.filter(item => item.class === classFilter), [classFilter, pendingList])
+  const totalSessions = filteredStudents.reduce((sum, student) => sum + student.sessions, 0)
+  const averageScores = scoreDefinitions.reduce<Record<(typeof scoreDefinitions)[number]['key'], number>>((result, definition) => {
+    result[definition.key] = filteredStudents.length
+      ? Math.round(filteredStudents.reduce((sum, student) => sum + student.ksa[definition.key], 0) / filteredStudents.length)
+      : 0
+    return result
+  }, { K: 0, S: 0, A: 0, C: 0 })
+  const classAverage = filteredStudents.length
+    ? Math.round(filteredStudents.reduce((sum, student) => sum + weightedScore(student), 0) / filteredStudents.length)
+    : 0
+  const needAttention = filteredStudents.filter(student => weightedScore(student) < 70).sort((a, b) => weightedScore(a) - weightedScore(b))
 
-  const filteredPending = classFilter === 'all'
-    ? pendingList
-    : pendingList.filter(g => g.class === classFilter)
+  const metrics: Array<{ label: string; value: string; detail: string; icon: AdminIconName; tone: string }> = [
+    { label: 'นักเรียนในชั้น', value: filteredStudents.length.toLocaleString('th-TH'), detail: classFilter === 'all' ? `${classes.length} ห้องเรียน` : classFilter, icon: 'student', tone: 'students' },
+    { label: 'ความก้าวหน้าเฉลี่ย', value: `${classAverage}%`, detail: 'คะแนนถ่วงน้ำหนัก KSA-C', icon: 'analytics', tone: 'progress' },
+    { label: 'รอตรวจประเมิน', value: filteredPending.length.toLocaleString('th-TH'), detail: 'รายการที่ต้องดำเนินการ', icon: 'clock', tone: 'grading' },
+    { label: 'กิจกรรมสะสม', value: totalSessions.toLocaleString('th-TH'), detail: 'ครั้งจากนักเรียนที่เลือก', icon: 'activity', tone: 'sessions' },
+  ]
 
-  // Calculations based on filtered list
-  const totalStudents = filteredStudents.length
-  const totalSessions = filteredStudents.reduce((acc, curr) => acc + curr.sessions, 0)
-  
-  const avgK = totalStudents ? Math.round(filteredStudents.reduce((acc, curr) => acc + (curr.ksa?.K || 0), 0) / totalStudents) : 0
-  const avgS = totalStudents ? Math.round(filteredStudents.reduce((acc, curr) => acc + (curr.ksa?.S || 0), 0) / totalStudents) : 0
-  const avgA = totalStudents ? Math.round(filteredStudents.reduce((acc, curr) => acc + (curr.ksa?.A || 0), 0) / totalStudents) : 0
-  const avgC = totalStudents ? Math.round(filteredStudents.reduce((acc, curr) => acc + (curr.ksa?.C || 0), 0) / totalStudents) : 0
-  const classAvgProgress = Math.round((avgK * 0.2) + (avgS * 0.3) + (avgA * 0.1) + (avgC * 0.4))
-
-  // Students needing attention (score < 70%)
-  const needHelpList = filteredStudents.filter(s => {
-    const kVal = s.ksa?.K ?? 0
-    const sVal = s.ksa?.S ?? 0
-    const aVal = s.ksa?.A ?? 0
-    const cVal = s.ksa?.C ?? 0
-    const avg = Math.round((kVal * 0.2) + (sVal * 0.3) + (aVal * 0.1) + (cVal * 0.4))
-    return avg < 70
-  }).map(s => {
-    const kVal = s.ksa?.K ?? 0
-    const sVal = s.ksa?.S ?? 0
-    const aVal = s.ksa?.A ?? 0
-    const cVal = s.ksa?.C ?? 0
-    const avg = Math.round((kVal * 0.2) + (sVal * 0.3) + (aVal * 0.1) + (cVal * 0.4))
-    let issue = ''
-    if (kVal < 65) issue = 'คะแนน Knowledge (K) ต่ำกว่าเกณฑ์ประเมิน'
-    else if (sVal < 65) issue = 'ไม่ผ่านทักษะสนทนาภาษาอังกฤษ (S)'
-    else if (cVal < 65) issue = 'คะแนนความเข้าใจงานบริการ (C) น้อย'
-    else issue = 'ชั่วโมงฝึกทักษะสะสมต่ำกว่าเกณฑ์'
-    
-    return { name: s.name, class: s.class, score: avg, issue, avatar: s.avatar }
-  })
-
-  // Open grading rubric modal
-  function openGradingModal(item: PendingGradingItem) {
+  function openGrading(item: PendingGradingItem) {
+    const student = students.find(candidate => candidate.id === item.studentId)
+    setScores(student?.ksa ?? { K: 80, S: 75, A: 85, C: 70 })
+    setGradingNotes('ผ่านเกณฑ์การประเมินสมรรถนะสะสมเบื้องต้น')
     setSelectedGrading(item)
-    // Find matching student if exists to preload scores
-    const match = students.find(s => s.id === item.studentId)
-    if (match) {
-      setScoreK(match.ksa?.K ?? 80)
-      setScoreS(match.ksa?.S ?? 75)
-      setScoreA(match.ksa?.A ?? 85)
-      setScoreC(match.ksa?.C ?? 70)
-    } else {
-      setScoreK(80)
-      setScoreS(75)
-      setScoreA(85)
-      setScoreC(70)
-    }
-    setGradingNotes('กรอกประเมินเกณฑ์รูบริคสำเร็จตามคู่มือการสอน FINE Model')
   }
 
-  // Handle saving the graded scores
-  function handleSaveGrading() {
+  function saveGrading() {
     if (!selectedGrading) return
-
-    // 1. Update Student KSA in classroomStudents
-    const updatedStudents = students.map(s => {
-      if (s.id === selectedGrading.studentId) {
-        return {
-          ...s,
-          ksa: { K: scoreK, S: scoreS, A: scoreA, C: scoreC },
-          sessions: s.sessions + 1,
-          lastActive: 'เพิ่งผ่านประเมินรูบริค'
-        }
-      }
-      return s
-    })
+    const updatedStudents = students.map(student => student.id === selectedGrading.studentId
+      ? { ...student, ksa: scores, sessions: student.sessions + 1, lastActive: 'เพิ่งได้รับการประเมิน' }
+      : student)
+    const updatedPending = pendingList.filter(item => item.id !== selectedGrading.id)
     setStudents(updatedStudents)
-    localStorage.setItem('classroomStudents', JSON.stringify(updatedStudents))
-
-    // 2. Remove from pending grading queue
-    const updatedPending = pendingList.filter(p => p.id !== selectedGrading.id)
     setPendingList(updatedPending)
+    localStorage.setItem('classroomStudents', JSON.stringify(updatedStudents))
     localStorage.setItem('pendingGradings', JSON.stringify(updatedPending))
-
-    alert(`บันทึกคะแนนรูบริค KSA-C ของ ${selectedGrading.studentName} สำเร็จ! 📋✨`)
+    toast.success('บันทึกคะแนน KSA-C แล้ว', { description: selectedGrading.studentName })
     setSelectedGrading(null)
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      
-      {/* Welcome Banner */}
-      <div className="erp-card" style={{ background: 'linear-gradient(135deg, #102B1F 0%, #1E4D3A 60%, #2A6B52 100%)', color: 'white', border: 'none', position: 'relative', overflow: 'hidden', borderRadius: '20px' }}>
-        <div style={{ position: 'absolute', top: '-20px', right: '-20px', width: '140px', height: '140px', border: '1px solid rgba(201,168,76,0.2)', borderRadius: '50%' }} />
-        <div style={{ position: 'absolute', top: '10px', right: '10px', width: '80px', height: '80px', border: '1px solid rgba(201,168,76,0.15)', borderRadius: '50%' }} />
-        <div style={{ fontSize: '11px', letterSpacing: '3px', color: '#C9A84C', fontWeight: 600, marginBottom: '8px', textTransform: 'uppercase' }}>♛ FINE Model 3D · Teacher ERP</div>
-        <h2 style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '0.02em' }}>หน้าแรกคุณครูผู้สอน (Teacher Main Dashboard)</h2>
-        <p style={{ opacity: 0.75, fontSize: '14px', marginTop: '6px' }}>
-          ยินดีต้อนรับ คุณครู {user?.name || 'สมหญิง รักเรียน'} · บริหารจัดการสิทธิ์คะแนนและจัดสัดส่วนห้องเรียนอาชีวศึกษา
-        </p>
-        <div style={{ marginTop: '12px', width: '60px', height: '2px', background: 'linear-gradient(90deg, #A6882A, #C9A84C, #E0C068)' }} />
-      </div>
-
-      {/* Class Filter Dropdown Card */}
-      <div className="erp-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', border: '1px solid #EDE9E1', borderRadius: '16px', padding: '16px 24px' }}>
-        <div>
-          <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>ตัวเลือกกรองการแสดงผล (Filter Selection)</span>
-          <h4 style={{ fontSize: '15px', fontWeight: 800, color: '#1E4D3A', marginTop: '2px' }}>🏫 เลือกห้องเรียนที่ต้องการควบคุมประเมินผล</h4>
+    <main className={styles.dashboard}>
+      <section className={styles.hero} aria-labelledby="teacher-dashboard-title">
+        <span className={styles.heroOrb} aria-hidden="true" />
+        <div className={styles.heroMain}>
+          <p><AdminIcon name="teacher" size={14} /> TEACHER CONSOLE</p>
+          <h1 id="teacher-dashboard-title">สวัสดี {user?.name || 'คุณครูผู้สอน'}</h1>
+          <span>จัดการชั้นเรียน ติดตามงานประเมิน และดูพัฒนาการของนักเรียนได้ครบในหน้าเดียว</span>
+          <div className={styles.heroActions}>
+            <Link href="/teacher/assignments"><AdminIcon name="plus" size={16} /> สร้างงานใหม่</Link>
+            <Link href="/teacher/students"><AdminIcon name="student" size={16} /> จัดการนักเรียน</Link>
+          </div>
+          <dl className={styles.heroFacts}>
+            <div><dt>ห้องเรียน</dt><dd>{classes.length}</dd></div>
+            <div><dt>นักเรียนทั้งหมด</dt><dd>{students.length}</dd></div>
+            <div><dt>รอตรวจ</dt><dd>{pendingList.length}</dd></div>
+          </dl>
         </div>
-        <select
-          value={classFilter}
-          onChange={e => setClassFilter(e.target.value)}
-          style={{
-            padding: '10px 24px',
-            borderRadius: '10px',
-            border: '1.5px solid #1E4D3A',
-            fontSize: '13.5px',
-            background: '#fff',
-            fontWeight: 700,
-            color: '#1E4D3A',
-            cursor: 'pointer'
-          }}
-        >
-          <option value="all">🏫 แสดงชั้นเรียนที่ดูแลทั้งหมด (All Classes)</option>
-          <option value="ปวช.1/1">🍽️ ปวช. 1/1 สาขาการโรงแรม</option>
-          <option value="ปวช.1/2">🥤 ปวช. 1/2 สาขาการโรงแรม</option>
-        </select>
-      </div>
 
-      {/* 📢 บอร์ดประกาศและข่าวสารจากผู้ดูแลระบบ (System Notices) */}
-      {announcements.length > 0 && (
-        <div className="erp-card" style={{ background: '#FFFDF6', border: '1.5px solid #C9A84C', padding: '16px', borderRadius: '16px' }}>
-          <h3 style={{ fontSize: '14px', fontWeight: 800, color: '#A6882A', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            📢 ประกาศด่วนและข่าวสารจากผู้ดูแลระบบ
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '200px', overflowY: 'auto' }}>
-            {announcements.map((news: any) => (
-              <div key={news.id} style={{ background: 'white', padding: '12px 16px', borderRadius: '12px', border: '1px solid rgba(201,168,76,0.15)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{
-                    background: news.priority === 'urgent' ? '#FAE8EB' : news.priority === 'event' ? '#FBF6E9' : '#EAF3EE',
-                    color: news.priority === 'urgent' ? '#8B2635' : news.priority === 'event' ? '#A6882A' : '#1E4D3A',
-                    fontSize: '9.5px', fontWeight: 700, padding: '2px 8px', borderRadius: '20px'
-                  }}>
-                    {news.priority === 'urgent' ? 'ด่วนที่สุด (Urgent)' : news.priority === 'event' ? 'กิจกรรม (Event)' : 'ประกาศทั่วไป'}
-                  </span>
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{news.publishedAt}</span>
-                </div>
-                <h4 style={{ fontSize: '13.5px', fontWeight: 800, color: '#1E4D3A', marginTop: '6px' }}>{news.title}</h4>
-                <p style={{ fontSize: '12.5px', color: 'var(--text-secondary)', lineHeight: 1.5, marginTop: '4px', whiteSpace: 'pre-wrap' }}>
-                  {news.content}
-                </p>
-                {news.linkUrl && (
-                  <div style={{ marginTop: '8px' }}>
-                    <a
-                      href={news.linkUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn btn-outline btn-sm"
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        fontSize: '11px',
-                        padding: '4px 10px',
-                        borderColor: '#C9A84C',
-                        color: '#A6882A',
-                        fontWeight: 700,
-                        textDecoration: 'none',
-                        borderRadius: '6px',
-                        background: '#FDFAF4'
-                      }}
-                    >
-                      🔗 เปิดดูลิงก์แนบ / เอกสารเพิ่มเติม
-                    </a>
-                  </div>
-                )}
-                {news.tags && news.tags.length > 0 && (
-                  <div style={{ display: 'flex', gap: '4px', marginTop: '8px' }}>
-                    {news.tags.map((t: string) => (
-                      <span key={t} style={{ background: '#EDE9E1', color: '#554D41', fontSize: '9.5px', padding: '1px 6px', borderRadius: '4px' }}>#{t}</span>
-                    ))}
-                  </div>
-                )}
+        <div className={styles.heroSummary}>
+          <label className={styles.classFilter}>
+            <span><AdminIcon name="school" size={15} /> ขอบเขตข้อมูล</span>
+            <select value={classFilter} onChange={event => setClassFilter(event.target.value)}>
+              <option value="all">ทุกห้องเรียน</option>
+              {classes.map(className => <option value={className} key={className}>{className}</option>)}
+            </select>
+          </label>
+          <div className={styles.progressSummary}>
+            <div
+              className={styles.progressRing}
+              style={{ '--progress': `${classAverage * 3.6}deg` } as CSSProperties}
+              aria-label={`ความก้าวหน้าเฉลี่ย ${classAverage} เปอร์เซ็นต์`}
+            >
+              <span><strong>{classAverage}%</strong><small>ภาพรวม</small></span>
+            </div>
+            <div>
+              <small>ความก้าวหน้าชั้นเรียน</small>
+              <strong>{classFilter === 'all' ? 'ทุกห้องเรียน' : classFilter}</strong>
+              <span>{needAttention.length ? `${needAttention.length} คนควรได้รับการติดตาม` : 'นักเรียนทุกคนอยู่ในเกณฑ์ที่ดี'}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.metrics} aria-label="ข้อมูลสรุปชั้นเรียน">
+        {metrics.map(metric => (
+          <article className={styles.metricCard} data-tone={metric.tone} key={metric.label}>
+            <span className={styles.metricIcon}><AdminIcon name={metric.icon} size={21} /></span>
+            <span className={styles.metricCopy}><small>{metric.label}</small><strong>{metric.value}</strong><span>{metric.detail}</span></span>
+          </article>
+        ))}
+      </section>
+
+      <section className={styles.primaryGrid}>
+        <article className={styles.panel}>
+          <header className={styles.panelHeader}>
+            <div><span className={styles.panelIcon}><AdminIcon name="analytics" size={18} /></span><div><h2>ภาพรวมสมรรถนะ KSA-C</h2><p>ค่าเฉลี่ยจากนักเรียนในตัวกรองปัจจุบัน</p></div></div>
+            <strong>{classAverage}%</strong>
+          </header>
+          <div className={styles.scoreList}>
+            {scoreDefinitions.map(definition => (
+              <div className={styles.scoreItem} key={definition.key}>
+                <div><span><b>{definition.key}</b><span><strong>{definition.label}</strong><small>{definition.detail}</small></span></span><strong style={{ color: definition.color }}>{averageScores[definition.key]}%</strong></div>
+                <div className={styles.progressTrack}><span style={{ width: `${averageScores[definition.key]}%`, background: definition.color }} /></div>
               </div>
             ))}
           </div>
-        </div>
-      )}
+        </article>
 
-      {/* KPI Stats Grid */}
-      <div className="erp-kpi-grid">
-        {[
-          { label: 'ชั้นเรียนในการดูแลกรอง', value: classFilter === 'all' ? '2 ห้องเรียน' : '1 ห้องเรียน', icon: '🏫', color: '#1E4D3A', bg: '#EAF3EE' },
-          { label: 'นักเรียนทั้งหมดรวม', value: `${totalStudents} คน`, icon: '👥', color: '#A6882A', bg: '#FBF6E9' },
-          { label: 'งานส่งสะสมรอตรวจ', value: `${filteredPending.length} รายการ`, icon: '📋', color: '#C9A84C', bg: '#FBF6E9' },
-          { label: 'คะแนนเฉลี่ยห้องเรียน', value: `${classAvgProgress}%`, icon: '📈', color: '#1E4D3A', bg: '#EAF3EE' },
-        ].map(k => (
-          <div key={k.label} className="erp-kpi-card" style={{ borderLeft: `4px solid ${k.color}` }}>
-            <div className="erp-kpi-info">
-              <span className="erp-kpi-label">{k.label}</span>
-              <span className="erp-kpi-value" style={{ color: k.color }}>{k.value}</span>
-            </div>
-            <div className="erp-kpi-icon" style={{ background: k.bg }}>
-              <span style={{ fontSize: '24px' }}>{k.icon}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '24px', alignItems: 'start' }}>
-        
-        {/* Left Col: Classes, Grading list & Performance charts */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
-          {/* Active KSA-C metrics comparison chart */}
-          <div className="erp-card">
-            <h3 style={{ fontSize: '15px', fontWeight: 800, marginBottom: '14px', color: '#1E4D3A' }}>
-              📈 คะแนนสมรรถนะเฉลี่ยห้องเรียนแยกด้านสะสม (KSA-C Metrics)
-            </h3>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', fontWeight: 700, color: '#4A4138' }}>
-                  <span>Knowledge (K) - ความเข้าใจคำศัพท์บริการ</span>
-                  <span style={{ color: '#1E4D3A', fontWeight: 800 }}>{avgK}%</span>
-                </div>
-                <div style={{ width: '100%', height: '8px', background: '#EDE9E1', borderRadius: '4px', marginTop: '4px', overflow: 'hidden' }}>
-                  <div style={{ width: `${avgK}%`, height: '100%', background: '#1E4D3A', borderRadius: '4px', transition: 'width 0.4s ease-out' }} />
-                </div>
-              </div>
-
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', fontWeight: 700, color: '#4A4138' }}>
-                  <span>Skills (S) - ทักษะปฏิบัติสนทนาภาษาอังกฤษ</span>
-                  <span style={{ color: '#A6882A', fontWeight: 800 }}>{avgS}%</span>
-                </div>
-                <div style={{ width: '100%', height: '8px', background: '#EDE9E1', borderRadius: '4px', marginTop: '4px', overflow: 'hidden' }}>
-                  <div style={{ width: `${avgS}%`, height: '100%', background: '#A6882A', borderRadius: '4px', transition: 'width 0.4s ease-out' }} />
-                </div>
-              </div>
-
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', fontWeight: 700, color: '#4A4138' }}>
-                  <span>Attribute (A) - คุณลักษณะจิตบริการ & บุคลิกภาพ</span>
-                  <span style={{ color: '#C9A84C', fontWeight: 800 }}>{avgA}%</span>
-                </div>
-                <div style={{ width: '100%', height: '8px', background: '#EDE9E1', borderRadius: '4px', marginTop: '4px', overflow: 'hidden' }}>
-                  <div style={{ width: `${avgA}%`, height: '100%', background: '#C9A84C', borderRadius: '4px', transition: 'width 0.4s ease-out' }} />
-                </div>
-              </div>
-
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', fontWeight: 700, color: '#4A4138' }}>
-                  <span>Competency (C) - ความพร้อมสถานการณ์บริการเสมือน</span>
-                  <span style={{ color: '#103024', fontWeight: 800 }}>{avgC}%</span>
-                </div>
-                <div style={{ width: '100%', height: '8px', background: '#EDE9E1', borderRadius: '4px', marginTop: '4px', overflow: 'hidden' }}>
-                  <div style={{ width: `${avgC}%`, height: '100%', background: '#103024', borderRadius: '4px', transition: 'width 0.4s ease-out' }} />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Pending Grading Queue Table */}
-          <div className="erp-card">
-            <h3 style={{ fontSize: '16px', fontWeight: 800, marginBottom: '14px', color: '#1E4D3A' }}>
-              📋 ชิ้นงานและสแกน AR รอให้คะแนนวิชาชีพ (Rubric Queue)
-            </h3>
-            
-            {filteredPending.length === 0 ? (
-              <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                <span style={{ fontSize: '32px' }}>🎉</span>
-                <div style={{ fontWeight: 700, marginTop: '8px' }}>ไม่มีรายการรอกรอกประเมินรูบริคขณะนี้</div>
-                <div style={{ fontSize: '11px', marginTop: '2px' }}>นักเรียนส่งประเมินครบถ้วนและได้รับการตรวจเกรดหมดแล้ว</div>
-              </div>
-            ) : (
-              <div className="erp-table-container">
-                <table className="erp-table">
-                  <thead>
-                    <tr>
-                      <th style={{ whiteSpace: 'nowrap' }}>นักเรียน</th>
-                      <th style={{ whiteSpace: 'nowrap' }}>ห้องเรียน</th>
-                      <th>ประเภทกิจกรรม (FINE)</th>
-                      <th style={{ whiteSpace: 'nowrap' }}>ส่งเมื่อ</th>
-                      <th style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>เกณฑ์ประเมิน</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredPending.map(g => (
-                      <tr key={g.id}>
-                        <td style={{ fontWeight: 750, color: '#333', whiteSpace: 'nowrap' }}>
-                          <span style={{ marginRight: '6px' }}>{g.avatar}</span> {g.studentName}
-                        </td>
-                        <td style={{ whiteSpace: 'nowrap' }}>{g.class}</td>
-                        <td>
-                          <span className="badge" style={{
-                            background: g.type === 'Familiarize' ? '#EAF3EE' : g.type === 'Interact' ? '#FBF6E9' : '#FDFAF4',
-                            color: g.type === 'Familiarize' ? '#1E4D3A' : g.type === 'Interact' ? '#A6882A' : '#C9A84C',
-                            fontSize: '10.5px', fontWeight: 750, border: '1px solid rgba(201,168,76,0.15)',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            {g.type}
-                          </span>
-                          <span style={{ marginLeft: '6px', fontSize: '12.5px', color: '#4A4138' }}>{g.taskName}</span>
-                        </td>
-                        <td style={{ color: 'var(--text-muted)', fontSize: '12px', whiteSpace: 'nowrap' }}>{g.submittedAt}</td>
-                        <td style={{ textAlign: 'center' }}>
-                          <button
-                            onClick={() => openGradingModal(g)}
-                            className="btn btn-primary btn-sm"
-                            style={{ padding: '8px 16px', fontSize: '12px', border: 'none', borderRadius: '8px', color: 'white', background: '#1E4D3A', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
-                          >
-                            คะแนน
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-
-        </div>
-
-        {/* Right Col: Attention list & FINE conceptual details */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
-          {/* Attention panel */}
-          <div className="erp-card" style={{ border: '1.5px solid #C9A84C', background: '#FFFDF6' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#A6882A', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              ⚠️ นักเรียนที่คะแนนต่ำกว่าเกณฑ์เฉลี่ย (70%)
-            </h3>
-            
-            {needHelpList.length === 0 ? (
-              <div style={{ padding: '16px', textAlign: 'center', color: '#A6882A', fontStyle: 'italic', fontSize: '12.5px' }}>
-                🎉 นักเรียนทุกคนผ่านเกณฑ์ประเมินสะสมขั้นต่ำ 70% ครบถ้วน
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {needHelpList.map((s, i) => (
-                  <div key={i} style={{ background: 'white', border: '1px solid rgba(201,168,76,0.15)', borderRadius: '12px', padding: '12px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: 38, height: 38, background: '#FBF6E9', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', flexShrink: 0 }}>
-                      {s.avatar}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontWeight: 750, fontSize: '13px', color: '#4A4138' }}>{s.name} ({s.class})</div>
-                      <div style={{ fontSize: '11px', color: '#8B2635', marginTop: '2px', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                        💡 {s.issue}
-                      </div>
-                    </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '15px', fontWeight: 800, color: '#8B2635' }}>{s.score}%</div>
-                      <button
-                        onClick={() => alert(`ส่งการแจ้งเตือนคู่มือแบบทดสอบทักษะเพิ่มเติมไปยังบัญชี ${s.name} สำเร็จ`)}
-                        className="btn btn-outline btn-sm"
-                        style={{ fontSize: '10px', padding: '3px 8px', marginTop: '4px', borderColor: '#C9A84C', color: '#A6882A', background: 'transparent' }}
-                      >
-                        ติวเสริม
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Quick Shortcuts */}
-          <div className="erp-card">
-            <h3 style={{ fontSize: '15px', fontWeight: 800, marginBottom: '12px', color: '#1E4D3A' }}>⚡ ทางลัดด่วนคุณครู (Quick Links)</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <Link href="/teacher/assignments" style={{ display: 'block', padding: '12px', background: '#FDFAF4', border: '1px solid rgba(201,168,76,0.2)', borderRadius: '12px', textDecoration: 'none', color: '#1E4D3A', fontWeight: 700, fontSize: '13px' }}>
-                📋 มอบหมายงานสแกน AR และ AI Chat (F-I-N-E)
+        <article className={styles.panel}>
+          <header className={styles.panelHeader}>
+            <div><span className={styles.panelIcon}><AdminIcon name="activity" size={18} /></span><div><h2>นักเรียนที่ควรติดตาม</h2><p>คะแนนรวมต่ำกว่าเกณฑ์ 70%</p></div></div>
+            <Link href="/teacher/students">ดูทั้งหมด <AdminIcon name="arrow" size={15} /></Link>
+          </header>
+          <div className={styles.attentionList}>
+            {needAttention.length ? needAttention.slice(0, 4).map(student => (
+              <Link href="/teacher/students" className={styles.attentionRow} key={student.id}>
+                <span className={styles.avatar}>{initials(student.name)}</span>
+                <span><strong>{student.name}</strong><small>{student.class} · ใช้งานล่าสุด {student.lastActive}</small></span>
+                <b>{weightedScore(student)}%</b>
+                <AdminIcon name="chevron" size={15} />
               </Link>
-              <Link href="/teacher/students" style={{ display: 'block', padding: '12px', background: '#FDFAF4', border: '1px solid rgba(201,168,76,0.2)', borderRadius: '12px', textDecoration: 'none', color: '#A6882A', fontWeight: 700, fontSize: '13px' }}>
-                👥 จัดการสิทธิ์บัญชีนักเรียน & เกรดรวม KSA-C
-              </Link>
-            </div>
+            )) : <div className={styles.emptyState}><AdminIcon name="check" size={20} /><strong>นักเรียนผ่านเกณฑ์ทุกคน</strong><span>ยังไม่มีรายการที่ต้องติดตามเป็นพิเศษ</span></div>}
           </div>
+        </article>
+      </section>
 
-          {/* FINE framework guide */}
-          <div className="erp-card" style={{ background: '#FDFAF4', border: '1px solid rgba(201,168,76,0.2)' }}>
-            <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#1E4D3A', marginBottom: '12px' }}>
-              📖 ขั้นตอนนวัตกรรมการศึกษา FINE Model
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px', lineHeight: 1.5 }}>
-              <div style={{ paddingBottom: '6px', borderBottom: '1px solid #EDE9E1' }}>
-                <strong style={{ color: '#1E4D3A' }}>F - Familiarize:</strong> คุ้นเคยคำศัพท์ผ่าน 3D AR + AI Scan (K 20%)
-              </div>
-              <div style={{ paddingBottom: '6px', borderBottom: '1px solid #EDE9E1' }}>
-                <strong style={{ color: '#A6882A' }}>I - Interact:</strong> โต้ตอบสนทนาภาษาอังกฤษกับบอท AI (S 30%)
-              </div>
-              <div style={{ paddingBottom: '6px', borderBottom: '1px solid #EDE9E1' }}>
-                <strong style={{ color: '#C9A84C' }}>N - Navigate:</strong> จำลองสถานการณ์บริการ F&B เสมือน (C 40%)
-              </div>
-              <div>
-                <strong style={{ color: '#103024' }}>E - Exhibit:</strong> นำเสนอผลสัมฤทธิ์ประเมินสะสม (A 10%)
-              </div>
-            </div>
+      <section className={styles.secondaryGrid}>
+        <article className={`${styles.panel} ${styles.gradingPanel}`}>
+          <header className={styles.panelHeader}>
+            <div><span className={styles.panelIcon}><AdminIcon name="score" size={18} /></span><div><h2>งานที่รอตรวจประเมิน</h2><p>เรียงตามเวลาที่นักเรียนส่งล่าสุด</p></div></div>
+            <Link href="/teacher/assignments">จัดการงาน <AdminIcon name="arrow" size={15} /></Link>
+          </header>
+          <div className={styles.gradingList}>
+            {filteredPending.length ? filteredPending.slice(0, 5).map(item => (
+              <article className={styles.gradingRow} key={item.id}>
+                <span className={styles.avatar}>{initials(item.studentName)}</span>
+                <span className={styles.gradingIdentity}><strong>{item.studentName}</strong><small>{item.class} · {item.submittedAt}</small></span>
+                <span className={styles.gradingTask}><strong>{item.taskName}</strong><small>{item.unit}</small></span>
+                <span className={styles.typeBadge}>{item.type}</span>
+                <button type="button" onClick={() => openGrading(item)}>ตรวจงาน</button>
+              </article>
+            )) : <div className={styles.emptyState}><AdminIcon name="check" size={20} /><strong>ตรวจงานครบแล้ว</strong><span>ไม่มีรายการประเมินค้างอยู่ในขณะนี้</span></div>}
           </div>
+        </article>
 
+        <div className={styles.sideColumn}>
+          <article className={styles.panel}>
+            <header className={styles.panelHeader}>
+              <div><span className={styles.panelIcon}><AdminIcon name="announcement" size={18} /></span><div><h2>ประกาศล่าสุด</h2><p>ข่าวสารสำหรับครูผู้สอน</p></div></div>
+            </header>
+            <div className={styles.announcementList}>
+              {announcements.length ? announcements.map(item => (
+                <article key={item.id} data-priority={item.priority}>
+                  <span>{item.priority === 'urgent' ? 'เร่งด่วน' : item.priority === 'event' ? 'กิจกรรม' : 'ทั่วไป'}</span>
+                  <strong>{item.title}</strong>
+                  <p>{item.content}</p>
+                  <small>{item.publishedAt}</small>
+                  {item.linkUrl && <a href={item.linkUrl} target="_blank" rel="noopener noreferrer">เปิดรายละเอียด <AdminIcon name="arrow" size={13} /></a>}
+                </article>
+              )) : <div className={styles.compactEmpty}>ยังไม่มีประกาศใหม่</div>}
+            </div>
+          </article>
+
+          <article className={styles.panel}>
+            <header className={styles.panelHeader}>
+              <div><span className={styles.panelIcon}><AdminIcon name="dashboard" size={18} /></span><div><h2>ทางลัด</h2><p>งานที่ใช้บ่อยสำหรับครู</p></div></div>
+            </header>
+            <div className={styles.quickLinks}>
+              <Link href="/teacher/students"><span><AdminIcon name="student" size={17} /></span><div><strong>จัดการนักเรียน</strong><small>ทะเบียน สิทธิ์ และคะแนน</small></div><AdminIcon name="chevron" size={15} /></Link>
+              <Link href="/teacher/lessons"><span><AdminIcon name="content" size={17} /></span><div><strong>แผนการสอน</strong><small>สร้างและจัดลำดับบทเรียน</small></div><AdminIcon name="chevron" size={15} /></Link>
+              <Link href="/teacher/assignments"><span><AdminIcon name="score" size={17} /></span><div><strong>มอบหมายงาน</strong><small>กิจกรรมและการประเมิน</small></div><AdminIcon name="chevron" size={15} /></Link>
+            </div>
+          </article>
         </div>
-      </div>
+      </section>
 
-      {/* 📋 INTERACTIVE RUBRIC GRADING MODAL POPUP */}
       {selectedGrading && (
-        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '16px' }}>
-          <div className="erp-card" style={{ width: '500px', maxWidth: '100%', background: '#FDFAF4', display: 'flex', flexDirection: 'column', gap: '16px', borderRadius: '16px', border: '1.5px solid #C9A84C' }}>
-            
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #EDE9E1', paddingBottom: '10px' }}>
-              <div>
-                <h3 style={{ fontSize: '16px', fontWeight: 800, color: '#1E4D3A', margin: 0 }}>📋 กรอกคะแนนประเมินเกณฑ์รูบริค (KSA-C Rubric Form)</h3>
-                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>{selectedGrading.taskName}</div>
-              </div>
-              <button onClick={() => setSelectedGrading(null)} style={{ background: 'transparent', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#A6882A' }}>✕</button>
+        <div className={styles.modalOverlay} onMouseDown={event => event.target === event.currentTarget && setSelectedGrading(null)}>
+          <section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="grading-title">
+            <header>
+              <span><AdminIcon name="score" size={21} /></span>
+              <div><h2 id="grading-title">ประเมินสมรรถนะ KSA-C</h2><p>{selectedGrading.studentName} · {selectedGrading.class}</p></div>
+              <button type="button" onClick={() => setSelectedGrading(null)} aria-label="ปิดหน้าต่าง"><AdminIcon name="close" size={18} /></button>
+            </header>
+            <div className={styles.modalTask}><strong>{selectedGrading.taskName}</strong><span>{selectedGrading.unit}</span></div>
+            <div className={styles.scoreEditor}>
+              {scoreDefinitions.map(definition => (
+                <label key={definition.key}>
+                  <span><b style={{ color: definition.color }}>{definition.key}</b><span><strong>{definition.label}</strong><small>{definition.detail}</small></span><output>{scores[definition.key]}</output></span>
+                  <input type="range" min="0" max="100" value={scores[definition.key]} onChange={event => setScores(current => ({ ...current, [definition.key]: Number(event.target.value) }))} style={{ accentColor: definition.color }} />
+                </label>
+              ))}
             </div>
-
-            {/* Student metadata info */}
-            <div style={{ background: '#fff', padding: '12px', borderRadius: '10px', border: '1.5px solid #EDE9E1' }}>
-              <div style={{ fontSize: '13px', fontWeight: 700, color: '#4A4138' }}>
-                ผู้ส่งประเมิน: {selectedGrading.avatar} {selectedGrading.studentName} ({selectedGrading.class})
-              </div>
-              <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
-                หมวดวิชา: {selectedGrading.unit} · หมวดกิจกรรม: {selectedGrading.type}
-              </div>
-            </div>
-
-            {/* Score Sliders */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              
-              {/* K */}
-              <div style={{ background: '#fff', padding: '8px 12px', borderRadius: '8px', border: '1px solid #EDE9E1' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
-                  <span style={{ color: '#1E4D3A' }}>Knowledge (K) - ความเข้าใจคำศัพท์บริการ</span>
-                  <span style={{ color: '#1E4D3A' }}>{scoreK} / 100</span>
-                </div>
-                <input type="range" min="0" max="100" value={scoreK} onChange={e => setScoreK(Number(e.target.value))} style={{ width: '100%', marginTop: '6px', cursor: 'pointer' }} />
-              </div>
-
-              {/* S */}
-              <div style={{ background: '#fff', padding: '8px 12px', borderRadius: '8px', border: '1px solid #EDE9E1' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
-                  <span style={{ color: '#A6882A' }}>Skills (S) - ทักษะสนทนาภาษาอังกฤษ</span>
-                  <span style={{ color: '#A6882A' }}>{scoreS} / 100</span>
-                </div>
-                <input type="range" min="0" max="100" value={scoreS} onChange={e => setScoreS(Number(e.target.value))} style={{ width: '100%', marginTop: '6px', cursor: 'pointer' }} />
-              </div>
-
-              {/* A */}
-              <div style={{ background: '#fff', padding: '8px 12px', borderRadius: '8px', border: '1px solid #EDE9E1' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
-                  <span style={{ color: '#C9A84C' }}>Attribute (A) - บุคลิกภาพ/จิตบริการ</span>
-                  <span style={{ color: '#C9A84C' }}>{scoreA} / 100</span>
-                </div>
-                <input type="range" min="0" max="100" value={scoreA} onChange={e => setScoreA(Number(e.target.value))} style={{ width: '100%', marginTop: '6px', cursor: 'pointer' }} />
-              </div>
-
-              {/* C */}
-              <div style={{ background: '#fff', padding: '8px 12px', borderRadius: '8px', border: '1px solid #EDE9E1' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontWeight: 700 }}>
-                  <span style={{ color: '#103024' }}>Competency (C) - ความเชี่ยวชาญการจำลอง</span>
-                  <span style={{ color: '#103024' }}>{scoreC} / 100</span>
-                </div>
-                <input type="range" min="0" max="100" value={scoreC} onChange={e => setScoreC(Number(e.target.value))} style={{ width: '100%', marginTop: '6px', cursor: 'pointer' }} />
-              </div>
-
-            </div>
-
-            {/* Note text field */}
-            <div className="erp-form-group" style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label className="erp-label" style={{ fontWeight: 700, fontSize: '11.5px' }}>ข้อเสนอแนะเพิ่มเติมเพื่อพัฒนาการเรียนรู้ (Feedback Notes)</label>
-              <input
-                className="erp-input"
-                style={{ padding: '8px', borderRadius: '8px', border: '1px solid #EDE9E1', fontSize: '12.5px' }}
-                value={gradingNotes}
-                onChange={e => setGradingNotes(e.target.value)}
-              />
-            </div>
-
-            {/* Modal Footer / Actions */}
-            <div style={{ display: 'flex', gap: '8px', borderTop: '1px solid #EDE9E1', paddingTop: '10px', marginTop: '6px' }}>
-              <button
-                type="button"
-                onClick={() => setSelectedGrading(null)}
-                className="btn btn-outline"
-                style={{ flex: 1, padding: '10px', fontSize: '13px' }}
-              >
-                ยกเลิก
-              </button>
-              <button
-                type="button"
-                onClick={handleSaveGrading}
-                className="btn btn-primary"
-                style={{ flex: 1.5, padding: '10px', border: 'none', fontSize: '13px', background: 'linear-gradient(135deg, #1E4D3A 0%, #103024 100%)', color: 'white', fontWeight: 700 }}
-              >
-                💾 บันทึกเกรดประเมิน
-              </button>
-            </div>
-
-          </div>
+            <label className={styles.notesField}><span>ข้อเสนอแนะเพิ่มเติม</span><textarea rows={2} value={gradingNotes} onChange={event => setGradingNotes(event.target.value)} /></label>
+            <footer><button type="button" onClick={() => setSelectedGrading(null)}>ยกเลิก</button><button type="button" onClick={saveGrading}><AdminIcon name="check" size={17} /> บันทึกผลประเมิน</button></footer>
+          </section>
         </div>
       )}
-
-    </div>
+    </main>
   )
 }

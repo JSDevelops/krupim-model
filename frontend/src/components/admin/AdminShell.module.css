@@ -1,0 +1,633 @@
+.shell {
+  --sidebar-width: 276px;
+  min-height: 100vh;
+  min-height: 100dvh;
+  color: #25332c;
+  background: #f4f6f3;
+}
+
+.drawer {
+  position: relative;
+  z-index: 40;
+}
+
+.sidebar {
+  width: var(--sidebar-width);
+  height: 100vh;
+  height: 100dvh;
+  position: fixed;
+  inset: 0 auto 0 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: #f6f7f4;
+  border-right: 1px solid rgb(255 255 255 / 8%);
+  background:
+    radial-gradient(circle at 20% 0%, rgb(201 168 76 / 12%), transparent 28%),
+    linear-gradient(180deg, #0c251b 0%, #123629 54%, #0b241a 100%);
+  box-shadow: 10px 0 34px rgb(8 30 22 / 10%);
+}
+
+.brand {
+  min-height: 82px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 18px 20px;
+  border-bottom: 1px solid rgb(255 255 255 / 8%);
+}
+
+.brand img {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  border: 1px solid rgb(201 168 76 / 38%);
+  border-radius: 12px;
+}
+
+.brand > div {
+  min-width: 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+
+.brand strong {
+  font-family: var(--font-display), var(--font-primary);
+  font-size: 15px;
+  letter-spacing: 0.12em;
+}
+
+.brand span {
+  margin-top: 4px;
+  color: #cdb55f;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+}
+
+.drawerClose {
+  display: none;
+}
+
+.navigation {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 22px 14px;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.navigation::-webkit-scrollbar {
+  display: none;
+}
+
+.navSection > p {
+  margin: 0 10px 8px;
+  color: rgb(235 239 234 / 42%);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.navItem,
+.navItemActive {
+  min-height: 54px;
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 16px;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+  padding: 7px 10px;
+  color: rgb(246 247 244 / 70%);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  text-decoration: none;
+  transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
+}
+
+.navItem:hover {
+  color: #fff;
+  background: rgb(255 255 255 / 6%);
+}
+
+.navItemActive {
+  color: #fff;
+  border-color: rgb(201 168 76 / 22%);
+  background: linear-gradient(90deg, rgb(201 168 76 / 17%), rgb(201 168 76 / 7%));
+  box-shadow: inset 3px 0 #c9a84c;
+}
+
+.navIcon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  color: #d9c36f;
+  border-radius: 9px;
+  background: rgb(255 255 255 / 6%);
+}
+
+.navCopy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.navCopy strong {
+  overflow: hidden;
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navCopy small {
+  margin-top: 2px;
+  overflow: hidden;
+  color: rgb(246 247 244 / 43%);
+  font-size: 9px;
+  line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navItem > svg,
+.navItemActive > svg {
+  opacity: 0.45;
+}
+
+.sidebarFooter {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border-top: 1px solid rgb(255 255 255 / 8%);
+  background: rgb(0 0 0 / 10%);
+}
+
+.systemStatus,
+.account {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.systemStatus {
+  padding: 0 5px 4px;
+}
+
+.systemStatus > span {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border: 2px solid rgb(128 211 160 / 22%);
+  border-radius: 50%;
+  background: #65c98a;
+  box-shadow: 0 0 0 4px rgb(101 201 138 / 8%);
+}
+
+.systemStatus div,
+.account div {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.systemStatus strong,
+.account strong {
+  overflow: hidden;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.systemStatus small,
+.account small {
+  margin-top: 2px;
+  overflow: hidden;
+  color: rgb(246 247 244 / 43%);
+  font-size: 9px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account {
+  padding: 10px;
+  border: 1px solid rgb(255 255 255 / 8%);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 5%);
+}
+
+.avatar,
+.topbarAccount > span {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  color: #1a2d24;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #e0c068, #b89837);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.logout {
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: rgb(246 247 244 / 68%);
+  border: 1px solid rgb(255 255 255 / 10%);
+  border-radius: 10px;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  transition: color 150ms ease, border-color 150ms ease, background-color 150ms ease;
+}
+
+.logout:hover {
+  color: #fff;
+  border-color: rgb(224 192 104 / 28%);
+  background: rgb(201 168 76 / 8%);
+}
+
+.main {
+  min-width: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin-left: var(--sidebar-width);
+}
+
+.topbar {
+  height: 72px;
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 0 clamp(18px, 3vw, 34px);
+  border-bottom: 1px solid #e2e8e3;
+  background: rgb(250 252 249 / 92%);
+  backdrop-filter: blur(14px);
+}
+
+.topbarTitle,
+.topbarActions {
+  display: flex;
+  align-items: center;
+}
+
+.topbarTitle {
+  min-width: 0;
+  gap: 12px;
+}
+
+.topbarTitle > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.topbarTitle small {
+  color: #9b812e;
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+}
+
+.topbarTitle strong {
+  margin-top: 2px;
+  color: #193d2e;
+  font-size: 15px;
+}
+
+.topbarActions {
+  gap: 12px;
+}
+
+.menuButton,
+.iconButton,
+.drawerClose {
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  color: #405149;
+  border: 1px solid #dde5df;
+  border-radius: 11px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.menuButton {
+  display: none;
+}
+
+.iconButton {
+  position: relative;
+  display: grid;
+}
+
+.unreadBadge {
+  min-width: 17px;
+  height: 17px;
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: grid;
+  place-items: center;
+  padding: 0 4px;
+  color: #fff;
+  border: 2px solid #fafcf9;
+  border-radius: 9px;
+  background: #a84646;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.notificationWrap {
+  position: relative;
+}
+
+.notificationPanel {
+  width: min(360px, calc(100vw - 24px));
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  overflow: hidden;
+  color: #28382f;
+  border: 1px solid #dfe7e1;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 22px 55px rgb(24 55 42 / 17%);
+}
+
+.notificationPanel > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 15px 16px;
+  border-bottom: 1px solid #edf1ee;
+}
+
+.notificationPanel header > div {
+  display: flex;
+  flex-direction: column;
+}
+
+.notificationPanel header strong {
+  font-size: 13px;
+}
+
+.notificationPanel header span {
+  margin-top: 2px;
+  color: #829087;
+  font-size: 9px;
+}
+
+.notificationPanel header button {
+  color: #8a7124;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.notificationList {
+  max-height: min(390px, calc(100dvh - 120px));
+  overflow-y: auto;
+}
+
+.notificationItem,
+.notificationItemUnread {
+  display: grid;
+  grid-template-columns: 30px minmax(0, 1fr);
+  gap: 10px;
+  padding: 12px 16px;
+  border-bottom: 1px solid #edf1ee;
+}
+
+.notificationItemUnread {
+  background: #f8f7ee;
+}
+
+.notificationItem > span,
+.notificationItemUnread > span {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  color: #927724;
+  border-radius: 9px;
+  background: #f0ead3;
+}
+
+.notificationItem div,
+.notificationItemUnread div {
+  min-width: 0;
+}
+
+.notificationItem strong,
+.notificationItemUnread strong {
+  display: block;
+  overflow: hidden;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notificationItem p,
+.notificationItemUnread p {
+  display: -webkit-box;
+  margin: 3px 0;
+  overflow: hidden;
+  color: #68776e;
+  font-size: 10px;
+  line-height: 1.4;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.notificationItem small,
+.notificationItemUnread small {
+  color: #9aa49e;
+  font-size: 8px;
+}
+
+.notificationEmpty {
+  margin: 0;
+  padding: 28px 16px;
+  color: #839087;
+  font-size: 11px;
+  text-align: center;
+}
+
+.topbarAccount {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding-left: 12px;
+  border-left: 1px solid #e0e6e1;
+}
+
+.topbarAccount > div {
+  max-width: 150px;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbarAccount strong,
+.topbarAccount small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbarAccount strong {
+  color: #2b4136;
+  font-size: 11px;
+}
+
+.topbarAccount small {
+  margin-top: 1px;
+  color: #8b978f;
+  font-size: 8px;
+}
+
+.content {
+  width: min(100%, 1640px);
+  margin: 0 auto;
+  padding: clamp(18px, 2.7vw, 34px);
+}
+
+/* Legacy admin pages still use the shared ERP card class and inline white
+   backgrounds. Keep their surfaces in the same soft, data-oriented palette. */
+.content :global(.erp-card) {
+  border-color: #d6e2da !important;
+  background: linear-gradient(145deg, #ffffff 0%, #eef7f2 100%) !important;
+}
+
+.content :global(.erp-card:nth-child(4n + 2)) {
+  border-color: #d1dfeb !important;
+  background: linear-gradient(145deg, #ffffff 0%, #edf5fb 100%) !important;
+}
+
+.content :global(.erp-card:nth-child(4n + 3)) {
+  border-color: #e8dcba !important;
+  background: linear-gradient(145deg, #ffffff 0%, #fbf5e3 100%) !important;
+}
+
+.content :global(.erp-card:nth-child(4n)) {
+  border-color: #ded4e9 !important;
+  background: linear-gradient(145deg, #ffffff 0%, #f3eef8 100%) !important;
+}
+
+.overlay {
+  display: none;
+}
+
+.navItem:focus-visible,
+.navItemActive:focus-visible,
+.logout:focus-visible,
+.menuButton:focus-visible,
+.drawerClose:focus-visible,
+.iconButton:focus-visible,
+.notificationPanel button:focus-visible {
+  outline: 3px solid rgb(201 168 76 / 30%);
+  outline-offset: 2px;
+}
+
+@media (max-width: 1099px) {
+  .drawer,
+  .drawerVisible {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 60;
+    transform: translateX(-102%);
+    transition: transform 200ms ease;
+  }
+
+  .drawerVisible {
+    transform: translateX(0);
+  }
+
+  .sidebar {
+    position: relative;
+  }
+
+  .drawerClose,
+  .menuButton {
+    display: grid;
+  }
+
+  .main {
+    margin-left: 0;
+  }
+
+  .overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: block;
+    border: 0;
+    background: rgb(5 20 14 / 52%);
+    backdrop-filter: blur(3px);
+  }
+}
+
+@media (max-width: 640px) {
+  .topbar {
+    height: 64px;
+    padding-inline: 12px;
+  }
+
+  .topbarTitle small,
+  .topbarAccount div {
+    display: none;
+  }
+
+  .topbarTitle strong {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  .topbarAccount {
+    padding-left: 8px;
+  }
+
+  .topbarAccount > span {
+    width: 36px;
+    height: 36px;
+  }
+
+  .content {
+    padding: 14px 12px 24px;
+  }
+
+  .notificationPanel {
+    position: fixed;
+    top: 72px;
+    right: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .drawer,
+  .drawerVisible,
+  .navItem,
+  .navItemActive,
+  .logout {
+    transition: none;
+  }
+}

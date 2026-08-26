@@ -2,7 +2,7 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
+import { signUpLocal } from '@/lib/localData'
 
 function RegisterForm() {
   const router = useRouter()
@@ -11,45 +11,31 @@ function RegisterForm() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [school, setSchool] = useState('')
-  const [role, setRole] = useState<'teacher' | 'student'>('student')
+  const [school, setSchool] = useState(() => searchParams.get('school') || '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
 
   // Class Invite Params
   const codeParam = searchParams.get('code')
-  const [invitedClass, setInvitedClass] = useState('')
-  const [invitedTeacher, setInvitedTeacher] = useState('')
+  const [invitedClass, setInvitedClass] = useState(() => searchParams.get('class') || '')
+  const [invitedTeacher, setInvitedTeacher] = useState(() => searchParams.get('teacher') || '')
 
   useEffect(() => {
     async function fetchInvite() {
       if (codeParam) {
-        const { data } = await supabase.from('class_invites').select('*').eq('short_code', codeParam).single()
+        const response = await fetch(`/api/invites/${encodeURIComponent(codeParam)}`)
+        const payload = await response.json()
+        const data = response.ok ? payload.invite : null
         if (data) {
           if (data.school_name) setSchool(data.school_name)
           if (data.target_class) setInvitedClass(data.target_class)
           if (data.teacher_name) setInvitedTeacher(data.teacher_name)
-          setRole('student')
         }
       }
     }
     fetchInvite()
   }, [codeParam])
-
-  useEffect(() => {
-    const classParam = searchParams.get('class')
-    const teacherParam = searchParams.get('teacher')
-    const schoolParam = searchParams.get('school')
-
-    if (schoolParam) setSchool(schoolParam)
-    if (classParam) setInvitedClass(classParam)
-    if (teacherParam) setInvitedTeacher(teacherParam)
-
-    if (classParam || teacherParam) {
-      setRole('student')
-    }
-  }, [searchParams])
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
@@ -63,66 +49,24 @@ function RegisterForm() {
       return
     }
 
-    setTimeout(() => {
-      const existingUsersRaw = localStorage.getItem('registeredUsers')
-      const existingUsers = existingUsersRaw ? JSON.parse(existingUsersRaw) : []
-      
-      const userExists = existingUsers.some((u: any) => u.email === email)
-      if (userExists) {
-        setError('อีเมลนี้ถูกใช้งานในระบบแล้ว')
-        setLoading(false)
-        return
-      }
-
-      let initialStatus = role === 'student' ? 'pending' : 'active'
-      
-      if (role === 'student') {
-        const classRosterRaw = localStorage.getItem('classroomStudents')
-        if (classRosterRaw) {
-          try {
-            const roster = JSON.parse(classRosterRaw)
-            const isMatch = roster.some((s: any) => 
-              (s.email && s.email.toLowerCase() === email.trim().toLowerCase()) || 
-              (s.name && s.name.toLowerCase() === name.trim().toLowerCase())
-            )
-            if (isMatch) {
-              initialStatus = 'active' // Auto-approve if they are in the teacher's roster
-            }
-          } catch (e) {}
-        }
-      }
-
-      const newUser = {
-        name,
-        email,
+    try {
+      const data = await signUpLocal({
+        email: email.trim(),
         password,
-        school,
-        role,
-        avatar: role === 'teacher' ? '👩‍🏫' : '👨‍🎓',
-        id: `usr-${Date.now()}`,
-        enrolledClass: invitedClass || 'ปวช.1/1',
-        teacherName: invitedTeacher || 'ครูสมหญิง รักเรียน',
-        status: initialStatus
-      }
-
-      existingUsers.push(newUser)
-      localStorage.setItem('registeredUsers', JSON.stringify(existingUsers))
+        name: name.trim(),
+        requestedRole: 'student',
+        school: school.trim(),
+      })
 
       setSuccess(true)
-      setLoading(false)
-
-      // Auto login or redirect to login
       setTimeout(() => {
-        if (newUser.role === 'student' && newUser.status === 'pending') {
-          // Redirect to login page to show pending message
-          router.push('/')
-        } else {
-          localStorage.setItem('userRole', role)
-          localStorage.setItem('userInfo', JSON.stringify(newUser))
-          router.push(role === 'teacher' ? '/teacher/dashboard' : '/student/explore')
-        }
+        router.push(data.session ? '/student/explore' : '/')
       }, 1500)
-    }, 1200)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ไม่สามารถลงทะเบียนได้')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -208,7 +152,7 @@ function RegisterForm() {
               placeholder="เช่น 6400010001"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              minLength={6}
+              minLength={8}
               required
             />
           </div>
@@ -250,7 +194,7 @@ function RegisterForm() {
           color: #1E4D3A;
           letter-spacing: 0.15em;
           margin-bottom: var(--space-5);
-          font-family: 'Playfair Display', serif;
+          font-family: var(--font-display), var(--font-primary);
         }
         .btn-luxury {
           width: 100%;
@@ -426,7 +370,7 @@ export default function RegisterPage() {
           line-height: 1.1;
           letter-spacing: 3px;
           text-transform: uppercase;
-          font-family: 'Playfair Display', serif;
+          font-family: var(--font-display), var(--font-primary);
         }
         .login-brand-sub {
           font-size: var(--font-size-xs);

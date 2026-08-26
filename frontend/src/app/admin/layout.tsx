@@ -1,5 +1,4 @@
 'use client'
-import RoleBottomNav from '@/components/RoleBottomNav'
 import { useRole } from '@/context/RoleContext'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
@@ -21,10 +20,5 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     return <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-4">กำลังโหลด...</div>
   }
 
-  return (
-    <>
-      {children}
-      <RoleBottomNav />
-    </>
-  )
+  return <>{children}</>
 }

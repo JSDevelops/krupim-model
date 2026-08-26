@@ -1,20 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth, getSupabase } from '../_lib/auth'
-import { getActiveProvider, getGemini, getOpenAI, getAnthropic } from '../_lib/ai'
+import { apiErrorResponse, getErrorMessage, guardApi, getDatabase } from '../_lib/auth'
+import { getActiveProvider, getConfiguredModel, getGemini, getOpenAI, getAnthropic } from '../_lib/ai'
 
 export async function POST(req: NextRequest) {
-  await requireAuth(req, false)
+  let authUser
+  try {
+    authUser = await guardApi(req, { maxRequests: 10 })
+  } catch (error) {
+    return apiErrorResponse(error)
+  }
 
   try {
     const body = await req.json()
-    const { messages, score, student_id, scenario_id } = body
+    const { messages, score, scenario_id } = body
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: 'messages array is required' }, { status: 400 })
     }
+    if (messages.length > 50 || messages.some((message: unknown) => {
+      if (!message || typeof message !== 'object') return true
+      const item = message as { text?: unknown }
+      return typeof item.text !== 'string' || item.text.length > 4000
+    })) {
+      return NextResponse.json({ error: 'messages payload is too large' }, { status: 400 })
+    }
+    const validMessages = messages as Array<{ role?: string; text: string }>
 
-    const provider = getActiveProvider(req)
-    const chatContent = messages.map((m: any) => `${m.role === 'user' ? 'บริกร' : 'ลูกค้า'}: ${m.text}`).join('\n')
+    const provider = await getActiveProvider(req)
+    const configuredModel = await getConfiguredModel(provider)
+    const chatContent = validMessages.map(m => `${m.role === 'user' ? 'บริกร' : 'ลูกค้า'}: ${m.text}`).join('\n')
 
     const prompt = `คุณเป็นผู้เชี่ยวชาญประเมินการบริการในร้านอาหาร
 วิเคราะห์บทสนทนาระหว่างบริกรและลูกค้าต่อไปนี้:
@@ -31,7 +45,7 @@ ${chatContent}
     if (provider === 'openai') {
       const client = await getOpenAI(req)
       const completion = await client.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: configuredModel,
         response_format: { type: 'json_object' },
         messages: [{ role: 'user', content: prompt }]
       })
@@ -39,14 +53,14 @@ ${chatContent}
     } else if (provider === 'claude') {
       const client = await getAnthropic(req)
       const completion = await client.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+        model: configuredModel,
         max_tokens: 1000,
         messages: [{ role: 'user', content: prompt }]
       })
       text = completion.content[0].type === 'text' ? completion.content[0].text : ''
     } else {
-      const genAI = getGemini(req)
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+      const genAI = await getGemini(req)
+      const model = genAI.getGenerativeModel({ model: configuredModel })
       const result = await model.generateContent(prompt)
       text = result.response.text()
     }
@@ -55,26 +69,26 @@ ${chatContent}
     if (!jsonMatch) throw new Error('No JSON output from AI')
     const parsed = JSON.parse(jsonMatch[0])
 
-    // Save to Supabase
-    if (student_id && scenario_id) {
+    // Save to PostgreSQL
+    if (authUser.role === 'student' && typeof scenario_id === 'string') {
       try {
-        const supabase = getSupabase()
-        await supabase.from('simulation_sessions').insert({
-          student_id,
+        const localData = getDatabase()
+        await localData.from('simulation_sessions').insert({
+          student_id: authUser.id,
           scenario_id,
           score: score || 0,
           max_score: 100,
           feedback_json: parsed,
           conversation_json: messages
         })
-      } catch (dbErr: any) {
-        console.error('Failed to save simulation session:', dbErr.message)
+      } catch (dbErr: unknown) {
+        console.error('Failed to save simulation session:', getErrorMessage(dbErr))
       }
     }
 
     return NextResponse.json({ ...parsed, score })
-  } catch (err: any) {
-    console.error('Simulation Evaluation Error:', err.message)
+  } catch (err: unknown) {
+    console.error('Simulation Evaluation Error:', getErrorMessage(err))
     return NextResponse.json({ error: 'Failed to evaluate simulation. Please try again.' }, { status: 500 })
   }
 }

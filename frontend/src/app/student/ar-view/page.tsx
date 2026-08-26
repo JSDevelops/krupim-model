@@ -2,7 +2,8 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase'
+import { localData } from '@/lib/localData'
+import { toast } from 'sonner'
 
 interface ARModel {
   id: string
@@ -42,7 +43,7 @@ function ARViewerContent() {
 
         // ─── 1. Try ar_items table (ตารางหลัก — ครูสร้างผ่านหน้า AR & 3D Items) ───
         try {
-          const { data, error } = await supabase
+          const { data, error } = await localData
             .from('ar_items')
             .select('*')
             .eq('id', id)
@@ -69,7 +70,7 @@ function ARViewerContent() {
 
         // ─── 2. Try ai_scan_items table (AI Scan ที่สแกนผ่านกล้อง) ───
         try {
-          const { data, error } = await supabase
+          const { data, error } = await localData
             .from('ai_scan_items')
             .select('id, name_th, name_en, description, service_tips, image_url, glb_url, usdz_url, pronounce')
             .eq('id', id)
@@ -96,7 +97,7 @@ function ARViewerContent() {
 
         // ─── 3. Legacy: fine_lesson_plans 'ar-items-store' ───
         try {
-          const { data, error } = await supabase
+          const { data, error } = await localData
             .from('fine_lesson_plans')
             .select('vocabulary')
             .eq('id', 'ar-items-store')
@@ -193,7 +194,7 @@ function ARViewerContent() {
       utterance.rate = 0.85
       window.speechSynthesis.speak(utterance)
     } else {
-      alert('เบราว์เซอร์ของคุณไม่รองรับการออกเสียงแบบอัตโนมัติ')
+      toast.warning('เบราว์เซอร์ไม่รองรับการออกเสียงอัตโนมัติ')
     }
   }
 
@@ -202,7 +203,7 @@ function ARViewerContent() {
     if (typeof window === 'undefined') return
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
     if (!SpeechRecognition) {
-      alert('เบราว์เซอร์ของคุณไม่สนับสนุนการจดจำเสียงพูด กรุณาใช้ Chrome หรือ Safari บนมือถือครับ')
+      toast.warning('เบราว์เซอร์ไม่รองรับการจดจำเสียงพูด', { description: 'กรุณาใช้ Chrome หรือ Safari เวอร์ชันล่าสุด' })
       return
     }
 

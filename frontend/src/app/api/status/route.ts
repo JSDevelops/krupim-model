@@ -1,24 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getActiveProvider } from '../_lib/ai'
+import { getActiveProvider, getConfiguredModel, hasConfiguredKey } from '../_lib/ai'
+import { apiErrorResponse, guardApi } from '../_lib/auth'
 
 export async function GET(req: NextRequest) {
-  const provider = getActiveProvider(req)
-  let initialized = false
-
-  if (provider === 'openai') {
-    const key = req.headers.get('x-openai-key') || process.env.OPENAI_API_KEY || ''
-    initialized = key.startsWith('sk-')
-  } else if (provider === 'claude') {
-    const key = req.headers.get('x-claude-key') || process.env.ANTHROPIC_API_KEY || ''
-    initialized = key.startsWith('sk-ant-')
-  } else {
-    const key = req.headers.get('x-gemini-key') || process.env.GEMINI_API_KEY || ''
-    initialized = key.startsWith('AIzaSy')
+  try {
+    await guardApi(req, { maxRequests: 30 })
+  } catch (error) {
+    return apiErrorResponse(error)
   }
+
+  const provider = await getActiveProvider(req)
+  const [initialized, model] = await Promise.all([
+    hasConfiguredKey(provider),
+    getConfiguredModel(provider),
+  ])
 
   return NextResponse.json({
     status: 'online',
     activeProvider: provider,
+    model,
     aiInitialized: initialized,
     timestamp: new Date().toISOString()
   })

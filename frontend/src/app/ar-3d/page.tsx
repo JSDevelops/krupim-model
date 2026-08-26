@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { localData } from '@/lib/localData'
 
 interface AR3DItem {
   id: string
@@ -15,7 +15,7 @@ interface AR3DItem {
   usdzUrl?: string
 }
 
-// Fallback items if localStorage and Supabase are empty
+// Fallback items if localStorage and Local PostgreSQL are empty
 const defaultAr3dItems: AR3DItem[] = [
   { 
     id: 'item-001', 
@@ -76,14 +76,14 @@ export default function AR3DPage() {
   const [isRotating, setIsRotating] = useState(true) // สำหรับควบคุม CSS 360 Rotation Animation
   const [speaking, setSpeaking] = useState<string | null>(null)
 
-  // 1. โหลดข้อมูลแบบไดนามิกจาก Supabase หรือ localStorage คีย์เดียวกับที่คุณครูบริหารจัดการ
+  // 1. โหลดข้อมูลแบบไดนามิกจาก Local PostgreSQL หรือ localStorage คีย์เดียวกับที่คุณครูบริหารจัดการ
   useEffect(() => {
     async function loadARItems() {
       let loadedItems: AR3DItem[] = []
       
-      // Try to load from Supabase first
+      // Try to load from Local PostgreSQL first
       try {
-        const { data, error } = await supabase
+        const { data, error } = await localData
           .from('fine_lesson_plans')
           .select('vocabulary')
           .eq('id', 'ar-items-store')
@@ -94,10 +94,10 @@ export default function AR3DPage() {
           loadedItems = Array.isArray(rawVocab) ? (rawVocab as any[]) : JSON.parse(rawVocab as string)
         }
       } catch (err) {
-        console.error('Error fetching AR items from Supabase:', err)
+        console.error('Error fetching AR items from Local PostgreSQL:', err)
       }
 
-      // Fallback to localStorage if Supabase call failed or returned empty
+      // Fallback to localStorage if Local PostgreSQL call failed or returned empty
       if (!loadedItems || loadedItems.length === 0) {
         const stored = localStorage.getItem('arItems')
         if (stored) {

@@ -1,201 +1,297 @@
 'use client'
+
+import Image from 'next/image'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useRole, UserRole } from '@/context/RoleContext'
-import { useEffect } from 'react'
+import { useState } from 'react'
+import logo from '../../../public/logo.png'
+import { signInLocal, type UserRole } from '@/lib/localData'
+import styles from '../page.module.css'
 
+type IconName =
+  | 'brand'
+  | 'admin'
+  | 'teacher'
+  | 'student'
+  | 'mail'
+  | 'lock'
+  | 'eye'
+  | 'eyeOff'
+  | 'alert'
+  | 'arrow'
+  | 'back'
+  | 'check'
 
-const roles = [
+type RoleChoice = {
+  id: UserRole
+  title: string
+  subtitle: string
+  hint: string
+  description: string
+  features: string[]
+  icon: IconName
+}
+
+const roles: RoleChoice[] = [
   {
-    id: 'developer' as UserRole,
-    label: 'ผู้ดูแลระบบ', labelEn: 'Administrator', emoji: '⚙️',
-    subtitle: 'เจ้าของโปรเจค / ผู้พัฒนา',
-    description: 'จัดการระบบทั้งหมด ควบคุมเนื้อหา จัดการทะเบียนผู้ใช้ และวิเคราะห์ผลรวมระบบ',
-    features: ['🔧 จัดการผู้ใช้ทั้งหมด', '🗂️ จัดการเนื้อหา AR/AI', '📈 วิเคราะห์รายงานรวม', '⚙️ ตั้งค่าโครงสร้างระบบ'],
-    gradient: 'linear-gradient(135deg, #102B1F 0%, #1E4D3A 100%)',
-    color: '#1E4D3A', bg: '#EAF3EE', border: '#C5DDD3',
-    path: '/admin/dashboard',
-    badge: 'ADMIN ✦',
-    badgeBg: '#1E4D3A',
+    id: 'student',
+    title: 'นักเรียน / นักศึกษา',
+    subtitle: 'Student',
+    hint: 'เรียนรู้ ฝึกปฏิบัติ และติดตามผล',
+    description: 'เรียนรู้ผ่านโมเดล AR 3D ฝึกคำศัพท์ด้วย AI และทดลองสถานการณ์งานบริการเสมือนจริง',
+    features: ['บทเรียน AR และโมเดล 3 มิติ', 'ฝึกคำศัพท์ด้วย AI Scan', 'สนทนาและสถานการณ์จำลอง', 'ติดตามคะแนนและความก้าวหน้า'],
+    icon: 'student',
   },
   {
-    id: 'teacher' as UserRole,
-    label: 'ครูผู้สอน', labelEn: 'Teacher / Instructor', emoji: '👩‍🏫',
-    subtitle: 'ผู้บริหารการสอนและการประเมินผล',
-    description: 'จัดทำแผนการสอน รายงานผลสมรรถนะ มอบหมายกิจกรรม และจัดการทะเบียนเด็ก',
-    features: ['📖 แผนการสอน FINE MODEL', '⚡ AI Scenario จำลองโจทย์', '📋 สั่งงานและประเมิน Rubrics', '👥 ทะเบียนและออกประกาศ PDF'],
-    gradient: 'linear-gradient(135deg, #4A3010 0%, #2E1D0A 100%)',
-    color: '#4A3010', bg: '#FBF6E9', border: '#F0E0A8',
-    path: '/teacher/dashboard',
-    badge: 'TEACHER ✦',
-    badgeBg: '#A6882A',
+    id: 'teacher',
+    title: 'ครูผู้สอน',
+    subtitle: 'Teacher',
+    hint: 'จัดการชั้นเรียน บทเรียน และการประเมิน',
+    description: 'บริหารการเรียนการสอน จัดกิจกรรม ติดตามผู้เรียน และประเมินสมรรถนะจากข้อมูลจริง',
+    features: ['จัดทำแผนการสอน FINE MODEL', 'จัดการชั้นเรียนและทะเบียนนักเรียน', 'มอบหมายงานและประเมินผล', 'ดูรายงานความก้าวหน้ารายบุคคล'],
+    icon: 'teacher',
   },
   {
-    id: 'student' as UserRole,
-    label: 'นักเรียน / นักศึกษา', labelEn: 'Student Portal', emoji: '👨‍🎓',
-    subtitle: 'ผู้เรียนรู้และฝึกสมรรถนะวิชาชีพ',
-    description: 'เรียนรู้ผ่านโมเดล AR 3D, ฝึกประเมินศัพท์ AI Scan และบทสนทนาสถานการณ์จริง',
-    features: ['🎨 ส่องอุปกรณ์ AR & 3D', '🤖 ฝึกศัพท์ผ่าน AI Scan', '💬 สนทนากับ AI Gemini', '🎭 สวมบทบาท Simulation'],
-    gradient: 'linear-gradient(135deg, #1E4D3A 0%, #C9A84C 100%)',
-    color: '#1E4D3A', bg: '#F5F2ED', border: '#D8D2C6',
-    path: '/student/explore',
-    badge: 'STUDENT ✦',
-    badgeBg: '#C9A84C',
+    id: 'developer',
+    title: 'ผู้ดูแลระบบ',
+    subtitle: 'Administrator',
+    hint: 'บริหารผู้ใช้ เนื้อหา และการตั้งค่าระบบ',
+    description: 'ควบคุมภาพรวมแพลตฟอร์ม อนุมัติบัญชี จัดการเนื้อหา และตรวจสอบข้อมูลการใช้งาน',
+    features: ['จัดการผู้ใช้และสิทธิ์การเข้าถึง', 'อนุมัติบัญชีครูผู้สอน', 'บริหารเนื้อหา AR และ AI', 'วิเคราะห์รายงานภาพรวมระบบ'],
+    icon: 'admin',
   },
 ]
 
+function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
+  const common = {
+    width: size,
+    height: size,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.8,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true,
+  }
+
+  if (name === 'brand') return <svg {...common}><path d="m12 3-8 4 8 4 8-4-8-4Z"/><path d="m4 12 8 4 8-4"/><path d="m4 17 8 4 8-4"/></svg>
+  if (name === 'admin') return <svg {...common}><path d="M12 3 4.5 6v5.2c0 4.6 3.2 8.4 7.5 9.8 4.3-1.4 7.5-5.2 7.5-9.8V6L12 3Z"/><path d="M9.5 12 11 13.5l3.5-3.5"/></svg>
+  if (name === 'teacher') return <svg {...common}><path d="M3 5h18v12H3z"/><path d="M7 21h10M12 17v4"/><circle cx="8" cy="10" r="2"/><path d="M12 13c-.8-1.4-2.1-2-4-2s-3.2.6-4 2M14 9h4M14 12h3"/></svg>
+  if (name === 'student') return <svg {...common}><path d="m2.5 9 9.5-5 9.5 5-9.5 5-9.5-5Z"/><path d="M6 11.2V16c2.7 2.2 9.3 2.2 12 0v-4.8M21.5 9v6"/></svg>
+  if (name === 'mail') return <svg {...common}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>
+  if (name === 'lock') return <svg {...common}><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/><path d="M12 14v3"/></svg>
+  if (name === 'eye') return <svg {...common}><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
+  if (name === 'eyeOff') return <svg {...common}><path d="m3 3 18 18"/><path d="M10.6 6.2A10.6 10.6 0 0 1 12 6c6 0 9.5 6 9.5 6a14 14 0 0 1-2.1 2.8"/><path d="M6.2 6.2C3.8 7.8 2.5 12 2.5 12s3.5 6 9.5 6a9.8 9.8 0 0 0 3.1-.5"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>
+  if (name === 'alert') return <svg {...common}><path d="M10.3 4.1 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 4.1a2 2 0 0 0-3.4 0Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+  if (name === 'back') return <svg {...common}><path d="M19 12H5"/><path d="m10 17-5-5 5-5"/></svg>
+  if (name === 'check') return <svg {...common}><path d="m5 12 4 4L19 6"/></svg>
+  return <svg {...common}><path d="M5 12h14"/><path d="m14 7 5 5-5 5"/></svg>
+}
+
+function loginErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : ''
+  if (message.includes('Invalid login credentials')) return 'อีเมลหรือรหัสผ่านไม่ถูกต้อง'
+  if (message.includes('Account role mismatch')) return 'บัญชีนี้ไม่ตรงกับบทบาทที่เลือก กรุณาเลือกบทบาทให้ถูกต้อง'
+  if (message.includes('Account pending approval')) return 'บัญชีครูกำลังรอผู้ดูแลระบบอนุมัติ'
+  if (message.includes('Account is inactive')) return 'บัญชีนี้ถูกระงับการใช้งาน กรุณาติดต่อผู้ดูแลระบบ'
+  return message || 'ระบบไม่สามารถเข้าสู่ระบบได้ กรุณาลองใหม่อีกครั้ง'
+}
+
+function destinationFor(role: UserRole) {
+  if (role === 'developer') return '/admin/dashboard'
+  if (role === 'teacher') return '/teacher/dashboard'
+  return '/student/explore'
+}
+
 export default function RoleSelectPage() {
   const router = useRouter()
-  const { setUser, user } = useRole()
+  const [selectedRole, setSelectedRole] = useState<RoleChoice | null>(null)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-  useEffect(() => {
-    const savedRole = localStorage.getItem('userRole')
-    const savedUserInfo = localStorage.getItem('userInfo')
-    let parsedUser: any = null
-    try { parsedUser = savedUserInfo ? JSON.parse(savedUserInfo) : null } catch {}
-    
-    if (!savedRole) {
-      router.replace('/')
-    } else if (savedRole !== 'developer' && parsedUser?.role !== 'developer') {
-      router.replace(`/${savedRole === 'teacher' ? 'teacher' : 'student'}/dashboard`)
+  function chooseRole(role: RoleChoice) {
+    setSelectedRole(role)
+    setError('')
+  }
+
+  function changeRole() {
+    setSelectedRole(null)
+    setPassword('')
+    setShowPassword(false)
+    setError('')
+  }
+
+  async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!selectedRole || loading) return
+
+    setLoading(true)
+    setError('')
+    try {
+      const { profile } = await signInLocal(email.trim().toLowerCase(), password, selectedRole.id)
+      router.replace(destinationFor(profile.role))
+    } catch (loginError) {
+      setError(loginErrorMessage(loginError))
+    } finally {
+      setLoading(false)
     }
-  }, [user])
-
-  function selectRole(role: typeof roles[0]) {
-    const savedUserInfo = localStorage.getItem('userInfo')
-    let parsedUser: any = null
-    try { parsedUser = savedUserInfo ? JSON.parse(savedUserInfo) : null } catch {}
-
-    // Allow switching if the logged in user is developer, or if it matches the role they chose
-    if (user?.role === 'developer' || parsedUser?.role === 'developer' || user?.role === role.id || parsedUser?.role === role.id) {
-      localStorage.setItem('userRole', role.id)
-      if (user) {
-        setUser({ ...user, role: role.id })
-      }
-      router.push(role.path)
-      return
-    }
-
-    // Fallback: If context is still loading but they clicked, let them proceed based on their selection
-    localStorage.setItem('userRole', role.id)
-    router.push(role.path)
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: 'linear-gradient(160deg, #071812 0%, #102B1F 40%, #1E4D3A 100%)', display: 'flex', flexDirection: 'column' }}>
-      
-      {/* Injecting CSS animations & responsive classes */}
-      <style>{`
-        .roles-grid {
-          display: grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 24px;
-          max-width: 1200px;
-          width: 100%;
-          margin: 0 auto;
-          padding: 16px 20px 48px;
-        }
-        .role-card {
-          border: none;
-          border-radius: 24px;
-          overflow: hidden;
-          box-shadow: 0 12px 30px rgba(0,0,0,0.15);
-          cursor: pointer;
-          text-align: left;
-          padding: 0;
-          background: white;
-          width: 100%;
-          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-          display: flex;
-          flex-direction: column;
-          height: 100%;
-          border: 1px solid rgba(255,255,255,0.1);
-        }
-        .role-card:hover {
-          transform: translateY(-10px);
-          box-shadow: 0 20px 40px rgba(16,43,31,0.30);
-          border-color: #C9A84C;
-        }
-        .role-card:active {
-          transform: translateY(-2px);
-        }
-        @media (max-width: 900px) {
-          .roles-grid {
-            grid-template-columns: 1fr;
-            gap: 20px;
-            padding: 16px 16px 32px;
-          }
-        }
-      `}</style>
+    <main className={styles.rolePage}>
+      <div className={styles.roleBackdrop} aria-hidden="true" />
 
-      {/* Header */}
-      <div style={{ padding: '64px var(--space-4) 32px', position: 'relative', zIndex: 1 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 16, marginBottom: 24 }}>
-          <img src="/logo.png" alt="FINE MODEL Logo" style={{ width: 64, height: 64, borderRadius: 16, border: '2.5px solid #C9A84C', boxShadow: '0 0 25px rgba(201,168,76,0.3)' }} />
-          <div style={{ textAlign: 'left' }}>
-            <div style={{ color: 'white', fontSize: 26, fontWeight: 800, letterSpacing: '1.5px', fontFamily: 'var(--font-primary)' }}>FINE MODEL</div>
-            <div style={{ color: '#C9A84C', fontSize: 12, letterSpacing: '2px', textTransform: 'uppercase', fontWeight: 700, marginTop: '2px' }}>AR 3D + AI Learning Platform</div>
+      <header className={styles.roleHeader}>
+        <div className={styles.roleBrand}>
+          <Image src={logo} width={54} height={54} loading="eager" alt="ตราสัญลักษณ์ FINE MODEL" />
+          <div>
+            <strong>FINE MODEL</strong>
+            <span>AR 3D + AI LEARNING</span>
           </div>
         </div>
-        <div style={{ textAlign: 'center' }}>
-          <h1 style={{ color: 'white', fontSize: 24, fontWeight: 800, marginBottom: 8 }}>เลือกบทบาทผู้ใช้งานเพื่อเริ่มต้น</h1>
-          <p style={{ color: 'rgba(253,250,244,0.80)', fontSize: 14 }}>กรุณาเลือกประเภทผู้เรียนรู้ เพื่อเข้าใช้ฟีเจอร์และห้องปฏิบัติการโรงแรมจำลอง</p>
+        <div className={styles.roleHeading}>
+          <p>เข้าสู่แพลตฟอร์ม</p>
+          <h1>เลือกบทบาทของคุณ</h1>
+          <span>ดูรายละเอียดและเลือกพื้นที่ใช้งานที่ตรงกับบัญชีของคุณ</span>
         </div>
-      </div>
+      </header>
 
-      {/* Content wrapper with white luxury curve */}
-      <div style={{ background: '#F8F6F2', borderRadius: '32px 32px 0 0', flex: 1, padding: '40px 16px 16px', display: 'flex', flexDirection: 'column' }}>
-        
-        {/* Responsive Grid Container */}
-        <div className="roles-grid">
-          {roles.map((role) => (
-            <button
-              key={role.id}
-              onClick={() => selectRole(role)}
-              className="role-card"
-            >
-              {/* Card Header Gradient */}
-              <div style={{ background: role.gradient, padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', color: 'white' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ width: 56, height: 56, background: 'rgba(255,255,255,0.18)', backdropFilter: 'blur(8px)', borderRadius: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>
-                    {role.emoji}
-                  </div>
-                  <span style={{ background: 'rgba(255,255,255,0.22)', color: '#FDFAF4', fontSize: '10px', fontWeight: 800, padding: '4px 10px', borderRadius: '20px', letterSpacing: '1px', border: '1px solid rgba(255,255,255,0.15)' }}>
-                    {role.badge}
-                  </span>
-                </div>
-                <div style={{ textAlign: 'left' }}>
-                  <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#FDFAF4', margin: 0 }}>{role.label}</h2>
-                  <div style={{ color: 'rgba(253,250,244,0.75)', fontSize: '12px', marginTop: '4px', fontWeight: 500 }}>{role.labelEn}</div>
-                </div>
+      <section className={styles.roleShowcase} aria-label="รายละเอียดบทบาทผู้ใช้งาน">
+        {roles.map(role => (
+          <article key={role.id} className={styles.roleDetailCard} data-role={role.id}>
+            <div className={styles.roleDetailHeader}>
+              <div className={styles.roleDetailTop}>
+                <span className={styles.roleDetailIcon}><Icon name={role.icon} size={29} /></span>
+                <span className={styles.roleBadge}>{role.subtitle}</span>
               </div>
+              <h2>{role.title}</h2>
+              <p>{role.hint}</p>
+            </div>
 
-              {/* Card Body Details */}
-              <div style={{ padding: '24px', flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '20px', background: 'white' }}>
-                <div style={{ textAlign: 'left' }}>
-                  <div style={{ fontWeight: 800, fontSize: '13px', color: '#A6882A', marginBottom: '6px' }}>{role.subtitle}</div>
-                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6, margin: 0 }}>
-                    {role.description}
-                  </p>
-                </div>
+            <div className={styles.roleDetailBody}>
+              <p className={styles.roleDescription}>{role.description}</p>
+              <ul className={styles.roleFeatures}>
+                {role.features.map(feature => (
+                  <li key={feature}>
+                    <span><Icon name="check" size={15} /></span>
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+              <button type="button" className={styles.roleLoginButton} onClick={() => chooseRole(role)}>
+                <span>เข้าสู่ระบบบทบาทนี้</span>
+                <Icon name="arrow" size={18} />
+              </button>
+            </div>
+          </article>
+        ))}
+      </section>
 
-                {/* Features Checklist */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {role.features.map(f => (
-                    <div key={f} style={{ fontSize: '12px', fontWeight: 700, padding: '8px 14px', borderRadius: '12px', background: role.bg, color: role.color, display: 'flex', alignItems: 'center', gap: '6px', border: `1px solid ${role.border}` }}>
-                      <span>✓</span> {f}
-                    </div>
-                  ))}
-                </div>
-              </div>
+      <footer className={styles.roleFooter}>
+        <span>ยังไม่มีบัญชี?</span>
+        <Link href="/register-student">ลงทะเบียนนักเรียน</Link>
+        <Link href="/register-teacher">ลงทะเบียนครู</Link>
+      </footer>
+
+      {selectedRole && (
+        <div className={styles.loginOverlay}>
+          <section
+            className={styles.loginDialog}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="login-dialog-title"
+            onKeyDown={event => {
+              if (event.key === 'Escape' && !loading) changeRole()
+            }}
+          >
+            <button type="button" className={styles.changeRole} onClick={changeRole} disabled={loading}>
+              <Icon name="back" size={18} />
+              กลับไปเลือกบทบาท
             </button>
-          ))}
+
+            <div className={styles.selectedRole}>
+              <span className={styles.selectedRoleIcon}><Icon name={selectedRole.icon} size={23} /></span>
+              <span>
+                <small>เข้าสู่ระบบในฐานะ</small>
+                <strong id="login-dialog-title">{selectedRole.title}</strong>
+              </span>
+            </div>
+
+            {error && (
+              <div id="login-error" className={styles.error} role="alert" aria-live="assertive">
+                <Icon name="alert" size={19} />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleLogin} className={styles.form} aria-busy={loading}>
+              <div className={styles.field}>
+                <label htmlFor="login-email">อีเมล</label>
+                <div className={styles.inputWrap}>
+                  <span className={styles.inputIcon}><Icon name="mail" size={19} /></span>
+                  <input
+                    id="login-email"
+                    className={styles.input}
+                    type="email"
+                    inputMode="email"
+                    placeholder="example@school.ac.th"
+                    value={email}
+                    onChange={event => { setEmail(event.target.value); if (error) setError('') }}
+                    autoComplete="email"
+                    autoCapitalize="none"
+                    spellCheck={false}
+                    disabled={loading}
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={error ? 'login-error' : undefined}
+                    autoFocus
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className={styles.field}>
+                <label htmlFor="login-password">รหัสผ่าน</label>
+                <div className={styles.inputWrap}>
+                  <span className={styles.inputIcon}><Icon name="lock" size={19} /></span>
+                  <input
+                    id="login-password"
+                    className={styles.input + ' ' + styles.passwordInput}
+                    type={showPassword ? 'text' : 'password'}
+                    placeholder="กรอกรหัสผ่าน"
+                    value={password}
+                    onChange={event => { setPassword(event.target.value); if (error) setError('') }}
+                    autoComplete="current-password"
+                    disabled={loading}
+                    aria-invalid={Boolean(error)}
+                    aria-describedby={error ? 'login-error' : 'password-help'}
+                    required
+                  />
+                  <button
+                    type="button"
+                    className={styles.passwordToggle}
+                    onClick={() => setShowPassword(current => !current)}
+                    aria-label={showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}
+                    aria-pressed={showPassword}
+                    disabled={loading}
+                  >
+                    <Icon name={showPassword ? 'eyeOff' : 'eye'} size={20} />
+                  </button>
+                </div>
+                <p id="password-help" className={styles.helpText}>หากลืมรหัสผ่าน โปรดติดต่อผู้ดูแลระบบ</p>
+              </div>
+
+              <button className={styles.submit} type="submit" disabled={loading}>
+                {loading ? <span className={styles.spinner} aria-hidden="true" /> : <Icon name="arrow" size={20} />}
+                <span>{loading ? 'กำลังตรวจสอบบัญชี...' : 'เข้าสู่ระบบ' + selectedRole.title}</span>
+              </button>
+            </form>
+          </section>
         </div>
-
-        <p style={{ textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)', marginTop: 'auto', paddingBottom: '24px', maxWidth: '600px', margin: '0 auto' }}>
-          การเข้าใช้งานถือว่าคุณยอมรับข้อกำหนดการให้บริการและการคุ้มครองข้อมูลส่วนบุคคลของระบบปฏิบัติการ FINE MODEL ✦
-        </p>
-      </div>
-
-    </div>
+      )}
+    </main>
   )
 }

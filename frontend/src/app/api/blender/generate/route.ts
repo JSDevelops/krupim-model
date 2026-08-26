@@ -1,23 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '../../_lib/auth'
-import { getActiveProvider, getGemini, getOpenAI, getAnthropic } from '../../_lib/ai'
+import { apiErrorResponse, getErrorMessage, guardApi } from '../../_lib/auth'
+import { getActiveProvider, getConfiguredModel, getGemini, getOpenAI, getAnthropic } from '../../_lib/ai'
 
 export async function POST(req: NextRequest) {
   try {
-    await requireAuth(req)
-  } catch (e: any) {
-    return NextResponse.json({ error: e.message }, { status: 401 })
+    await guardApi(req, { roles: ['teacher', 'developer'], maxRequests: 6 })
+  } catch (error) {
+    return apiErrorResponse(error)
   }
 
   try {
     const body = await req.json()
     const { topic } = body
 
-    if (!topic) {
-      return NextResponse.json({ error: 'topic is required' }, { status: 400 })
+    if (typeof topic !== 'string' || !topic.trim() || topic.length > 200) {
+      return NextResponse.json({ error: 'topic must be between 1 and 200 characters' }, { status: 400 })
     }
 
-    const provider = getActiveProvider(req)
+    const provider = await getActiveProvider(req)
+    const configuredModel = await getConfiguredModel(provider)
     const prompt = `You are a Blender Python scripting expert.
 Write a clean, functional Python script using Blender's 'bpy' module to programmatically generate a 3D model of a "${topic}" (for F&B/tableware context).
 The script must:
@@ -31,21 +32,21 @@ The script must:
     if (provider === 'openai') {
       const client = await getOpenAI(req)
       const completion = await client.chat.completions.create({
-        model: 'gpt-4o-mini',
+        model: configuredModel,
         messages: [{ role: 'user', content: prompt }]
       })
       text = completion.choices[0].message.content || ''
     } else if (provider === 'claude') {
       const client = await getAnthropic(req)
       const completion = await client.messages.create({
-        model: 'claude-3-5-sonnet-20241022',
+        model: configuredModel,
         max_tokens: 2000,
         messages: [{ role: 'user', content: prompt }]
       })
       text = completion.content[0].type === 'text' ? completion.content[0].text : ''
     } else {
-      const genAI = getGemini(req)
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' })
+      const genAI = await getGemini(req)
+      const model = genAI.getGenerativeModel({ model: configuredModel })
       const result = await model.generateContent(prompt)
       text = result.response.text()
     }
@@ -54,8 +55,9 @@ The script must:
     const code = codeMatch ? codeMatch[1].trim() : text.replace(/```/g, '').trim()
 
     return NextResponse.json({ success: true, topic, code })
-  } catch (err: any) {
-    console.error('Blender Script Generation Error:', err.message)
-    return NextResponse.json({ error: err.message || 'Failed to generate Blender script' }, { status: 500 })
+  } catch (err: unknown) {
+    const message = getErrorMessage(err)
+    console.error('Blender Script Generation Error:', message)
+    return NextResponse.json({ error: message || 'Failed to generate Blender script' }, { status: 500 })
   }
 }

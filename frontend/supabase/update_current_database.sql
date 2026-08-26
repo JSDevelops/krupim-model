@@ -32,7 +32,10 @@ DROP POLICY IF EXISTS "Allow public read vocabulary_items" ON vocabulary_items;
 CREATE POLICY "Allow public read vocabulary_items" ON vocabulary_items FOR SELECT USING (true);
 
 DROP POLICY IF EXISTS "Allow public insert update delete vocabulary_items" ON vocabulary_items;
-CREATE POLICY "Allow public insert update delete vocabulary_items" ON vocabulary_items FOR ALL USING (true) WITH CHECK (true);
+DROP POLICY IF EXISTS "Teachers manage vocabulary_items" ON vocabulary_items;
+CREATE POLICY "Teachers manage vocabulary_items" ON vocabulary_items
+  FOR ALL USING (auth_user_role() IN ('teacher', 'developer'))
+  WITH CHECK (auth_user_role() IN ('teacher', 'developer'));
 
 -- 3. ตรวจสอบคอลัมน์ใน ai_scan_items
 ALTER TABLE IF EXISTS ai_scan_items ADD COLUMN IF NOT EXISTS pronounce TEXT;

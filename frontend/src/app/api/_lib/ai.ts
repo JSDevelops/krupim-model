@@ -1,39 +1,47 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import { NextRequest } from 'next/server'
+import { getActiveAISetting, getAISetting } from '@/lib/aiSettings'
+import { isAIProvider, type AIProvider } from '@/lib/aiModels'
 
-export type AIProvider = 'gemini' | 'openai' | 'claude'
+export type { AIProvider }
 
-/** อ่าน provider จาก x-ai-provider header */
-export function getActiveProvider(req: NextRequest): AIProvider {
-  const p = req.headers.get('x-ai-provider') || ''
-  if (p === 'openai' || p === 'claude') return p
-  return 'gemini'
+/** Uses the server-wide provider selected by an administrator. */
+export async function getActiveProvider(req?: NextRequest): Promise<AIProvider> {
+  try {
+    return (await getActiveAISetting()).provider
+  } catch {
+    const requested = req?.headers.get('x-ai-provider')
+    return isAIProvider(requested) ? requested : 'gemini'
+  }
 }
 
-const DEFAULT_GEMINI_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY || ''
-
-/** ดึง Gemini client — ลอง header key ก่อน ถ้าไม่มีใช้ env หรือ default key */
-export function getGemini(req: NextRequest): GoogleGenerativeAI {
-  const headerKey = (req.headers.get('x-gemini-key') || '').trim()
-  const key = (headerKey.length > 10 ? headerKey : '') || DEFAULT_GEMINI_KEY
-  if (!key) throw new Error('No Gemini API key configured. Set GEMINI_API_KEY in environment or provide your key in Settings.')
-  return new GoogleGenerativeAI(key)
+export async function getConfiguredModel(provider: AIProvider) {
+  return (await getAISetting(provider)).model
 }
 
-/** ดึง OpenAI client */
-export async function getOpenAI(req: NextRequest) {
+export async function hasConfiguredKey(provider: AIProvider) {
+  return Boolean((await getAISetting(provider)).apiKey)
+}
+
+export async function getGemini(req?: NextRequest): Promise<GoogleGenerativeAI> {
+  void req
+  const { apiKey } = await getAISetting('gemini')
+  if (!apiKey) throw new Error('No Gemini API key configured. Add it in Admin Settings.')
+  return new GoogleGenerativeAI(apiKey)
+}
+
+export async function getOpenAI(req?: NextRequest) {
+  void req
   const { OpenAI } = await import('openai')
-  const headerKey = (req.headers.get('x-openai-key') || '').trim()
-  const key = (headerKey.length > 10 ? headerKey : '') || process.env.OPENAI_API_KEY || ''
-  if (!key) throw new Error('No OpenAI API key configured.')
-  return new OpenAI({ apiKey: key })
+  const { apiKey } = await getAISetting('openai')
+  if (!apiKey) throw new Error('No OpenAI API key configured. Add it in Admin Settings.')
+  return new OpenAI({ apiKey })
 }
 
-/** ดึง Anthropic client */
-export async function getAnthropic(req: NextRequest) {
+export async function getAnthropic(req?: NextRequest) {
+  void req
   const Anthropic = (await import('@anthropic-ai/sdk')).default
-  const headerKey = (req.headers.get('x-claude-key') || '').trim()
-  const key = (headerKey.length > 10 ? headerKey : '') || process.env.ANTHROPIC_API_KEY || ''
-  if (!key) throw new Error('No Anthropic API key configured.')
-  return new Anthropic({ apiKey: key })
+  const { apiKey } = await getAISetting('claude')
+  if (!apiKey) throw new Error('No Anthropic API key configured. Add it in Admin Settings.')
+  return new Anthropic({ apiKey })
 }

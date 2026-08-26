@@ -1,5 +1,4 @@
 'use client'
-import RoleBottomNav from '@/components/RoleBottomNav'
 import { useRole } from '@/context/RoleContext'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
@@ -20,10 +19,5 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     return <div className="min-h-screen bg-[#0F291E] text-white flex items-center justify-center p-4">กำลังโหลด...</div>
   }
 
-  return (
-    <>
-      {children}
-      <RoleBottomNav />
-    </>
-  )
+  return <>{children}</>
 }
