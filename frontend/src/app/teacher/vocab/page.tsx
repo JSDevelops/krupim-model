@@ -5,6 +5,7 @@ import AdminIcon from '@/components/admin/AdminIcon'
 import { confirmAction } from '@/components/AppConfirmDialog'
 import { authenticatedFetch } from '@/lib/api'
 import { toast } from 'sonner'
+import { useRole } from '@/context/RoleContext'
 import styles from '../management.module.css'
 
 type VocabularyItem = {
@@ -20,9 +21,10 @@ type VocabularyItem = {
   usdzUrl: string
   createdAt: string
   updatedAt: string
+  createdBy: string | null
 }
 
-type VocabularyForm = Omit<VocabularyItem, 'id' | 'createdAt' | 'updatedAt'>
+type VocabularyForm = Omit<VocabularyItem, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>
 const emptyForm: VocabularyForm = { nameEn: '', nameTh: '', category: 'tableware', categoryTh: 'อุปกรณ์บนโต๊ะอาหาร', pronounce: '', useDesc: '', sentence: '', glbUrl: '', usdzUrl: '' }
 
 async function responseError(response: Response) {
@@ -30,6 +32,7 @@ async function responseError(response: Response) {
 }
 
 export default function TeacherVocabularyPage() {
+  const { user } = useRole()
   const [items, setItems] = useState<VocabularyItem[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -127,7 +130,7 @@ export default function TeacherVocabularyPage() {
     <section className={styles.workspace}>
       <header className={styles.workspaceHeader}><div><h2>รายการคำศัพท์</h2><p>{visibleItems.length} รายการจากตัวกรองปัจจุบัน</p></div><div className={styles.filters}><label className={styles.searchBox}><AdminIcon name="search" size={16} /><input value={search} onChange={event => setSearch(event.target.value)} placeholder="ค้นหาคำศัพท์ คำแปล หรือประโยค" aria-label="ค้นหาคำศัพท์" /></label><label className={styles.selectBox}><AdminIcon name="archive" size={15} /><select value={categoryFilter} onChange={event => setCategoryFilter(event.target.value)} aria-label="กรองหมวดหมู่"><option value="all">ทุกหมวดหมู่</option>{categories.map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select></label></div></header>
       <div className={styles.dataList}>{loading ? Array.from({ length: 6 }).map((_, index) => <div className={styles.rowSkeleton} key={index} />) : visibleItems.length ? visibleItems.map(item => <article className={styles.dataRow} key={item.id}>
-        <span className={styles.wordMark}>{item.nameEn.slice(0, 2).toUpperCase()}</span><div className={styles.wordIdentity}><small>{item.categoryTh}</small><h3>{item.nameEn}</h3><strong>{item.nameTh}</strong></div><div className={styles.wordPronounce}><small>คำอ่าน</small><strong>{item.pronounce || 'ยังไม่ระบุ'}</strong></div><div className={styles.wordUsage}><small>ตัวอย่างการใช้</small><p>{item.sentence || item.useDesc || 'ยังไม่มีตัวอย่างการใช้'}</p></div><span className={item.glbUrl || item.usdzUrl ? styles.modelBadge : styles.neutralBadge}><AdminIcon name="cube" size={13} />{item.glbUrl || item.usdzUrl ? 'มีโมเดล' : 'ไม่มีโมเดล'}</span><div className={styles.rowActions}><button type="button" onClick={() => openEdit(item)}><AdminIcon name="edit" size={16} /></button><button className={styles.dangerIconButton} type="button" onClick={() => void remove(item)} disabled={Boolean(busy)}><AdminIcon name="trash" size={16} /></button></div>
+        <span className={styles.wordMark}>{item.nameEn.slice(0, 2).toUpperCase()}</span><div className={styles.wordIdentity}><small>{item.categoryTh}</small><h3>{item.nameEn}</h3><strong>{item.nameTh}</strong></div><div className={styles.wordPronounce}><small>คำอ่าน</small><strong>{item.pronounce || 'ยังไม่ระบุ'}</strong></div><div className={styles.wordUsage}><small>ตัวอย่างการใช้</small><p>{item.sentence || item.useDesc || 'ยังไม่มีตัวอย่างการใช้'}</p></div><span className={item.glbUrl || item.usdzUrl ? styles.modelBadge : styles.neutralBadge}><AdminIcon name="cube" size={13} />{item.glbUrl || item.usdzUrl ? 'มีโมเดล' : 'ไม่มีโมเดล'}</span><div className={styles.rowActions}>{(user?.role === 'developer' || item.createdBy === user?.id) ? <><button type="button" onClick={() => openEdit(item)}><AdminIcon name="edit" size={16} /></button><button className={styles.dangerIconButton} type="button" onClick={() => void remove(item)} disabled={Boolean(busy)}><AdminIcon name="trash" size={16} /></button></> : <span className={styles.neutralBadge}>ส่วนกลาง</span>}</div>
       </article>) : <div className={styles.emptyState}><span><AdminIcon name="content" size={25} /></span><h3>ไม่พบคำศัพท์</h3><p>{items.length ? 'ลองเปลี่ยนคำค้นหรือหมวดหมู่' : 'เพิ่มคำศัพท์แรกเพื่อเริ่มสร้างคลังการเรียนรู้'}</p>{!items.length && <button type="button" onClick={openCreate}><AdminIcon name="plus" size={16} />เพิ่มคำศัพท์แรก</button>}</div>}</div>
     </section>
     {editorOpen && <div className={styles.modalOverlay} onMouseDown={event => event.target === event.currentTarget && !busy && setEditorOpen(false)}><section className={styles.modal} role="dialog" aria-modal="true"><header className={styles.modalHeader}><span><AdminIcon name={editingId ? 'edit' : 'plus'} size={21} /></span><div><h2>{editingId ? 'แก้ไขคำศัพท์' : 'เพิ่มคำศัพท์ใหม่'}</h2><p>ข้อมูลจะใช้ร่วมกับบทเรียน AR และกิจกรรม AI Scan</p></div><button type="button" onClick={() => setEditorOpen(false)}><AdminIcon name="close" size={18} /></button></header><form onSubmit={save}><div className={styles.formGrid}><label><span>คำศัพท์ภาษาอังกฤษ *</span><input autoFocus required value={form.nameEn} onChange={event => update('nameEn', event.target.value)} /></label><label><span>คำแปลภาษาไทย *</span><input required value={form.nameTh} onChange={event => update('nameTh', event.target.value)} /></label><label><span>รหัสหมวดหมู่ *</span><input required value={form.category} onChange={event => update('category', event.target.value)} placeholder="tableware" /></label><label><span>ชื่อหมวดหมู่ *</span><input required value={form.categoryTh} onChange={event => update('categoryTh', event.target.value)} /></label><label><span>คำอ่าน</span><input value={form.pronounce} onChange={event => update('pronounce', event.target.value)} /></label><label className={styles.fullField}><span>คำอธิบายการใช้งาน</span><textarea rows={3} value={form.useDesc} onChange={event => update('useDesc', event.target.value)} /></label><label className={styles.fullField}><span>ประโยคตัวอย่าง</span><input value={form.sentence} onChange={event => update('sentence', event.target.value)} /></label><label><span>URL ไฟล์ GLB</span><input value={form.glbUrl} onChange={event => update('glbUrl', event.target.value)} /></label><label><span>URL ไฟล์ USDZ</span><input value={form.usdzUrl} onChange={event => update('usdzUrl', event.target.value)} /></label></div><footer className={styles.modalFooter}><button type="button" onClick={() => setEditorOpen(false)}>ยกเลิก</button><button className={styles.primaryButton} type="submit" disabled={busy === 'save'}><AdminIcon name={busy === 'save' ? 'clock' : 'check'} size={16} />{busy === 'save' ? 'กำลังบันทึก' : 'บันทึกคำศัพท์'}</button></footer></form></section></div>}

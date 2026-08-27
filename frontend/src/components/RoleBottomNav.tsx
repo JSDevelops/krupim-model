@@ -1,29 +1,32 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import StudentIcon, { type StudentIconName } from '@/app/student/StudentIcon'
 import { useRole } from '@/context/RoleContext'
 
-const adminNav = [
-  { href: '/admin/dashboard', icon: '🏠', label: 'ภาพรวม' },
-  { href: '/admin/users', icon: '👥', label: 'ผู้ใช้' },
-  { href: '/admin/content', icon: '📦', label: 'เนื้อหา' },
-  { href: '/admin/settings', icon: '⚙️', label: 'ตั้งค่า' },
+type NavItem = { href: string; icon: StudentIconName; label: string }
+
+const adminNav: NavItem[] = [
+  { href: '/admin/dashboard', icon: 'chart', label: 'ภาพรวม' },
+  { href: '/admin/users', icon: 'user', label: 'ผู้ใช้' },
+  { href: '/admin/content', icon: 'cube', label: 'เนื้อหา' },
+  { href: '/admin/settings', icon: 'task', label: 'ตั้งค่า' },
 ]
 
-const teacherNav = [
-  { href: '/teacher/dashboard', icon: '🏠', label: 'ห้องเรียน' },
-  { href: '/teacher/assignments', icon: '📋', label: 'มอบหมาย' },
-  { href: '/teacher/vocab', icon: '📖', label: 'คำศัพท์' },
-  { href: '/teacher/students', icon: '👥', label: 'นักเรียน' },
-  { href: '/teacher/profile', icon: '👤', label: 'โปรไฟล์' },
+const teacherNav: NavItem[] = [
+  { href: '/teacher/dashboard', icon: 'school', label: 'ห้องเรียน' },
+  { href: '/teacher/assignments', icon: 'task', label: 'มอบหมาย' },
+  { href: '/teacher/vocab', icon: 'book', label: 'คำศัพท์' },
+  { href: '/teacher/students', icon: 'user', label: 'นักเรียน' },
+  { href: '/teacher/profile', icon: 'profile', label: 'โปรไฟล์' },
 ]
 
-const studentNav = [
-  { href: '/student/explore', icon: '📱', label: 'F-Familiarize' },
-  { href: '/student/interact', icon: '💬', label: 'I-Interact' },
-  { href: '/student/scanner', icon: '📷', label: 'สแกน AR' },
-  { href: '/student/learn', icon: '📖', label: 'N-Navigate' },
-  { href: '/student/progress', icon: '🏅', label: 'E-Exhibit' },
+const studentNav: NavItem[] = [
+  { href: '/student/explore', icon: 'cube', label: 'F-Familiarize' },
+  { href: '/student/interact', icon: 'message', label: 'I-Interact' },
+  { href: '/student/scanner', icon: 'camera', label: 'สแกน AR' },
+  { href: '/student/learn', icon: 'book', label: 'N-Navigate' },
+  { href: '/student/progress', icon: 'award', label: 'E-Exhibit' },
 ]
 
 const roleColors: Record<string, string> = {
@@ -53,7 +56,7 @@ export default function RoleBottomNav() {
             className={`nav-item ${isActive ? 'active' : ''}`}
             style={{ '--active-color': activeColor } as React.CSSProperties}
           >
-            <span className="nav-icon">{item.icon}</span>
+            <span className="nav-icon"><StudentIcon name={item.icon} size={21} /></span>
             <span className="nav-label" style={isActive ? { color: activeColor } : {}}>
               {item.label}
             </span>

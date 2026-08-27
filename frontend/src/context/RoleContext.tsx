@@ -1,5 +1,6 @@
 'use client'
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
+import { useRouter } from 'next/navigation'
 import { localData, getProfileFromDB } from '@/lib/localData'
 
 export type UserRole = 'developer' | 'teacher' | 'student'
@@ -36,6 +37,7 @@ const RoleContext = createContext<RoleContextType>({
 })
 
 export function RoleProvider({ children }: { children: ReactNode }) {
+  const router = useRouter()
   const [user, setUserState] = useState<UserInfo | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -56,8 +58,6 @@ export function RoleProvider({ children }: { children: ReactNode }) {
             email: sessionUser.email
           }
           setUserState(userInfo)
-          localStorage.setItem('userRole', profile.role)
-          localStorage.setItem('userInfo', JSON.stringify(userInfo))
         } else {
           // หากไม่มี profile ใน DB — ล้างสิทธิ์ที่ไม่ถูกต้อง
           setUserState(null)
@@ -74,7 +74,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     })
 
     // 2. ฟัง Auth state changes (login/logout จาก tab อื่น)
-    const { data: { subscription } } = localData.auth.onAuthStateChange(async (event: any, session: any) => {
+    const { data: { subscription } } = localData.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT') {
         setUserState(null)
         localStorage.removeItem('userRole')
@@ -92,8 +92,6 @@ export function RoleProvider({ children }: { children: ReactNode }) {
             email: session.user.email
           }
           setUserState(userInfo)
-          localStorage.setItem('userRole', profile.role)
-          localStorage.setItem('userInfo', JSON.stringify(userInfo))
         } else {
           setUserState(null)
           localStorage.removeItem('userRole')
@@ -107,8 +105,6 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 
   function setUser(u: UserInfo) {
     setUserState(u)
-    localStorage.setItem('userRole', u.role)
-    localStorage.setItem('userInfo', JSON.stringify(u))
   }
 
   async function logout() {
@@ -116,7 +112,8 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     setUserState(null)
     localStorage.removeItem('userRole')
     localStorage.removeItem('userInfo')
-    window.location.href = '/'
+    router.replace('/')
+    router.refresh()
   }
 
   const role = user?.role ?? null

@@ -24,6 +24,7 @@ type LessonInput = {
   activitiesN?: unknown
   activitiesE?: unknown
   activitiesWrap?: unknown
+  publicationStatus?: unknown
 }
 
 const detailSelect = `
@@ -34,6 +35,7 @@ const detailSelect = `
   activities_i AS "activitiesI", activities_n AS "activitiesN",
   activities_e AS "activitiesE", activities_wrap AS "activitiesWrap",
   teacher_name AS "teacherName", teacher_email AS "teacherEmail",
+  class_id AS "classId", publication_status AS "publicationStatus", published_at AS "publishedAt",
   created_at AS "createdAt", updated_at AS "updatedAt"
 `
 
@@ -65,6 +67,7 @@ function textList(value: unknown, label: string) {
 }
 
 function normalizeLesson(body: LessonInput) {
+  const publicationStatus: 'draft' | 'published' = body.publicationStatus === 'published' ? 'published' : 'draft'
   return {
     title: requiredText(body.title, 'ชื่อแผนการสอน', 240),
     subject: optionalText(body.subject, 'รายวิชา', 300),
@@ -86,7 +89,23 @@ function normalizeLesson(body: LessonInput) {
     activitiesN: optionalText(body.activitiesN, 'กิจกรรม Navigate', 5_000),
     activitiesE: optionalText(body.activitiesE, 'กิจกรรม Exhibit', 5_000),
     activitiesWrap: optionalText(body.activitiesWrap, 'ขั้นสรุป', 5_000),
+    publicationStatus,
   }
+}
+
+async function resolveTargetClass(user: AuthUser, targetClass: string, publicationStatus: 'draft' | 'published') {
+  if (!targetClass) {
+    if (publicationStatus === 'published') throw new ApiError('กรุณาเลือกห้องเรียนก่อนเผยแพร่', 400, 'CLASS_REQUIRED')
+    return null
+  }
+  const values: unknown[] = [targetClass]
+  const scope = user.role === 'developer' ? '' : ' AND teacher_id=$2::uuid'
+  if (user.role !== 'developer') values.push(user.id)
+  const result = await queryDb<{ id: string }>(`
+    SELECT id FROM classes WHERE name=$1${scope} ORDER BY created_at DESC LIMIT 1
+  `, values)
+  if (!result.rows[0]) throw new ApiError('ไม่พบห้องเรียนเป้าหมายหรือคุณไม่มีสิทธิ์ใช้งาน', 400, 'CLASS_NOT_FOUND')
+  return result.rows[0].id
 }
 
 function ownership(user: AuthUser, parameterIndex: number) {
@@ -134,6 +153,7 @@ export async function GET(request: NextRequest) {
     const result = await queryDb(`
       SELECT id, title, subject, level, term, duration, target_class AS "targetClass", weeks,
              teacher_name AS "teacherName", created_at AS "createdAt", updated_at AS "updatedAt",
+             class_id AS "classId", publication_status AS "publicationStatus", published_at AS "publishedAt",
              jsonb_array_length(objectives_k) + jsonb_array_length(objectives_s)
                + jsonb_array_length(objectives_a) + jsonb_array_length(objectives_ap) AS "objectiveCount",
              jsonb_array_length(vocabulary) AS "vocabularyCount",
@@ -154,19 +174,21 @@ export async function POST(request: NextRequest) {
   try {
     const user = await guardApi(request, { roles: ['teacher', 'developer'], maxRequests: 40 })
     const lesson = normalizeLesson(await requestBody(request))
+    const classId = await resolveTargetClass(user, lesson.targetClass, lesson.publicationStatus)
     const profile = await queryDb<{ name: string }>('SELECT name FROM profiles WHERE id = $1 LIMIT 1', [user.id])
     const id = `lesson-${randomUUID()}`
-    const values = [id, ...lessonValues(lesson), profile.rows[0]?.name || user.email, user.email]
+    const values = [id, ...lessonValues(lesson), profile.rows[0]?.name || user.email, user.email, user.id, classId, lesson.publicationStatus]
     const result = await queryDb(`
       INSERT INTO fine_lesson_plans (
         id, title, subject, level, term, duration, target_class, weeks, concept,
         objectives_k, objectives_s, objectives_a, objectives_ap, vocabulary, sentences,
         activities_lead, activities_f, activities_i, activities_n, activities_e, activities_wrap,
-        teacher_name, teacher_email
+        teacher_name, teacher_email, teacher_id, class_id, publication_status, published_at
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9,
         $10::jsonb, $11::jsonb, $12::jsonb, $13::jsonb, $14::jsonb, $15::jsonb,
-        $16, $17, $18, $19, $20, $21, $22, $23
+        $16, $17, $18, $19, $20, $21, $22, $23, $24::uuid, $25::uuid, $26,
+        CASE WHEN $26='published' THEN NOW() ELSE NULL END
       ) RETURNING ${detailSelect}
     `, values)
     return NextResponse.json({ lesson: result.rows[0] }, { status: 201 })
@@ -181,8 +203,9 @@ export async function PATCH(request: NextRequest) {
     const body = await requestBody(request)
     const id = requiredText(body.id, 'รหัสแผนการสอน', 120)
     const lesson = normalizeLesson(body)
+    const classId = await resolveTargetClass(user, lesson.targetClass, lesson.publicationStatus)
     const values: unknown[] = [...lessonValues(lesson), id]
-    if (user.role !== 'developer') values.push(user.email)
+    values.push(user.role === 'developer' ? null : user.email)
     const result = await queryDb(`
       UPDATE fine_lesson_plans SET
         title = $1, subject = $2, level = $3, term = $4, duration = $5,
@@ -192,10 +215,12 @@ export async function PATCH(request: NextRequest) {
         vocabulary = $13::jsonb, sentences = $14::jsonb,
         activities_lead = $15, activities_f = $16, activities_i = $17,
         activities_n = $18, activities_e = $19, activities_wrap = $20,
+        class_id = $23::uuid, publication_status = $24,
+        published_at = CASE WHEN $24='published' THEN COALESCE(published_at,NOW()) ELSE NULL END,
         updated_at = NOW()
       WHERE id = $21${ownership(user, 22)}
       RETURNING ${detailSelect}
-    `, values)
+    `, [...values, classId, lesson.publicationStatus])
     if (!result.rows[0]) throw new ApiError('ไม่พบแผนการสอนหรือคุณไม่มีสิทธิ์แก้ไข', 404, 'NOT_FOUND')
     return NextResponse.json({ lesson: result.rows[0] })
   } catch (error) {

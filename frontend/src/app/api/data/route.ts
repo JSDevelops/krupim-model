@@ -3,7 +3,6 @@ import { executeOperation, type DataOperation } from '@/lib/db'
 import { ApiError, apiErrorResponse, guardApi, type AuthUser } from '../_lib/auth'
 
 const READABLE_TABLES = new Set(['schools', 'profiles', 'notifications', 'fine_lesson_plans', 'ar_items', 'vocabulary_items', 'ai_scan_items'])
-const CONTENT_TABLES = new Set(['fine_lesson_plans', 'class_invites', 'ar_items', 'vocabulary_items', 'ai_scan_items'])
 const VALID_ACTIONS = new Set(['select', 'insert', 'upsert', 'update', 'delete'])
 
 function forceEq(operation: DataOperation, column: string, value: unknown) {
@@ -32,17 +31,13 @@ function authorizeOperation(operation: DataOperation, user: AuthUser) {
 
   if (operation.action === 'select') {
     if (!READABLE_TABLES.has(operation.table)) throw new ApiError('Data source is not readable', 403, 'FORBIDDEN')
-  } else if (!CONTENT_TABLES.has(operation.table) && !['profiles', 'notifications'].includes(operation.table)) {
-    throw new ApiError('Data source is not writable', 403, 'FORBIDDEN')
+  } else if (!['profiles', 'notifications'].includes(operation.table)) {
+    throw new ApiError('Use the dedicated management API for this data source', 403, 'DEDICATED_API_REQUIRED')
   }
 
   if (operation.table === 'profiles') {
     if (operation.action === 'select') {
-      if (user.role === 'student') forceEq(operation, 'id', user.id)
-      if (user.role === 'teacher' && !hasEqFilter(operation, 'id', user.id)) {
-        forceEq(operation, 'role', 'student')
-        forceEq(operation, 'approval_status', 'active')
-      }
+      if (user.role === 'student' || user.role === 'teacher') forceEq(operation, 'id', user.id)
       return operation
     }
     if (operation.action !== 'update') throw new ApiError('Profile operation is not allowed', 403, 'FORBIDDEN')
@@ -51,9 +46,16 @@ function authorizeOperation(operation: DataOperation, user: AuthUser) {
     return operation
   }
 
+  if (operation.table === 'fine_lesson_plans' && user.role === 'student') {
+    if (!hasEqFilter(operation, 'id', 'ar-items-store')) {
+      throw new ApiError('Lesson plans must be loaded through the student learning API', 403, 'DEDICATED_API_REQUIRED')
+    }
+    return operation
+  }
+
   if (operation.table === 'notifications') {
     forceEq(operation, 'user_id', user.id)
-    if (operation.action === 'select') return operation
+    return operation
     if (operation.action !== 'update') throw new ApiError('Notification operation is not allowed', 403, 'FORBIDDEN')
     operation.values = keepFields(rows(operation)[0] || {}, new Set(['is_read']))
     return operation
@@ -74,13 +76,11 @@ function authorizeOperation(operation: DataOperation, user: AuthUser) {
     } else {
       forceEq(operation, 'created_by', user.id)
     }
-    if (operation.action === 'select') return operation
+    return operation
   }
 
   if (operation.action === 'select') return operation
-  if (user.role !== 'teacher' && user.role !== 'developer') throw new ApiError('Content manager role required', 403, 'FORBIDDEN')
-
-  return operation
+  throw new ApiError('Data operation is not allowed', 403, 'FORBIDDEN')
 }
 
 export async function POST(request: NextRequest) {

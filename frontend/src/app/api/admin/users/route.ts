@@ -2,6 +2,8 @@ import { hash } from 'bcryptjs'
 import { NextRequest, NextResponse } from 'next/server'
 import { queryDb, withTransaction, type DbResult } from '@/lib/db'
 import { apiErrorResponse, guardApi, getDatabase, ApiError } from '../../_lib/auth'
+import { passwordPolicyError } from '@/lib/passwordPolicy'
+import { removeLocalStoredFiles } from '@/lib/localFileStorage'
 
 const developerOnly = ['developer'] as const
 const managedRoles = ['teacher', 'student'] as const
@@ -87,13 +89,12 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    await guardApi(req, { roles: developerOnly, maxRequests: 15 })
+    const actor = await guardApi(req, { roles: developerOnly, maxRequests: 15 })
     const body = await req.json() as Record<string, unknown>
     const { name, email, schoolName, role, status } = readAccountFields(body)
     const password = typeof body.password === 'string' ? body.password : ''
-    if (password.length < 8) {
-      throw new ApiError('รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร', 400, 'INVALID_INPUT')
-    }
+    const passwordError = passwordPolicyError(password)
+    if (passwordError) throw new ApiError(passwordError, 400, 'WEAK_PASSWORD')
 
     const passwordHash = await hash(password, 12)
     const id = await withTransaction(async client => {
@@ -109,6 +110,7 @@ export async function POST(req: NextRequest) {
       return user.rows[0].id
     })
 
+    await queryDb(`INSERT INTO audit_logs(actor_id,action,entity_type,entity_id,details_json) VALUES($1::uuid,'create_user','profile',$2,$3::jsonb)`, [actor.id, id, JSON.stringify({ email, role, status })])
     return NextResponse.json({ id }, { status: 201 })
   } catch (error) {
     return databaseErrorResponse(error)
@@ -127,9 +129,8 @@ export async function PATCH(req: NextRequest) {
     if (action === 'update') {
       const { name, email, schoolName, role, status } = readAccountFields(body)
       const password = typeof body.password === 'string' ? body.password : ''
-      if (password && password.length < 8) {
-        throw new ApiError('รหัสผ่านใหม่ต้องมีอย่างน้อย 8 ตัวอักษร', 400, 'INVALID_INPUT')
-      }
+      const passwordError = password ? passwordPolicyError(password) : null
+      if (passwordError) throw new ApiError(passwordError, 400, 'WEAK_PASSWORD')
       const passwordHash = password ? await hash(password, 12) : null
 
       await withTransaction(async client => {
@@ -148,11 +149,11 @@ export async function PATCH(req: NextRequest) {
         }
         if (passwordHash) {
           await client.query(
-            'UPDATE app_users SET email = $1, password_hash = $2, updated_at = NOW() WHERE id = $3',
+            'UPDATE app_users SET email = $1, password_hash = $2, session_version=session_version+1, updated_at = NOW() WHERE id = $3',
             [email, passwordHash, id],
           )
         } else {
-          await client.query('UPDATE app_users SET email = $1, updated_at = NOW() WHERE id = $2', [email, id])
+          await client.query('UPDATE app_users SET email = $1, session_version=session_version+1, updated_at = NOW() WHERE id = $2', [email, id])
         }
         await client.query(`
           UPDATE profiles
@@ -161,20 +162,23 @@ export async function PATCH(req: NextRequest) {
           WHERE id = $7
         `, [name, email, role, status, schoolId, schoolName || null, id])
       })
+      await queryDb(`INSERT INTO audit_logs(actor_id,action,entity_type,entity_id,details_json) VALUES($1::uuid,'update_user','profile',$2,$3::jsonb)`, [actor.id, id, JSON.stringify({ email, role, status })])
       return NextResponse.json({ ok: true })
     }
 
     if (action === 'reset_password') {
       const password = typeof body.password === 'string' ? body.password : ''
-      if (password.length < 8) throw new ApiError('Password must contain at least 8 characters', 400, 'INVALID_INPUT')
+      const passwordError = passwordPolicyError(password)
+      if (passwordError) throw new ApiError(passwordError, 400, 'WEAK_PASSWORD')
       const passwordHash = await hash(password, 12)
       const result = await queryDb(`
         UPDATE app_users AS account
-        SET password_hash = $1, updated_at = NOW()
+        SET password_hash = $1, session_version=session_version+1, updated_at = NOW()
         FROM profiles AS profile
         WHERE account.id = $2 AND profile.id = account.id AND profile.role IN ('teacher', 'student')
       `, [passwordHash, id])
       if (result.rowCount !== 1) throw new ApiError('User not found', 404, 'NOT_FOUND')
+      await queryDb(`INSERT INTO audit_logs(actor_id,action,entity_type,entity_id,details_json) VALUES($1::uuid,'reset_password','profile',$2,'{}'::jsonb)`, [actor.id, id])
       return NextResponse.json({ ok: true })
     }
 
@@ -201,6 +205,16 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (result.rowCount !== 1) throw new ApiError('User not found', 404, 'NOT_FOUND')
+    if (action === 'reject' || action === 'toggle') {
+      await queryDb('UPDATE app_users SET session_version=session_version+1,updated_at=NOW() WHERE id=$1::uuid', [id])
+    }
+    if (action === 'approve') {
+      await queryDb(`
+        INSERT INTO notifications (user_id,title,message,type,link_url)
+        VALUES ($1::uuid,'บัญชีครูได้รับการอนุมัติแล้ว','คุณสามารถเข้าใช้งาน Teacher Console ได้แล้ว','success','/teacher/dashboard')
+      `, [id])
+    }
+    await queryDb(`INSERT INTO audit_logs(actor_id,action,entity_type,entity_id,details_json) VALUES($1::uuid,$2,'profile',$3,'{}'::jsonb)`, [actor.id, action, id])
     return NextResponse.json({ ok: true })
   } catch (error) {
     return databaseErrorResponse(error)
@@ -214,7 +228,7 @@ export async function DELETE(req: NextRequest) {
     if (!id) throw new ApiError('User id is required', 400, 'INVALID_INPUT')
     if (id === actor.id) throw new ApiError('ไม่สามารถลบบัญชีผู้ดูแลที่กำลังใช้งานได้', 400, 'SELF_DELETE')
 
-    await withTransaction(async client => {
+    const storageNames = await withTransaction(async client => {
       const target = await client.query<{ role: string }>(
         'SELECT role FROM profiles WHERE id = $1 FOR UPDATE',
         [id],
@@ -224,11 +238,18 @@ export async function DELETE(req: NextRequest) {
         throw new ApiError('ไม่สามารถลบบัญชีผู้ดูแลระบบจากหน้านี้ได้', 403, 'PROTECTED_ACCOUNT')
       }
 
+      const storedFiles = await client.query<{ storage_name: string }>('SELECT storage_name FROM stored_files WHERE owner_id=$1::uuid', [id])
+
       // Preserve teaching content while releasing nullable ownership references.
       await releaseOwnershipReferences(client, id)
       const deleted = await client.query('DELETE FROM app_users WHERE id = $1 RETURNING id', [id])
       if (deleted.rowCount !== 1) throw new ApiError('ไม่พบบัญชีผู้ใช้งาน', 404, 'NOT_FOUND')
+      return storedFiles.rows.map(file => file.storage_name)
     })
+
+    await removeLocalStoredFiles(storageNames)
+
+    await queryDb(`INSERT INTO audit_logs(actor_id,action,entity_type,entity_id,details_json) VALUES($1::uuid,'delete_user','profile',$2,'{}'::jsonb)`, [actor.id, id])
 
     return NextResponse.json({ ok: true })
   } catch (error) {

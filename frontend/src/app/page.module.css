@@ -778,6 +778,13 @@
   line-height: 1.5;
 }
 
+.helpText a {
+  color: #8a6c16;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
 .submit {
   width: 100%;
   min-height: 52px;

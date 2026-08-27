@@ -1,81 +1,8 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import dynamic from 'next/dynamic'
-
-const Scanner = dynamic(
-  () => import('@yudiel/react-qr-scanner').then((mod) => mod.Scanner),
-  { ssr: false }
-)
-
-export default function QRScannerPage() {
-  const router = useRouter()
-  const [error, setError] = useState<string>('')
-  const [scanned, setScanned] = useState(false)
-
-  const handleScan = (detectedCodes: any[]) => {
-    if (scanned || detectedCodes.length === 0) return
-    const value = detectedCodes[0].rawValue
-    if (value) {
-      setScanned(true)
-      try {
-        let targetPath = ''
-        if (value.startsWith('http://') || value.startsWith('https://')) {
-          const url = new URL(value)
-          targetPath = url.pathname + url.search
-        } else if (value.startsWith('/')) {
-          targetPath = value
-        } else if (value.includes('/student/ar-view')) {
-          const index = value.indexOf('/student/ar-view')
-          targetPath = value.substring(index)
-        }
-
-        if (targetPath && targetPath.includes('/student/ar-view')) {
-          router.push(targetPath)
-        } else {
-          setError('QR Code นี้ไม่ใช่ QR Code สำหรับเรียนรู้ AR ของระบบ FINE MODEL')
-          setTimeout(() => setScanned(false), 3000)
-        }
-      } catch (e) {
-        setError('รูปแบบ QR Code ไม่ถูกต้อง')
-        setTimeout(() => setScanned(false), 3000)
-      }
-    }
-  }
-
-  return (
-    <div className="student-container">
-      <div className="glass-card fade-in" style={{ padding: '24px', textAlign: 'center', minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-        <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#1E4D3A', margin: '0 0 16px 0' }}>📷 สแกน QR Code เพื่อเปิด AR</h2>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '24px' }}>
-          นำกล้องส่องไปที่ QR Code ที่คุณครูให้เพื่อเปิดดูโมเดล 3 มิติแบบไม่มีพื้นหลัง
-        </p>
-
-        {error && (
-          <div style={{ background: '#FAE8EB', color: '#8B2635', padding: '12px 16px', borderRadius: '12px', marginBottom: '24px', fontWeight: 700, width: '100%', maxWidth: '400px' }}>
-            ⚠️ {error}
-          </div>
-        )}
-
-        <div style={{ width: '100%', maxWidth: '400px', background: '#000', borderRadius: '24px', overflow: 'hidden', position: 'relative', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
-          {!scanned ? (
-            <Scanner
-              onScan={handleScan}
-              onError={(err) => console.log(err)}
-              components={{
-                onOff: true,
-                torch: true,
-                zoom: true,
-                finder: true,
-              }}
-            />
-          ) : (
-            <div style={{ padding: '60px 20px', color: '#FFF', fontWeight: 800 }}>
-              กำลังพาท่านเข้าสู่บทเรียน...
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
+import dynamic from'next/dynamic'
+import{useEffect,useRef,useState}from'react'
+import{useRouter}from'next/navigation'
+import StudentIcon from'../StudentIcon'
+import styles from'../studentPages.module.css'
+const Scanner=dynamic(()=>import('@yudiel/react-qr-scanner').then(m=>m.Scanner),{ssr:false})
+export default function ScannerPage(){const router=useRouter();const[error,setError]=useState('');const[scanned,setScanned]=useState(false);const timer=useRef<ReturnType<typeof setTimeout>|null>(null);useEffect(()=>()=>{if(timer.current)clearTimeout(timer.current)},[]);function fail(message:string){setError(message);timer.current=setTimeout(()=>{setScanned(false);setError('')},2500)}function handleScan(codes:Array<{rawValue:string}>){if(scanned||!codes[0]?.rawValue)return;setScanned(true);try{const raw=codes[0].rawValue;let target='';if(/^https?:\/\//.test(raw)){const url=new URL(raw);target=url.pathname+url.search}else if(raw.startsWith('/'))target=raw;else{const i=raw.indexOf('/student/ar-view');if(i>=0)target=raw.slice(i)}if(target.startsWith('/student/ar-view'))router.push(target);else fail('QR Code นี้ไม่ได้เชื่อมกับโมเดล AR ของระบบ')}catch{fail('รูปแบบ QR Code ไม่ถูกต้อง')}}return <main className={styles.page}><div className={styles.shell}><section className={styles.hero}><div className={styles.heroContent}><div className={styles.eyebrow}><StudentIcon name="camera" size={15}/>AR scanner</div><h1 className={styles.title}>สแกน QR Code เพื่อเปิดโมเดล AR</h1><p className={styles.subtitle}>อนุญาตการใช้กล้อง แล้ววาง QR Code ให้อยู่ภายในกรอบ ระบบจะเปิดบทเรียนที่ตรงกันโดยอัตโนมัติ</p></div></section><section className={styles.content}><div className={styles.scannerGrid}><div className={styles.scannerFrame}>{!scanned?<Scanner onScan={handleScan} onError={()=>setError('ไม่สามารถเปิดกล้องได้ กรุณาตรวจสอบสิทธิ์การใช้งาน')} components={{onOff:true,torch:true,zoom:true,finder:true}}/>:<div className={styles.scannerLoading}><StudentIcon name="refresh" size={25}/><strong>กำลังเปิดบทเรียน...</strong></div>}</div><aside className={styles.card}><div className={styles.cardTitle}><span className={styles.iconBox}><StudentIcon name="info"/></span><div><h2>วิธีสแกนให้สำเร็จ</h2><p>ใช้เวลาเพียงไม่กี่วินาที</p></div></div><div className={styles.ksaList}>{['เปิดกล้องและอนุญาตสิทธิ์การใช้งาน','วาง QR Code ให้อยู่ในกรอบและมีแสงเพียงพอ','ถือโทรศัพท์ให้นิ่งจนระบบเปิดโมเดล'].map((v,i)=><div className={styles.ksaItem} key={v}><span className={styles.ksaKey}>{i+1}</span><div><strong>{v}</strong></div></div>)}</div>{error&&<div className={styles.notice} style={{marginTop:12}}><StudentIcon name="info" size={17}/><span>{error}</span></div>}</aside></div></section></div></main>}

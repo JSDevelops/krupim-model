@@ -1,404 +1,1107 @@
-'use client'
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import { useRole } from '@/context/RoleContext'
-import { toast } from 'sonner'
+"use client";
 
-interface Task {
-  id: string
-  title: string
-  type: string
-  due: string
-  urgent: boolean
-  done: boolean
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ChangeEvent, useEffect, useMemo, useState } from "react";
+import { useRole } from "@/context/RoleContext";
+import { authenticatedFetch } from "@/lib/api";
+import { passwordPolicyError } from "@/lib/passwordPolicy";
+import { toast } from "sonner";
+import StudentIcon, { type StudentIconName } from "../StudentIcon";
+import styles from "../studentPages.module.css";
+
+type Profile = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  avatarUrl: string;
+  schoolId: string;
+  schoolName: string;
+  phone: string;
+  bio: string;
+};
+type Stats = {
+  knowledgeScore: number;
+  skillsScore: number;
+  attitudeScore: number;
+  competencyScore: number;
+  overallScore: number;
+  lessonsCompleted: number;
+  timeSpentMinutes: number;
+  sessions: number;
+};
+type Task = {
+  id: string;
+  title: string;
+  description: string;
+  activityType: string;
+  dueDate: string | null;
+  maxScore: number;
+  className: string;
+  status: "pending" | "submitted";
+  score: number | null;
+  feedback: string | null;
+};
+type ProfileForm = {
+  name: string;
+  schoolName: string;
+  phone: string;
+  bio: string;
+  avatarUrl: string;
+};
+type Certificate = {
+  certificateCode: string;
+  issuedName: string;
+  schoolName: string | null;
+  overallScore: number;
+  issuedAt: string;
+};
+
+const emptyStats: Stats = {
+  knowledgeScore: 0,
+  skillsScore: 0,
+  attitudeScore: 0,
+  competencyScore: 0,
+  overallScore: 0,
+  lessonsCompleted: 0,
+  timeSpentMinutes: 0,
+  sessions: 0,
+};
+const manuals: Array<{
+  icon: StudentIconName;
+  title: string;
+  content: string;
+}> = [
+  {
+    icon: "target",
+    title: "F — Familiarize: สำรวจและเรียนรู้คำศัพท์",
+    content:
+      "เริ่มจากหน้า Explore เพื่อดูอุปกรณ์ คำศัพท์ คำอ่าน และประโยคตัวอย่าง ก่อนนำไปฝึกในขั้นถัดไป",
+  },
+  {
+    icon: "message",
+    title: "I — Interact: ฝึกฟังและพูดตาม",
+    content:
+      "ฟังเสียงต้นแบบ พูดตาม และดูผลประเมินรายคำ ระบบจะช่วยชี้คำที่ควรกลับไปฝึกเพิ่มเติม",
+  },
+  {
+    icon: "task",
+    title: "N — Navigate: ฝึกตามสถานการณ์",
+    content:
+      "เลือกสถานการณ์จากแผนการสอน เตรียมคำศัพท์และประโยค แล้วทดลองใช้ในห้องจำลองเสมือนจริง",
+  },
+  {
+    icon: "exhibit",
+    title: "E — Exhibit: ทดสอบและทบทวนผล",
+    content:
+      "ตรวจประวัติการฝึก ทำแบบทดสอบ และติดตามคะแนนที่ได้รับจากกิจกรรมและการประเมินของคุณครู",
+  },
+];
+
+function formatDate(value: string | null) {
+  if (!value) return "ไม่กำหนด";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat("th-TH", { dateStyle: "medium" }).format(date);
 }
 
-const defaultTasks: Task[] = [
-  { id: 't1', title: 'AI Scan — ระบุชิ้นอุปกรณ์จัดโต๊ะอาหาร', type: 'F-Familiarize', due: '29 มิ.ย. 2569', urgent: true, done: false },
-  { id: 't2', title: 'Standard Prompts — ต้อนรับลูกค้าอังกฤษ', type: 'I-Interact', due: '30 มิ.ย. 2569', urgent: false, done: false },
-  { id: 't3', title: 'Quiz บทที่ 1 — คำศัพท์ F&B Service', type: 'E-Exhibit', due: '27 มิ.ย. 2569', urgent: false, done: true },
-  { id: 't4', title: 'Simulation — จัดโต๊ะ Formal Western', type: 'N-Navigate', due: '2 ก.ค. 2569', urgent: false, done: false },
-]
+function taskPath(type: string) {
+  const value = type.toLocaleLowerCase("en");
+  if (value.includes("interact")) return "/student/interact";
+  if (value.includes("navigate")) return "/student/navigate";
+  if (value.includes("exhibit")) return "/student/exhibit";
+  return "/student/explore";
+}
 
-const manualItems = [
-  { icon: '⬛', title: 'F - Familiarize: สแกน QR & AI', content: 'ไปที่แท็บ F แล้วเลือก "สแกน QR Code" เพื่อสแกนบัตรอุปกรณ์ที่ครูแจก หรือเลือก "AI Scan" เพื่อถ่ายรูปวัตถุรอบตัวให้ AI วิเคราะห์ชื่อและวิธีใช้ กดปุ่ม 🔊 เพื่อฟังเสียง และ 🎤 เพื่อฝึกพูดตาม' },
-  { icon: '💬', title: 'I - Interact: ฝึกประโยค & Live Coach', content: 'แท็บ I มี 2 โหมด — Standard Prompts แสดงประโยคจากแผนการสอนของครู กดฟังและพูดตามเพื่อรับคะแนน และ Gemini Live Coach สำหรับสนทนาแบบ Real-time กับ AI' },
-  { icon: '🎭', title: 'N - Navigate: จำลองสถานการณ์', content: 'แท็บ N แสดงสถานการณ์จำลองจากแผนการสอน กดที่การ์ดสถานการณ์เพื่อดูคำศัพท์ (กดพลิก Flashcard) และประโยคฝึกพูด กด "เข้าห้องจำลอง" เพื่อ Simulation เต็มรูปแบบ' },
-  { icon: '⭐', title: 'E - Exhibit: ทดสอบ & บันทึกคะแนน', content: 'แท็บ E บันทึกบทสนทนาทุกครั้งอัตโนมัติ ทำ Quiz เพื่อรับคะแนน K และ S ดูกราฟคะแนนแยกตามประเภทการฝึก และตรวจสอบผลต่อ KSA-C ของคุณ' },
-  { icon: '👤', title: 'Portfolio: ข้อมูลและสถิติ', content: 'หน้านี้แสดงข้อมูลส่วนตัว งานที่ได้รับมอบหมาย คะแนน KSA-C สะสม และใบรับรองสมรรถนะเมื่อผ่านเกณฑ์ 70%' },
-]
+async function resizeAvatar(file: File) {
+  if (!file.type.startsWith("image/")) throw new Error("กรุณาเลือกไฟล์รูปภาพ");
+  if (file.size > 8_000_000) throw new Error("รูปภาพต้องมีขนาดไม่เกิน 8 MB");
+  const url = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const item = new Image();
+      item.onload = () => resolve(item);
+      item.onerror = reject;
+      item.src = url;
+    });
+    const scale = Math.min(1, 420 / Math.max(image.width, image.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(image.width * scale));
+    canvas.height = Math.max(1, Math.round(image.height * scale));
+    canvas
+      .getContext("2d")
+      ?.drawImage(image, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/webp", 0.82);
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
 
-export default function PortfolioPage() {
-  const { user, setUser, logout } = useRole()
-  const [registryStudent, setRegistryStudent] = useState<any>(null)
-  const [tasks, setTasks] = useState<Task[]>([])
-  const [activeTab, setActiveTab] = useState<'overview' | 'tasks' | 'manual'>('overview')
-  const [expandedManual, setExpandedManual] = useState<number | null>(null)
-  const [showCert, setShowCert] = useState(false)
+export default function StudentProfilePage() {
+  const router = useRouter();
+  const { user, setUser, logout } = useRole();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [stats, setStats] = useState(emptyStats);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [activeTab, setActiveTab] = useState<"overview" | "tasks" | "manual">(
+    "overview",
+  );
+  const [expandedManual, setExpandedManual] = useState<number | null>(null);
+  const [profileModal, setProfileModal] = useState(false);
+  const [passwordModal, setPasswordModal] = useState(false);
+  const [certificateModal, setCertificateModal] = useState(false);
+  const [certificate, setCertificate] = useState<Certificate | null>(null);
+  const [submitTask, setSubmitTask] = useState<Task | null>(null);
+  const [submission, setSubmission] = useState({
+    attachmentName: "",
+    attachmentUrl: "",
+  });
+  const [submissionFile, setSubmissionFile] = useState<File | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<ProfileForm>({
+    name: "",
+    schoolName: "",
+    phone: "",
+    bio: "",
+    avatarUrl: "",
+  });
+  const [passwords, setPasswords] = useState({
+    current: "",
+    next: "",
+    confirm: "",
+  });
+  const [showPasswords, setShowPasswords] = useState(false);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && user) {
-      const stored = localStorage.getItem('classroomStudents')
-      if (stored) {
-        try {
-          const list = JSON.parse(stored)
-          const found = list.find((s: any) => s.name === user.name)
-          if (found) setRegistryStudent(found)
-        } catch (e) {}
+    const controller = new AbortController();
+    async function load() {
+      try {
+        const response = await authenticatedFetch("/api/student/profile", {
+          signal: controller.signal,
+        });
+        if (!response.ok) return;
+        const payload = (await response.json()) as {
+          profile: Profile;
+          stats: Stats;
+          tasks: Task[];
+        };
+        setProfile(payload.profile);
+        setStats(payload.stats || emptyStats);
+        setTasks(payload.tasks || []);
+        setForm({
+          name: payload.profile.name || "",
+          schoolName: payload.profile.schoolName || "",
+          phone: payload.profile.phone || "",
+          bio: payload.profile.bio || "",
+          avatarUrl: payload.profile.avatarUrl || "",
+        });
+      } catch (error) {
+        if (!controller.signal.aborted)
+          console.warn("Unable to load student profile:", error);
       }
     }
-    const taskStored = localStorage.getItem('studentTasks')
-    if (taskStored) {
-      try { setTasks(JSON.parse(taskStored)) } catch (e) { setTasks(defaultTasks) }
-    } else {
-      setTasks(defaultTasks)
+    void load();
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    authenticatedFetch("/api/student/certificates", {
+      signal: controller.signal,
+    })
+      .then(async (response) =>
+        response.ok
+          ? (response.json() as Promise<{ certificate: Certificate | null }>)
+          : null,
+      )
+      .then((payload) => {
+        if (payload?.certificate) setCertificate(payload.certificate);
+      })
+      .catch(() => undefined);
+    return () => controller.abort();
+  }, []);
+
+  const pendingTasks = useMemo(
+    () => tasks.filter((task) => task.status === "pending"),
+    [tasks],
+  );
+  const completedTasks = tasks.length - pendingTasks.length;
+  const overall =
+    stats.overallScore ||
+    Math.round(
+      stats.knowledgeScore * 0.2 +
+        stats.skillsScore * 0.3 +
+        stats.attitudeScore * 0.1 +
+        stats.competencyScore * 0.4,
+    );
+  const certified =
+    overall >= 70 &&
+    [
+      stats.knowledgeScore,
+      stats.skillsScore,
+      stats.attitudeScore,
+      stats.competencyScore,
+    ].every((score) => score >= 60);
+  const displayName = profile?.name || user?.name || "นักเรียน";
+  const avatarUrl =
+    form.avatarUrl || profile?.avatarUrl || user?.avatar_url || "";
+
+  async function openCertificate() {
+    if (!certified && !certificate) return;
+    if (certificate) {
+      setCertificateModal(true);
+      return;
     }
-  }, [user])
-
-  const kScore = registryStudent?.ksa?.K ?? 80
-  const sScore = registryStudent?.ksa?.S ?? 75
-  const aScore = registryStudent?.ksa?.A ?? 82
-  const cScore = registryStudent?.ksa?.C ?? 70
-  const sessions = registryStudent?.sessions ?? 45
-  const overall = Math.round((kScore * 0.2) + (sScore * 0.3) + (aScore * 0.1) + (cScore * 0.4))
-  const isCertified = kScore >= 60 && sScore >= 60 && aScore >= 60 && cScore >= 60 && overall >= 70
-
-  const pendingTasks = tasks.filter(t => !t.done)
-  const doneTasks = tasks.filter(t => t.done)
-
-  const typeColor = (t: string) => {
-    if (t.includes('F-')) return { bg: '#EAF3EE', color: '#1E4D3A' }
-    if (t.includes('I-')) return { bg: '#EEF0FA', color: '#1A2A40' }
-    if (t.includes('N-')) return { bg: '#FAE8EB', color: '#4A1A2A' }
-    if (t.includes('E-')) return { bg: '#EAF4EA', color: '#1A2A0F' }
-    return { bg: '#FBF6E9', color: '#A6882A' }
+    setSaving(true);
+    try {
+      const response = await authenticatedFetch("/api/student/certificates", {
+        method: "POST",
+      });
+      const payload = (await response.json()) as {
+        certificate?: Certificate;
+        error?: string;
+      };
+      if (!response.ok || !payload.certificate)
+        throw new Error(payload.error || "ไม่สามารถออกใบรับรองได้");
+      setCertificate(payload.certificate);
+      setCertificateModal(true);
+      toast.success("ออกเลขที่ใบรับรองเรียบร้อยแล้ว");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "ไม่สามารถออกใบรับรองได้",
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
+  async function avatarChanged(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      setSaving(true);
+      const dataUrl = await resizeAvatar(file);
+      const response = await authenticatedFetch("/api/profile/avatar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dataUrl }),
+      });
+      const payload = (await response.json()) as {
+        avatarUrl?: string;
+        error?: string;
+      };
+      if (!response.ok || !payload.avatarUrl)
+        throw new Error(payload.error || "อัปโหลดรูปโปรไฟล์ไม่สำเร็จ");
+      const avatarUrl = payload.avatarUrl;
+      setForm((value) => ({ ...value, avatarUrl }));
+      setProfile((value) => (value ? { ...value, avatarUrl } : value));
+      if (user) setUser({ ...user, avatar_url: avatarUrl, avatar: avatarUrl });
+      setProfileModal(true);
+      toast.success("บันทึกรูปโปรไฟล์แล้ว");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "ไม่สามารถอ่านรูปภาพได้",
+      );
+    } finally {
+      setSaving(false);
+    }
+    event.target.value = "";
+  }
+
+  async function saveProfile() {
+    if (!form.name.trim()) {
+      toast.warning("กรุณากรอกชื่อ–นามสกุล");
+      return;
+    }
+    setSaving(true);
+    try {
+      const response = await authenticatedFetch("/api/student/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "update_profile", ...form }),
+      });
+      const payload = await response.json();
+      if (!response.ok)
+        throw new Error(payload.error || "บันทึกโปรไฟล์ไม่สำเร็จ");
+      setProfile(payload.profile);
+      setUser({
+        ...user!,
+        name: payload.profile.name,
+        avatar_url: payload.profile.avatarUrl,
+        school: payload.profile.schoolName,
+        school_id: payload.profile.schoolId,
+      });
+      setProfileModal(false);
+      toast.success("บันทึกโปรไฟล์แล้ว");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "บันทึกโปรไฟล์ไม่สำเร็จ",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function changePassword() {
+    const policyError = passwordPolicyError(passwords.next);
+    if (policyError) {
+      toast.warning(policyError);
+      return;
+    }
+    if (passwords.next !== passwords.confirm) {
+      toast.warning("ยืนยันรหัสผ่านใหม่ไม่ตรงกัน");
+      return;
+    }
+    setSaving(true);
+    try {
+      const response = await authenticatedFetch("/api/student/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "change_password",
+          currentPassword: passwords.current,
+          newPassword: passwords.next,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok)
+        throw new Error(payload.error || "เปลี่ยนรหัสผ่านไม่สำเร็จ");
+      setPasswords({ current: "", next: "", confirm: "" });
+      setPasswordModal(false);
+      toast.success("เปลี่ยนรหัสผ่านแล้ว กรุณาเข้าสู่ระบบใหม่");
+      window.setTimeout(() => router.replace("/role-select"), 600);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "เปลี่ยนรหัสผ่านไม่สำเร็จ",
+      );
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function submitAssignment() {
+    if (!submitTask) return;
+    setSaving(true);
+    try {
+      let attachmentName = submission.attachmentName;
+      let attachmentUrl = submission.attachmentUrl;
+      if (submissionFile) {
+        const upload = new FormData();
+        upload.set("assignmentId", submitTask.id);
+        upload.set("file", submissionFile);
+        const uploadResponse = await authenticatedFetch("/api/student/files", {
+          method: "POST",
+          body: upload,
+        });
+        const uploadPayload = (await uploadResponse.json()) as {
+          file?: { name: string; url: string };
+          error?: string;
+        };
+        if (!uploadResponse.ok || !uploadPayload.file)
+          throw new Error(uploadPayload.error || "อัปโหลดไฟล์ไม่สำเร็จ");
+        attachmentName = attachmentName || uploadPayload.file.name;
+        attachmentUrl = uploadPayload.file.url;
+      }
+      const response = await authenticatedFetch("/api/student/assignments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          assignmentId: submitTask.id,
+          attachmentName,
+          attachmentUrl,
+        }),
+      });
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || "ส่งงานไม่สำเร็จ");
+      setTasks((items) =>
+        items.map((item) =>
+          item.id === submitTask.id ? { ...item, status: "submitted" } : item,
+        ),
+      );
+      setSubmitTask(null);
+      setSubmission({ attachmentName: "", attachmentUrl: "" });
+      setSubmissionFile(null);
+      toast.success("ส่งงานเรียบร้อยแล้ว");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "ส่งงานไม่สำเร็จ");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function closeSubmission() {
+    setSubmitTask(null);
+    setSubmission({ attachmentName: "", attachmentUrl: "" });
+    setSubmissionFile(null);
+  }
+
+  const tabs = [
+    {
+      id: "overview" as const,
+      label: "สมรรถนะ",
+      icon: "chart" as StudentIconName,
+    },
+    {
+      id: "tasks" as const,
+      label: "งาน",
+      icon: "task" as StudentIconName,
+      count: pendingTasks.length,
+    },
+    { id: "manual" as const, label: "คู่มือ", icon: "book" as StudentIconName },
+  ];
+
   return (
-    <div style={{ minHeight: '100vh', background: '#F3EFE6', paddingBottom: 80 }}>
-
-      {/* Profile Hero */}
-      <div style={{
-        background: 'linear-gradient(160deg, #102B1F 0%, #1E4D3A 60%, #C9A84C 150%)',
-        padding: '52px 20px 0',
-        position: 'relative', overflow: 'hidden',
-      }}>
-        {/* Decorative */}
-        <div style={{ position: 'absolute', top: -60, right: -60, width: 220, height: 220, background: 'rgba(201,168,76,0.07)', borderRadius: '50%' }} />
-        <div style={{ position: 'absolute', bottom: 40, left: -30, width: 120, height: 120, background: 'rgba(255,255,255,0.04)', borderRadius: '50%' }} />
-
-        {/* Avatar + Name - รองรับการเปลี่ยนรูปภาพอัปโหลดและแปลงเป็น Base64 */}
-        <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', marginBottom: 16 }}>
-          <div 
-            onClick={() => {
-              if (typeof window !== 'undefined') {
-                const el = document.getElementById('student-avatar-input')
-                if (el) el.click()
-              }
-            }}
-            style={{ 
-              width: 84, height: 84, borderRadius: '50%', 
-              background: 'rgba(255,255,255,0.15)', 
-              border: '3px solid rgba(201,168,76,0.6)', 
-              display: 'flex', alignItems: 'center', justifyContent: 'center', 
-              margin: '0 auto 10px', boxShadow: '0 8px 24px rgba(0,0,0,0.25)',
-              position: 'relative', overflow: 'hidden', cursor: 'pointer',
-            }}
-            title="คลิกเพื่ออัปโหลดรูปภาพใหม่"
-          >
-            {user?.avatar && user.avatar.startsWith('data:image') ? (
-              <img 
-                src={user.avatar} 
-                alt="Profile Avatar" 
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-              />
-            ) : (
-              <span style={{ fontSize: 40 }}>{user?.avatar ?? '👨‍🎓'}</span>
-            )}
-            
-            {/* Overlay Camera Icon on Hover */}
-            <div style={{
-              position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              opacity: 0, transition: 'opacity 0.2s',
-              fontSize: 16, color: 'white'
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-            onMouseLeave={(e) => e.currentTarget.style.opacity = '0'}
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <section className={`${styles.hero} ${styles.profileHero}`}>
+          <div className={styles.profileIdentity}>
+            <label
+              className={styles.avatarButton}
+              aria-label="เลือกรูปโปรไฟล์ใหม่"
             >
-              📸 เปลี่ยนรูป
+              {avatarUrl ? (
+                <span
+                  className={styles.avatarImage}
+                  style={{
+                    backgroundImage: `url(${JSON.stringify(avatarUrl).slice(1, -1)})`,
+                  }}
+                />
+              ) : (
+                <StudentIcon name="user" size={31} />
+              )}
+              <span className={styles.avatarOverlay}>
+                <StudentIcon name="camera" size={14} />
+              </span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                hidden
+                onChange={avatarChanged}
+              />
+            </label>
+            <div className={styles.profileCopy}>
+              <div className={styles.eyebrow}>Student portfolio</div>
+              <h1>{displayName}</h1>
+              <p>{profile?.email || user?.email}</p>
+              <span className={styles.meta}>
+                <StudentIcon name="school" size={13} />
+                {profile?.schoolName || "ยังไม่ได้ระบุสถานศึกษา"}
+              </span>
             </div>
           </div>
-
-          {/* Hidden File Input */}
-          <input 
-            type="file" 
-            id="student-avatar-input"
-            accept="image/*"
-            style={{ display: 'none' }}
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file && user) {
-                const reader = new FileReader()
-                reader.onload = (event) => {
-                  const base64 = event.target?.result as string
-                  // 1. อัปเดตเข้าระบบหลัก
-                  setUser({ ...user, avatar: base64 })
-                }
-                reader.readAsDataURL(file)
-              }
-            }}
-          />
-
-          <h1 style={{ color: 'white', fontSize: 20, fontWeight: 800, margin: '0 0 4px' }}>{user?.name ?? 'นักเรียน'}</h1>
-          <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11, margin: '0 0 8px' }}>{user?.email}</p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: 8 }}>
-            <span style={{ background: 'rgba(201,168,76,0.2)', border: '1px solid rgba(201,168,76,0.4)', color: '#C9A84C', fontSize: 10, fontWeight: 800, padding: '4px 12px', borderRadius: 100 }}>👨‍🎓 STUDENT</span>
-            <span style={{ background: 'rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.8)', fontSize: 10, padding: '4px 12px', borderRadius: 100 }}>{user?.school}</span>
+          <div className={styles.profileActions}>
+            <button
+              type="button"
+              className={styles.heroAction}
+              onClick={() => setProfileModal(true)}
+            >
+              <StudentIcon name="edit" size={15} />
+              แก้ไขโปรไฟล์
+            </button>
+            <button
+              type="button"
+              className={styles.heroAction}
+              onClick={() => setPasswordModal(true)}
+            >
+              <StudentIcon name="lock" size={15} />
+              เปลี่ยนรหัสผ่าน
+            </button>
           </div>
-        </div>
+        </section>
 
-        {/* Quick Stats Row */}
-        <div style={{ display: 'flex', gap: 10, marginBottom: 16, position: 'relative', zIndex: 1 }}>
-          {[
-            { label: 'ล็อกอิน', value: sessions, unit: 'ครั้ง' },
-            { label: 'สมรรถนะ', value: overall, unit: '%' },
-            { label: 'งานคงค้าง', value: pendingTasks.length, unit: 'งาน' },
-          ].map(s => (
-            <div key={s.label} style={{ flex: 1, background: 'rgba(255,255,255,0.12)', borderRadius: 14, padding: '10px 8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.12)' }}>
-              <div style={{ color: 'white', fontWeight: 900, fontSize: 20 }}>{s.value}<span style={{ fontSize: 10, fontWeight: 700 }}>{s.unit}</span></div>
-              <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 9.5 }}>{s.label}</div>
-            </div>
+        <nav className={styles.tabs} aria-label="ข้อมูลโปรไฟล์นักเรียน">
+          {tabs.map((tab) => (
+            <button
+              type="button"
+              key={tab.id}
+              className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ""}`}
+              onClick={() => setActiveTab(tab.id)}
+            >
+              <StudentIcon name={tab.icon} size={15} />
+              <span>{tab.label}</span>
+              {tab.count !== undefined && (
+                <span className={styles.badge}>{tab.count}</span>
+              )}
+            </button>
           ))}
-        </div>
+        </nav>
 
-        {/* Tab switcher */}
-        <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: 4, position: 'relative', zIndex: 1 }}>
-          {[
-            { id: 'overview', label: '📊 KSA-C' },
-            { id: 'tasks', label: `📋 งาน (${pendingTasks.length})` },
-            { id: 'manual', label: '📖 คู่มือ' },
-          ].map(t => (
-            <button key={t.id} onClick={() => setActiveTab(t.id as any)} style={{ flex: 1, padding: '9px 4px', borderRadius: 8, border: 'none', background: activeTab === t.id ? 'white' : 'transparent', cursor: 'pointer', fontSize: 11, fontWeight: 800, color: activeTab === t.id ? '#1E4D3A' : 'rgba(255,255,255,0.7)', fontFamily: 'var(--font-primary)' }}>{t.label}</button>
-          ))}
-        </div>
-        <svg viewBox="0 0 500 28" style={{ display: 'block', marginTop: 4, width: '100%' }} preserveAspectRatio="none">
-          <path d="M0 28 Q125 0 250 16 Q375 32 500 8 L500 28 Z" fill="#F3EFE6"/>
-        </svg>
-      </div>
-
-      <div style={{ padding: '8px 16px 0' }}>
-
-        {/* === KSA-C OVERVIEW === */}
-        {activeTab === 'overview' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-
-            {/* Certificate Banner */}
-            {isCertified ? (
-              <div style={{ background: 'linear-gradient(135deg,#102B1F,#1E4D3A)', borderRadius: 18, padding: '16px 18px', border: '2px solid #C9A84C', cursor: 'pointer', boxShadow: '0 8px 24px rgba(16,43,31,0.15)' }} onClick={() => setShowCert(true)}>
-                <div style={{ color: '#C9A84C', fontSize: 10, fontWeight: 800, letterSpacing: '1px', marginBottom: 6 }}>✨ COMPETENCY CERTIFICATE UNLOCKED</div>
-                <div style={{ color: 'white', fontWeight: 800, fontSize: 14, marginBottom: 10 }}>{'ยินดีด้วย! คุณได้รับใบรับรองสมรรถนะ F&B'}</div>
-                <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 10, padding: '10px', textAlign: 'center', color: '#C9A84C', fontWeight: 800, fontSize: 13 }}>📜 แตะเพื่อดูใบรับรอง</div>
-              </div>
-            ) : (
-              <div style={{ background: '#FFF8E1', border: '1px solid #FFD54F', borderRadius: 14, padding: '12px 14px', fontSize: 11.5, color: '#F57F17', fontWeight: 700 }}>
-                ⚠️ คะแนนเฉลี่ยปัจจุบัน ({overall}%) ยังไม่ถึงเกณฑ์ออกใบรับรอง (ต้องการ 70% และทุกด้าน ≥ 60%)
-              </div>
-            )}
-
-            {/* KSA-C bars */}
-            <div style={{ background: 'white', borderRadius: 18, padding: '16px', border: '1px solid #EDE9E1', boxShadow: '0 2px 12px rgba(16,43,31,0.06)' }}>
-              <h3 style={{ fontSize: 13, fontWeight: 800, color: '#1E4D3A', margin: '0 0 16px' }}>🎯 สมรรถนะ KSA-C รายด้าน</h3>
-              {[
-                { key: 'K', label: 'Knowledge — ความรู้', score: kScore, color: '#1E4D3A', bg: '#EAF3EE', icon: '📚' },
-                { key: 'S', label: 'Skills — ทักษะปฏิบัติ', score: sScore, color: '#1A2A40', bg: '#EEF0FA', icon: '🎯' },
-                { key: 'A', label: 'Attitude — เจตคติ', score: aScore, color: '#C9A84C', bg: '#FBF6E9', icon: '💫' },
-                { key: 'C', label: 'Competency — สมรรถนะ', score: cScore, color: '#4A1A2A', bg: '#FAE8EB', icon: '⭐' },
-              ].map(item => (
-                <div key={item.key} style={{ marginBottom: 16 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 6 }}>
-                    <div style={{ width: 32, height: 32, background: item.bg, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 15, flexShrink: 0 }}>{item.icon}</div>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: 12, fontWeight: 800, color: '#4A4138' }}>{item.label}</span>
-                        <span style={{ fontSize: 14, fontWeight: 900, color: item.color }}>{item.score}%</span>
-                      </div>
-                      <div style={{ height: 7, background: '#EDE9E1', borderRadius: 100, marginTop: 5, overflow: 'hidden' }}>
-                        <div style={{ width: `${item.score}%`, height: '100%', background: item.color, borderRadius: 100, transition: 'width 1s ease' }} />
-                      </div>
+        <section className={styles.content}>
+          {activeTab === "overview" && (
+            <div className={`${styles.grid} ${styles.two}`}>
+              <div>
+                {certified || certificate ? (
+                  <button
+                    type="button"
+                    className={styles.certificateBanner}
+                    onClick={() => void openCertificate()}
+                    disabled={saving}
+                  >
+                    <span className={`${styles.iconBox} ${styles.goldIcon}`}>
+                      <StudentIcon name="award" />
+                    </span>
+                    <span>
+                      <strong>
+                        {certificate
+                          ? "ใบรับรองสมรรถนะของคุณ"
+                          : "ปลดล็อกใบรับรองสมรรถนะแล้ว"}
+                      </strong>
+                      <span>
+                        {certificate
+                          ? `เลขที่ ${certificate.certificateCode}`
+                          : "คะแนนรวมผ่านเกณฑ์ แตะเพื่อออกใบรับรอง"}
+                      </span>
+                    </span>
+                    <StudentIcon name="chevron" size={18} />
+                  </button>
+                ) : (
+                  <div className={styles.notice}>
+                    <StudentIcon name="info" size={18} />
+                    <span>
+                      คะแนนรวมปัจจุบัน {overall}%
+                      ใบรับรองต้องมีคะแนนรวมอย่างน้อย 70% และทุกด้านไม่ต่ำกว่า
+                      60%
+                    </span>
+                  </div>
+                )}
+                <div className={styles.card} style={{ marginTop: 10 }}>
+                  <div className={styles.cardTitle}>
+                    <span className={styles.iconBox}>
+                      <StudentIcon name="chart" />
+                    </span>
+                    <div>
+                      <h2>สมรรถนะ KSA-C</h2>
+                      <p>คะแนนล่าสุดจากระบบประเมิน</p>
                     </div>
                   </div>
-                </div>
-              ))}
-              <div style={{ borderTop: '1px solid #EDE9E1', paddingTop: 14 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: '#1E4D3A' }}>คะแนนรวมถ่วงน้ำหนัก</span>
-                  <span style={{ fontSize: 22, fontWeight: 900, color: '#1E4D3A' }}>{overall}%</span>
-                </div>
-                <div style={{ fontSize: 10, color: '#8C8272', marginTop: 3 }}>K×20% + S×30% + A×10% + C×40%</div>
-              </div>
-              
-              {/* Navigation to Student Dashboard */}
-              <Link href="/student/dashboard" style={{ 
-                display: 'block', 
-                width: '100%', 
-                padding: '13px', 
-                borderRadius: 14, 
-                border: 'none', 
-                background: 'linear-gradient(135deg, #1E4D3A, #102B1F)', 
-                color: '#C9A84C', 
-                fontWeight: 800, 
-                fontSize: 13, 
-                textAlign: 'center',
-                textDecoration: 'none',
-                cursor: 'pointer', 
-                fontFamily: 'var(--font-primary)',
-                boxShadow: '0 4px 14px rgba(30,77,58,0.2)',
-                marginTop: 14
-              }}>
-                📊 เข้าสู่แดชบอร์ดนักเรียน (Dashboard)
-              </Link>
-            </div>
-
-            <button onClick={logout} style={{ width: '100%', padding: '13px', borderRadius: 14, border: '1.5px solid #EDE9E1', background: 'white', color: '#8B2635', fontWeight: 700, fontSize: 13, cursor: 'pointer', fontFamily: 'var(--font-primary)' }}>🚪 ออกจากระบบ</button>
-          </div>
-        )}
-
-        {/* === TASKS === */}
-        {activeTab === 'tasks' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {pendingTasks.length > 0 && (
-              <div>
-                <h2 style={{ fontSize: 13, fontWeight: 800, color: '#1E4D3A', margin: '0 0 10px' }}>📌 งานที่ต้องทำ ({pendingTasks.length})</h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {pendingTasks.map(task => {
-                    const tc = typeColor(task.type)
-                    // ค้นหาเส้นทางหน้าเว็บตามประเภทงาน
-                    let targetUrl = '/student/explore'
-                    if (task.type.includes('I-')) targetUrl = '/student/interact'
-                    if (task.type.includes('N-')) targetUrl = '/student/navigate'
-                    if (task.type.includes('E-')) targetUrl = '/student/exhibit'
-
-                    return (
-                      <div key={task.id} style={{ background: 'white', borderRadius: 16, padding: '14px 16px', border: '1px solid #EDE9E1', boxShadow: '0 2px 10px rgba(16,43,31,0.05)' }}>
-                        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                          <div style={{ width: 40, height: 40, background: tc.bg, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>📋</div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 800, fontSize: 13, color: '#1A1410', marginBottom: 4, lineHeight: 1.4 }}>{task.title}</div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-                              <span style={{ background: tc.bg, color: tc.color, fontSize: 9.5, fontWeight: 800, padding: '3px 8px', borderRadius: 100 }}>{task.type}</span>
-                              <span style={{ fontSize: 10, color: '#8C8272' }}>📅 {task.due}</span>
-                              {task.urgent && <span style={{ background: '#FAE8EB', color: '#8B2635', fontSize: 9.5, fontWeight: 800, padding: '3px 8px', borderRadius: 100 }}>🔴 ด่วน</span>}
-                            </div>
-                            
-                            {/* ปุ่มกดเพื่อทำภารกิจทันที */}
-                            <Link href={targetUrl} style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: 6,
-                              padding: '8px 16px',
-                              borderRadius: 10,
-                              background: 'linear-gradient(135deg, #102B1F, #1E4D3A)',
-                              color: 'white',
-                              fontSize: '11px',
-                              fontWeight: 800,
-                              textDecoration: 'none',
-                              boxShadow: '0 4px 12px rgba(30,77,58,0.2)',
-                              transition: 'transform 0.2s',
+                  <div className={styles.breakdown}>
+                    {[
+                      ["Knowledge — ความรู้", stats.knowledgeScore, "#39745d"],
+                      ["Skills — ทักษะ", stats.skillsScore, "#4d7896"],
+                      ["Attitude — เจตคติ", stats.attitudeScore, "#c19a42"],
+                      [
+                        "Competency — สมรรถนะ",
+                        stats.competencyScore,
+                        "#915363",
+                      ],
+                    ].map(([label, value, color]) => (
+                      <div key={String(label)}>
+                        <div className={styles.metricTop}>
+                          <span>{label}</span>
+                          <strong>{value}%</strong>
+                        </div>
+                        <div className={styles.metricTrack}>
+                          <div
+                            className={styles.metricBar}
+                            style={{
+                              width: `${value}%`,
+                              background: String(color),
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.03)'}
-                            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                            >
-                              🚀 เริ่มทำภารกิจเลย ➡️
-                            </Link>
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className={styles.card}>
+                <div className={styles.cardTitle}>
+                  <span className={`${styles.iconBox} ${styles.blueIcon}`}>
+                    <StudentIcon name="profile" />
+                  </span>
+                  <div>
+                    <h2>ภาพรวมการเรียนรู้</h2>
+                    <p>ข้อมูลกิจกรรมสะสมของคุณ</p>
+                  </div>
+                </div>
+                <div className={styles.factGrid}>
+                  <div className={styles.fact}>
+                    <span>คะแนนรวม</span>
+                    <strong>{overall}%</strong>
+                  </div>
+                  <div className={styles.fact}>
+                    <span>จำนวนเซสชัน</span>
+                    <strong>{stats.sessions} ครั้ง</strong>
+                  </div>
+                  <div className={styles.fact}>
+                    <span>บทเรียนสำเร็จ</span>
+                    <strong>{stats.lessonsCompleted} บท</strong>
+                  </div>
+                  <div className={styles.fact}>
+                    <span>เวลาเรียน</span>
+                    <strong>{stats.timeSpentMinutes} นาที</strong>
+                  </div>
+                </div>
+                <Link
+                  className={`${styles.button} ${styles.full}`}
+                  href="/student/dashboard"
+                >
+                  ไปยังแดชบอร์ด <StudentIcon name="arrowRight" size={16} />
+                </Link>
+                <button
+                  type="button"
+                  className={`${styles.dangerButton} ${styles.full}`}
+                  style={{ marginTop: 8 }}
+                  onClick={logout}
+                >
+                  <StudentIcon name="logout" size={16} />
+                  ออกจากระบบ
+                </button>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "tasks" && (
+            <>
+              <header className={styles.sectionHeader}>
+                <h2>งานที่ได้รับมอบหมาย</h2>
+                <p>
+                  {pendingTasks.length} งานคงค้าง และ {completedTasks}{" "}
+                  งานที่ส่งแล้ว
+                </p>
+              </header>
+              {tasks.length ? (
+                <div className={styles.taskList}>
+                  {tasks.map((task) => (
+                    <article className={styles.taskCard} key={task.id}>
+                      <div className={styles.taskTop}>
+                        <span className={styles.taskIcon}>
+                          <StudentIcon name="task" />
+                        </span>
+                        <div className={styles.taskCopy}>
+                          <strong>{task.title}</strong>
+                          <p>
+                            {task.description || `งานจากห้อง ${task.className}`}
+                          </p>
+                          <div className={styles.taskMeta}>
+                            <span>
+                              <StudentIcon name="school" size={13} />
+                              {task.className}
+                            </span>
+                            <span>
+                              <StudentIcon name="calendar" size={13} />
+                              {formatDate(task.dueDate)}
+                            </span>
                           </div>
                         </div>
                       </div>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {doneTasks.length > 0 && (
-              <div>
-                <h2 style={{ fontSize: 13, fontWeight: 800, color: '#8C8272', margin: '0 0 10px' }}>✅ งานที่ส่งแล้ว ({doneTasks.length})</h2>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {doneTasks.map(task => (
-                    <div key={task.id} style={{ background: '#F3EFE6', borderRadius: 14, padding: '12px 14px', border: '1px solid #EDE9E1', opacity: 0.75 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 18 }}>✅</span>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: 12.5, color: '#8C8272', textDecoration: 'line-through' }}>{task.title}</div>
-                          <div style={{ fontSize: 10, color: '#B8B0A0', marginTop: 2 }}>{task.type} · {task.due}</div>
-                        </div>
+                      <div className={styles.taskFooter}>
+                        <span
+                          className={`${styles.taskStatus} ${task.status === "submitted" ? styles.done : ""}`}
+                        >
+                          {task.status === "submitted"
+                            ? `ส่งแล้ว${task.score !== null ? ` · ${task.score}/${task.maxScore}` : ""}`
+                            : "รอดำเนินการ"}
+                        </span>
+                        {task.status === "pending" && (
+                          <>
+                            <Link
+                              className={styles.outlineButton}
+                              href={taskPath(task.activityType)}
+                            >
+                              เปิดกิจกรรม
+                            </Link>
+                            <button
+                              type="button"
+                              className={styles.button}
+                              onClick={() => setSubmitTask(task)}
+                            >
+                              ส่งงาน
+                            </button>
+                          </>
+                        )}
                       </div>
-                    </div>
+                    </article>
                   ))}
                 </div>
+              ) : (
+                <div className={`${styles.card} ${styles.empty}`}>
+                  <StudentIcon name="task" size={26} />
+                  <strong>ยังไม่มีงานที่ได้รับมอบหมาย</strong>
+                  <span>งานจากห้องเรียนของคุณจะแสดงในส่วนนี้</span>
+                </div>
+              )}
+            </>
+          )}
+
+          {activeTab === "manual" && (
+            <>
+              <header className={styles.sectionHeader}>
+                <h2>คู่มือการเรียนด้วย FINE Model</h2>
+                <p>เลือกหัวข้อเพื่อดูแนวทางใช้งานแต่ละขั้น</p>
+              </header>
+              <div className={styles.manualList}>
+                {manuals.map((item, index) => (
+                  <article
+                    className={`${styles.manualItem} ${expandedManual === index ? styles.expanded : ""}`}
+                    key={item.title}
+                  >
+                    <button
+                      type="button"
+                      className={styles.manualHeader}
+                      onClick={() =>
+                        setExpandedManual(
+                          expandedManual === index ? null : index,
+                        )
+                      }
+                      aria-expanded={expandedManual === index}
+                    >
+                      <span className={styles.iconBox}>
+                        <StudentIcon name={item.icon} />
+                      </span>
+                      <strong>{item.title}</strong>
+                      <span className={styles.chevron}>
+                        <StudentIcon name="chevron" size={17} />
+                      </span>
+                    </button>
+                    {expandedManual === index && (
+                      <div className={styles.manualDetail}>{item.content}</div>
+                    )}
+                  </article>
+                ))}
               </div>
-            )}
+            </>
+          )}
+        </section>
+
+        {profileModal && (
+          <div
+            className={styles.modalBackdrop}
+            onMouseDown={(event) =>
+              event.target === event.currentTarget && setProfileModal(false)
+            }
+          >
+            <section
+              className={styles.modal}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="edit-profile-title"
+            >
+              <header className={styles.modalHeader}>
+                <span className={`${styles.iconBox} ${styles.blueIcon}`}>
+                  <StudentIcon name="edit" />
+                </span>
+                <div>
+                  <h2 id="edit-profile-title">แก้ไขโปรไฟล์</h2>
+                  <p>ข้อมูลจะบันทึกลง PostgreSQL และใช้ทั้งระบบ</p>
+                </div>
+                <button
+                  type="button"
+                  className={styles.modalClose}
+                  onClick={() => setProfileModal(false)}
+                >
+                  <StudentIcon name="x" size={17} />
+                </button>
+              </header>
+              <div className={`${styles.modalBody} ${styles.two}`}>
+                <label className={`${styles.field} ${styles.wide}`}>
+                  <span>ชื่อ–นามสกุล</span>
+                  <input
+                    className={styles.input}
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    maxLength={160}
+                  />
+                </label>
+                <label className={styles.field}>
+                  <span>สถานศึกษา</span>
+                  <input
+                    className={styles.input}
+                    value={form.schoolName}
+                    onChange={(e) =>
+                      setForm({ ...form, schoolName: e.target.value })
+                    }
+                    maxLength={240}
+                  />
+                </label>
+                <label className={styles.field}>
+                  <span>หมายเลขโทรศัพท์</span>
+                  <input
+                    className={styles.input}
+                    value={form.phone}
+                    onChange={(e) =>
+                      setForm({ ...form, phone: e.target.value })
+                    }
+                    maxLength={40}
+                  />
+                </label>
+                <label className={`${styles.field} ${styles.wide}`}>
+                  <span>แนะนำตัว</span>
+                  <textarea
+                    className={styles.textarea}
+                    value={form.bio}
+                    onChange={(e) => setForm({ ...form, bio: e.target.value })}
+                    maxLength={1500}
+                  />
+                </label>
+              </div>
+              <footer className={styles.modalFooter}>
+                <button
+                  type="button"
+                  className={styles.outlineButton}
+                  onClick={() => setProfileModal(false)}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  className={styles.button}
+                  disabled={saving}
+                  onClick={saveProfile}
+                >
+                  {saving ? "กำลังบันทึก..." : "บันทึกโปรไฟล์"}
+                </button>
+              </footer>
+            </section>
           </div>
         )}
 
-        {/* === MANUAL === */}
-        {activeTab === 'manual' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <p style={{ fontSize: 12, color: '#8C8272', margin: '0 0 4px' }}>กดที่หัวข้อเพื่อดูวิธีใช้งาน</p>
-            {manualItems.map((item, i) => (
-              <div key={i} style={{ background: 'white', borderRadius: 16, overflow: 'hidden', border: '1px solid #EDE9E1', boxShadow: '0 1px 8px rgba(16,43,31,0.04)' }}>
+        {passwordModal && (
+          <div
+            className={styles.modalBackdrop}
+            onMouseDown={(event) =>
+              event.target === event.currentTarget && setPasswordModal(false)
+            }
+          >
+            <section
+              className={styles.modal}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="password-title"
+            >
+              <header className={styles.modalHeader}>
+                <span className={styles.iconBox}>
+                  <StudentIcon name="lock" />
+                </span>
+                <div>
+                  <h2 id="password-title">เปลี่ยนรหัสผ่าน</h2>
+                  <p>
+                    รหัสผ่านใหม่ต้องมีอย่างน้อย 10 ตัวอักษร พร้อมตัวพิมพ์ใหญ่
+                    ตัวพิมพ์เล็ก และตัวเลข
+                  </p>
+                </div>
                 <button
-                  onClick={() => setExpandedManual(expandedManual === i ? null : i)}
-                  style={{
-                    width: '100%', padding: '14px 16px', background: 'transparent', border: 'none',
-                    display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', textAlign: 'left',
-                  }}
+                  type="button"
+                  className={styles.modalClose}
+                  onClick={() => setPasswordModal(false)}
                 >
-                  <span style={{ fontSize: 22, flexShrink: 0 }}>{item.icon}</span>
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: 800, color: '#1E4D3A', fontFamily: 'var(--font-primary)' }}>{item.title}</span>
-                  <span style={{ color: '#C9A84C', fontSize: 18, fontWeight: 700, transition: 'transform 0.2s', transform: expandedManual === i ? 'rotate(90deg)' : 'rotate(0)' }}>›</span>
+                  <StudentIcon name="x" size={17} />
                 </button>
-                {expandedManual === i && (
-                  <div style={{ padding: '0 16px 16px', borderTop: '1px solid #EDE9E1' }}>
-                    <p style={{ fontSize: 12.5, color: '#4A4138', lineHeight: 1.7, margin: '12px 0 0' }}>{item.content}</p>
-                  </div>
-                )}
+              </header>
+              <div className={styles.modalBody}>
+                {[
+                  ["รหัสผ่านปัจจุบัน", "current"],
+                  ["รหัสผ่านใหม่", "next"],
+                  ["ยืนยันรหัสผ่านใหม่", "confirm"],
+                ].map(([label, key]) => (
+                  <label className={styles.field} key={key}>
+                    <span>{label}</span>
+                    <div className={styles.passwordWrap}>
+                      <input
+                        className={styles.input}
+                        type={showPasswords ? "text" : "password"}
+                        value={passwords[key as keyof typeof passwords]}
+                        onChange={(e) =>
+                          setPasswords({ ...passwords, [key]: e.target.value })
+                        }
+                      />
+                      <button
+                        type="button"
+                        className={styles.eyeButton}
+                        onClick={() => setShowPasswords(!showPasswords)}
+                      >
+                        <StudentIcon
+                          name={showPasswords ? "eyeOff" : "eye"}
+                          size={16}
+                        />
+                      </button>
+                    </div>
+                  </label>
+                ))}
               </div>
-            ))}
+              <footer className={styles.modalFooter}>
+                <button
+                  type="button"
+                  className={styles.outlineButton}
+                  onClick={() => setPasswordModal(false)}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  className={styles.button}
+                  disabled={saving}
+                  onClick={changePassword}
+                >
+                  {saving ? "กำลังบันทึก..." : "ยืนยันการเปลี่ยน"}
+                </button>
+              </footer>
+            </section>
+          </div>
+        )}
+
+        {submitTask && (
+          <div
+            className={styles.modalBackdrop}
+            onMouseDown={(event) =>
+              event.target === event.currentTarget && closeSubmission()
+            }
+          >
+            <section
+              className={styles.modal}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="submit-task-title"
+            >
+              <header className={styles.modalHeader}>
+                <span className={`${styles.iconBox} ${styles.goldIcon}`}>
+                  <StudentIcon name="task" />
+                </span>
+                <div>
+                  <h2 id="submit-task-title">ส่งงาน</h2>
+                  <p>{submitTask.title}</p>
+                </div>
+                <button
+                  type="button"
+                  className={styles.modalClose}
+                  onClick={closeSubmission}
+                  aria-label="ปิดหน้าต่างส่งงาน"
+                >
+                  <StudentIcon name="x" size={17} />
+                </button>
+              </header>
+              <div className={styles.modalBody}>
+                <label className={styles.field}>
+                  <span>ชื่อผลงานหรือหมายเหตุ</span>
+                  <input
+                    className={styles.input}
+                    value={submission.attachmentName}
+                    onChange={(event) =>
+                      setSubmission((value) => ({
+                        ...value,
+                        attachmentName: event.target.value,
+                      }))
+                    }
+                    maxLength={240}
+                    placeholder="เช่น แบบฝึกหัดบทที่ 1"
+                  />
+                </label>
+                <label className={styles.field}>
+                  <span>อัปโหลดไฟล์จากเครื่อง (ไม่เกิน 12 MB)</span>
+                  <input
+                    className={styles.input}
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp,.txt,.doc,.docx,.ppt,.pptx"
+                    onChange={(event) =>
+                      setSubmissionFile(event.target.files?.[0] || null)
+                    }
+                  />
+                </label>
+                <label className={styles.field}>
+                  <span>หรือลิงก์ผลงาน</span>
+                  <input
+                    className={styles.input}
+                    type="url"
+                    inputMode="url"
+                    value={submission.attachmentUrl}
+                    onChange={(event) =>
+                      setSubmission((value) => ({
+                        ...value,
+                        attachmentUrl: event.target.value,
+                      }))
+                    }
+                    maxLength={2000}
+                    placeholder="https://..."
+                  />
+                </label>
+                <div className={styles.notice}>
+                  <StudentIcon name="info" size={17} />
+                  <span>
+                    {submissionFile
+                      ? `เลือกไฟล์ ${submissionFile.name}`
+                      : "เลือกอัปโหลดไฟล์เข้าเครื่อง local หรือระบุลิงก์ภายนอกอย่างใดอย่างหนึ่ง"}
+                  </span>
+                </div>
+              </div>
+              <footer className={styles.modalFooter}>
+                <button
+                  type="button"
+                  className={styles.outlineButton}
+                  onClick={closeSubmission}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  className={styles.button}
+                  disabled={saving}
+                  onClick={submitAssignment}
+                >
+                  {saving ? "กำลังส่งงาน..." : "ยืนยันการส่งงาน"}
+                </button>
+              </footer>
+            </section>
+          </div>
+        )}
+
+        {certificateModal && certificate && (
+          <div
+            className={styles.modalBackdrop}
+            onMouseDown={(event) =>
+              event.target === event.currentTarget && setCertificateModal(false)
+            }
+          >
+            <section
+              className={`${styles.modal} ${styles.certificate}`}
+              role="dialog"
+              aria-modal="true"
+            >
+              <div className={styles.certificateSheet}>
+                <small>Certificate of competency</small>
+                <h2>เกียรติบัตรรับรองสมรรถนะ F&amp;B Service</h2>
+                <p>มอบให้แก่</p>
+                <div className={styles.certificateName}>
+                  {certificate.issuedName}
+                </div>
+                <p>
+                  ผ่านเกณฑ์การฝึกทักษะตามกรอบ FINE Model ด้วยคะแนนรวม{" "}
+                  {certificate.overallScore}%
+                </p>
+                <div className={styles.certificateMeta}>
+                  <span>{certificate.schoolName || "FINE Model"}</span>
+                  <span>{certificate.certificateCode}</span>
+                </div>
+              </div>
+              <div className={styles.certificateActions}>
+                <Link
+                  className={styles.outlineButton}
+                  href={`/verify/${certificate.certificateCode}`}
+                  target="_blank"
+                >
+                  ตรวจสอบใบรับรอง
+                </Link>
+                <button
+                  type="button"
+                  className={styles.button}
+                  onClick={() => window.print()}
+                >
+                  พิมพ์ใบรับรอง
+                </button>
+                <button
+                  type="button"
+                  className={styles.outlineButton}
+                  onClick={() => setCertificateModal(false)}
+                >
+                  ปิด
+                </button>
+              </div>
+            </section>
           </div>
         )}
       </div>
-
-      {/* Certificate Modal */}
-      {showCert && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(16,43,31,0.6)', zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }} onClick={() => setShowCert(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ background: '#FDFAF4', borderRadius: 24, padding: '24px', width: '100%', maxWidth: 420, animation: 'fadeInUp 0.3s ease' }}>
-            <div style={{ background: 'linear-gradient(135deg,#102B1F,#1E4D3A)', borderRadius: 18, padding: '24px', border: '3px solid #C9A84C', textAlign: 'center', marginBottom: 16 }}>
-              <div style={{ fontSize: 10, color: '#C9A84C', fontWeight: 800, letterSpacing: '2px', marginBottom: 10 }}>CERTIFICATE OF COMPETENCY</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: 'white', marginBottom: 12 }}>{'เกียรติบัตรรับรองสมรรถนะ F&B Service'}</div>
-              <div style={{ width: 40, height: 1, background: '#C9A84C', margin: '0 auto 12px' }} />
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.65)', marginBottom: 6 }}>มอบให้แก่</div>
-              <div style={{ fontSize: 18, fontWeight: 800, color: '#C9A84C', marginBottom: 16 }}>{user?.name}</div>
-              <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.8)', lineHeight: 1.7, margin: '0 0 20px' }}>{'ผ่านเกณฑ์การฝึกทักษะตามกรอบ FINE Model ด้านการสื่อสารและบริการอาหาร มีคะแนนสัมฤทธิ์เฉลี่ยรวม '}{overall}{'%'}</p>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'rgba(255,255,255,0.5)', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: 10 }}>
-                <span>สถาบัน: {user?.school}</span>
-                <span>รหัส: FINE-FB-{registryStudent?.id || '001'}</span>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button onClick={() => toast.info('กำลังเตรียมคำสั่งพิมพ์...')} style={{ flex: 1, padding: '12px', borderRadius: 12, border: 'none', background: 'linear-gradient(135deg,#102B1F,#1E4D3A)', color: 'white', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--font-primary)' }}>พิมพ์ PDF</button>
-              <button onClick={() => setShowCert(false)} style={{ flex: 1, padding: '12px', borderRadius: 12, border: '1.5px solid #EDE9E1', background: 'white', color: '#8C8272', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-primary)' }}>ปิด</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <style jsx global>{`
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(16px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-    </div>
-  )
+    </main>
+  );
 }

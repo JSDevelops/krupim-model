@@ -20,6 +20,7 @@ type ActiveProfile = {
   phone: string | null
   bio: string | null
   created_at: string
+  session_version: number
 }
 
 export async function GET(request: NextRequest) {
@@ -28,14 +29,14 @@ export async function GET(request: NextRequest) {
     if (!token) return NextResponse.json({ session: null })
     const sessionUser = await verifySessionToken(token)
     const result = await queryDb<ActiveProfile>(`
-      SELECT id, email, name, role, requested_role, approval_status, avatar_url,
-             school_id, school_name, phone, bio, created_at
-      FROM profiles
-      WHERE id = $1
+      SELECT p.id, p.email, p.name, p.role, p.requested_role, p.approval_status, p.avatar_url,
+             p.school_id, p.school_name, p.phone, p.bio, p.created_at, u.session_version
+      FROM profiles p JOIN app_users u ON u.id=p.id
+      WHERE p.id = $1
       LIMIT 1
     `, [sessionUser.id])
     const profile = result.rows[0]
-    if (!profile || profile.approval_status !== 'active' || profile.role !== sessionUser.role) {
+    if (!profile || profile.approval_status !== 'active' || profile.role !== sessionUser.role || profile.session_version !== sessionUser.sessionVersion) {
       const response = NextResponse.json({ session: null }, { status: 401 })
       clearSessionCookie(response)
       return response
@@ -53,4 +54,3 @@ export async function GET(request: NextRequest) {
     return response
   }
 }
-

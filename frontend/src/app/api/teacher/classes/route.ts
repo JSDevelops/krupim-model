@@ -1,6 +1,8 @@
+import { randomBytes } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { queryDb, withTransaction } from '@/lib/db'
 import { ApiError, apiErrorResponse, guardApi, type AuthUser } from '../../_lib/auth'
+import { removeLocalStoredFiles } from '@/lib/localFileStorage'
 
 type ClassInput = {
   action?: unknown
@@ -12,6 +14,8 @@ type ClassInput = {
   classId?: unknown
   studentEmail?: unknown
   emails?: unknown
+  maxUses?: unknown
+  expiresInDays?: unknown
 }
 
 function text(value: unknown, label: string, max: number, required = false) {
@@ -106,6 +110,32 @@ export async function POST(request: NextRequest) {
     const classId = text(payload.classId, 'รหัสห้องเรียน', 80, true)
     await ownedClass(user, classId)
 
+    if (action === 'create_invite') {
+      const maxUses = numberValue(payload.maxUses ?? 30, 'จำนวนผู้ใช้รหัส', 1, 500)
+      const expiresInDays = numberValue(payload.expiresInDays ?? 7, 'จำนวนวันหมดอายุ', 1, 30)
+      const classroom = await queryDb<{ name: string; teacher_name: string | null; school_name: string | null }>(`
+        SELECT c.name, teacher.name AS teacher_name, school.name AS school_name
+        FROM classes c
+        LEFT JOIN profiles teacher ON teacher.id=c.teacher_id
+        LEFT JOIN schools school ON school.id=c.school_id
+        WHERE c.id=$1::uuid LIMIT 1
+      `, [classId])
+      if (!classroom.rows[0]) throw new ApiError('ไม่พบห้องเรียน', 404, 'NOT_FOUND')
+      const code = randomBytes(6).toString('hex').slice(0, 10).toUpperCase()
+      const result = await queryDb(`
+        INSERT INTO class_invites (
+          short_code, class_id, created_by, target_class, teacher_name, school_name,
+          max_uses, expires_at
+        ) VALUES ($1,$2::uuid,$3::uuid,$4,$5,$6,$7,NOW()+($8::text || ' days')::interval)
+        RETURNING short_code AS code, target_class AS "className", max_uses AS "maxUses",
+                  use_count AS "useCount", expires_at AS "expiresAt"
+      `, [
+        code, classId, user.id, classroom.rows[0].name, classroom.rows[0].teacher_name,
+        classroom.rows[0].school_name, maxUses, expiresInDays,
+      ])
+      return NextResponse.json({ invite: result.rows[0] }, { status: 201 })
+    }
+
     if (action === 'add_student') {
       const email = text(payload.studentEmail, 'อีเมลนักเรียน', 254, true).toLocaleLowerCase('en-US')
       const student = await queryDb<{ id: string; name: string; email: string }>(`
@@ -118,6 +148,11 @@ export async function POST(request: NextRequest) {
         ON CONFLICT (class_id, student_id) DO NOTHING RETURNING id
       `, [classId, student.rows[0].id])
       if (!inserted.rows[0]) throw new ApiError('นักเรียนอยู่ในห้องนี้แล้ว', 409, 'ALREADY_ENROLLED')
+      await queryDb(`
+        INSERT INTO notifications (user_id,title,message,type,link_url)
+        SELECT $1::uuid,'เข้าร่วมชั้นเรียนแล้ว','คุณถูกเพิ่มเข้า ' || name,'success','/student/dashboard'
+        FROM classes WHERE id=$2::uuid
+      `, [student.rows[0].id, classId])
       return NextResponse.json({ student: student.rows[0] }, { status: 201 })
     }
 
@@ -137,6 +172,13 @@ export async function POST(request: NextRequest) {
             ON CONFLICT (class_id, student_id) DO NOTHING RETURNING id
           `, [classId, student.id])
           added += inserted.rowCount || 0
+          if (inserted.rowCount) {
+            await client.query(`
+              INSERT INTO notifications (user_id,title,message,type,link_url)
+              SELECT $1::uuid,'เข้าร่วมชั้นเรียนแล้ว','คุณถูกเพิ่มเข้า ' || name,'success','/student/dashboard'
+              FROM classes WHERE id=$2::uuid
+            `, [student.id, classId])
+          }
         }
         const found = new Set(students.rows.map(student => student.email.toLocaleLowerCase('en-US')))
         return { added, missing: emails.filter(email => !found.has(email)) }
@@ -187,8 +229,18 @@ export async function DELETE(request: NextRequest) {
       const values: unknown[] = [classId]
       const ownership = user.role === 'developer' ? '' : ' AND teacher_id=$2'
       if (user.role !== 'developer') values.push(user.id)
-      const result = await queryDb(`DELETE FROM classes WHERE id=$1::uuid${ownership} RETURNING id`, values)
-      if (!result.rows[0]) throw new ApiError('ไม่พบห้องเรียนหรือคุณไม่มีสิทธิ์ลบ', 404, 'NOT_FOUND')
+      const storageNames = await withTransaction(async client => {
+        const files = await client.query<{ storage_name: string }>(`
+          SELECT f.storage_name FROM stored_files f
+          JOIN assignments a ON a.id=f.assignment_id
+          JOIN classes c ON c.id=a.class_id
+          WHERE c.id=$1::uuid${user.role === 'developer' ? '' : ' AND c.teacher_id=$2::uuid'}
+        `, values)
+        const result = await client.query(`DELETE FROM classes WHERE id=$1::uuid${ownership} RETURNING id`, values)
+        if (!result.rows[0]) throw new ApiError('ไม่พบห้องเรียนหรือคุณไม่มีสิทธิ์ลบ', 404, 'NOT_FOUND')
+        return files.rows.map(file => file.storage_name)
+      })
+      await removeLocalStoredFiles(storageNames)
       return NextResponse.json({ deletedId: classId })
     }
 

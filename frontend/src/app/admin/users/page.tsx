@@ -632,12 +632,12 @@ export default function AdminUsersPage() {
                   <span className={styles.passwordField}>
                     <input
                       required
-                      minLength={8}
+                      minLength={10}
                       type={visiblePasswords.create ? 'text' : 'password'}
                       autoComplete="new-password"
                       value={createForm.password}
                       onChange={event => setCreateForm(current => ({ ...current, password: event.target.value }))}
-                      placeholder="อย่างน้อย 8 ตัวอักษร"
+                      placeholder="อย่างน้อย 10 ตัวอักษร พร้อมตัวพิมพ์ใหญ่และตัวเลข"
                     />
                     <button
                       type="button"
@@ -654,7 +654,7 @@ export default function AdminUsersPage() {
                   <span className={styles.passwordField}>
                     <input
                       required
-                      minLength={8}
+                      minLength={10}
                       type={visiblePasswords.createConfirm ? 'text' : 'password'}
                       autoComplete="new-password"
                       value={createForm.confirmPassword}
@@ -796,12 +796,12 @@ export default function AdminUsersPage() {
                   <span>รหัสผ่านใหม่ <small>ไม่เปลี่ยนให้เว้นว่าง</small></span>
                   <span className={styles.passwordField}>
                     <input
-                      minLength={8}
+                      minLength={10}
                       type={visiblePasswords.edit ? 'text' : 'password'}
                       autoComplete="new-password"
                       value={editForm.password}
                       onChange={event => setEditForm(current => ({ ...current, password: event.target.value }))}
-                      placeholder="อย่างน้อย 8 ตัวอักษร"
+                      placeholder="อย่างน้อย 10 ตัวอักษร พร้อมตัวพิมพ์ใหญ่และตัวเลข"
                     />
                     <button
                       type="button"
@@ -817,7 +817,7 @@ export default function AdminUsersPage() {
                   <span>ยืนยันรหัสผ่านใหม่</span>
                   <span className={styles.passwordField}>
                     <input
-                      minLength={8}
+                      minLength={10}
                       type={visiblePasswords.editConfirm ? 'text' : 'password'}
                       autoComplete="new-password"
                       value={editForm.confirmPassword}

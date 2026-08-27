@@ -9,6 +9,33 @@ type TripoResponse = {
     result?: { model?: { glb?: string } }
   }
 }
+
+function developmentPreview(topic: string) {
+  const lowerTopic = topic.toLowerCase()
+  if (lowerTopic.includes('glass') || lowerTopic.includes('wine') || lowerTopic.includes('แก้ว')) {
+    return {
+      glbUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WineGlass/glTF-Binary/WineGlass.glb',
+      usdzUrl: 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz',
+    }
+  }
+  if (lowerTopic.includes('teapot') || lowerTopic.includes('กา')) {
+    return {
+      glbUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb',
+      usdzUrl: 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz',
+    }
+  }
+  if (lowerTopic.includes('bottle') || lowerTopic.includes('water') || lowerTopic.includes('ขวด')) {
+    return {
+      glbUrl: 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/WaterBottle/glTF-Binary/WaterBottle.glb',
+      usdzUrl: 'https://developer.apple.com/augmented-reality/quick-look/models/waterbottle/waterbottle.usdz',
+    }
+  }
+  return {
+    glbUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.glb',
+    usdzUrl: 'https://modelviewer.dev/shared-assets/models/Astronaut.usdz',
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     await guardApi(req, { roles: ['teacher', 'developer'], maxRequests: 4 })
@@ -25,58 +52,50 @@ export async function POST(req: NextRequest) {
     }
 
     const tripoKey = (process.env.TRIPO_API_KEY || '').trim()
-    let glbUrl = ''
-    let usdzUrl = ''
-    const isMocked = true
-    let submittedTaskId: string | undefined
+    const tripoConfigured = Boolean(tripoKey && tripoKey !== 'your_tripo_api_key_here')
 
-    // 1. Try Tripo3D API — NON-BLOCKING: submit task, return taskId immediately
-    if (tripoKey && tripoKey !== 'your_tripo_api_key_here') {
+    // Submit asynchronously. The client must poll the status endpoint for the generated asset.
+    if (tripoConfigured) {
       try {
         const tripoResp = await fetch('https://api.tripo3d.ai/v2/openapi/task', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${tripoKey}` },
           body: JSON.stringify({ type: 'text_to_model', prompt: topic })
         })
-        if (tripoResp.ok) {
-          const tripoData = await tripoResp.json() as TripoResponse
-          if (tripoData.code === 0 && tripoData.data?.task_id) {
-            const taskId = tripoData.data.task_id as string
-            submittedTaskId = taskId
-          }
+        const tripoData = await tripoResp.json() as TripoResponse
+        if (!tripoResp.ok || tripoData.code !== 0 || !tripoData.data?.task_id) {
+          return NextResponse.json({ error: 'Tripo3D ไม่สามารถรับงานสร้างโมเดลได้' }, { status: 502 })
         }
+        return NextResponse.json({
+          success: true,
+          topic: topic.trim(),
+          status: 'pending',
+          taskId: tripoData.data.task_id,
+          glbUrl: '',
+          usdzUrl: '',
+          preview: false,
+          provider: 'Tripo3D',
+        }, { status: 202 })
       } catch (err: unknown) {
         console.error('Tripo3D API error:', getErrorMessage(err))
+        return NextResponse.json({ error: 'ไม่สามารถเชื่อมต่อ Tripo3D ได้' }, { status: 502 })
       }
     }
 
-    // 2. Fallback: curated sample GLB models
-    if (isMocked) {
-      const lowerTopic = topic.toLowerCase()
-      if (lowerTopic.includes('glass') || lowerTopic.includes('wine') || lowerTopic.includes('แก้ว')) {
-        glbUrl = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/WineGlass/glTF-Binary/WineGlass.glb'
-        usdzUrl = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
-      } else if (lowerTopic.includes('teapot') || lowerTopic.includes('กา')) {
-        glbUrl = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/UtahTeapot/glTF-Binary/UtahTeapot.glb'
-        usdzUrl = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
-      } else if (lowerTopic.includes('bottle') || lowerTopic.includes('water') || lowerTopic.includes('ขวด')) {
-        glbUrl = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/WaterBottle/glTF-Binary/WaterBottle.glb'
-        usdzUrl = 'https://developer.apple.com/augmented-reality/quick-look/models/waterbottle/waterbottle.usdz'
-      } else if (lowerTopic.includes('cake') || lowerTopic.includes('เค้ก')) {
-        glbUrl = 'https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Assets/main/Models/Cake/glTF-Binary/Cake.glb'
-        usdzUrl = 'https://developer.apple.com/augmented-reality/quick-look/models/teapot/teapot.usdz'
-      } else {
-        glbUrl = `https://modelviewer.dev/shared-assets/models/Astronaut.glb`
-        usdzUrl = `https://modelviewer.dev/shared-assets/models/Astronaut.usdz`
-      }
+    if (process.env.NODE_ENV !== 'production') {
+      const preview = developmentPreview(topic)
+      return NextResponse.json({
+        success: true,
+        topic: topic.trim(),
+        ...preview,
+        status: 'preview',
+        taskId: null,
+        preview: true,
+        provider: 'Development sample',
+      })
     }
 
-    return NextResponse.json({
-      success: true, topic, glbUrl, usdzUrl,
-      status: submittedTaskId ? 'pending' : 'success',
-      taskId: submittedTaskId,
-      provider: submittedTaskId ? 'Tripo3D (sample shown while processing)' : '3D Sample Model'
-    })
+    return NextResponse.json({ error: 'ยังไม่ได้ตั้งค่า TRIPO_API_KEY สำหรับการสร้างโมเดล 3D' }, { status: 503 })
   } catch (err: unknown) {
     const message = getErrorMessage(err)
     console.error('3D Generation Error:', message)

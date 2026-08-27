@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  serverExternalPackages: ['@google/generative-ai', 'pg'],
+  serverExternalPackages: ['@google/generative-ai', 'nodemailer', 'pg'],
   images: {
     remotePatterns: [
       // GitHub raw content (3D sample models)

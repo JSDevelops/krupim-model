@@ -101,7 +101,7 @@ function loginErrorMessage(error: unknown) {
 function destinationFor(role: UserRole) {
   if (role === 'developer') return '/admin/dashboard'
   if (role === 'teacher') return '/teacher/dashboard'
-  return '/student/explore'
+  return '/student/dashboard'
 }
 
 export default function RoleSelectPage() {
@@ -281,7 +281,7 @@ export default function RoleSelectPage() {
                     <Icon name={showPassword ? 'eyeOff' : 'eye'} size={20} />
                   </button>
                 </div>
-                <p id="password-help" className={styles.helpText}>หากลืมรหัสผ่าน โปรดติดต่อผู้ดูแลระบบ</p>
+                <p id="password-help" className={styles.helpText}>ลืมรหัสผ่าน? <Link href="/forgot-password">กู้คืนบัญชี</Link> หรือติดต่อผู้ดูแลระบบ</p>
               </div>
 
               <button className={styles.submit} type="submit" disabled={loading}>

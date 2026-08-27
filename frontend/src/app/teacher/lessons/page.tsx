@@ -22,6 +22,7 @@ type LessonSummary = {
   objectiveCount: number
   vocabularyCount: number
   complete: boolean
+  publicationStatus: 'draft' | 'published'
 }
 
 type LessonDetail = Omit<LessonSummary, 'objectiveCount' | 'vocabularyCount' | 'complete'> & {
@@ -38,6 +39,7 @@ type LessonDetail = Omit<LessonSummary, 'objectiveCount' | 'vocabularyCount' | '
   activitiesN: string
   activitiesE: string
   activitiesWrap: string
+  publicationStatus: 'draft' | 'published'
 }
 
 type LessonForm = {
@@ -61,12 +63,14 @@ type LessonForm = {
   activitiesN: string
   activitiesE: string
   activitiesWrap: string
+  publicationStatus: 'draft' | 'published'
 }
 
 const emptyForm: LessonForm = {
   title: '', subject: '', level: '', term: '', duration: '', targetClass: '', weeks: '', concept: '',
   objectivesK: '', objectivesS: '', objectivesA: '', objectivesAP: '', vocabulary: '', sentences: '',
   activitiesLead: '', activitiesF: '', activitiesI: '', activitiesN: '', activitiesE: '', activitiesWrap: '',
+  publicationStatus: 'draft',
 }
 
 const editorSteps: Array<{ title: string; description: string; icon: AdminIconName }> = [
@@ -94,6 +98,7 @@ function formFromDetail(lesson: LessonDetail): LessonForm {
     vocabulary: (lesson.vocabulary || []).join('\n'), sentences: (lesson.sentences || []).join('\n'),
     activitiesLead: lesson.activitiesLead || '', activitiesF: lesson.activitiesF || '', activitiesI: lesson.activitiesI || '',
     activitiesN: lesson.activitiesN || '', activitiesE: lesson.activitiesE || '', activitiesWrap: lesson.activitiesWrap || '',
+    publicationStatus: lesson.publicationStatus || 'draft',
   }
 }
 
@@ -114,6 +119,7 @@ function summaryFromDetail(lesson: LessonDetail): LessonSummary {
     createdAt: lesson.createdAt, updatedAt: lesson.updatedAt, objectiveCount,
     vocabularyCount: lesson.vocabulary.length,
     complete: Boolean(lesson.concept && lesson.activitiesF && lesson.activitiesI && lesson.activitiesN && lesson.activitiesE),
+    publicationStatus: lesson.publicationStatus || 'draft',
   }
 }
 
@@ -139,12 +145,20 @@ export default function TeacherLessonsPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<LessonForm>(emptyForm)
   const [busyAction, setBusyAction] = useState<string | null>(null)
+  const [availableClasses, setAvailableClasses] = useState<string[]>([])
 
   const loadLessons = useCallback(async (signal?: AbortSignal) => {
-    const response = await authenticatedFetch('/api/teacher/lessons', { cache: 'no-store', signal })
-    if (!response.ok) throw new Error(await responseError(response))
-    const payload = await response.json() as { lessons?: LessonSummary[] }
+    const [lessonResponse, classResponse] = await Promise.all([
+      authenticatedFetch('/api/teacher/lessons', { cache: 'no-store', signal }),
+      authenticatedFetch('/api/teacher/classes', { cache: 'no-store', signal }),
+    ])
+    if (!lessonResponse.ok) throw new Error(await responseError(lessonResponse))
+    const payload = await lessonResponse.json() as { lessons?: LessonSummary[] }
     setLessons(payload.lessons ?? [])
+    if (classResponse.ok) {
+      const classPayload = await classResponse.json() as { classrooms?: Array<{ name: string }> }
+      setAvailableClasses((classPayload.classrooms ?? []).map(item => item.name))
+    }
   }, [])
 
   useEffect(() => {
@@ -171,7 +185,10 @@ export default function TeacherLessonsPage() {
     return () => window.removeEventListener('keydown', closeOnEscape)
   }, [busyAction, editorOpen])
 
-  const classes = useMemo(() => Array.from(new Set(lessons.map(lesson => lesson.targetClass).filter(Boolean))).sort(), [lessons])
+  const classes = useMemo(() => Array.from(new Set([
+    ...availableClasses,
+    ...lessons.map(lesson => lesson.targetClass).filter(Boolean),
+  ])).sort(), [availableClasses, lessons])
   const visibleLessons = useMemo(() => {
     const keyword = deferredSearch.trim().toLocaleLowerCase('th-TH')
     return lessons.filter(lesson => {
@@ -348,7 +365,7 @@ export default function TeacherLessonsPage() {
             <article className={styles.lessonCard} key={lesson.id}>
               <div className={styles.lessonAccent}><AdminIcon name="content" size={19} /></div>
               <div className={styles.lessonMain}>
-                <div className={styles.lessonTitle}><span className={lesson.complete ? styles.readyBadge : styles.draftBadge}>{lesson.complete ? 'พร้อมใช้' : 'ฉบับร่าง'}</span><h3>{lesson.title}</h3></div>
+                <div className={styles.lessonTitle}><span className={lesson.publicationStatus === 'published' ? styles.readyBadge : styles.draftBadge}>{lesson.publicationStatus === 'published' ? 'เผยแพร่แล้ว' : 'ฉบับร่าง'}</span><h3>{lesson.title}</h3></div>
                 <p>{lesson.subject || 'ยังไม่ได้ระบุรายวิชา'}</p>
                 <div className={styles.lessonMeta}>
                   <span><AdminIcon name="school" size={13} /> {lesson.targetClass || 'ไม่ระบุห้อง'}</span>
@@ -387,7 +404,8 @@ export default function TeacherLessonsPage() {
                   <label className={styles.fullField}><span>ชื่อแผนการสอน *</span><input autoFocus required maxLength={240} value={form.title} onChange={event => updateField('title', event.target.value)} placeholder="เช่น Restaurant Equipment Vocabulary" /></label>
                   <label className={styles.fullField}><span>รายวิชา</span><input maxLength={300} value={form.subject} onChange={event => updateField('subject', event.target.value)} placeholder="รหัสและชื่อรายวิชา" /></label>
                   <label><span>ระดับชั้น</span><input value={form.level} onChange={event => updateField('level', event.target.value)} placeholder="เช่น ปวช.1" /></label>
-                  <label><span>ห้องเรียนเป้าหมาย</span><input value={form.targetClass} onChange={event => updateField('targetClass', event.target.value)} placeholder="เช่น ปวช.1/1" /></label>
+                  <label><span>ห้องเรียนเป้าหมาย</span><select value={form.targetClass} onChange={event => updateField('targetClass', event.target.value)}><option value="">ยังไม่เลือกห้องเรียน</option>{availableClasses.map(item => <option value={item} key={item}>{item}</option>)}</select></label>
+                  <label><span>การมองเห็นบทเรียน</span><select value={form.publicationStatus} onChange={event => updateField('publicationStatus', event.target.value as LessonForm['publicationStatus'])}><option value="draft">ฉบับร่าง — เฉพาะครู</option><option value="published">เผยแพร่ — นักเรียนในห้องมองเห็น</option></select></label>
                   <label><span>ภาคเรียน</span><input value={form.term} onChange={event => updateField('term', event.target.value)} placeholder="ภาคเรียนที่ 1/2569" /></label>
                   <label><span>สัปดาห์</span><input value={form.weeks} onChange={event => updateField('weeks', event.target.value)} placeholder="สัปดาห์ที่ 1–2" /></label>
                   <label><span>ระยะเวลา</span><input value={form.duration} onChange={event => updateField('duration', event.target.value)} placeholder="เช่น 4 ชั่วโมง" /></label>
