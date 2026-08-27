@@ -5,6 +5,7 @@ import AdminIcon from '@/components/admin/AdminIcon'
 import { confirmAction } from '@/components/AppConfirmDialog'
 import { authenticatedFetch } from '@/lib/api'
 import { toast } from 'sonner'
+import { useRole } from '@/context/RoleContext'
 import styles from '../management.module.css'
 
 type VocabularyItem = {
@@ -21,9 +22,10 @@ type VocabularyItem = {
   usdzUrl: string
   createdAt: string
   updatedAt: string
+  createdBy: string | null
 }
 
-type VocabularyForm = Omit<VocabularyItem, 'id' | 'createdAt' | 'updatedAt'>
+type VocabularyForm = Omit<VocabularyItem, 'id' | 'createdAt' | 'updatedAt' | 'createdBy'>
 
 const CATEGORY_PRESETS: Array<{ key: string; label: string }> = [
   { key: 'tableware', label: 'เครื่องใช้บนโต๊ะอาหาร' },
@@ -60,6 +62,7 @@ async function responseError(response: Response) {
 }
 
 export default function TeacherVocabularyPage() {
+  const { user } = useRole()
   const [items, setItems] = useState<VocabularyItem[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -103,7 +106,6 @@ export default function TeacherVocabularyPage() {
 
   const modelsCount = items.filter(item => item.glbUrl || item.usdzUrl).length
   const imageCount = items.filter(item => item.imageUrl).length
-  const completeCount = items.filter(item => item.pronounce && item.sentence && item.useDesc).length
   const summary = [
     { key: 'green', label: 'คำศัพท์ทั้งหมด', value: items.length, detail: 'รายการในคลังส่วนกลาง', icon: 'content' as const },
     { key: 'blue', label: 'หมวดหมู่', value: categories.length, detail: 'จัดกลุ่มเพื่อค้นหาเร็วขึ้น', icon: 'archive' as const },
@@ -174,45 +176,45 @@ export default function TeacherVocabularyPage() {
     setForm(current => ({ ...current, [key]: value }))
   }
 
-function processImageToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    if (!file.type.startsWith('image/')) {
-      reject(new Error('กรุณาเลือกไฟล์รูปภาพ (PNG, JPEG, WebP)'))
-      return
-    }
-    if (file.size > 12 * 1024 * 1024) {
-      reject(new Error('ไฟล์ต้นฉบับต้องมีขนาดไม่เกิน 12 MB'))
-      return
-    }
-    const reader = new FileReader()
-    reader.onerror = () => reject(new Error('อ่านไฟล์รูปภาพไม่สำเร็จ'))
-    reader.onload = () => {
-      const img = new Image()
-      img.onerror = () => reject(new Error('รูปภาพไม่ถูกต้อง'))
-      img.onload = () => {
-        const maxDimension = 800
-        const scale = Math.min(1, maxDimension / Math.max(img.width, img.height))
-        const canvas = document.createElement('canvas')
-        canvas.width = Math.max(1, Math.round(img.width * scale))
-        canvas.height = Math.max(1, Math.round(img.height * scale))
-        const ctx = canvas.getContext('2d')
-        if (!ctx) {
-          resolve(String(reader.result))
-          return
-        }
-        if (file.type === 'image/png') {
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-          resolve(canvas.toDataURL('image/png'))
-        } else {
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-          resolve(canvas.toDataURL('image/webp', 0.88))
-        }
+  function processImageToDataUrl(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      if (!file.type.startsWith('image/')) {
+        reject(new Error('กรุณาเลือกไฟล์รูปภาพ (PNG, JPEG, WebP)'))
+        return
       }
-      img.src = String(reader.result)
-    }
-    reader.readAsDataURL(file)
-  })
-}
+      if (file.size > 12 * 1024 * 1024) {
+        reject(new Error('ไฟล์ต้นฉบับต้องมีขนาดไม่เกิน 12 MB'))
+        return
+      }
+      const reader = new FileReader()
+      reader.onerror = () => reject(new Error('อ่านไฟล์รูปภาพไม่สำเร็จ'))
+      reader.onload = () => {
+        const img = new Image()
+        img.onerror = () => reject(new Error('รูปภาพไม่ถูกต้อง'))
+        img.onload = () => {
+          const maxDimension = 800
+          const scale = Math.min(1, maxDimension / Math.max(img.width, img.height))
+          const canvas = document.createElement('canvas')
+          canvas.width = Math.max(1, Math.round(img.width * scale))
+          canvas.height = Math.max(1, Math.round(img.height * scale))
+          const ctx = canvas.getContext('2d')
+          if (!ctx) {
+            resolve(String(reader.result))
+            return
+          }
+          if (file.type === 'image/png') {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+            resolve(canvas.toDataURL('image/png'))
+          } else {
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+            resolve(canvas.toDataURL('image/webp', 0.88))
+          }
+        }
+        img.src = String(reader.result)
+      }
+      reader.readAsDataURL(file)
+    })
+  }
 
   async function handleFileUpload(event: ChangeEvent<HTMLInputElement>, field: 'imageUrl' | 'glbUrl' | 'usdzUrl') {
     const file = event.target.files?.[0]
@@ -420,12 +422,18 @@ function processImageToDataUrl(file: File): Promise<string> {
                 </div>
 
                 <div className={styles.rowActions}>
-                  <button type="button" onClick={() => openEdit(item)} title="แก้ไขคำศัพท์">
-                    <AdminIcon name="edit" size={16} />
-                  </button>
-                  <button className={styles.dangerIconButton} type="button" onClick={() => void remove(item)} disabled={Boolean(busy)} title="ลบคำศัพท์">
-                    <AdminIcon name="trash" size={16} />
-                  </button>
+                  {(user?.role === 'developer' || !item.createdBy || item.createdBy === user?.id) ? (
+                    <>
+                      <button type="button" onClick={() => openEdit(item)} title="แก้ไขคำศัพท์">
+                        <AdminIcon name="edit" size={16} />
+                      </button>
+                      <button className={styles.dangerIconButton} type="button" onClick={() => void remove(item)} disabled={Boolean(busy)} title="ลบคำศัพท์">
+                        <AdminIcon name="trash" size={16} />
+                      </button>
+                    </>
+                  ) : (
+                    <span className={styles.neutralBadge}>ส่วนกลาง</span>
+                  )}
                 </div>
               </article>
             ))

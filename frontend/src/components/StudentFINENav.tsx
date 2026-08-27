@@ -1,293 +1,125 @@
 'use client'
-import { useState, useEffect } from 'react'
+
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { authenticatedFetch } from '@/lib/api'
+import styles from './StudentFINENav.module.css'
 
-const TABS = [
-  {
-    href: '/student/explore',
-    letter: 'F',
-    sub: 'สแกน',
-    grad: ['#0D2318', '#1E4D3A'],
-    dot: '#2A6B52',
-    glow: 'rgba(30,77,58,0.45)',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect x="3" y="3" width="7" height="7" rx="1.5"/>
-        <rect x="14" y="3" width="7" height="7" rx="1.5"/>
-        <rect x="3" y="14" width="7" height="7" rx="1.5"/>
-        <rect x="14" y="14" width="3" height="3" rx="0.5"/>
-        <rect x="19" y="14" width="2" height="2" rx="0.5"/>
-        <rect x="14" y="19" width="2" height="2" rx="0.5"/>
-        <rect x="19" y="19" width="2" height="2" rx="0.5"/>
-      </svg>
-    ),
-  },
-  {
-    href: '/student/interact',
-    letter: 'I',
-    sub: 'สนทนา',
-    grad: ['#0C1824', '#1A3A5C'],
-    dot: '#2D4A6E',
-    glow: 'rgba(26,58,92,0.45)',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-      </svg>
-    ),
-  },
-  {
-    href: '/student/navigate',
-    letter: 'N',
-    sub: 'จำลอง',
-    grad: ['#2A0C12', '#6B1A2A'],
-    dot: '#7B2D3E',
-    glow: 'rgba(107,26,42,0.45)',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="3 11 22 2 13 21 11 13 3 11"/>
-      </svg>
-    ),
-  },
-  {
-    href: '/student/exhibit',
-    letter: 'E',
-    sub: 'ทดสอบ',
-    grad: ['#0C1E0E', '#1A4A1F'],
-    dot: '#2A5A2F',
-    glow: 'rgba(26,74,31,0.45)',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-      </svg>
-    ),
-  },
-  {
-    href: '/student/profile',
-    letter: 'P',
-    sub: 'Portfolio',
-    grad: ['#3A2808', '#8B5E1A'],
-    dot: '#C9A84C',
-    glow: 'rgba(201,168,76,0.45)',
-    icon: (
-      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-        <circle cx="12" cy="7" r="4"/>
-      </svg>
-    ),
-  },
+type FineLetter = 'F' | 'I' | 'N' | 'E' | 'P'
+type NavIcon = 'explore' | 'interact' | 'navigate' | 'exhibit' | 'profile'
+type TaskCounts = Record<FineLetter, number>
+
+type NavItem = {
+  href: string
+  letter: FineLetter
+  label: string
+  fineLabel: string
+  icon: NavIcon
+  aliases?: string[]
+}
+
+const EMPTY_COUNTS: TaskCounts = { F: 0, I: 0, N: 0, E: 0, P: 0 }
+
+const TABS: NavItem[] = [
+  { href: '/student/explore', letter: 'F', label: 'สำรวจ', fineLabel: 'Familiarize', icon: 'explore' },
+  { href: '/student/interact', letter: 'I', label: 'ฝึกพูด', fineLabel: 'Interact', icon: 'interact', aliases: ['/chat', '/live'] },
+  { href: '/student/navigate', letter: 'N', label: 'สถานการณ์', fineLabel: 'Navigate', icon: 'navigate', aliases: ['/simulation', '/student/simulation'] },
+  { href: '/student/exhibit', letter: 'E', label: 'ทบทวน', fineLabel: 'Exhibit', icon: 'exhibit' },
+  { href: '/student/profile', letter: 'P', label: 'โปรไฟล์', fineLabel: 'Portfolio', icon: 'profile', aliases: ['/student/progress'] },
 ]
+
+function FineNavIcon({ name }: { name: NavIcon }) {
+  const common = {
+    width: 21,
+    height: 21,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.9,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true,
+  }
+
+  if (name === 'explore') return <svg {...common}><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><circle cx="12" cy="12" r="3"/><path d="M12 7v2M12 15v2M7 12h2M15 12h2"/></svg>
+  if (name === 'interact') return <svg {...common}><path d="M21 14a3 3 0 0 1-3 3H9l-5 4v-4a3 3 0 0 1-2-3V6a3 3 0 0 1 3-3h13a3 3 0 0 1 3 3Z"/><path d="M7 8h10M7 12h6"/></svg>
+  if (name === 'navigate') return <svg {...common}><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/><path d="m9.5 6.2 5 2.7"/></svg>
+  if (name === 'exhibit') return <svg {...common}><path d="M9 4h6M10 2h4v4h-4z"/><rect x="5" y="5" width="14" height="17" rx="2"/><path d="m8 13 2 2 5-5M8 18h8"/></svg>
+  return <svg {...common}><circle cx="12" cy="8" r="4"/><path d="M4.5 21a7.5 7.5 0 0 1 15 0"/><path d="M18 5.5h3M19.5 4v3"/></svg>
+}
+
+function countsMatch(left: TaskCounts, right: TaskCounts) {
+  return left.F === right.F && left.I === right.I && left.N === right.N && left.E === right.E && left.P === right.P
+}
+
+function isCurrentPath(pathname: string, tab: NavItem) {
+  const paths = [tab.href, ...(tab.aliases || [])]
+  return paths.some(path => pathname === path || pathname.startsWith(path + '/'))
+}
 
 export default function StudentFINENav() {
   const pathname = usePathname()
-  const [taskCounts, setTaskCounts] = useState<Record<string, number>>({ F: 0, I: 0, N: 0, E: 0, P: 0 })
+  const [taskCounts, setTaskCounts] = useState<TaskCounts>(EMPTY_COUNTS)
 
-  // ดึงข้อมูลงานที่ค้างเพื่อทำระบบแจ้งเตือนสีแดง
   useEffect(() => {
-    const checkTasks = () => {
-      const stored = localStorage.getItem('studentTasks')
-      let list = []
-      if (stored) {
-        try { list = JSON.parse(stored) } catch (e) {}
-      } else {
-        // ค่าเริ่มต้นของงานที่ค้าง
-        list = [
-          { id: 't1', type: 'F-Familiarize', done: false },
-          { id: 't2', type: 'I-Interact', done: false },
-          { id: 't4', type: 'N-Navigate', done: false },
-        ]
-      }
-
-      const counts = { F: 0, I: 0, N: 0, E: 0, P: 0 }
-      list.forEach((t: any) => {
-        if (!t.done) {
-          if (t.type.includes('F-')) counts.F++
-          if (t.type.includes('I-')) counts.I++
-          if (t.type.includes('N-')) counts.N++
-          if (t.type.includes('E-')) counts.E++
-        }
-      })
-      // รวมงานค้างทั้งหมดโชว์ที่หน้า Profile (P)ด้วย
-      counts.P = counts.F + counts.I + counts.N + counts.E
-      setTaskCounts(counts)
+    const controller = new AbortController()
+    const updateCounts = async () => {
+      try {
+        const response = await authenticatedFetch('/api/student/dashboard', { signal: controller.signal })
+        if (!response.ok) return
+        const payload = await response.json() as { taskCounts?: TaskCounts }
+        const next = payload.taskCounts || EMPTY_COUNTS
+        setTaskCounts(previous => countsMatch(previous, next) ? previous : next)
+      } catch { /* session/layout guard handles authentication */ }
+    }
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') updateCounts()
     }
 
-    checkTasks()
-    // อัปเดตเมื่อเปลี่ยนหน้าหรือโฟกัสหน้าจอ
-    window.addEventListener('focus', checkTasks)
-    return () => window.removeEventListener('focus', checkTasks)
-  }, [pathname])
+    void updateCounts()
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void updateCounts()
+    }, 60_000)
+    window.addEventListener('focus', updateCounts)
+    window.addEventListener('storage', updateCounts)
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener('focus', updateCounts)
+      window.removeEventListener('storage', updateCounts)
+      document.removeEventListener('visibilitychange', handleVisibility)
+      controller.abort()
+    }
+  }, [])
 
   return (
-    <nav style={{
-      position: 'fixed',
-      bottom: 0,
-      left: '50%',
-      transform: 'translateX(-50%)',
-      width: '100%',
-      maxWidth: 500,
-      zIndex: 1100,
-      background: 'rgba(10, 8, 6, 0.93)',
-      backdropFilter: 'blur(28px) saturate(1.8)',
-      WebkitBackdropFilter: 'blur(28px) saturate(1.8)',
-      paddingBottom: 'calc(4px + env(safe-area-inset-bottom, 0px))',
-      boxShadow: '0 -1px 0 rgba(201,168,76,0.22), 0 -12px 40px rgba(0,0,0,0.45)',
-      overflow: 'visible',
-    }}>
-
-      {/* Gold shimmer top border */}
-      <div style={{
-        height: 1,
-        background: 'linear-gradient(90deg, transparent 0%, rgba(201,168,76,0.15) 10%, rgba(201,168,76,0.65) 40%, rgba(255,220,110,0.95) 50%, rgba(201,168,76,0.65) 60%, rgba(201,168,76,0.15) 90%, transparent 100%)',
-      }} />
-
-      {/* Tab row */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        height: 72,
-        padding: '0 8px',
-        gap: 3,
-        overflow: 'visible',
-      }}>
-        {TABS.map((tab) => {
-          const isActive = pathname === tab.href || pathname.startsWith(tab.href + '/')
-          const pendingCount = taskCounts[tab.letter as keyof typeof taskCounts] || 0
+    <div className={styles.dockWrap}>
+      <nav className={styles.dock} aria-label="เมนูหลักนักเรียน">
+        {TABS.map(tab => {
+          const active = isCurrentPath(pathname, tab)
+          const pendingCount = taskCounts[tab.letter]
 
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              style={{
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 4,
-                textDecoration: 'none',
-                borderRadius: 20,
-                padding: '6px 2px 8px',
-                position: 'relative',
-                WebkitTapHighlightColor: 'transparent',
-                cursor: 'pointer',
-                transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
-                
-                /* เมื่อกดปุ่ม (Active) ให้แสดงใหญ่ขึ้นและลอยสูงขึ้น */
-                transform: isActive ? 'translateY(-8px) scale(1.12)' : 'translateY(0) scale(1)',
-                zIndex: isActive ? 10 : 1,
-
-                /* Active background gradient */
-                background: isActive
-                  ? `linear-gradient(145deg, ${tab.grad[0]}, ${tab.grad[1]})`
-                  : 'transparent',
-                boxShadow: isActive
-                  ? `0 8px 24px ${tab.glow}, inset 0 1.5px 0 rgba(255,255,255,0.08), 0 0 0 1px rgba(255,255,255,0.04)`
-                  : 'none',
-              }}
+              prefetch={false}
+              aria-current={active ? 'page' : undefined}
+              aria-label={`${tab.label} — ${tab.fineLabel}${pendingCount ? `, มีงานค้าง ${pendingCount} รายการ` : ''}`}
+              className={`${styles.item} ${active ? styles.active : ''}`}
             >
-              {/* Notification Red Badge - แสดงเฉพาะบนแท็บพอร์ตโฟลิโอ (P) เท่านั้น */}
-              {tab.letter === 'P' && pendingCount > 0 && (
-                <span style={{
-                  position: 'absolute',
-                  top: 4,
-                  right: 12,
-                  background: '#FF4D4D',
-                  color: 'white',
-                  fontSize: '9px',
-                  fontWeight: 900,
-                  width: 15,
-                  height: 15,
-                  borderRadius: '50%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  boxShadow: '0 0 8px rgba(255,77,77,0.6)',
-                  zIndex: 12,
-                  animation: 'pulse-notification 1.5s infinite',
-                }}>
-                  {pendingCount}
-                </span>
-              )}
-
-              {/* Icon */}
-              <span style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 24,
-                height: 24,
-                color: isActive ? 'rgba(255,255,255,0.95)' : 'rgba(180,168,148,0.60)',
-                transition: 'color 0.3s, transform 0.3s',
-                transform: isActive ? 'scale(1.05)' : 'scale(1)',
-                filter: isActive ? `drop-shadow(0 2px 8px ${tab.glow})` : 'none',
-              }}>
-                {tab.icon}
+              {pendingCount > 0 && <span className={styles.badge} aria-hidden="true">{pendingCount > 99 ? '99+' : pendingCount}</span>}
+              <span className={styles.iconWrap}><FineNavIcon name={tab.icon} /></span>
+              <span className={styles.copy}>
+                <span className={styles.label}>{tab.label}</span>
+                <span className={styles.fineLabel}>{tab.letter} · {tab.fineLabel}</span>
               </span>
-
-              {/* Text Row */}
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 4,
-                transition: 'all 0.3s',
-              }}>
-                <span style={{
-                  fontSize: '9px',
-                  fontWeight: 900,
-                  color: isActive ? '#C9A84C' : 'rgba(180,168,148,0.50)',
-                  textShadow: isActive ? `0 0 8px rgba(201,168,76,0.50)` : 'none',
-                  fontFamily: 'var(--font-display), var(--font-primary)',
-                  lineHeight: 1,
-                }}>
-                  {tab.letter}
-                </span>
-
-                <span style={{
-                  fontSize: '7px',
-                  color: isActive ? 'rgba(255,255,255,0.40)' : 'rgba(180,168,148,0.30)',
-                  lineHeight: 1,
-                }}>·</span>
-
-                <span style={{
-                  fontSize: '9px',
-                  fontWeight: 700,
-                  color: isActive ? 'rgba(255,255,255,0.90)' : 'rgba(180,168,148,0.45)',
-                  fontFamily: 'var(--font-primary)',
-                  lineHeight: 1,
-                  letterSpacing: '0.1px',
-                }}>
-                  {tab.sub}
-                </span>
-              </div>
-
-              {/* Bottom active line */}
-              {isActive && (
-                <span style={{
-                  position: 'absolute',
-                  bottom: 3,
-                  left: '50%',
-                  transform: 'translateX(-50%)',
-                  width: 32,
-                  height: 2.5,
-                  borderRadius: 100,
-                  background: '#C9A84C',
-                  boxShadow: '0 0 6px rgba(201,168,76,0.6)',
-                }} />
-              )}
+              {active && <span className={styles.activeMark} aria-hidden="true" />}
             </Link>
           )
         })}
-      </div>
-
-      <style jsx global>{`
-        @keyframes pulse-notification {
-          0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 77, 77, 0.7); }
-          70% { transform: scale(1.15); box-shadow: 0 0 0 6px rgba(255, 77, 77, 0); }
-          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 77, 77, 0); }
-        }
-      `}</style>
-    </nav>
+      </nav>
+    </div>
   )
 }

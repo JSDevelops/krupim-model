@@ -1,170 +1,19 @@
 'use client'
 import Link from 'next/link'
+import { useEffect,useState } from 'react'
+import { authenticatedFetch } from '@/lib/api'
 import { useRole } from '@/context/RoleContext'
-import { useState, useEffect } from 'react'
+import StudentIcon,{type StudentIconName} from '../StudentIcon'
+import styles from '../studentPages.module.css'
 
-const featureTools = [
-  { href: '/student/learn', icon: '📚', label: 'บทเรียน', sub: 'Unit 2 กำลังเรียน', color: '#1E4D3A', bg: '#EAF3EE' },
-  { href: '/student/explore', icon: '🔍', label: 'สำรวจอุปกรณ์', sub: 'โมเดล 3D และ AR', color: '#A6882A', bg: '#FBF6E9' },
-  { href: '/ai-scan', icon: '🤖', label: 'AI Scan', sub: 'สแกนตรวจอุปกรณ์', color: '#1E4D3A', bg: '#EAF3EE' },
-  { href: '/chat', icon: '💬', label: 'Gemini Chat', sub: 'ผู้ช่วยสนทนา AI', color: '#A6882A', bg: '#FBF6E9' },
-  { href: '/simulation', icon: '🎭', label: 'Simulation', sub: 'จำลองสวมบทบาท', color: '#8B2635', bg: '#FAE8EB' },
-]
-
-const pendingTasks = [
-  { title: 'AI Scan — ระบุชิ้นอุปกรณ์จัดโต๊ะอาหาร', due: '29 มิ.ย. 2569', type: 'AI Scan', urgent: true, emoji: '🤖' },
-  { title: 'Gemini Conversation — ต้อนรับลูกค้าอังกฤษ', due: '30 มิ.ย. 2569', type: 'Simulation', urgent: false, emoji: '💬' },
-]
-
-export default function StudentDashboard() {
-  const { user, logout } = useRole()
-  const [registryStudent, setRegistryStudent] = useState<any>(null)
-
-  useEffect(() => {
-    if (typeof window !== 'undefined' && user) {
-      const stored = localStorage.getItem('classroomStudents')
-      if (stored) {
-        try {
-          const list = JSON.parse(stored)
-          const found = list.find((s: any) => s.name === user.name)
-          if (found) {
-            setRegistryStudent(found)
-          }
-        } catch (e) {}
-      }
-    }
-  }, [user])
-
-  const kScore = registryStudent?.ksa?.K ?? 80
-  const sScore = registryStudent?.ksa?.S ?? 75
-  const aScore = registryStudent?.ksa?.A ?? 82
-  const cScore = registryStudent?.ksa?.C ?? 70
-  const sessionsCount = registryStudent?.sessions ?? 45
-
-  const ksaScores = [
-    { k: 'K', label: 'ความรู้', score: kScore, color: '#1E4D3A' },
-    { k: 'S', label: 'ทักษะ', score: sScore, color: '#A6882A' },
-    { k: 'A', label: 'เจตคติ', score: aScore, color: '#C9A84C' },
-    { k: 'C', label: 'สมรรถนะ', score: cScore, color: '#1E4D3A' },
-  ]
-
-  const overall = Math.round((kScore * 0.2) + (sScore * 0.3) + (aScore * 0.1) + (cScore * 0.4))
-
-  return (
-    <div className="page-content" style={{ paddingBottom: '80px' }}>
-      
-      {/* Student Header */}
-      <div className="student-hero">
-        <div className="student-hero-bg" />
-        <div className="student-hero-inner">
-          <div className="student-hero-top">
-            <div style={{ textAlign: 'left' }}>
-              <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13 }}>ยินดีต้อนรับกลับมา 👋</div>
-              <h1 style={{ color: 'white', fontSize: 20, fontWeight: 800, margin: '4px 0' }}>{user?.name ?? 'นักเรียน'}</h1>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ background: 'rgba(255,255,255,0.2)', color: 'white', fontSize: 10, fontWeight: 700, padding: '2px 10px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.3)' }}>👨‍🎓 STUDENT</span>
-                <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: 11 }}>{user?.school}</span>
-              </div>
-            </div>
-            <div style={{ width: 56, height: 56, background: 'rgba(255,255,255,0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, border: '2px solid rgba(255,255,255,0.3)', flexShrink: 0 }}>
-              {user?.avatar ?? '👨‍🎓'}
-            </div>
-          </div>
-
-          {/* KSA-C Mini Bars */}
-          <div style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 16, padding: '14px', marginTop: 14, border: '1px solid rgba(255,255,255,0.2)', textAlign: 'left' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-              <span style={{ color: 'white', fontWeight: 700, fontSize: 13 }}>KSA-C สมรรถนะรวมสะสม</span>
-              <span style={{ color: 'white', fontWeight: 850, fontSize: 20 }}>{overall}%</span>
-            </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              {ksaScores.map(k => (
-                <div key={k.k} style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                    <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 10, fontWeight: 700 }}>{k.k}</span>
-                    <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 9 }}>{k.score}%</span>
-                  </div>
-                  <div style={{ height: 6, background: 'rgba(255,255,255,0.2)', borderRadius: 3, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${k.score}%`, background: 'white', borderRadius: 3, transition: 'width 1s ease' }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
-              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>🔥 ล็อกอินต่อเนื่อง: 5 วัน</span>
-              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>·</span>
-              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>⏱️ เข้าใช้สะสม: {sessionsCount} ครั้ง</span>
-              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>·</span>
-              <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)' }}>🎯 3/5 Units</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ padding: 'var(--space-4)', display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-        
-        {/* Pending Tasks Alert */}
-        {pendingTasks.length > 0 && (
-          <div style={{ background: '#FBF6E9', border: '1.5px solid #E0C068', borderRadius: 16, padding: 14, textAlign: 'left' }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: '#A6882A', marginBottom: 8 }}>📋 งานและกิจกรรมที่คุณครูมอบหมาย</div>
-            {pendingTasks.map((t, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'white', borderRadius: 10, padding: '10px 12px', marginBottom: i < pendingTasks.length - 1 ? 6 : 0 }}>
-                <span style={{ fontSize: 20 }}>{t.emoji}</span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13 }}>{t.title}</div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>กำหนดส่ง: {t.due}</div>
-                </div>
-                {t.urgent && <span style={{ background: '#FAE8EB', color: '#8B2635', fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20 }}>🔴 ด่วน!</span>}
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Learning Tools Grid */}
-        <div style={{ textAlign: 'left' }}>
-          <h2 className="section-title mb-3" style={{ margin: '0 0 12px 0' }}>ห้องปฏิบัติการและเครื่องมือ</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {featureTools.map(f => (
-              <Link key={f.href} href={f.href} style={{ background: 'white', borderRadius: 16, padding: '14px', textDecoration: 'none', color: 'inherit', boxShadow: 'var(--shadow-sm)', transition: 'all 0.15s', display: 'block', border: '1px solid #EDE9E1' }}>
-                <div style={{ width: 44, height: 44, background: f.bg, borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, marginBottom: 10 }}>{f.icon}</div>
-                <div style={{ fontWeight: 800, fontSize: 13, color: f.color }}>{f.label}</div>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{f.sub}</div>
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Continue Learning */}
-        <div style={{ textAlign: 'left' }}>
-          <h2 className="section-title mb-3" style={{ margin: '0 0 12px 0' }}>📚 เรียนต่อจากคาบที่แล้ว</h2>
-          <Link href="/student/learn" style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-            <div style={{ background: 'linear-gradient(135deg, #102B1F, #1E4D3A)', borderRadius: 18, padding: '16px 18px', boxShadow: '0 6px 20px rgba(16,43,31,0.15)', display: 'flex', alignItems: 'center', gap: 16 }}>
-              <div style={{ width: 56, height: 56, background: 'rgba(255,255,255,0.15)', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, flexShrink: 0 }}>🍽️</div>
-              <div style={{ flex: 1 }}>
-                <div style={{ color: 'rgba(255,255,255,0.7)', fontSize: 11 }}>บทเรียนสัปดาห์นี้</div>
-                <div style={{ color: 'white', fontWeight: 800, fontSize: 15 }}>Unit 2: Table Setting (การจัดโต๊ะ)</div>
-                <div style={{ color: 'rgba(255,255,255,0.75)', fontSize: 11, marginTop: 3 }}>Lesson 3/4 · 75% เสร็จสิ้น</div>
-                <div style={{ height: 4, background: 'rgba(255,255,255,0.2)', borderRadius: 2, marginTop: 6 }}>
-                  <div style={{ width: '75%', height: '100%', background: '#C9A84C', borderRadius: 2 }} />
-                </div>
-              </div>
-              <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 22 }}>›</span>
-            </div>
-          </Link>
-        </div>
-
-        {/* Logout */}
-        <button onClick={logout} style={{ width: '100%', background: '#FDFAF4', border: '1.5px solid #EDE9E1', borderRadius: 14, padding: '12px', fontSize: 14, color: '#8B2635', fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-primary)' }}>
-          🚪 ออกจากระบบ
-        </button>
-      </div>
-
-      <style jsx>{`
-        .student-hero { background: linear-gradient(135deg, #102B1F 0%, #1E4D3A 60%, #C9A84C 100%); position: relative; overflow: hidden; }
-        .student-hero-bg { position: absolute; inset: 0; background: radial-gradient(circle at 20% 80%, rgba(255,255,255,0.07) 0%, transparent 50%); }
-        .student-hero-inner { padding: 52px var(--space-4) var(--space-5); position: relative; z-index: 1; }
-        .student-hero-top { display: flex; align-items: flex-start; justify-content: space-between; }
-      `}</style>
-    </div>
-  )
-}
+type Data={profile?:{name:string;schoolName:string};stats?:{knowledgeScore:number;skillsScore:number;attitudeScore:number;competencyScore:number;overallScore:number;lessonsCompleted:number;timeSpentMinutes:number};tasks?:Array<{id:string;title:string;activityType:string;dueDate:string|null;className:string}>;latestLesson?:{title:string;subject:string;weeks:string;concept:string}|null;notifications?:Array<{id:string;title:string;message:string;linkUrl?:string|null}>}
+const features:Array<{href:string;label:string;desc:string;icon:StudentIconName}>= [{href:'/student/learn',label:'บทเรียน',desc:'ดูแผนและเป้าหมายการเรียนรู้',icon:'book'},{href:'/student/explore',label:'สำรวจอุปกรณ์',desc:'คำศัพท์ โมเดล 3 มิติ และ AR',icon:'target'},{href:'/student/interact',label:'ฝึกฟังและพูด',desc:'ประเมินการออกเสียงรายคำ',icon:'message'},{href:'/chat',label:'ผู้ช่วยการเรียนรู้ AI',desc:'ถามคำศัพท์และงานบริการ',icon:'sparkles'},{href:'/live',label:'AI Voice Coach',desc:'โต้ตอบด้วยเสียงแบบทันที',icon:'mic'},{href:'/student/navigate',label:'สถานการณ์',desc:'ฝึกบทบาทงานบริการ',icon:'task'},{href:'/student/exhibit',label:'ทบทวนผล',desc:'แบบทดสอบและคะแนนสะสม',icon:'exhibit'},{href:'/student/profile',label:'แฟ้มสะสมงาน',desc:'งาน สมรรถนะ และใบรับรอง',icon:'profile'}]
+function path(type:string){const v=type.toLowerCase();if(v.includes('interact'))return'/student/interact';if(v.includes('navigate'))return'/student/navigate';if(v.includes('exhibit'))return'/student/exhibit';return'/student/explore'}
+export default function Dashboard(){const{logout}=useRole();const[data,setData]=useState<Data>({});const[logoutOpen,setLogoutOpen]=useState(false);useEffect(()=>{const c=new AbortController();authenticatedFetch('/api/student/dashboard',{signal:c.signal}).then(r=>r.ok?r.json():null).then(v=>v&&setData(v)).catch(()=>{});return()=>c.abort()},[]);const s=data.stats||{knowledgeScore:0,skillsScore:0,attitudeScore:0,competencyScore:0,overallScore:0,lessonsCompleted:0,timeSpentMinutes:0};return <main className={styles.page}><div className={styles.shell}>
+<section className={styles.hero}><div className={styles.heroContent}><div className={styles.eyebrow}><StudentIcon name="sparkles" size={15}/>Student dashboard</div><h1 className={styles.title}>ยินดีต้อนรับกลับมา {data.profile?.name||'นักเรียน'}</h1><p className={styles.subtitle}>{data.profile?.schoolName||'วางแผนการเรียน ฝึกทักษะ และติดตามงานของคุณในที่เดียว'}</p><div className={styles.dashboardHeroActions}><Link className={styles.heroAction} href="/student/profile"><StudentIcon name="user" size={15}/>บัญชีของฉัน</Link><button type="button" className={styles.heroAction} onClick={()=>setLogoutOpen(true)}><StudentIcon name="logout" size={15}/>ออกจากระบบ</button></div></div><div className={styles.heroStats}><div><strong>{s.overallScore}%</strong><span>คะแนนรวม</span></div><div><strong>{s.lessonsCompleted}</strong><span>บทเรียนสำเร็จ</span></div><div><strong>{data.tasks?.length||0}</strong><span>งานคงค้าง</span></div></div></section>
+<section className={styles.content}><header className={styles.sectionHeader}><h2>พื้นที่การเรียนรู้</h2><p>เลือกกิจกรรมตามลำดับ FINE Model หรือกลับไปทำงานที่ได้รับมอบหมาย</p></header><div className={`${styles.grid} ${styles.featureGrid}`}>{features.map(f=><Link className={styles.featureLink} href={f.href} key={f.href}><span className={styles.iconBox}><StudentIcon name={f.icon}/></span><span><strong>{f.label}</strong><small>{f.desc}</small></span><StudentIcon name="arrowRight" size={16}/></Link>)}</div>
+<div className={`${styles.grid} ${styles.two}`} style={{marginTop:12}}><section className={styles.card}><div className={styles.cardTitle}><span className={styles.iconBox}><StudentIcon name="task"/></span><div><h2>งานที่ต้องทำ</h2><p>เรียงตามกำหนดส่ง</p></div></div>{data.tasks?.length?<div className={styles.compactList}>{data.tasks.slice(0,4).map(t=><Link href={path(t.activityType)} key={t.id}><span><strong>{t.title}</strong><small>{t.className}</small></span><StudentIcon name="arrowRight" size={15}/></Link>)}</div>:<div className={styles.empty}><StudentIcon name="check" size={24}/><strong>ไม่มีงานคงค้าง</strong></div>}</section>
+<section className={styles.card}><div className={styles.cardTitle}><span className={`${styles.iconBox} ${styles.goldIcon}`}><StudentIcon name="book"/></span><div><h2>เรียนต่อจากล่าสุด</h2><p>{data.latestLesson?.weeks||'แผนการสอนล่าสุด'}</p></div></div>{data.latestLesson?<><h3 className={styles.lessonTitle}>{data.latestLesson.title}</h3><p className={styles.lessonDesc}>{data.latestLesson.concept||data.latestLesson.subject}</p><Link className={`${styles.button} ${styles.full}`} href="/student/learn">เปิดบทเรียน <StudentIcon name="arrowRight" size={15}/></Link></>:<div className={styles.empty}><StudentIcon name="book" size={24}/><strong>ยังไม่มีบทเรียน</strong></div>}</section></div>
+{data.notifications?.length?<section className={styles.card} style={{marginTop:12}}><div className={styles.cardTitle}><span className={`${styles.iconBox} ${styles.goldIcon}`}><StudentIcon name="info"/></span><div><h2>การแจ้งเตือนล่าสุด</h2><p>{data.notifications.length} รายการที่ยังไม่ได้อ่าน</p></div><button type="button" className={styles.outlineButton} onClick={()=>void authenticatedFetch('/api/student/notifications',{method:'PATCH'}).then(response=>{if(response.ok)setData(current=>({...current,notifications:[]}))})}>อ่านทั้งหมดแล้ว</button></div><div className={styles.compactList}>{data.notifications.map(item=><Link href={item.linkUrl||'/student/dashboard'} key={item.id}><span><strong>{item.title}</strong><small>{item.message}</small></span><StudentIcon name="arrowRight" size={15}/></Link>)}</div></section>:null}
+<section className={styles.card} style={{marginTop:12}}><div className={styles.cardTitle}><span className={`${styles.iconBox} ${styles.blueIcon}`}><StudentIcon name="chart"/></span><div><h2>สมรรถนะ KSA-C</h2><p>คะแนนจากฐานข้อมูลล่าสุด</p></div></div><div className={styles.breakdown}>{[['K — ความรู้',s.knowledgeScore,'#39745d'],['S — ทักษะ',s.skillsScore,'#4d7896'],['A — เจตคติ',s.attitudeScore,'#c19a42'],['C — สมรรถนะ',s.competencyScore,'#915363']].map(([l,v,c])=><div key={String(l)}><div className={styles.metricTop}><span>{l}</span><strong>{v}%</strong></div><div className={styles.metricTrack}><div className={styles.metricBar} style={{width:`${v}%`,background:String(c)}}/></div></div>)}</div></section>
+</section>{logoutOpen&&<div className={styles.modalBackdrop} onMouseDown={event=>event.target===event.currentTarget&&setLogoutOpen(false)}><section className={`${styles.modal} ${styles.logoutModal}`} role="dialog" aria-modal="true" aria-labelledby="logout-title"><header className={styles.modalHeader}><span className={styles.logoutIcon}><StudentIcon name="logout" size={20}/></span><div><h2 id="logout-title">ออกจากระบบ</h2><p>ต้องการสิ้นสุดการใช้งานบัญชีนี้หรือไม่</p></div><button type="button" className={styles.modalClose} onClick={()=>setLogoutOpen(false)} aria-label="ปิด"><StudentIcon name="x" size={17}/></button></header><div className={styles.logoutCopy}>ระบบจะนำคุณกลับไปยังหน้าเลือกบทบาท ข้อมูลการเรียนและงานที่ส่งไว้จะไม่สูญหาย</div><footer className={styles.modalFooter}><button type="button" className={styles.outlineButton} onClick={()=>setLogoutOpen(false)}>ใช้งานต่อ</button><button type="button" className={styles.dangerButton} onClick={()=>{setLogoutOpen(false);logout()}}><StudentIcon name="logout" size={15}/>ยืนยันออกจากระบบ</button></footer></section></div>}</div></main>}

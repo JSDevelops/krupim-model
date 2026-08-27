@@ -128,7 +128,7 @@ export const localData = {
     async signUp(input: {
       email: string
       password: string
-      options?: { data?: { name?: string; requested_role?: string; school_name?: string } }
+      options?: { data?: { name?: string; requested_role?: string; school_name?: string; invite_code?: string } }
     }) {
       try {
         const response = await fetch('/api/auth/register', {
@@ -140,6 +140,7 @@ export const localData = {
             name: input.options?.data?.name,
             requestedRole: input.options?.data?.requested_role,
             school: input.options?.data?.school_name,
+            inviteCode: input.options?.data?.invite_code,
           }),
         })
         const payload = await jsonResponse<{ user: LocalUser; profile: Profile; session: LocalSession | null }>(response)
@@ -192,6 +193,7 @@ export async function signUpLocal(input: {
   name: string
   requestedRole: 'teacher' | 'student'
   school: string
+  inviteCode?: string
 }) {
   const { data, error } = await localData.auth.signUp({
     email: input.email.trim().toLowerCase(),
@@ -201,6 +203,7 @@ export async function signUpLocal(input: {
         name: input.name.trim(),
         requested_role: input.requestedRole,
         school_name: input.school.trim(),
+        invite_code: input.inviteCode?.trim(),
       },
     },
   })

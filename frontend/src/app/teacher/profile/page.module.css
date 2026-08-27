@@ -97,6 +97,7 @@
 .modal > header h2 { margin: 0; color: #244336; font-size: 14px; }
 .modal > header p { margin: 3px 0 0; color: #89958e; font-size: 9px; }
 .modal > header > button { width: 34px; height: 34px; display: grid; place-items: center; color: #66766d; border: 0; border-radius: 9px; background: transparent; cursor: pointer; }
+.modal > header > button:disabled,.avatarEditor div > button:disabled { cursor: wait; opacity: .45; }
 .modal form { display: grid; }
 .modal .formGrid,.modal .securityBody { max-height: calc(100dvh - 175px); overflow-y: auto; scrollbar-width: none; }
 .modal .formGrid::-webkit-scrollbar,.modal .securityBody::-webkit-scrollbar { display: none; }

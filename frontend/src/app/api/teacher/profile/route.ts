@@ -1,7 +1,9 @@
 import { compare, hash } from 'bcryptjs'
 import { NextRequest, NextResponse } from 'next/server'
 import { queryDb, withTransaction } from '@/lib/db'
+import { clearSessionCookie } from '@/lib/session'
 import { ApiError, apiErrorResponse, guardApi } from '../../_lib/auth'
+import { passwordPolicyError } from '@/lib/passwordPolicy'
 
 type ProfileInput = {
   action?: unknown; name?: unknown; schoolName?: unknown; phone?: unknown; bio?: unknown; avatarUrl?: unknown
@@ -18,8 +20,9 @@ function avatar(value: unknown) {
   const result = typeof value === 'string' ? value.trim() : ''
   if (!result) return ''
   const validRemote = /^https?:\/\/\S+$/i.test(result) && result.length <= 2_000
+  const validLocal = /^\/api\/files\/[0-9a-f-]{36}$/i.test(result)
   const validData = /^data:image\/(jpeg|png|webp);base64,/i.test(result) && result.length <= 850_000
-  if (!validRemote && !validData) throw new ApiError('รูปโปรไฟล์ต้องเป็น JPEG, PNG, WebP หรือ URL ที่ถูกต้อง และมีขนาดไม่เกินกำหนด', 400, 'INVALID_AVATAR')
+  if (!validRemote && !validLocal && !validData) throw new ApiError('รูปโปรไฟล์ต้องเป็น JPEG, PNG, WebP หรือ URL ที่ถูกต้อง และมีขนาดไม่เกินกำหนด', 400, 'INVALID_AVATAR')
   return result
 }
 async function body(request: NextRequest) {
@@ -61,13 +64,19 @@ export async function PATCH(request: NextRequest) {
       const currentPassword = typeof payload.currentPassword === 'string' ? payload.currentPassword : ''
       const newPassword = typeof payload.newPassword === 'string' ? payload.newPassword : ''
       if (!currentPassword) throw new ApiError('กรุณากรอกรหัสผ่านปัจจุบัน', 400, 'VALIDATION_ERROR')
-      if (newPassword.length < 8 || newPassword.length > 128) throw new ApiError('รหัสผ่านใหม่ต้องมี 8–128 ตัวอักษร', 400, 'VALIDATION_ERROR')
+      const passwordError = passwordPolicyError(newPassword)
+      if (passwordError) throw new ApiError(passwordError, 400, 'WEAK_PASSWORD')
       if (currentPassword === newPassword) throw new ApiError('รหัสผ่านใหม่ต้องต่างจากรหัสผ่านปัจจุบัน', 400, 'SAME_PASSWORD')
       const account = await queryDb<{ password_hash: string }>('SELECT password_hash FROM app_users WHERE id=$1::uuid LIMIT 1', [user.id])
       if (!account.rows[0] || !(await compare(currentPassword, account.rows[0].password_hash))) throw new ApiError('รหัสผ่านปัจจุบันไม่ถูกต้อง', 400, 'INVALID_PASSWORD')
       const passwordHash = await hash(newPassword, 12)
-      await queryDb('UPDATE app_users SET password_hash=$1, updated_at=NOW() WHERE id=$2::uuid', [passwordHash, user.id])
-      return NextResponse.json({ ok: true })
+      await withTransaction(async client => {
+        await client.query('UPDATE app_users SET password_hash=$1,session_version=session_version+1,updated_at=NOW() WHERE id=$2::uuid', [passwordHash, user.id])
+        await client.query(`INSERT INTO audit_logs(actor_id,action,entity_type,entity_id) VALUES($1::uuid,'change_password','profile',$1::text)`, [user.id])
+      })
+      const response = NextResponse.json({ ok: true, sessionRevoked: true })
+      clearSessionCookie(response)
+      return response
     }
 
     if (action !== 'update_profile') throw new ApiError('ไม่รองรับการดำเนินการนี้', 400, 'INVALID_ACTION')

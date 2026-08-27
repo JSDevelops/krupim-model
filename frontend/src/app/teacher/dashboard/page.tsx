@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { toast } from 'sonner'
 import AdminIcon, { type AdminIconName } from '@/components/admin/AdminIcon'
 import { useRole } from '@/context/RoleContext'
@@ -17,19 +17,11 @@ type TeacherAnnouncement = {
   linkUrl?: string
 }
 
-type AnnouncementRecord = {
-  id: string
-  title: string
-  content: string
-  priority: TeacherAnnouncement['priority']
-  link_url: string | null
-  published_at: string
-}
-
 type StudentRecord = {
   id: string
   name: string
   class: string
+  classNames: string[]
   school: string
   sessions: number
   ksa: { K: number; S: number; A: number; C: number }
@@ -38,6 +30,7 @@ type StudentRecord = {
 
 type PendingGradingItem = {
   id: string
+  assignmentId: string
   studentId: string
   studentName: string
   class: string
@@ -45,21 +38,8 @@ type PendingGradingItem = {
   type: 'Familiarize' | 'Interact' | 'Navigate' | 'Exhibit'
   unit: string
   submittedAt: string
+  maxScore: number
 }
-
-const defaultStudents: StudentRecord[] = [
-  { id: 'std-001', name: 'นายสมชาย ใจดี', class: 'ปวช.1/1', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', sessions: 45, ksa: { K: 80, S: 75, A: 82, C: 70 }, lastActive: '10 นาทีที่แล้ว' },
-  { id: 'std-002', name: 'นางสาวมาลี สวยงาม', class: 'ปวช.1/1', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', sessions: 62, ksa: { K: 95, S: 90, A: 94, C: 88 }, lastActive: '1 ชั่วโมงที่แล้ว' },
-  { id: 'std-003', name: 'นายพิชัย นักเรียน', class: 'ปวช.1/2', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', sessions: 18, ksa: { K: 50, S: 42, A: 48, C: 38 }, lastActive: '3 ชั่วโมงที่แล้ว' },
-  { id: 'std-004', name: 'นางสาวกาญจนา ดีใจ', class: 'ปวช.1/2', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', sessions: 33, ksa: { K: 68, S: 62, A: 70, C: 58 }, lastActive: 'เมื่อวานนี้' },
-  { id: 'std-005', name: 'นายอนันต์ มีใจ', class: 'ปวช.1/1', school: 'วิทยาลัยอาชีวศึกษากรุงเทพ', sessions: 55, ksa: { K: 90, S: 85, A: 92, C: 82 }, lastActive: '2 ชั่วโมงที่แล้ว' },
-]
-
-const defaultPending: PendingGradingItem[] = [
-  { id: 'grad-001', studentId: 'std-001', studentName: 'นายสมชาย ใจดี', class: 'ปวช.1/1', taskName: 'รับคำสั่งอาหารจากลูกค้า', type: 'Navigate', unit: 'Unit 2 · Hospitality Service', submittedAt: '10 นาทีที่แล้ว' },
-  { id: 'grad-002', studentId: 'std-002', studentName: 'นางสาวมาลี สวยงาม', class: 'ปวช.1/1', taskName: 'วิเคราะห์อุปกรณ์จัดบาร์', type: 'Familiarize', unit: 'Unit 1 · Table Setting', submittedAt: '1 ชั่วโมงที่แล้ว' },
-  { id: 'grad-003', studentId: 'std-003', studentName: 'นายพิชัย นักเรียน', class: 'ปวช.1/2', taskName: 'สนทนาต้อนรับลูกค้า', type: 'Interact', unit: 'Unit 1 · Reception English', submittedAt: '3 ชั่วโมงที่แล้ว' },
-]
 
 const scoreDefinitions = [
   { key: 'K', label: 'Knowledge', detail: 'ความรู้และคำศัพท์', color: '#347553' },
@@ -76,62 +56,79 @@ function weightedScore(student: StudentRecord) {
   return Math.round(student.ksa.K * 0.2 + student.ksa.S * 0.3 + student.ksa.A * 0.1 + student.ksa.C * 0.4)
 }
 
-function readStoredList<T>(key: string, fallback: T[]) {
-  try {
-    const stored = localStorage.getItem(key)
-    if (!stored) return fallback
-    const parsed = JSON.parse(stored)
-    return Array.isArray(parsed) && parsed.length ? parsed as T[] : fallback
-  } catch {
-    return fallback
-  }
+function formatActivityDate(value?: string | null) {
+  if (!value) return 'ยังไม่มีกิจกรรม'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return 'ไม่ทราบเวลา'
+  return new Intl.DateTimeFormat('th-TH', {
+    day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+  }).format(date)
 }
 
 export default function TeacherDashboard() {
   const { user } = useRole()
   const [announcements, setAnnouncements] = useState<TeacherAnnouncement[]>([])
-  const [students, setStudents] = useState<StudentRecord[]>(defaultStudents)
-  const [pendingList, setPendingList] = useState<PendingGradingItem[]>(defaultPending)
+  const [students, setStudents] = useState<StudentRecord[]>([])
+  const [pendingList, setPendingList] = useState<PendingGradingItem[]>([])
+  const [classes, setClasses] = useState<string[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [classFilter, setClassFilter] = useState('all')
   const [selectedGrading, setSelectedGrading] = useState<PendingGradingItem | null>(null)
   const [scores, setScores] = useState({ K: 80, S: 75, A: 85, C: 70 })
   const [gradingNotes, setGradingNotes] = useState('ผ่านเกณฑ์การประเมินสมรรถนะสะสมเบื้องต้น')
 
-  useEffect(() => {
-    const controller = new AbortController()
-    void authenticatedFetch('/api/announcements', { signal: controller.signal })
-      .then(async response => {
-        if (!response.ok) throw new Error('ไม่สามารถโหลดประกาศได้')
-        return response.json() as Promise<{ announcements?: AnnouncementRecord[] }>
-      })
-      .then(payload => setAnnouncements((payload.announcements ?? []).slice(0, 3).map(item => ({
-        id: item.id,
-        title: item.title,
-        content: item.content,
-        priority: item.priority,
-        linkUrl: item.link_url || undefined,
-        publishedAt: new Intl.DateTimeFormat('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(item.published_at)),
-      }))))
-      .catch(error => {
-        if (error instanceof Error && error.name !== 'AbortError') toast.error('โหลดประกาศล่าสุดไม่สำเร็จ')
-      })
-
-    const studentList = readStoredList('classroomStudents', defaultStudents)
-    const gradingList = readStoredList('pendingGradings', defaultPending)
-    const storageTimer = window.setTimeout(() => {
-      setStudents(studentList)
-      setPendingList(gradingList)
-    }, 0)
-    if (!localStorage.getItem('classroomStudents')) localStorage.setItem('classroomStudents', JSON.stringify(studentList))
-    if (!localStorage.getItem('pendingGradings')) localStorage.setItem('pendingGradings', JSON.stringify(gradingList))
-    return () => {
-      controller.abort()
-      window.clearTimeout(storageTimer)
+  const loadDashboard = useCallback(async (signal?: AbortSignal) => {
+    const response = await authenticatedFetch('/api/teacher/dashboard', { cache: 'no-store', signal })
+    const payload = await response.json() as {
+      error?: string
+      classes?: Array<{ name: string }>
+      students?: Array<{
+        id: string; name: string; className: string; classNames?: string[]; school: string; sessions: number
+        knowledge: number; skills: number; attitude: number; competency: number; lastActive?: string | null
+      }>
+      pending?: Array<Omit<PendingGradingItem, 'class' | 'submittedAt'> & { className: string; submittedAt: string }>
+      announcements?: Array<Omit<TeacherAnnouncement, 'publishedAt'> & { publishedAt: string }>
     }
+    if (!response.ok) throw new Error(payload.error || 'ไม่สามารถโหลดแดชบอร์ดได้')
+    setClasses((payload.classes ?? []).map(item => item.name))
+    setStudents((payload.students ?? []).map(item => ({
+      id: item.id,
+      name: item.name,
+      class: item.className || 'ยังไม่ระบุห้อง',
+      classNames: item.classNames ?? (item.className ? item.className.split(', ') : []),
+      school: item.school || 'ไม่ระบุสถานศึกษา',
+      sessions: Number(item.sessions || 0),
+      ksa: {
+        K: Number(item.knowledge || 0), S: Number(item.skills || 0),
+        A: Number(item.attitude || 0), C: Number(item.competency || 0),
+      },
+      lastActive: formatActivityDate(item.lastActive),
+    })))
+    setPendingList((payload.pending ?? []).map(item => ({
+      ...item,
+      class: item.className,
+      submittedAt: formatActivityDate(item.submittedAt),
+    })))
+    setAnnouncements((payload.announcements ?? []).map(item => ({
+      ...item,
+      publishedAt: formatActivityDate(item.publishedAt),
+    })))
   }, [])
 
-  const classes = useMemo(() => Array.from(new Set(students.map(student => student.class))).sort(), [students])
-  const filteredStudents = useMemo(() => classFilter === 'all' ? students : students.filter(student => student.class === classFilter), [classFilter, students])
+  useEffect(() => {
+    const controller = new AbortController()
+    const timer = window.setTimeout(() => {
+      void loadDashboard(controller.signal)
+        .catch(error => {
+          if (error instanceof Error && error.name !== 'AbortError') toast.error(error.message)
+        })
+        .finally(() => setLoading(false))
+    }, 0)
+    return () => { window.clearTimeout(timer); controller.abort() }
+  }, [loadDashboard])
+
+  const filteredStudents = useMemo(() => classFilter === 'all' ? students : students.filter(student => student.classNames.includes(classFilter)), [classFilter, students])
   const filteredPending = useMemo(() => classFilter === 'all' ? pendingList : pendingList.filter(item => item.class === classFilter), [classFilter, pendingList])
   const totalSessions = filteredStudents.reduce((sum, student) => sum + student.sessions, 0)
   const averageScores = scoreDefinitions.reduce<Record<(typeof scoreDefinitions)[number]['key'], number>>((result, definition) => {
@@ -159,22 +156,40 @@ export default function TeacherDashboard() {
     setSelectedGrading(item)
   }
 
-  function saveGrading() {
+  async function saveGrading() {
     if (!selectedGrading) return
-    const updatedStudents = students.map(student => student.id === selectedGrading.studentId
-      ? { ...student, ksa: scores, sessions: student.sessions + 1, lastActive: 'เพิ่งได้รับการประเมิน' }
-      : student)
-    const updatedPending = pendingList.filter(item => item.id !== selectedGrading.id)
-    setStudents(updatedStudents)
-    setPendingList(updatedPending)
-    localStorage.setItem('classroomStudents', JSON.stringify(updatedStudents))
-    localStorage.setItem('pendingGradings', JSON.stringify(updatedPending))
-    toast.success('บันทึกคะแนน KSA-C แล้ว', { description: selectedGrading.studentName })
-    setSelectedGrading(null)
+    setSaving(true)
+    try {
+      const overallPercent = Math.round(scores.K * 0.2 + scores.S * 0.3 + scores.A * 0.1 + scores.C * 0.4)
+      const response = await authenticatedFetch('/api/teacher/assignments', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'grade_submission',
+          assignmentId: selectedGrading.assignmentId,
+          studentId: selectedGrading.studentId,
+          score: Math.round((overallPercent / 100) * selectedGrading.maxScore),
+          feedback: gradingNotes,
+          knowledge: scores.K,
+          skills: scores.S,
+          attitude: scores.A,
+          competency: scores.C,
+        }),
+      })
+      const payload = await response.json() as { error?: string }
+      if (!response.ok) throw new Error(payload.error || 'บันทึกผลประเมินไม่สำเร็จ')
+      toast.success('บันทึกคะแนน KSA-C ลงฐานข้อมูลแล้ว', { description: selectedGrading.studentName })
+      setSelectedGrading(null)
+      await loadDashboard()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'บันทึกผลประเมินไม่สำเร็จ')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
-    <main className={styles.dashboard}>
+    <main className={styles.dashboard} aria-busy={loading}>
       <section className={styles.hero} aria-labelledby="teacher-dashboard-title">
         <span className={styles.heroOrb} aria-hidden="true" />
         <div className={styles.heroMain}>
@@ -328,7 +343,7 @@ export default function TeacherDashboard() {
               ))}
             </div>
             <label className={styles.notesField}><span>ข้อเสนอแนะเพิ่มเติม</span><textarea rows={2} value={gradingNotes} onChange={event => setGradingNotes(event.target.value)} /></label>
-            <footer><button type="button" onClick={() => setSelectedGrading(null)}>ยกเลิก</button><button type="button" onClick={saveGrading}><AdminIcon name="check" size={17} /> บันทึกผลประเมิน</button></footer>
+            <footer><button type="button" onClick={() => setSelectedGrading(null)} disabled={saving}>ยกเลิก</button><button type="button" onClick={() => void saveGrading()} disabled={saving}><AdminIcon name={saving ? 'clock' : 'check'} size={17} /> {saving ? 'กำลังบันทึก' : 'บันทึกผลประเมิน'}</button></footer>
           </section>
         </div>
       )}

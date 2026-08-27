@@ -1,11 +1,13 @@
 'use client'
 
 import { FormEvent, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import AdminIcon from '@/components/admin/AdminIcon'
 import AiProviderLogo, { type AiProviderKey } from '@/components/admin/AiProviderLogo'
 import { applyFontPreference, applyTextSizePreference, type AppFontKey, type AppTextSize } from '@/components/FontPreferenceSync'
 import { AI_MODEL_OPTIONS, DEFAULT_AI_MODELS } from '@/lib/aiModels'
+import { authenticatedFetch } from '@/lib/api'
 import styles from '../adminPages.module.css'
 
 type SettingsTab = 'system' | 'appearance'
@@ -66,6 +68,7 @@ function removeLegacyApiKeys() {
 }
 
 export default function AdminSettingsPage() {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<SettingsTab>('system')
   const [activeProvider, setActiveProvider] = useState<AiProvider>('gemini')
   const [providerSettings, setProviderSettings] = useState<ProviderSettings>(initialProviderSettings)
@@ -84,14 +87,15 @@ export default function AdminSettingsPage() {
   const [showArHelp, setShowArHelp] = useState('once')
   const [microInteractions, setMicroInteractions] = useState(true)
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false)
+  const [passwordOpen, setPasswordOpen] = useState(false)
+  const [savingPassword, setSavingPassword] = useState(false)
+  const [passwords, setPasswords] = useState({ current: '', next: '', confirm: '' })
 
   useEffect(() => {
     void Promise.resolve().then(() => {
       removeLegacyApiKeys()
       const storedProvider = window.localStorage.getItem('activeAiProvider')
       if (storedProvider === 'gemini' || storedProvider === 'openai' || storedProvider === 'claude') setActiveProvider(storedProvider)
-      setSchoolName(window.localStorage.getItem('schoolName') || 'วิทยาลัยอาชีวศึกษากรุงเทพ')
-      setMaintenance(window.localStorage.getItem('maintenanceMode') === 'true')
       setThemeMode(window.localStorage.getItem('uxThemeMode') || 'forest-gold')
       const storedFont = window.localStorage.getItem('uxFontFamily')
       setFontFamily(thaiFonts.some(font => font.key === storedFont) ? storedFont as AppFontKey : 'kanit')
@@ -125,6 +129,17 @@ export default function AdminSettingsPage() {
         description: error instanceof Error ? error.message : 'กรุณาลองใหม่อีกครั้ง',
       }))
       .finally(() => setLoadingAISettings(false))
+
+    void authenticatedFetch('/api/admin/system-settings', { cache: 'no-store' })
+      .then(async response => {
+        const payload = await response.json() as { settings?: { schoolName?: string; maintenance?: boolean }; error?: string }
+        if (!response.ok) throw new Error(payload.error || 'โหลดการตั้งค่าระบบไม่สำเร็จ')
+        setSchoolName(payload.settings?.schoolName || 'วิทยาลัยอาชีวศึกษากรุงเทพ')
+        setMaintenance(payload.settings?.maintenance === true)
+      })
+      .catch(error => toast.error('โหลดการตั้งค่าระบบไม่สำเร็จ', {
+        description: error instanceof Error ? error.message : 'กรุณาลองใหม่อีกครั้ง',
+      }))
   }, [])
 
   async function handleSaveSystem(event: FormEvent<HTMLFormElement>) {
@@ -132,18 +147,29 @@ export default function AdminSettingsPage() {
     setSavingSystem(true)
     const toastId = toast.loading('กำลังบันทึกการตั้งค่า AI...')
     try {
-      const response = await fetch('/api/admin/ai-settings', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({
-          provider: activeProvider,
-          model: providerSettings[activeProvider].model,
-          apiKey: apiKeyInputs[activeProvider].trim() || undefined,
-          active: true,
+      const [response, systemResponse] = await Promise.all([
+        fetch('/api/admin/ai-settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            provider: activeProvider,
+            model: providerSettings[activeProvider].model,
+            apiKey: apiKeyInputs[activeProvider].trim() || undefined,
+            active: true,
+          }),
         }),
-      })
-      const payload = await response.json() as AISettingsResponse
+        authenticatedFetch('/api/admin/system-settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ schoolName: schoolName.trim(), maintenance }),
+        }),
+      ])
+      const [payload, systemPayload] = await Promise.all([
+        response.json() as Promise<AISettingsResponse>,
+        systemResponse.json() as Promise<{ error?: string }>,
+      ])
       if (!response.ok) throw new Error(payload.error || 'บันทึกการตั้งค่า AI ไม่สำเร็จ')
+      if (!systemResponse.ok) throw new Error(systemPayload.error || 'บันทึกการตั้งค่าระบบไม่สำเร็จ')
 
       const nextSettings = { ...providerSettings }
       for (const setting of payload.settings || []) {
@@ -159,9 +185,7 @@ export default function AdminSettingsPage() {
       setApiKeyInputs(current => ({ ...current, [activeProvider]: '' }))
       removeLegacyApiKeys()
       window.localStorage.setItem('activeAiProvider', activeProvider)
-      window.localStorage.setItem('schoolName', schoolName.trim())
-      window.localStorage.setItem('maintenanceMode', String(maintenance))
-      toast.success('บันทึกการตั้งค่า AI แล้ว', {
+      toast.success('บันทึกการตั้งค่าระบบแล้ว', {
         id: toastId,
         description: `${selectedProvider.name} · ${nextSettings[activeProvider].model}`,
       })
@@ -225,6 +249,29 @@ export default function AdminSettingsPage() {
     toast.success('ล้างข้อมูลชั่วคราวแล้ว', {
       description: `${keysToDelete.length.toLocaleString('th-TH')} รายการถูกนำออกจากอุปกรณ์นี้`,
     })
+  }
+
+  async function changeAdminPassword(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (passwords.next !== passwords.confirm) return toast.warning('การยืนยันรหัสผ่านใหม่ไม่ตรงกัน')
+    setSavingPassword(true)
+    try {
+      const response = await authenticatedFetch('/api/admin/account', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: passwords.current, newPassword: passwords.next }),
+      })
+      const payload = await response.json() as { error?: string }
+      if (!response.ok) throw new Error(payload.error || 'เปลี่ยนรหัสผ่านไม่สำเร็จ')
+      setPasswords({ current: '', next: '', confirm: '' })
+      setPasswordOpen(false)
+      toast.success('เปลี่ยนรหัสผ่านแล้ว กรุณาเข้าสู่ระบบใหม่')
+      window.setTimeout(() => router.replace('/role-select'), 600)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'เปลี่ยนรหัสผ่านไม่สำเร็จ')
+    } finally {
+      setSavingPassword(false)
+    }
   }
 
   const selectedProvider = providers.find(provider => provider.key === activeProvider) ?? providers[0]
@@ -350,6 +397,11 @@ export default function AdminSettingsPage() {
               </div>
             </section>
 
+            <section className={styles.settingsSection} data-tone="purple">
+              <header className={styles.sectionHeader}><span><AdminIcon name="key" size={18} /></span><div><h2>รหัสผ่านผู้ดูแลระบบ</h2><p>ควรเปลี่ยนรหัสผ่านเริ่มต้นก่อนเปิดให้ผู้ใช้งานจริง</p></div></header>
+              <div className={styles.cacheRow}><div><strong>เปลี่ยนรหัสผ่านบัญชีปัจจุบัน</strong><p>กำหนดอย่างน้อย 10 ตัวอักษร พร้อมตัวพิมพ์ใหญ่ ตัวพิมพ์เล็ก และตัวเลข</p></div><button className={styles.secondaryButton} type="button" onClick={() => setPasswordOpen(true)}><AdminIcon name="key" size={15} />เปลี่ยนรหัสผ่าน</button></div>
+            </section>
+
             <div className={styles.settingsFooter}><button className={styles.primaryButton} type="submit" disabled={loadingAISettings || savingSystem}><AdminIcon name={savingSystem ? 'refresh' : 'check'} size={16} />{savingSystem ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่าระบบ'}</button></div>
           </form>
         ) : (
@@ -414,6 +466,14 @@ export default function AdminSettingsPage() {
             <h2 id="clear-cache-title">ล้างข้อมูลชั่วคราวหรือไม่</h2>
             <p>Session และข้อมูล cache ที่ไม่จำเป็นจะถูกลบ แต่ประกาศและการตั้งค่าหลักจะยังคงอยู่</p>
             <div className={styles.modalActions}><button type="button" onClick={() => setClearConfirmOpen(false)}>ยกเลิก</button><button className={styles.dangerButton} type="button" onClick={clearTemporaryData}>ล้างข้อมูล</button></div>
+          </section>
+        </div>
+      )}
+      {passwordOpen && (
+        <div className={styles.modalOverlay} onMouseDown={event => event.target === event.currentTarget && !savingPassword && setPasswordOpen(false)}>
+          <section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="admin-password-title">
+            <header className={styles.modalHeader}><span><AdminIcon name="key" size={20} /></span><div><h2 id="admin-password-title">เปลี่ยนรหัสผ่านผู้ดูแล</h2><p>รหัสผ่านใหม่จะถูก hash ก่อนบันทึกลง PostgreSQL</p></div><button type="button" onClick={() => setPasswordOpen(false)} disabled={savingPassword}><AdminIcon name="close" size={18} /></button></header>
+            <form onSubmit={changeAdminPassword}><div className={styles.formGrid}><label className={styles.field}><span>รหัสผ่านปัจจุบัน</span><input autoFocus required type="password" autoComplete="current-password" value={passwords.current} onChange={event => setPasswords(current => ({ ...current, current: event.target.value }))} /></label><label className={styles.field}><span>รหัสผ่านใหม่</span><input required minLength={10} type="password" autoComplete="new-password" value={passwords.next} onChange={event => setPasswords(current => ({ ...current, next: event.target.value }))} /></label><label className={styles.field}><span>ยืนยันรหัสผ่านใหม่</span><input required minLength={10} type="password" autoComplete="new-password" value={passwords.confirm} onChange={event => setPasswords(current => ({ ...current, confirm: event.target.value }))} /></label></div><div className={styles.modalActions}><button type="button" onClick={() => setPasswordOpen(false)} disabled={savingPassword}>ยกเลิก</button><button className={styles.primaryButton} type="submit" disabled={savingPassword}><AdminIcon name={savingPassword ? 'clock' : 'check'} size={15} />{savingPassword ? 'กำลังบันทึก' : 'ยืนยันเปลี่ยนรหัสผ่าน'}</button></div></form>
           </section>
         </div>
       )}

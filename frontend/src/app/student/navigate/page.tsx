@@ -1,535 +1,366 @@
 'use client'
-import { useState, useEffect } from 'react'
-import Link from 'next/link'
-import StudentFINENav from '@/components/StudentFINENav'
-import { localData } from '@/lib/localData'
-import { toast } from 'sonner'
 
-interface Scenario {
+import Link from 'next/link'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { authenticatedFetch } from '@/lib/api'
+import { toast } from 'sonner'
+import NavigateIcon from './NavigateIcon'
+import styles from './navigate.module.css'
+
+type VocabularyItem = { word: string; pronunciation: string; meaning: string }
+type Scenario = {
   id: string
   title: string
   titleTh: string
   role: string
-  desc: string
-  vocab: { word: string; ph: string; meaning: string; emoji: string }[]
+  description: string
+  activity: string
+  vocabulary: VocabularyItem[]
   sentences: string[]
 }
+type PracticeResult = {
+  score: number
+  transcript: string
+  words: Array<{ word: string; correct: boolean }>
+}
+type SpeechRecognitionInstance = {
+  lang: string
+  interimResults: boolean
+  maxAlternatives: number
+  onstart: () => void
+  onresult: (event: { results: ArrayLike<{ 0: { transcript: string } }> }) => void
+  onerror: (event: { error?: string }) => void
+  onend: () => void
+  start: () => void
+  stop: () => void
+}
+type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance
+type DetailView = 'overview' | 'vocabulary' | 'sentences'
 
 const defaultScenarios: Scenario[] = [
   {
-    id: 's1',
+    id: 'table-setting',
     title: 'Table Setting Challenge',
-    titleTh: 'แข่งจัดโต๊ะอาหาร',
+    titleTh: 'การจัดโต๊ะอาหารแบบเป็นทางการ',
     role: 'Food & Beverage Staff',
-    desc: 'ฝึกทักษะการจัดโต๊ะอาหารแบบตะวันตกที่เป็นทางการ (Formal Western Course) การจัดลำดับมีด ส้อม แก้วน้ำ และการพับผ้าเช็ดปากตามมาตรฐานโรงแรมระดับ 6 ดาว เพื่อต้อนรับลูกค้าคนสำคัญ',
-    vocab: [
-      { word: 'Cutlery', ph: '/ˈkʌtləri/', meaning: 'เครื่องมือรับประทานอาหาร (มีด, ส้อม, ช้อน)', emoji: '🍴' },
-      { word: 'Glassware', ph: '/ˈɡlɑːsweə(r)/', meaning: 'เครื่องแก้ว (แก้วน้ำ, แก้วไวน์)', emoji: '🍷' },
-      { word: 'Napkin', ph: '/ˈnæpkɪn/', meaning: 'ผ้าเช็ดปาก', emoji: '🧻' },
-      { word: 'Outside-In', ph: '/ˌaʊtˈsaɪd ɪn/', meaning: 'การใช้งานจากด้านนอกเข้าหาด้านใน', emoji: '🍽️' },
+    description: 'ฝึกจัดลำดับอุปกรณ์บนโต๊ะอาหารแบบตะวันตก พร้อมเรียนรู้คำศัพท์และประโยคที่ใช้แนะนำการจัดโต๊ะแก่ผู้รับบริการ',
+    activity: 'สำรวจอุปกรณ์ เรียนรู้หลัก Outside-In และทดลองอธิบายการจัดโต๊ะด้วยภาษาอังกฤษ',
+    vocabulary: [
+      { word: 'Cutlery', pronunciation: '/ˈkʌtləri/', meaning: 'ชุดมีด ช้อน และส้อมสำหรับรับประทานอาหาร' },
+      { word: 'Glassware', pronunciation: '/ˈɡlɑːsweə(r)/', meaning: 'เครื่องแก้วที่ใช้บนโต๊ะอาหาร' },
+      { word: 'Napkin', pronunciation: '/ˈnæpkɪn/', meaning: 'ผ้าเช็ดปาก' },
+      { word: 'Outside-In', pronunciation: '/ˌaʊtˈsaɪd ɪn/', meaning: 'หลักการใช้อุปกรณ์จากด้านนอกเข้าด้านใน' },
     ],
     sentences: [
-      'Good evening, ladies and gentlemen. Welcome to our fine dining restaurant.',
-      'I will be serving you tonight. If you need anything, please let me know.',
-      'Allow me to explain the cutlery setting. We start using from the outside in.',
+      'Good evening. Welcome to our fine dining restaurant.',
+      'Allow me to explain the cutlery setting.',
+      'We use the cutlery from the outside in.',
+    ],
+  },
+  {
+    id: 'guest-welcome',
+    title: 'Guest Welcome',
+    titleTh: 'การต้อนรับและนำลูกค้าไปยังโต๊ะ',
+    role: 'Restaurant Host',
+    description: 'ฝึกขั้นตอนการต้อนรับ ตรวจสอบการจอง และนำผู้รับบริการไปยังโต๊ะอย่างสุภาพและเป็นมืออาชีพ',
+    activity: 'ฝึกเลือกประโยคต้อนรับให้เหมาะสมกับสถานการณ์และน้ำเสียงของผู้รับบริการ',
+    vocabulary: [
+      { word: 'Reservation', pronunciation: '/ˌrezəˈveɪʃn/', meaning: 'การจองโต๊ะล่วงหน้า' },
+      { word: 'Available', pronunciation: '/əˈveɪləbl/', meaning: 'ว่างหรือพร้อมให้บริการ' },
+      { word: 'Accompany', pronunciation: '/əˈkʌmpəni/', meaning: 'พาไปหรือไปเป็นเพื่อน' },
+    ],
+    sentences: [
+      'Do you have a reservation with us?',
+      'Your table is ready. Please follow me.',
+      'May I help you with your belongings?',
+    ],
+  },
+  {
+    id: 'service-recovery',
+    title: 'Service Recovery',
+    titleTh: 'การรับมือข้อร้องเรียนของลูกค้า',
+    role: 'Service Staff',
+    description: 'ฝึกฟังปัญหา กล่าวขอโทษ และเสนอแนวทางแก้ไขอย่างเป็นระบบ เพื่อสร้างความมั่นใจให้ผู้รับบริการ',
+    activity: 'วิเคราะห์สถานการณ์ เลือกคำตอบที่เหมาะสม และฝึกพูดประโยคขอโทษอย่างจริงใจ',
+    vocabulary: [
+      { word: 'Apologize', pronunciation: '/əˈpɒlədʒaɪz/', meaning: 'กล่าวขอโทษ' },
+      { word: 'Inconvenience', pronunciation: '/ˌɪnkənˈviːniəns/', meaning: 'ความไม่สะดวก' },
+      { word: 'Replacement', pronunciation: '/rɪˈpleɪsmənt/', meaning: 'สิ่งที่นำมาเปลี่ยนทดแทน' },
+    ],
+    sentences: [
+      'I sincerely apologize for the inconvenience.',
+      'Let me replace that for you right away.',
+      'Thank you for bringing this to our attention.',
     ],
   },
 ]
 
+function cleanWord(value: string) {
+  return value.toLocaleLowerCase('en').replace(/[^a-z0-9']/g, '')
+}
+
+function evaluateSentence(target: string, spoken: string): PracticeResult {
+  const spokenPool = spoken.split(/\s+/).map(cleanWord).filter(Boolean)
+  const words = target.split(/\s+/).map(word => {
+    const matchIndex = spokenPool.indexOf(cleanWord(word))
+    if (matchIndex >= 0) spokenPool.splice(matchIndex, 1)
+    return { word, correct: matchIndex >= 0 }
+  })
+  const correct = words.filter(word => word.correct).length
+  return { score: words.length ? Math.round((correct / words.length) * 100) : 0, transcript: spoken, words }
+}
+
 export default function NavigatePage() {
-  const [scenarios, setScenarios] = useState<Scenario[]>(defaultScenarios)
-  const [activeScenario, setActiveScenario] = useState<Scenario | null>(null)
-  const [activeView, setActiveView] = useState<'overview' | 'vocab' | 'sentences'>('overview')
-  const [flippedCards, setFlippedCards] = useState<Set<number>>(new Set())
-  const [speaking, setSpeaking] = useState<string | null>(null)
-  
-  // States สำหรับระบบฝึกพูดและประเมินผลการออกเสียง
+  const [scenarios, setScenarios] = useState(defaultScenarios)
+  const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null)
+  const [activeView, setActiveView] = useState<DetailView>('overview')
+  const [expandedWord, setExpandedWord] = useState<number | null>(null)
+  const [speakingId, setSpeakingId] = useState<string | null>(null)
   const [recordingId, setRecordingId] = useState<string | null>(null)
-  const [practiceResults, setPracticeResults] = useState<Record<string, {
-    score: number
-    transcript: string
-    wordStatus: { word: string; correct: boolean }[]
-  }>>({})
+  const [results, setResults] = useState<Record<string, PracticeResult>>({})
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
 
-  function startPractice(targetSentence: string, id: string) {
-    if (typeof window === 'undefined') return
+  useEffect(() => {
+    const controller = new AbortController()
+    async function loadScenarios() {
+      try {
+        const response = await authenticatedFetch('/api/student/navigate', { signal: controller.signal })
+        if (!response.ok) return
+        const payload = await response.json() as { scenarios?: Scenario[] }
+        if (payload.scenarios?.length) setScenarios(payload.scenarios)
+      } catch (error) {
+        if (!controller.signal.aborted) console.warn('Unable to load navigation scenarios:', error)
+      }
+    }
+    void loadScenarios()
+    return () => controller.abort()
+  }, [])
 
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-    if (!SpeechRecognition) {
-      toast.warning('เบราว์เซอร์ไม่รองรับระบบประเมินเสียงพูด', { description: 'โปรดเปิดหน้านี้ด้วย Google Chrome' })
+  useEffect(() => () => {
+    window.speechSynthesis?.cancel()
+    recognitionRef.current?.stop()
+    recognitionRef.current = null
+  }, [])
+
+  const activeScenario = scenarios.find(item => item.id === activeScenarioId) || null
+  const totals = useMemo(() => ({
+    vocabulary: scenarios.reduce((sum, item) => sum + item.vocabulary.length, 0),
+    sentences: scenarios.reduce((sum, item) => sum + item.sentences.length, 0),
+  }), [scenarios])
+
+  function stopMedia() {
+    window.speechSynthesis?.cancel()
+    recognitionRef.current?.stop()
+    recognitionRef.current = null
+    setSpeakingId(null)
+    setRecordingId(null)
+  }
+
+  function openScenario(id: string) {
+    stopMedia()
+    setActiveScenarioId(id)
+    setActiveView('overview')
+    setExpandedWord(null)
+  }
+
+  function closeScenario() {
+    stopMedia()
+    setActiveScenarioId(null)
+    setActiveView('overview')
+    setExpandedWord(null)
+  }
+
+  function selectView(view: DetailView) {
+    stopMedia()
+    setActiveView(view)
+  }
+
+  function speak(text: string, id: string) {
+    if (!window.speechSynthesis) {
+      toast.warning('เบราว์เซอร์นี้ยังไม่รองรับการอ่านออกเสียง')
       return
     }
+    if (speakingId === id) {
+      window.speechSynthesis.cancel()
+      setSpeakingId(null)
+      return
+    }
+    recognitionRef.current?.stop()
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = 'en-US'
+    utterance.rate = 0.84
+    utterance.onstart = () => setSpeakingId(id)
+    utterance.onend = () => setSpeakingId(null)
+    utterance.onerror = () => setSpeakingId(null)
+    window.speechSynthesis.cancel()
+    window.speechSynthesis.speak(utterance)
+  }
 
+  function practice(sentence: string, id: string) {
     if (recordingId === id) {
-      // กดซ้ำเพื่อหยุดบันทึก
-      const rec = (window as any)._navigateRecognition
-      if (rec) rec.stop()
-      setRecordingId(null)
+      recognitionRef.current?.stop()
       return
     }
-
+    const speechWindow = window as typeof window & {
+      SpeechRecognition?: SpeechRecognitionConstructor
+      webkitSpeechRecognition?: SpeechRecognitionConstructor
+    }
+    const SpeechRecognition = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition
+    if (!SpeechRecognition) {
+      toast.warning('เบราว์เซอร์นี้ยังไม่รองรับการประเมินเสียงพูด', { description: 'แนะนำให้ใช้งานผ่าน Google Chrome' })
+      return
+    }
+    stopMedia()
     const recognition = new SpeechRecognition()
     recognition.lang = 'en-US'
     recognition.interimResults = false
     recognition.maxAlternatives = 1
-
-    recognition.onstart = () => {
-      setRecordingId(id)
+    recognition.onstart = () => setRecordingId(id)
+    recognition.onresult = event => {
+      const transcript = event.results[0]?.[0]?.transcript || ''
+      setResults(previous => ({ ...previous, [id]: evaluateSentence(sentence, transcript) }))
     }
-
-    recognition.onresult = (event: any) => {
-      const transcript = event.results[0][0].transcript || ''
-      
-      // ทำความสะอาดข้อความเปรียบเทียบคำต่อคำ
-      const cleanTarget = targetSentence.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").toLowerCase()
-      const cleanSpoken = transcript.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").toLowerCase()
-
-      const targetWords = cleanTarget.split(/\s+/)
-      const spokenWords = cleanSpoken.split(/\s+/)
-
-      // ตรวจสอบคำศัพท์ทีละคำ
-      const originalWords = targetSentence.split(/\s+/)
-      const wordStatus = originalWords.map(word => {
-        const cleanW = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?]/g, "").toLowerCase()
-        const correct = spokenWords.includes(cleanW)
-        return { word, correct }
-      })
-
-      // คำนวณคะแนนร้อยละ
-      const correctCount = wordStatus.filter(w => w.correct).length
-      const score = Math.round((correctCount / wordStatus.length) * 100)
-
-      setPracticeResults(prev => ({
-        ...prev,
-        [id]: { score, transcript, wordStatus }
-      }))
-    }
-
-    recognition.onerror = (event: any) => {
-      console.error('Speech recognition error in practice', event.error)
+    recognition.onerror = event => {
+      console.warn('Speech recognition error:', event.error)
       setRecordingId(null)
     }
-
     recognition.onend = () => {
       setRecordingId(null)
+      recognitionRef.current = null
     }
-
+    recognitionRef.current = recognition
     recognition.start()
-    ;(window as any)._navigateRecognition = recognition
-  }
-
-  useEffect(() => {
-    async function loadScenarios() {
-      const { data } = await localData.from('fine_lesson_plans').select('*')
-      if (data && data.length > 0) {
-        const mapped = data.map((p: any, idx: number) => ({
-          id: `plan-${idx}`,
-          title: p.title || 'Lesson Challenge',
-          titleTh: 'สถานการณ์จำลองตามแผนการสอน',
-          role: 'F&B Service Staff',
-          desc: p.concept || 'ฝึกทักษะการบริการอาหารตามแผนการเรียนรู้ของคุณครู',
-          vocab: (p.vocabulary || []).map((v: any) => {
-            if (typeof v === 'string') {
-              return { word: v, ph: '/pronunciation/', meaning: v, emoji: '🍽️' }
-            }
-            return {
-              word: v.nameEn || v.word || '',
-              ph: '/pronunciation/',
-              meaning: v.name || v.meaning || '',
-              emoji: v.emoji || '🍽️'
-            }
-          }),
-          sentences: p.sentences && p.sentences.length > 0 ? p.sentences : [
-            'Welcome to our 6-star dining room.',
-            'May I take your order, please?'
-          ]
-        }))
-        setScenarios(mapped)
-      } else {
-        setScenarios(defaultScenarios)
-      }
-    }
-    loadScenarios()
-  }, [])
-
-  function speak(text: string, id: string) {
-    if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.cancel()
-      const utt = new SpeechSynthesisUtterance(text)
-      utt.lang = 'en-US'
-      utt.rate = 0.85
-      setSpeaking(id)
-      utt.onend = () => setSpeaking(null)
-      window.speechSynthesis.speak(utt)
-    }
-  }
-
-  function flipCard(idx: number) {
-    setFlippedCards(prev => {
-      const next = new Set(prev)
-      if (next.has(idx)) next.delete(idx); else next.add(idx)
-      return next
-    })
   }
 
   if (activeScenario) {
+    const tabs: Array<{ id: DetailView; label: string; count?: number }> = [
+      { id: 'overview', label: 'ภาพรวม' },
+      { id: 'vocabulary', label: 'คำศัพท์', count: activeScenario.vocabulary.length },
+      { id: 'sentences', label: 'ฝึกประโยค', count: activeScenario.sentences.length },
+    ]
     return (
-      <div style={{ minHeight: '100vh', background: '#F3EFE6', paddingBottom: 80 }}>
-        
-        {/* Scenario Detail Header */}
-        <div style={{ 
-          background: 'linear-gradient(160deg, #4A1A2A 0%, #7B2D3E 60%, #8B3A50 100%)', 
-          padding: '52px 20px 0', 
-          position: 'relative', 
-          overflow: 'hidden' 
-        }}>
-          {/* Decorative circles */}
-          <div style={{ position: 'absolute', top: -30, right: -30, width: 160, height: 160, background: 'rgba(201,168,76,0.07)', borderRadius: '50%' }} />
-
-          {/* ปุ่มย้อนกลับดีไซน์ใหม่สไตล์วงกลมกระจกฝ้าหรูหรา */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 16 }}>
-            <button 
-              onClick={() => setActiveScenario(null)} 
-              style={{ 
-                width: 40, height: 40,
-                background: 'rgba(255,255,255,0.12)', 
-                border: '1.5px solid rgba(255,255,255,0.25)', 
-                color: '#C9A84C', 
-                borderRadius: '50%', 
-                cursor: 'pointer', 
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 20, fontWeight: 900,
-                transition: 'all 0.2s',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.25)'}
-              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
-              title="ย้อนกลับ"
-            >
-              ‹
-            </button>
-            <span style={{ 
-              background: 'rgba(201,168,76,0.18)', 
-              border: '1px solid rgba(201,168,76,0.4)', 
-              color: '#C9A84C', 
-              fontSize: 10, 
-              fontWeight: 800, 
-              padding: '4px 12px', 
-              borderRadius: 100, 
-              letterSpacing: '0.8px'
-            }}>N — NAVIGATE</span>
-          </div>
-
-          <h1 style={{ color: 'white', fontSize: 20, fontWeight: 800, margin: '0 0 4px', fontFamily: 'var(--font-display), var(--font-primary)' }}>{activeScenario.title}</h1>
-          <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, margin: '0 0 8px', fontFamily: 'var(--font-primary)' }}>{activeScenario.titleTh}</p>
-          <span style={{ background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.85)', fontSize: 10.5, fontWeight: 700, padding: '4px 12px', borderRadius: 100, display: 'inline-block', marginBottom: 16 }}>👔 บทบาท: {activeScenario.role}</span>
-
-          {/* Sub-tabs */}
-          <div style={{ display: 'flex', gap: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: 4 }}>
-            {[
-              { id: 'overview', label: 'ภาพรวม' },
-              { id: 'vocab', label: `คำศัพท์ (${activeScenario.vocab.length})` },
-              { id: 'sentences', label: `ประโยค (${activeScenario.sentences.length})` },
-            ].map(t => (
-              <button key={t.id} onClick={() => setActiveView(t.id as any)} style={{ flex: 1, padding: '9px 4px', borderRadius: 8, border: 'none', background: activeView === t.id ? 'white' : 'transparent', cursor: 'pointer', fontSize: 11.5, fontWeight: 800, color: activeView === t.id ? '#4A1A2A' : 'rgba(255,255,255,0.7)', fontFamily: 'var(--font-primary)' }}>{t.label}</button>
-            ))}
-          </div>
-          <svg viewBox="0 0 500 28" style={{ display: 'block', marginTop: 4, width: '100%' }} preserveAspectRatio="none">
-            <path d="M0 28 Q125 0 250 16 Q375 32 500 8 L500 28 Z" fill="#F3EFE6"/>
-          </svg>
-        </div>
-
-        <div style={{ padding: '8px 16px 0' }}>
-          {activeView === 'overview' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div style={{ background: 'white', borderRadius: 20, padding: '16px', border: '1px solid #EDE9E1', boxShadow: '0 2px 10px rgba(0,0,0,0.04)' }}>
-                <div style={{ fontSize: 10, color: '#A6882A', fontWeight: 800, marginBottom: 8, letterSpacing: '0.5px' }}>📋 รายละเอียดสถานการณ์</div>
-                <p style={{ fontSize: 13, color: '#4A4138', lineHeight: 1.7, margin: 0 }}>{activeScenario.desc}</p>
+      <main className={styles.page}>
+        <div className={styles.shell}>
+          <section className={`${styles.hero} ${styles.detailHero}`}>
+            <div className={styles.heroContent}>
+              <div className={styles.heroTopline}>
+                <button type="button" className={styles.backButton} onClick={closeScenario} aria-label="กลับไปหน้ารายการสถานการณ์"><NavigateIcon name="arrowLeft" size={18} /></button>
+                <span className={styles.eyebrow}><NavigateIcon name="compass" size={15} /> N — Navigate</span>
               </div>
-              <Link href="/simulation" style={{
-                display: 'block', textDecoration: 'none',
-                background: 'linear-gradient(135deg, #4A1A2A, #7B2D3E)',
-                color: 'white', padding: '16px', borderRadius: 18,
-                textAlign: 'center', fontWeight: 900, fontSize: 14.5,
-                boxShadow: '0 8px 24px rgba(74,26,42,0.25)',
-                transition: 'transform 0.2s',
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
-              onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-              >
-                🎭 เข้าห้องจำลองสถานการณ์
-              </Link>
+              <h1 className={styles.detailTitle}>{activeScenario.title}</h1>
+              <p className={styles.detailSubtitle}>{activeScenario.titleTh}</p>
+              <div className={styles.metaRow}>
+                <span><NavigateIcon name="user" size={14} /> {activeScenario.role}</span>
+                <span><NavigateIcon name="book" size={14} /> {activeScenario.vocabulary.length} คำศัพท์</span>
+                <span><NavigateIcon name="message" size={14} /> {activeScenario.sentences.length} ประโยค</span>
+              </div>
+            </div>
+          </section>
+
+          <nav className={styles.tabs} aria-label="เนื้อหาสถานการณ์">
+            {tabs.map(tab => <button key={tab.id} type="button" className={`${styles.tab} ${activeView === tab.id ? styles.tabActive : ''}`} onClick={() => selectView(tab.id)}><span>{tab.label}</span>{tab.count !== undefined && <span className={styles.tabCount}>{tab.count}</span>}</button>)}
+          </nav>
+
+          {activeView === 'overview' && (
+            <div className={styles.overviewGrid}>
+              <section className={styles.card}>
+                <header className={styles.cardHeader}><span className={styles.cardIcon}><NavigateIcon name="info" /></span><div><h2>รายละเอียดสถานการณ์</h2><p>ทำความเข้าใจบริบทก่อนเริ่มฝึก</p></div></header>
+                <div className={styles.cardBody}>
+                  <p className={styles.description}>{activeScenario.description}</p>
+                  {activeScenario.activity && <div className={styles.activity}><strong>กิจกรรม Navigate</strong><span>{activeScenario.activity}</span></div>}
+                </div>
+              </section>
+              <aside className={`${styles.card} ${styles.guideCard}`}>
+                <header className={styles.cardHeader}><span className={`${styles.cardIcon} ${styles.goldIcon}`}><NavigateIcon name="target" /></span><div><h2>ลำดับการฝึก</h2><p>เรียนรู้ให้ครบใน 3 ขั้นตอน</p></div></header>
+                <ol className={styles.steps}>
+                  <li><span>01</span><div><strong>ทำความเข้าใจบริบท</strong><p>อ่านบทบาทและเป้าหมายของสถานการณ์</p></div></li>
+                  <li><span>02</span><div><strong>เตรียมคำศัพท์และประโยค</strong><p>ฟังเสียงต้นแบบและฝึกพูดให้คล่อง</p></div></li>
+                  <li><span>03</span><div><strong>ทดลองสถานการณ์จริง</strong><p>นำความรู้ไปใช้ในห้องจำลอง</p></div></li>
+                </ol>
+                <Link className={styles.launchButton} href={`/simulation?scenario=${encodeURIComponent(activeScenario.id)}`}>เริ่มสถานการณ์จำลอง <NavigateIcon name="arrowRight" size={17} /></Link>
+              </aside>
             </div>
           )}
 
-          {activeView === 'vocab' && (
-            <div>
-              <p style={{ fontSize: 12, color: '#8C8272', margin: '0 0 12px' }}>💡 กดที่การ์ดเพื่อดูความหมายและฟังการออกเสียง</p>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                {activeScenario.vocab.map((v, i) => {
-                  const isFlipped = flippedCards.has(i)
-                  return (
-                    <div key={i} onClick={() => flipCard(i)} style={{ height: 130, perspective: '600px', cursor: 'pointer' }}>
-                      <div style={{
-                        width: '100%', height: '100%', position: 'relative',
-                        transformStyle: 'preserve-3d',
-                        transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-                        transition: 'transform 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-                      }}>
-                        {/* Front: แสดงรูปภาพชิ้นอุปกรณ์ (Emoji ใหญ่) */}
-                        <div style={{
-                          position: 'absolute', inset: 0, backfaceVisibility: 'hidden',
-                          WebkitBackfaceVisibility: 'hidden',
-                          background: 'linear-gradient(135deg, #4A1A2A, #7B2D3E)',
-                          borderRadius: 18, display: 'flex', flexDirection: 'column',
-                          alignItems: 'center', justifyContent: 'center', padding: 12,
-                          boxShadow: '0 4px 12px rgba(74,26,42,0.15)',
-                          border: '1px solid rgba(255,255,255,0.08)',
-                        }}>
-                          <div style={{ 
-                            width: 80, height: 80, borderRadius: 12, 
-                            background: 'rgba(255,255,255,0.15)', display: 'flex', 
-                            alignItems: 'center', justifyContent: 'center', 
-                            overflow: 'hidden', marginBottom: 8,
-                            border: '1px solid rgba(255,255,255,0.2)'
-                          }}>
-                            {v.emoji && v.emoji.startsWith('data:image') ? (
-                              <img src={v.emoji} alt={v.word} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                            ) : (
-                              <span style={{ fontSize: 52, filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.25))' }}>{v.emoji}</span>
-                            )}
-                          </div>
-                          <div style={{ color: '#C9A84C', fontSize: 9, fontWeight: 800, letterSpacing: '0.8px' }}>แตะเพื่อพลิก 🔄</div>
-                        </div>
-                        
-                        {/* Back: แสดงคำศัพท์ภาษาอังกฤษ คำอ่าน และปุ่มเล่นเสียง */}
-                        <div style={{
-                          position: 'absolute', inset: 0, backfaceVisibility: 'hidden', 
-                          WebkitBackfaceVisibility: 'hidden',
-                          transform: 'rotateY(180deg)',
-                          background: 'white', borderRadius: 18, display: 'flex', flexDirection: 'column',
-                          alignItems: 'center', justifyContent: 'center', padding: 10, 
-                          border: '2.5px solid #7B2D3E',
-                          boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
-                        }}>
-                          <div style={{ color: '#4A1A2A', fontWeight: 900, fontSize: 13.5, textAlign: 'center', lineHeight: 1.1 }}>{v.word}</div>
-                          {v.ph && <div style={{ color: '#8C8272', fontSize: 9.5, marginTop: 2, fontFamily: 'monospace' }}>{v.ph}</div>}
-                          <div style={{ color: '#7B2D3E', fontWeight: 700, fontSize: 11, textAlign: 'center', marginTop: 4 }}>{v.meaning}</div>
-                          
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); speak(v.word, v.word) }} 
-                            style={{ 
-                              marginTop: 6, 
-                              background: speaking === v.word ? '#4A1A2A' : '#FAE8EB', 
-                              border: 'none', 
-                              borderRadius: 100, 
-                              color: speaking === v.word ? 'white' : '#7B2D3E', 
-                              padding: '3px 10px', 
-                              fontSize: 10, 
-                              fontWeight: 800, 
-                              cursor: 'pointer', 
-                              fontFamily: 'var(--font-primary)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 4,
-                            }}
-                          >
-                            🔊 ฟังเสียง
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )
+          {activeView === 'vocabulary' && (
+            <section className={styles.contentSection}>
+              <header className={styles.sectionHeader}><div><span className={styles.sectionEyebrow}>Vocabulary</span><h2>คำศัพท์สำคัญในสถานการณ์</h2><p>เลือกคำศัพท์เพื่อดูความหมายและฟังการออกเสียง</p></div></header>
+              {activeScenario.vocabulary.length ? <div className={styles.vocabGrid}>
+                {activeScenario.vocabulary.map((item, index) => {
+                  const expanded = expandedWord === index
+                  const audioId = `word-${activeScenario.id}-${index}`
+                  return <article className={`${styles.vocabCard} ${expanded ? styles.vocabExpanded : ''}`} key={`${item.word}-${index}`}>
+                    <button type="button" className={styles.vocabSummary} onClick={() => setExpandedWord(expanded ? null : index)} aria-expanded={expanded}>
+                      <span className={styles.wordIndex}>{String(index + 1).padStart(2, '0')}</span>
+                      <span className={styles.wordCopy}><strong>{item.word}</strong><span>{item.pronunciation || 'แตะเพื่อดูความหมาย'}</span></span>
+                      <span className={styles.chevron}><NavigateIcon name="chevron" size={17} /></span>
+                    </button>
+                    {expanded && <div className={styles.vocabDetail}><p>{item.meaning}</p><button type="button" className={styles.secondaryButton} onClick={() => speak(item.word, audioId)}><NavigateIcon name={speakingId === audioId ? 'pause' : 'volume'} size={16} />{speakingId === audioId ? 'หยุดเสียง' : 'ฟังการออกเสียง'}</button></div>}
+                  </article>
                 })}
-              </div>
-            </div>
+              </div> : <div className={styles.emptyState}><NavigateIcon name="book" size={24} /><strong>ยังไม่มีคำศัพท์ในสถานการณ์นี้</strong><span>คุณครูสามารถเพิ่มคำศัพท์ได้จากหน้าแผนการสอน</span></div>}
+            </section>
           )}
 
           {activeView === 'sentences' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {activeScenario.sentences.map((s, i) => {
-                const id = `sent-${i}`
-                const result = practiceResults[id]
-                const isRec = recordingId === id
-
-                return (
-                  <div key={i} style={{ background: 'white', borderRadius: 18, padding: '16px', border: '1px solid #EDE9E1', boxShadow: '0 2px 10px rgba(74,26,42,0.04)' }}>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                      <div style={{ width: 28, height: 28, background: 'linear-gradient(135deg,#4A1A2A,#7B2D3E)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 11, fontWeight: 800, flexShrink: 0 }}>{i + 1}</div>
-                      <div style={{ flex: 1 }}>
-                        
-                        {/* ประโยคต้นแบบ */}
-                        <p style={{ fontSize: 14.5, fontWeight: 700, color: '#1A1410', margin: '0 0 12px', lineHeight: 1.5, fontStyle: 'italic' }}>
-                          "{s}"
-                        </p>
-
-                        {/* ปุ่มฟังและปุ่มบันทึกเสียงพูดตาม */}
-                        <div style={{ display: 'flex', gap: 8, marginBottom: result || isRec ? 12 : 0 }}>
-                          <button 
-                            onClick={() => speak(s, `play-${i}`)} 
-                            style={{ 
-                              flex: 1, padding: '10px', borderRadius: 12, 
-                              border: speaking === `play-${i}` ? 'none' : '1.5px solid #4A1A2A', 
-                              background: speaking === `play-${i}` ? '#4A1A2A' : 'transparent', 
-                              color: speaking === `play-${i}` ? 'white' : '#4A1A2A', 
-                              fontSize: 11.5, fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--font-primary)' 
-                            }}
-                          >
-                            🔊 {speaking === `play-${i}` ? 'กำลังออกเสียง...' : 'ฟังเจ้าของภาษา'}
-                          </button>
-                          
-                          <button 
-                            onClick={() => startPractice(s, id)} 
-                            style={{ 
-                              flex: 1, padding: '10px', borderRadius: 12, border: 'none', 
-                              background: isRec ? '#FF6B6B' : 'linear-gradient(135deg,#4A1A2A,#7B2D3E)', 
-                              color: 'white', fontSize: 11.5, fontWeight: 800, cursor: 'pointer', 
-                              fontFamily: 'var(--font-primary)',
-                              animation: isRec ? 'pulse-mic 1.2s infinite' : 'none'
-                            }}
-                          >
-                            {isRec ? '🛑 กำลังฟังเสียง...' : '🎤 กดแล้วพูดตาม'}
-                          </button>
-                        </div>
-
-                        {/* การประเมินผลออกเสียงแยกคำศัพท์ */}
-                        {result && (
-                          <div style={{ 
-                            background: '#FDFCF7', 
-                            border: '1.5px solid #EDE9E1', 
-                            borderRadius: 14, 
-                            padding: '12px', 
-                            marginTop: 8,
-                            animation: 'fadeInUp 0.3s ease'
-                          }}>
-                            {/* ส่วนแสดงคะแนน */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, borderBottom: '1px solid #EDE9E1', paddingBottom: 6 }}>
-                              <span style={{ fontSize: 11, fontWeight: 800, color: '#8C8272' }}>🔊 ผลวิเคราะห์การออกเสียง</span>
-                              <span style={{ 
-                                fontSize: 12, 
-                                fontWeight: 900, 
-                                color: result.score >= 80 ? '#1E4D3A' : result.score >= 50 ? '#C9A84C' : '#8B2635',
-                                background: result.score >= 80 ? '#EAF3EE' : result.score >= 50 ? '#FFF8E1' : '#FAE8EB',
-                                padding: '3px 10px',
-                                borderRadius: 100
-                              }}>
-                                คะแนน: {result.score}%
-                              </span>
-                            </div>
-                            
-                            {/* ไฮไลท์สีคำศัพท์รายคำ */}
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px 6px', lineHeight: 1.6 }}>
-                              {result.wordStatus.map((w, wIdx) => (
-                                <span 
-                                  key={wIdx} 
-                                  style={{ 
-                                    fontSize: 13, 
-                                    fontWeight: 700, 
-                                    color: w.correct ? '#1E4D3A' : '#FF4D4D',
-                                    background: w.correct ? 'rgba(30,77,58,0.06)' : 'rgba(255,77,77,0.06)',
-                                    padding: '1px 6px',
-                                    borderRadius: 6,
-                                    textDecoration: w.correct ? 'none' : 'line-through'
-                                  }}
-                                  title={w.correct ? 'ออกเสียงถูกต้อง' : 'ออกเสียงไม่ชัดเจนหรือขาดหาย'}
-                                >
-                                  {w.word}
-                                </span>
-                              ))}
-                            </div>
-                            
-                            {/* แสดงข้อความจริงที่นักเรียนพูด */}
-                            <div style={{ fontSize: 10, color: '#8C8272', marginTop: 8, fontStyle: 'italic' }}>
-                              เสียงที่ตรวจพบ: "{result.transcript}"
-                            </div>
-                          </div>
-                        )}
-
-                      </div>
+            <section className={styles.contentSection}>
+              <header className={styles.sectionHeader}><div><span className={styles.sectionEyebrow}>Speaking practice</span><h2>ฝึกประโยคงานบริการ</h2><p>ฟังเสียงต้นแบบ พูดตาม และตรวจความถูกต้องรายคำ</p></div></header>
+              {activeScenario.sentences.length ? <div className={styles.sentenceList}>
+                {activeScenario.sentences.map((sentence, index) => {
+                  const id = `sentence-${activeScenario.id}-${index}`
+                  const audioId = `audio-${id}`
+                  const result = results[id]
+                  const recording = recordingId === id
+                  return <article className={styles.sentenceCard} key={`${sentence}-${index}`}>
+                    <div className={styles.sentenceTop}><span className={styles.sentenceIndex}>{String(index + 1).padStart(2, '0')}</span><p>{sentence}</p></div>
+                    <div className={styles.sentenceActions}>
+                      <button type="button" className={styles.secondaryButton} onClick={() => speak(sentence, audioId)}><NavigateIcon name={speakingId === audioId ? 'pause' : 'volume'} size={16} />{speakingId === audioId ? 'หยุดเสียง' : 'ฟังเสียงต้นแบบ'}</button>
+                      <button type="button" className={`${styles.primaryButton} ${recording ? styles.recording : ''}`} onClick={() => practice(sentence, id)}><NavigateIcon name={recording ? 'pause' : 'mic'} size={16} />{recording ? 'หยุดบันทึกเสียง' : 'พูดตามและประเมิน'}</button>
                     </div>
-                  </div>
-                )
-              })}
-            </div>
+                    {result && <div className={styles.resultPanel} aria-live="polite">
+                      <div className={styles.resultHeader}><span className={styles.resultIcon}><NavigateIcon name={result.score >= 75 ? 'check' : 'refresh'} /></span><div><strong>ผลการประเมิน</strong><span>{result.score >= 75 ? 'ทำได้ดี ลองฝึกอีกครั้งเพื่อเพิ่มความคล่อง' : 'ฟังต้นแบบแล้วลองพูดช้าลงอีกครั้ง'}</span></div><b>{result.score}%</b></div>
+                      <div className={styles.wordResults}>{result.words.map((word, wordIndex) => <span className={word.correct ? styles.correct : styles.incorrect} key={`${word.word}-${wordIndex}`}>{word.word}</span>)}</div>
+                      <p className={styles.transcript}>ระบบได้ยิน: “{result.transcript}”</p>
+                    </div>}
+                  </article>
+                })}
+              </div> : <div className={styles.emptyState}><NavigateIcon name="message" size={24} /><strong>ยังไม่มีประโยคฝึกในสถานการณ์นี้</strong><span>คุณครูสามารถเพิ่มประโยคได้จากหน้าแผนการสอน</span></div>}
+            </section>
           )}
         </div>
-        
-        <StudentFINENav />
-      </div>
+      </main>
     )
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#F3EFE6', paddingBottom: 80 }}>
-      <div style={{ background: 'linear-gradient(160deg, #4A1A2A 0%, #7B2D3E 60%, #8B3A50 100%)', padding: '52px 20px 0', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: -30, right: -30, width: 160, height: 160, background: 'rgba(201,168,76,0.07)', borderRadius: '50%' }} />
-        
-        <div style={{ position: 'relative', zIndex: 1, display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12 }}>
-          <Link href="/student/explore" style={{
-            width: 40, height: 40,
-            background: 'rgba(255,255,255,0.12)', 
-            border: '1.5px solid rgba(255,255,255,0.25)', 
-            color: '#C9A84C', 
-            borderRadius: '50%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 20, fontWeight: 900,
-            textDecoration: 'none',
-            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-          }}>
-            ‹
-          </Link>
-          <span style={{ background: 'rgba(201,168,76,0.2)', border: '1px solid rgba(201,168,76,0.4)', color: '#C9A84C', fontSize: 10, fontWeight: 800, padding: '4px 12px', borderRadius: 100, display: 'inline-block' }}>N — FINE MODEL</span>
-        </div>
-
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <h1 style={{ color: 'white', fontSize: 22, fontWeight: 800, margin: '0 0 4px', fontFamily: 'var(--font-display), var(--font-primary)' }}>Navigate</h1>
-          <p style={{ color: 'rgba(255,255,255,0.65)', fontSize: 12, margin: '0 0 20px', fontFamily: 'var(--font-primary)' }}>จำลองสถานการณ์และฝึกคำศัพท์</p>
-        </div>
-        <svg viewBox="0 0 500 28" style={{ display: 'block', marginTop: 4, width: '100%' }} preserveAspectRatio="none">
-          <path d="M0 28 Q125 0 250 16 Q375 32 500 8 L500 28 Z" fill="#F3EFE6"/>
-        </svg>
-      </div>
-
-      <div style={{ padding: '8px 16px 0', display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <h2 style={{ fontSize: 13, fontWeight: 800, color: '#4A1A2A', margin: 0 }}>🎭 เลือกสถานการณ์จำลอง</h2>
-        {scenarios.map((sc) => (
-          <div
-            key={sc.id}
-            onClick={() => { setActiveScenario(sc); setActiveView('overview') }}
-            style={{
-              background: 'white', borderRadius: 20, overflow: 'hidden',
-              boxShadow: '0 4px 20px rgba(74,26,42,0.10)', border: '1px solid #EDE9E1', cursor: 'pointer',
-              transition: 'transform 0.15s, box-shadow 0.15s',
-            }}
-          >
-            <div style={{ background: 'linear-gradient(135deg, #4A1A2A, #7B2D3E)', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ color: '#C9A84C', fontSize: 10, fontWeight: 800, marginBottom: 4 }}>SCENARIO</div>
-                <div style={{ color: 'white', fontWeight: 800, fontSize: 15 }}>{sc.title}</div>
-              </div>
-              <div style={{ background: 'rgba(255,255,255,0.15)', color: 'white', fontSize: 22, width: 48, height: 48, borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>🎭</div>
-            </div>
-            <div style={{ padding: '14px 16px' }}>
-              <div style={{ fontWeight: 700, fontSize: 13, color: '#4A4138', marginBottom: 6 }}>{sc.titleTh}</div>
-              <p style={{ fontSize: 11.5, color: '#8C8272', margin: '0 0 12px', lineHeight: 1.6, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' } as any}>{sc.desc}</p>
-            </div>
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <section className={styles.hero}>
+          <div className={styles.heroContent}>
+            <div className={styles.eyebrow}><NavigateIcon name="sparkles" size={15} /> N — Navigate</div>
+            <h1 className={styles.title}>ฝึกสถานการณ์งานบริการอย่างเป็นระบบ</h1>
+            <p className={styles.subtitle}>เลือกสถานการณ์ เตรียมคำศัพท์และประโยคสำคัญ ก่อนนำความรู้ไปทดลองใช้ในห้องจำลองเสมือนจริง</p>
+            <Link className={styles.heroLink} href="/student/explore"><NavigateIcon name="arrowLeft" size={15} /> กลับไปหน้าสำรวจ</Link>
           </div>
-        ))}
+          <div className={styles.heroStats}>
+            <div><strong>{scenarios.length}</strong><span>สถานการณ์</span></div>
+            <div><strong>{totals.vocabulary}</strong><span>คำศัพท์</span></div>
+            <div><strong>{totals.sentences}</strong><span>ประโยคฝึก</span></div>
+          </div>
+        </section>
+
+        <section className={styles.catalogue}>
+          <header className={styles.catalogueHeader}><div><span className={styles.sectionEyebrow}>Scenario library</span><h2>เลือกสถานการณ์ที่ต้องการฝึก</h2><p>เนื้อหาจากแผนการสอนของคุณครู พร้อมใช้งานได้ทันที</p></div></header>
+          <div className={styles.scenarioGrid}>
+            {scenarios.map((scenario, index) => <button type="button" className={styles.scenarioCard} key={scenario.id} onClick={() => openScenario(scenario.id)}>
+              <span className={styles.scenarioAccent} aria-hidden="true" />
+              <span className={styles.scenarioTop}><span className={styles.scenarioNumber}>{String(index + 1).padStart(2, '0')}</span><span className={styles.scenarioIcon}><NavigateIcon name="compass" /></span></span>
+              <span className={styles.scenarioCopy}><span className={styles.scenarioLabel}>Service scenario</span><strong>{scenario.title}</strong><span className={styles.scenarioThai}>{scenario.titleTh}</span><span className={styles.scenarioDescription}>{scenario.description}</span></span>
+              <span className={styles.scenarioFooter}><span><NavigateIcon name="book" size={14} /> {scenario.vocabulary.length} คำศัพท์</span><span><NavigateIcon name="message" size={14} /> {scenario.sentences.length} ประโยค</span><span className={styles.openLabel}>เปิดสถานการณ์ <NavigateIcon name="arrowRight" size={15} /></span></span>
+            </button>)}
+          </div>
+        </section>
       </div>
-
-      <StudentFINENav />
-
-      <style>{`
-        @keyframes pulse-mic {
-          0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.6); }
-          70% { transform: scale(1.06); box-shadow: 0 0 0 8px rgba(255, 107, 107, 0); }
-          100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 107, 107, 0); }
-        }
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-    </div>
+    </main>
   )
 }

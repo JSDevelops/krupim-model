@@ -2,6 +2,7 @@ import { compare } from 'bcryptjs'
 import { NextRequest, NextResponse } from 'next/server'
 import { queryDb } from '@/lib/db'
 import { createSessionToken, setSessionCookie, type SessionRole } from '@/lib/session'
+import { apiErrorResponse, enforceRateLimit } from '../../_lib/auth'
 
 type LoginRow = {
   id: string
@@ -17,10 +18,12 @@ type LoginRow = {
   phone: string | null
   bio: string | null
   created_at: string
+  session_version: number
 }
 
 export async function POST(request: NextRequest) {
   try {
+    await enforceRateLimit(request, 8, 60_000)
     const body = await request.json()
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
     const password = typeof body.password === 'string' ? body.password : ''
@@ -33,7 +36,7 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await queryDb<LoginRow>(`
-      SELECT u.id, u.email, u.password_hash, p.name, p.role, p.requested_role,
+      SELECT u.id, u.email, u.password_hash, u.session_version, p.name, p.role, p.requested_role,
              p.approval_status, p.avatar_url, p.school_id, p.school_name,
              p.phone, p.bio, p.created_at
       FROM app_users u
@@ -55,7 +58,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Account role mismatch' }, { status: 403 })
     }
 
-    const token = await createSessionToken({ id: account.id, email: account.email, role: account.role })
+    const token = await createSessionToken({ id: account.id, email: account.email, role: account.role, sessionVersion: account.session_version })
     const profile = {
       id: account.id,
       email: account.email,
@@ -79,6 +82,6 @@ export async function POST(request: NextRequest) {
     return response
   } catch (error) {
     console.error('Local login failed:', error)
-    return NextResponse.json({ error: 'Authentication service is unavailable' }, { status: 500 })
+    return apiErrorResponse(error)
   }
 }

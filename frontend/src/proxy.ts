@@ -8,7 +8,7 @@ const ROLE_GUARDS: Record<string, ('developer' | 'teacher' | 'student')[]> = {
   '/student': ['student', 'developer'],
 }
 
-const PUBLIC_PATHS = ['/', '/role-select', '/register-teacher', '/register-student']
+const PUBLIC_PATHS = ['/', '/role-select', '/forgot-password', '/register-teacher', '/register-student']
 
 function redirectToLogin(request: NextRequest, code?: string) {
   const url = request.nextUrl.clone()
@@ -36,7 +36,7 @@ export async function proxy(request: NextRequest) {
       if (!allowedRoles.includes(session.role)) {
         const url = request.nextUrl.clone()
         if (session.role === 'teacher') url.pathname = '/teacher/dashboard'
-        else if (session.role === 'student') url.pathname = '/student/explore'
+        else if (session.role === 'student') url.pathname = '/student/dashboard'
         else url.pathname = '/role-select'
         return NextResponse.redirect(url)
       }

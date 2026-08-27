@@ -6,6 +6,11 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS citext;
 
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  migration_name TEXT PRIMARY KEY,
+  applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 DO $$ BEGIN
   CREATE TYPE user_role AS ENUM ('developer', 'teacher', 'student');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -32,6 +37,7 @@ CREATE TABLE IF NOT EXISTS app_users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   email CITEXT NOT NULL UNIQUE,
   password_hash TEXT NOT NULL,
+  session_version INTEGER NOT NULL DEFAULT 1,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -60,6 +66,33 @@ CREATE TABLE IF NOT EXISTS ai_provider_settings (
   updated_by UUID REFERENCES profiles(id),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS system_settings (
+  setting_key TEXT PRIMARY KEY,
+  value_json JSONB NOT NULL DEFAULT '{}',
+  updated_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  actor_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  action TEXT NOT NULL,
+  entity_type TEXT NOT NULL,
+  entity_id TEXT,
+  details_json JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS api_rate_limits (
+  bucket_key TEXT PRIMARY KEY,
+  request_count INTEGER NOT NULL DEFAULT 1,
+  expires_at TIMESTAMPTZ NOT NULL
+);
+
+INSERT INTO system_settings (setting_key, value_json)
+VALUES ('general', '{"schoolName":"วิทยาลัยอาชีวศึกษากรุงเทพ","maintenance":false}'::jsonb)
+ON CONFLICT (setting_key) DO NOTHING;
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_ai_provider_single_active
   ON ai_provider_settings ((is_active))
@@ -209,6 +242,7 @@ CREATE TABLE IF NOT EXISTS simulation_sessions (
   completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+
 CREATE TABLE IF NOT EXISTS chat_sessions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   student_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
@@ -248,6 +282,20 @@ CREATE TABLE IF NOT EXISTS learning_analytics (
   UNIQUE(student_id, course_id, date)
 );
 
+CREATE TABLE IF NOT EXISTS certificates (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  certificate_code TEXT NOT NULL UNIQUE DEFAULT ('FINE-' || UPPER(encode(gen_random_bytes(8), 'hex'))),
+  student_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  certificate_type TEXT NOT NULL DEFAULT 'fine-fb-service',
+  issued_name TEXT NOT NULL,
+  school_name TEXT,
+  overall_score INTEGER NOT NULL CHECK (overall_score BETWEEN 0 AND 100),
+  score_snapshot JSONB NOT NULL DEFAULT '{}'::jsonb,
+  issued_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  revoked_at TIMESTAMPTZ,
+  UNIQUE(student_id, certificate_type)
+);
+
 CREATE TABLE IF NOT EXISTS assignments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id UUID REFERENCES classes(id) ON DELETE CASCADE,
@@ -277,6 +325,18 @@ CREATE TABLE IF NOT EXISTS assignment_submissions (
   submitted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   graded_at TIMESTAMPTZ,
   UNIQUE(assignment_id, student_id)
+);
+
+CREATE TABLE IF NOT EXISTS stored_files (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  assignment_id UUID REFERENCES assignments(id) ON DELETE CASCADE,
+  purpose TEXT NOT NULL,
+  original_name TEXT NOT NULL,
+  storage_name TEXT NOT NULL UNIQUE,
+  mime_type TEXT NOT NULL,
+  size_bytes INTEGER NOT NULL CHECK (size_bytes > 0 AND size_bytes <= 12582912),
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 ALTER TABLE assignment_submissions ADD COLUMN IF NOT EXISTS attachment_name TEXT;
@@ -320,6 +380,39 @@ CREATE TABLE IF NOT EXISTS fine_lesson_plans (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE fine_lesson_plans ADD COLUMN IF NOT EXISTS teacher_id UUID REFERENCES profiles(id) ON DELETE SET NULL;
+ALTER TABLE fine_lesson_plans ADD COLUMN IF NOT EXISTS class_id UUID REFERENCES classes(id) ON DELETE SET NULL;
+ALTER TABLE fine_lesson_plans ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ;
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema='public' AND table_name='fine_lesson_plans' AND column_name='publication_status'
+  ) THEN
+    ALTER TABLE fine_lesson_plans ADD COLUMN publication_status TEXT NOT NULL DEFAULT 'published';
+    UPDATE fine_lesson_plans SET published_at=COALESCE(published_at, updated_at);
+    ALTER TABLE fine_lesson_plans ALTER COLUMN publication_status SET DEFAULT 'draft';
+  END IF;
+END $$;
+DO $$ BEGIN
+  ALTER TABLE fine_lesson_plans
+    ADD CONSTRAINT fine_lesson_plans_publication_status_check
+    CHECK (publication_status IN ('draft', 'published'));
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+ALTER TABLE simulation_sessions ADD COLUMN IF NOT EXISTS lesson_plan_id TEXT REFERENCES fine_lesson_plans(id) ON DELETE SET NULL;
+
+CREATE TABLE IF NOT EXISTS learning_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  event_type TEXT NOT NULL,
+  reference_type TEXT NOT NULL,
+  reference_id TEXT NOT NULL,
+  score INTEGER,
+  metadata_json JSONB NOT NULL DEFAULT '{}',
+  occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(student_id,event_type,reference_type,reference_id)
+);
+
 CREATE TABLE IF NOT EXISTS class_invites (
   short_code TEXT PRIMARY KEY,
   target_class TEXT NOT NULL,
@@ -328,6 +421,12 @@ CREATE TABLE IF NOT EXISTS class_invites (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   expires_at TIMESTAMPTZ
 );
+
+ALTER TABLE class_invites ADD COLUMN IF NOT EXISTS class_id UUID REFERENCES classes(id) ON DELETE CASCADE;
+ALTER TABLE class_invites ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES profiles(id) ON DELETE CASCADE;
+ALTER TABLE class_invites ADD COLUMN IF NOT EXISTS max_uses INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE class_invites ADD COLUMN IF NOT EXISTS use_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE class_invites ADD COLUMN IF NOT EXISTS revoked_at TIMESTAMPTZ;
 
 CREATE TABLE IF NOT EXISTS ar_items (
   id TEXT PRIMARY KEY,
@@ -361,6 +460,11 @@ CREATE TABLE IF NOT EXISTS vocabulary_items (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE vocabulary_items ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES profiles(id) ON DELETE SET NULL;
+
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS link_url TEXT;
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;
+
 CREATE TABLE IF NOT EXISTS content_library (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   content_type TEXT NOT NULL CHECK (content_type IN ('AR Object', 'AI Scan', 'Simulation', 'Lesson')),
@@ -390,11 +494,13 @@ CREATE INDEX IF NOT EXISTS idx_profiles_role_status ON profiles(role, approval_s
 CREATE INDEX IF NOT EXISTS idx_classes_teacher_active ON classes(teacher_id, is_active, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_class_students_student ON class_students(student_id, enrolled_at DESC);
 CREATE INDEX IF NOT EXISTS idx_learning_analytics_student_date ON learning_analytics(student_id, date DESC);
+CREATE INDEX IF NOT EXISTS idx_certificates_student ON certificates(student_id, issued_at DESC);
 CREATE INDEX IF NOT EXISTS idx_student_assessments_student_submitted ON student_assessments(student_id, submitted_at DESC);
 CREATE INDEX IF NOT EXISTS idx_lesson_progress_student_updated ON lesson_progress(student_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_assignments_teacher_due ON assignments(teacher_id, due_date DESC);
 CREATE INDEX IF NOT EXISTS idx_assignments_class_due ON assignments(class_id, due_date DESC);
 CREATE INDEX IF NOT EXISTS idx_assignment_submissions_assignment ON assignment_submissions(assignment_id, submitted_at DESC);
+CREATE INDEX IF NOT EXISTS idx_stored_files_owner ON stored_files(owner_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_notifications_user_unread ON notifications(user_id, is_read);
 CREATE INDEX IF NOT EXISTS idx_chat_sessions_student ON chat_sessions(student_id, started_at DESC);
 CREATE INDEX IF NOT EXISTS idx_simulation_sessions_student ON simulation_sessions(student_id);
@@ -402,7 +508,21 @@ CREATE INDEX IF NOT EXISTS idx_simulation_sessions_student_completed ON simulati
 CREATE INDEX IF NOT EXISTS idx_vocab_name_en ON vocabulary_items(name_en);
 CREATE INDEX IF NOT EXISTS idx_vocab_category ON vocabulary_items(category);
 CREATE INDEX IF NOT EXISTS idx_vocab_updated ON vocabulary_items(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_vocab_creator_updated ON vocabulary_items(created_by, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ar_items_creator_updated ON ar_items(created_by, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_fine_lesson_plans_class_published
+  ON fine_lesson_plans(class_id, publication_status, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_class_invites_class_active
+  ON class_invites(class_id, expires_at) WHERE revoked_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_learning_events_student_occurred
+  ON learning_events(student_id, occurred_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created
+  ON audit_logs(created_at DESC, actor_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_action_created
+  ON audit_logs(action, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_entity_created
+  ON audit_logs(entity_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_api_rate_limits_expires ON api_rate_limits(expires_at);
 CREATE INDEX IF NOT EXISTS idx_content_library_type_status ON content_library(content_type, status);
 CREATE INDEX IF NOT EXISTS idx_system_announcements_published ON system_announcements(published_at DESC);
 

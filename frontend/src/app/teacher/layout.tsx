@@ -10,7 +10,7 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   useEffect(() => {
     if (loading) return
     if (!user || (role !== 'teacher' && role !== 'developer')) {
-      if (role === 'student') router.replace('/student/explore')
+      if (role === 'student') router.replace('/student/dashboard')
       else router.replace('/')
     }
   }, [user, role, loading, router])

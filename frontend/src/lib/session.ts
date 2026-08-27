@@ -9,11 +9,13 @@ export type SessionUser = {
   id: string
   email: string
   role: SessionRole
+  sessionVersion: number
 }
 
 type SessionClaims = JWTPayload & {
   email: string
   role: SessionRole
+  sv: number
 }
 
 function getSessionSecret() {
@@ -25,7 +27,7 @@ function getSessionSecret() {
 }
 
 export async function createSessionToken(user: SessionUser) {
-  return new SignJWT({ email: user.email, role: user.role })
+  return new SignJWT({ email: user.email, role: user.role, sv: user.sessionVersion })
     .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
     .setSubject(user.id)
     .setIssuer('krupim-local')
@@ -42,11 +44,11 @@ export async function verifySessionToken(token: string): Promise<SessionUser> {
     audience: 'krupim-app',
   })
 
-  if (!payload.sub || !payload.email || !['developer', 'teacher', 'student'].includes(payload.role)) {
+  if (!payload.sub || !payload.email || !['developer', 'teacher', 'student'].includes(payload.role) || !Number.isInteger(payload.sv) || payload.sv < 1) {
     throw new Error('Invalid session payload')
   }
 
-  return { id: payload.sub, email: payload.email, role: payload.role }
+  return { id: payload.sub, email: payload.email, role: payload.role, sessionVersion: payload.sv }
 }
 
 export function getRequestSessionToken(request: NextRequest) {
@@ -81,4 +83,3 @@ export function clearSessionCookie(response: NextResponse) {
     maxAge: 0,
   })
 }
-

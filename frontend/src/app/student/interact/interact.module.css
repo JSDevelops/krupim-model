@@ -1,0 +1,101 @@
+.page {
+  min-height: 100vh;
+  padding: 12px 10px 112px;
+  color: #1d2923;
+  background:
+    radial-gradient(circle at 8% 4%, rgba(70, 105, 145, .12), transparent 28%),
+    radial-gradient(circle at 92% 20%, rgba(181, 140, 50, .1), transparent 24%),
+    #f5f6f3;
+}
+.shell { width: min(1040px, 100%); min-width: 0; margin: 0 auto; }
+.hero { position: relative; overflow: hidden; padding: 23px 20px; border: 1px solid rgba(255,255,255,.14); border-radius: 22px; color: #fff; background: linear-gradient(135deg, #17283b 0%, #243d5b 58%, #345879 100%); box-shadow: 0 18px 48px rgba(25,49,75,.16); }
+.hero::after { content: ''; position: absolute; top: -130px; right: -90px; width: 270px; height: 270px; border: 1px solid rgba(255,255,255,.12); border-radius: 50%; box-shadow: 0 0 0 42px rgba(255,255,255,.025), 0 0 0 84px rgba(255,255,255,.02); }
+.heroContent { position: relative; z-index: 1; min-width: 0; }
+.eyebrow { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; color: #e4ca78; font-size: 10.5px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; }
+.title { margin: 0; max-width: 680px; font-size: clamp(25px, 7vw, 40px); font-weight: 500; line-height: 1.22; letter-spacing: -.02em; }
+.subtitle { max-width: 650px; margin: 10px 0 0; color: rgba(255,255,255,.68); font-size: 12px; line-height: 1.7; }
+.layout { display: grid; grid-template-columns: minmax(0,1fr); gap: 14px; margin-top: 14px; }
+.layout > * { min-width: 0; }
+.card { min-width: 0; overflow: hidden; border: 1px solid #e0e5e2; border-radius: 20px; background: rgba(255,255,255,.92); box-shadow: 0 13px 36px rgba(22,44,33,.07); }
+.progressRow { display: flex; min-width: 0; align-items: center; gap: 12px; padding: 15px 16px; border-bottom: 1px solid #e8ece9; }
+.progressTrack { height: 5px; min-width: 0; flex: 1; overflow: hidden; border-radius: 999px; background: #e5e9e6; }
+.progressBar { height: 100%; border-radius: inherit; background: linear-gradient(90deg,#29476a,#4f789d); transition: width .25s ease; }
+.counter { flex: 0 0 auto; color: #69736d; font-size: 10.5px; font-weight: 500; }
+.contextBar { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; color: rgba(255,255,255,.82); background: linear-gradient(135deg,#1c3048,#315574); }
+.contextText { min-width: 0; overflow: hidden; font-size: 10.5px; text-overflow: ellipsis; white-space: nowrap; }
+.number { flex: 0 0 auto; color: #e6ca75; font-size: 10.5px; font-weight: 500; }
+.practiceBody { padding: 16px; }
+.languageCard { min-width: 0; padding: 15px; border: 1px solid transparent; border-radius: 16px; }
+.english { border-color: #dce6f1; background: #f1f5fa; }
+.thai { margin-top: 10px; border-color: #ebe1c6; background: #faf6eb; }
+.languageLabel { display: flex; align-items: center; gap: 7px; margin-bottom: 8px; color: #395b7b; font-size: 10px; font-weight: 500; }
+.thai .languageLabel { color: #8d6d28; }
+.sentence { margin: 0; color: #1d3148; font-size: clamp(16px, 4.8vw, 20px); font-weight: 500; line-height: 1.55; overflow-wrap: anywhere; }
+.translation { margin: 0; color: #4f5752; font-size: 12.5px; font-weight: 400; line-height: 1.7; overflow-wrap: anywhere; }
+.actions { display: grid; grid-template-columns: minmax(0,1fr); gap: 8px; margin-top: 14px; }
+.button, .navButton, .iconButton, .listButton, .moreButton { font: inherit; cursor: pointer; }
+.button, .navButton, .moreButton { display: inline-flex; min-width: 0; min-height: 44px; align-items: center; justify-content: center; gap: 8px; padding: 10px 14px; border-radius: 13px; font-size: 11.5px; font-weight: 500; line-height: 1.35; text-align: center; }
+.listenButton { border: 1px solid #c9d5df; color: #294967; background: #fff; }
+.recordButton { border: 1px solid #294967; color: #fff; background: linear-gradient(135deg,#233f5d,#3e6688); }
+.recording { border-color: #9d3f49; background: #a74650; }
+.button:disabled, .navButton:disabled { opacity: .45; cursor: not-allowed; }
+.scorePanel { margin-top: 12px; padding: 14px; border: 1px solid #dfe5e1; border-radius: 16px; background: #fbfcfa; animation: enter .2s ease; }
+.scoreHeader { display: flex; min-width: 0; align-items: center; gap: 10px; padding-bottom: 11px; border-bottom: 1px solid #e5e9e6; }
+.scoreIcon { display: grid; width: 38px; height: 38px; flex: 0 0 auto; place-items: center; border-radius: 12px; color: #2b654b; background: #e8f2ed; }
+.scoreCopy { min-width: 0; flex: 1; }
+.scoreCopy strong { display: block; font-size: 12px; font-weight: 500; }
+.scoreCopy span { display: block; margin-top: 2px; color: #77817b; font-size: 9.5px; }
+.scoreValue { flex: 0 0 auto; color: #285e47; font-size: 21px; font-weight: 500; }
+.words { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.word { padding: 4px 8px; border-radius: 8px; font-size: 11px; font-weight: 500; overflow-wrap: anywhere; }
+.correct { color: #245c43; background: #e8f3ed; }
+.incorrect { color: #963e47; background: #faecee; text-decoration: line-through; }
+.transcript { margin: 11px 0 0; color: #727b75; font-size: 10.5px; line-height: 1.6; overflow-wrap: anywhere; }
+.pager { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; padding: 0 16px 16px; }
+.navButton { border: 1px solid #dfe4e1; color: #3d4841; background: #fff; }
+.navPrimary { border-color: #294967; color: #fff; background: #294967; }
+.sideCard { align-self: start; }
+.sideHeader { display: flex; align-items: center; gap: 11px; padding: 17px 16px 13px; border-bottom: 1px solid #e7ebe8; }
+.sideIcon { display: grid; width: 38px; height: 38px; flex: 0 0 auto; place-items: center; border-radius: 12px; color: #315573; background: #e8eff5; }
+.sideHeader div { min-width: 0; }
+.sideHeader h2 { margin: 0; font-size: 15px; font-weight: 500; }
+.sideHeader p { margin: 3px 0 0; color: #7b847e; font-size: 10px; }
+.list { display: grid; gap: 7px; padding: 12px; }
+.listButton { display: grid; width: 100%; min-width: 0; grid-template-columns: 28px minmax(0,1fr); gap: 10px; align-items: center; padding: 10px; text-align: left; border: 1px solid #e5e9e6; border-radius: 13px; color: #4d5851; background: #fff; transition: background .15s ease, border-color .15s ease; }
+.listButton:hover { border-color: #c9d6ce; background: #f7faf8; }
+.listActive { color: #fff; border-color: #294967; background: #294967; }
+.listActive:hover { border-color: #294967; background: #294967; }
+.listNumber { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 9px; color: #43617d; background: #e9f0f6; font-size: 9.5px; font-weight: 500; }
+.listActive .listNumber { color: #f0d681; background: rgba(255,255,255,.1); }
+.listText { min-width: 0; }
+.listContext, .listSentence { display: block; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.listContext { font-size: 9.5px; font-weight: 500; }
+.listSentence { margin-top: 3px; color: #7a847e; font-size: 10.5px; }
+.listActive .listSentence { color: rgba(255,255,255,.66); }
+.moreButton { width: calc(100% - 24px); margin: 0 12px 13px; border: 1px solid #d9e1dc; color: #315573; background: #f5f8f6; }
+.loading { display: grid; min-height: 360px; place-content: center; justify-items: center; color: #68736c; }
+.spinner { width: 30px; height: 30px; margin-bottom: 12px; border: 3px solid #dce4df; border-top-color: #315573; border-radius: 50%; animation: spin .8s linear infinite; }
+.loading p { margin: 0; font-size: 11px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes enter { from { opacity: 0; transform: translateY(5px); } }
+
+@media (min-width: 430px) {
+  .actions { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (min-width: 640px) {
+  .page { padding: 18px 14px 116px; }
+  .hero { padding: 28px; border-radius: 26px; }
+  .practiceBody { padding: 20px; }
+  .progressRow, .contextBar { padding-inline: 20px; }
+  .pager { padding: 0 20px 20px; }
+}
+@media (min-width: 900px) {
+  .page { padding: 24px 18px 122px; }
+  .layout { grid-template-columns: minmax(0,1.25fr) minmax(300px,.75fr); gap: 18px; margin-top: 18px; }
+  .card { border-radius: 24px; }
+  .sideCard { position: sticky; top: 18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .progressBar, .listButton { transition: none; }
+  .spinner, .scorePanel { animation: none; }
+}

@@ -6,7 +6,7 @@ export async function GET(
   context: { params: Promise<{ code: string }> },
 ) {
   try {
-    enforceRateLimit(req, 8, 60_000)
+    await enforceRateLimit(req, 8, 60_000)
     const { code } = await context.params
     const normalizedCode = code.trim().toUpperCase()
     if (!/^[A-Z0-9]{6,12}$/.test(normalizedCode)) {
@@ -16,11 +16,15 @@ export async function GET(
     const db = getDatabase()
     const { data, error } = await db
       .from('class_invites')
-      .select('target_class,teacher_name,school_name,expires_at')
+      .select('class_id,target_class,teacher_name,school_name,expires_at,max_uses,use_count,revoked_at')
       .eq('short_code', normalizedCode)
       .maybeSingle()
 
-    if (error || !data || (data.expires_at && new Date(data.expires_at).getTime() <= Date.now())) {
+    if (
+      error || !data || data.revoked_at
+      || Number(data.use_count || 0) >= Number(data.max_uses || 1)
+      || (data.expires_at && new Date(data.expires_at).getTime() <= Date.now())
+    ) {
       return NextResponse.json({ error: 'Invite not found or expired' }, { status: 404 })
     }
 

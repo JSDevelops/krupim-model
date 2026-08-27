@@ -2,7 +2,9 @@
 import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import Image from 'next/image'
 import { signUpLocal } from '@/lib/localData'
+import StudentIcon from '@/app/student/StudentIcon'
 
 function RegisterForm() {
   const router = useRouter()
@@ -11,6 +13,8 @@ function RegisterForm() {
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [school, setSchool] = useState(() => searchParams.get('school') || '')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -56,16 +60,22 @@ function RegisterForm() {
         name: name.trim(),
         requestedRole: 'student',
         school: school.trim(),
+        inviteCode: codeParam || undefined,
       })
 
       setSuccess(true)
       setTimeout(() => {
-        router.push(data.session ? '/student/explore' : '/')
+        router.push(data.session ? '/student/dashboard' : '/role-select')
       }, 1500)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ไม่สามารถลงทะเบียนได้')
     } finally {
       setLoading(false)
+    }
+    if (password !== confirmPassword) {
+      setError('รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน')
+      setLoading(false)
+      return
     }
   }
 
@@ -76,22 +86,22 @@ function RegisterForm() {
           padding: '12px', background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.40)',
           borderRadius: '12px', marginBottom: '20px', textAlign: 'center', fontSize: '13px', color: '#A6882A', fontWeight: 600
         }}>
-          ✦ สมัครเข้าร่วมชั้นเรียน: <span style={{ color: '#1E4D3A', fontWeight: 700 }}>{invitedClass}</span><br />
-          ของคุณครู: <span style={{ color: '#1E4D3A', fontWeight: 700 }}>{invitedTeacher}</span> ✦
+          สมัครเข้าร่วมชั้นเรียน: <span style={{ color: '#1E4D3A', fontWeight: 700 }}>{invitedClass}</span><br />
+          ของคุณครู: <span style={{ color: '#1E4D3A', fontWeight: 700 }}>{invitedTeacher}</span>
         </div>
       ) : (
-        <div className="card-ornament">✦ ลงทะเบียนเข้าใช้งาน ✦</div>
+        <div className="card-ornament">ลงทะเบียนนักเรียน</div>
       )}
 
       {error && (
         <div className="login-error" style={{ marginBottom: '16px' }}>
-          <span>⚠️</span> {error}
+          <StudentIcon name="info" size={16} /> {error}
         </div>
       )}
 
       {success && (
         <div style={{ padding: '12px', background: '#EAF3EE', border: '1px solid rgba(201,168,76,0.3)', color: '#1E4D3A', borderRadius: '12px', marginBottom: '16px', fontWeight: 600, fontSize: '13px', textAlign: 'center' }}>
-          🎉 ลงทะเบียนสำเร็จ! กำลังเข้าสู่ระบบ...
+          <StudentIcon name="check" size={16} /> ลงทะเบียนสำเร็จ กำลังเข้าสู่ระบบ
         </div>
       )}
 
@@ -102,7 +112,7 @@ function RegisterForm() {
         <div className="form-group">
           <label className="form-label">ชื่อ-นามสกุล</label>
           <div className="input-wrap">
-            <span className="input-icon">👤</span>
+            <span className="input-icon"><StudentIcon name="user" size={17} /></span>
             <input
               className="form-input with-icon"
               placeholder="ชื่อจริง นามสกุลจริง"
@@ -116,7 +126,7 @@ function RegisterForm() {
         <div className="form-group">
           <label className="form-label">สถาบัน / โรงเรียน</label>
           <div className="input-wrap">
-            <span className="input-icon">🏫</span>
+            <span className="input-icon"><StudentIcon name="school" size={17} /></span>
             <input
               className="form-input with-icon"
               placeholder="ชื่อวิทยาลัยอาชีวศึกษา"
@@ -130,7 +140,7 @@ function RegisterForm() {
         <div className="form-group">
           <label className="form-label">อีเมล</label>
           <div className="input-wrap">
-            <span className="input-icon">✉</span>
+            <span className="input-icon"><StudentIcon name="message" size={17} /></span>
             <input
               className="form-input with-icon"
               type="email"
@@ -143,18 +153,27 @@ function RegisterForm() {
         </div>
 
         <div className="form-group">
-          <label className="form-label">รหัสประจำตัวนักเรียน/นักศึกษา (รหัสผ่าน)</label>
+          <label className="form-label">รหัสผ่าน</label>
           <div className="input-wrap">
-            <span className="input-icon">⊛</span>
+            <span className="input-icon"><StudentIcon name="lock" size={17} /></span>
             <input
               className="form-input with-icon"
-              type="password"
-              placeholder="เช่น 6400010001"
+              type={showPassword ? 'text' : 'password'}
+              placeholder="อย่างน้อย 10 ตัวอักษร พร้อมตัวพิมพ์ใหญ่และตัวเลข"
               value={password}
               onChange={e => setPassword(e.target.value)}
-              minLength={8}
+              minLength={10}
               required
             />
+            <button className="password-toggle" type="button" onClick={() => setShowPassword(value => !value)} aria-label={showPassword ? 'ซ่อนรหัสผ่าน' : 'แสดงรหัสผ่าน'}><StudentIcon name={showPassword ? 'eyeOff' : 'eye'} size={17} /></button>
+          </div>
+        </div>
+
+        <div className="form-group">
+          <label className="form-label">ยืนยันรหัสผ่าน</label>
+          <div className="input-wrap">
+            <span className="input-icon"><StudentIcon name="lock" size={17} /></span>
+            <input className="form-input with-icon" type={showPassword ? 'text' : 'password'} placeholder="กรอกรหัสผ่านอีกครั้ง" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} minLength={10} required />
           </div>
         </div>
 
@@ -164,7 +183,7 @@ function RegisterForm() {
       </form>
 
       <p className="login-register" style={{ marginTop: '20px' }}>
-        มีบัญชีอยู่แล้ว? <Link href="/" className="link-text">เข้าสู่ระบบ</Link>
+        มีบัญชีอยู่แล้ว? <Link href="/role-select" className="link-text">เข้าสู่ระบบ</Link>
       </p>
 
       <style jsx>{`
@@ -231,6 +250,7 @@ function RegisterForm() {
           pointer-events: none;
           font-style: normal;
         }
+        .password-toggle { position:absolute; right:10px; width:36px; height:36px; display:grid; place-items:center; color:#50645b; background:transparent; border:0; border-radius:10px; cursor:pointer; }
         .form-input.with-icon {
           padding-left: 44px;
           border-color: #D8D2C6;
@@ -279,9 +299,9 @@ export default function RegisterPage() {
       </div>
 
       <div className="login-hero animate-fade-in" style={{ paddingBottom: '16px', paddingTop: '40px' }}>
-        <div className="login-crown">♛</div>
+        <div className="login-crown" aria-hidden="true"><StudentIcon name="sparkles" size={22} /></div>
         <div className="login-logo-wrap">
-          <img src="/logo.png" alt="FINE MODEL Logo" style={{ width: 60, height: 60, borderRadius: 'var(--radius-lg)', border: '1.5px solid rgba(201,168,76,0.4)', boxShadow: '0 0 20px rgba(201,168,76,0.15)' }} />
+          <Image src="/logo.png" alt="FINE MODEL Logo" width={60} height={60} priority style={{ borderRadius: 'var(--radius-lg)', border: '1.5px solid rgba(201,168,76,0.4)', boxShadow: '0 0 20px rgba(201,168,76,0.15)' }} />
           <div style={{ textAlign: 'left' }}>
             <div className="login-brand">FINE MODEL</div>
             <div className="login-brand-sub">AR 3D + AI LEARNING</div>

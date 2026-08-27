@@ -53,6 +53,21 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
     return () => window.clearTimeout(timer)
   }, [fetchNotifications, userId])
 
+  useEffect(() => {
+    if (!userId) return
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void fetchNotifications()
+    }
+    const interval = window.setInterval(refreshWhenVisible, 60_000)
+    window.addEventListener('focus', refreshWhenVisible)
+    document.addEventListener('visibilitychange', refreshWhenVisible)
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener('focus', refreshWhenVisible)
+      document.removeEventListener('visibilitychange', refreshWhenVisible)
+    }
+  }, [fetchNotifications, userId])
+
   async function markAllAsRead() {
     if (!userId) return
     const unreadIds = notifications.filter(item => !item.is_read).map(item => item.id)
