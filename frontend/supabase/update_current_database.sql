@@ -10,16 +10,19 @@ CREATE TABLE IF NOT EXISTS vocabulary_items (
   name_en     TEXT NOT NULL UNIQUE,
   name_th     TEXT NOT NULL,
   category    TEXT DEFAULT 'tableware',
-  category_th TEXT DEFAULT 'อุปกรณ์บนโต๊ะอาหาร',
+  category_th TEXT DEFAULT 'เครื่องใช้บนโต๊ะอาหาร',
   emoji       TEXT DEFAULT '🍴',
   pronounce   TEXT,
   use_desc    TEXT NOT NULL,
   sentence    TEXT NOT NULL,
+  image_url   TEXT,
   glb_url     TEXT,
   usdz_url    TEXT,
   created_at  TIMESTAMPTZ DEFAULT NOW(),
   updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
+
+ALTER TABLE IF EXISTS vocabulary_items ADD COLUMN IF NOT EXISTS image_url TEXT;
 
 -- สร้าง Index เพื่อการค้นหาคำศัพท์ความเร็วสูง
 CREATE INDEX IF NOT EXISTS idx_vocab_name_en ON vocabulary_items(name_en);

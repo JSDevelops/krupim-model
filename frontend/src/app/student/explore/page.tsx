@@ -6,11 +6,18 @@ import { analyzeImage as analyzeImageAPI } from '@/lib/gemini'
 import { toast } from 'sonner'
 
 interface Equipment {
+  id?: string
   name: string
   nameEn: string
   emoji: string
   use: string
   sentence: string
+  ph?: string
+  imageUrl?: string
+  glbUrl?: string
+  usdzUrl?: string
+  category?: string
+  categoryTh?: string
 }
 
 const defaultEquipment: Equipment[] = [
@@ -164,9 +171,15 @@ export default function ExplorePage() {
 
         if (vocabData && vocabData.length > 0) {
           vocabDbItems = vocabData.map((x: any) => ({
+            id: x.id,
             name: x.name_th,
             nameEn: x.name_en,
-            emoji: x.emoji || '🍴',
+            emoji: x.image_url || x.emoji || '🍴',
+            imageUrl: x.image_url || '',
+            glbUrl: x.glb_url || '',
+            usdzUrl: x.usdz_url || '',
+            category: x.category || '',
+            categoryTh: x.category_th || '',
             use: x.use_desc || 'ไม่มีรายละเอียดวิธีใช้งานสำหรับอุปกรณ์ชิ้นนี้',
             sentence: x.sentence || 'Please handle this item with care.',
             ph: x.pronounce || ''
@@ -1591,19 +1604,29 @@ export default function ExplorePage() {
             <div style={{ width: 36, height: 4, background: '#EDE9E1', borderRadius: 100, margin: '0 auto 20px' }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
               <div style={{ 
-                width: 64, height: 64, background: '#EAF3EE', borderRadius: 18, 
+                width: 68, height: 68, background: '#EAF3EE', borderRadius: 18, 
                 display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                overflow: 'hidden', flexShrink: 0, border: '1px solid rgba(0,0,0,0.05)' 
+                overflow: 'hidden', flexShrink: 0, border: '1px solid #c8ded1' 
               }}>
-                {viewItem.emoji && viewItem.emoji.startsWith('data:image') ? (
-                  <img src={viewItem.emoji} alt={viewItem.nameEn} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                {(viewItem.imageUrl || (viewItem.emoji && (viewItem.emoji.startsWith('data:') || viewItem.emoji.startsWith('http') || viewItem.emoji.startsWith('/')))) ? (
+                  <img src={viewItem.imageUrl || viewItem.emoji} alt={viewItem.nameEn} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 ) : (
-                  <span style={{ fontSize: 34 }}>{viewItem.emoji}</span>
+                  <span style={{ fontSize: 34 }}>{viewItem.emoji || '🍴'}</span>
                 )}
               </div>
-              <div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                {viewItem.categoryTh && (
+                  <span style={{ fontSize: 11, color: '#688275', fontWeight: 600, display: 'block', marginBottom: 2 }}>
+                    {viewItem.categoryTh}
+                  </span>
+                )}
                 <h3 style={{ fontSize: 20, fontWeight: 800, color: '#1E4D3A', margin: '0 0 2px' }}>{viewItem.nameEn}</h3>
                 <p style={{ fontSize: 13, color: '#A6882A', fontWeight: 700, margin: 0 }}>{viewItem.name}</p>
+                {viewItem.ph && (
+                  <span style={{ fontSize: 11, color: '#889890', fontStyle: 'italic', display: 'block', marginTop: 2 }}>
+                    {viewItem.ph}
+                  </span>
+                )}
               </div>
             </div>
             <div style={{ background: '#FBF6E9', borderRadius: 14, padding: '12px 14px', marginBottom: 12 }}>
@@ -1618,6 +1641,20 @@ export default function ExplorePage() {
                 <button onClick={() => speak(viewItem.sentence, 'modal-practice')} style={{ flex: 1, padding: '10px', borderRadius: 10, border: 'none', background: 'linear-gradient(135deg,#1E4D3A,#2A6B52)', color: 'white', fontSize: 12, fontWeight: 800, cursor: 'pointer', fontFamily: 'var(--font-primary)' }}>🎤 พูดตาม</button>
               </div>
             </div>
+            {(viewItem.glbUrl || viewItem.usdzUrl || viewItem.id || viewItem.nameEn) && (
+              <Link
+                href={viewItem.id ? `/student/ar-view?id=${encodeURIComponent(viewItem.id)}` : `/student/ar-view?nameEn=${encodeURIComponent(viewItem.nameEn)}&nameTh=${encodeURIComponent(viewItem.name)}`}
+                style={{ 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                  width: '100%', padding: '12px', borderRadius: 14, 
+                  background: 'linear-gradient(135deg, #1E4D3A, #28634B)', color: '#fff', 
+                  fontSize: 13, fontWeight: 800, textDecoration: 'none', marginBottom: 10,
+                  boxShadow: '0 4px 14px rgba(30,77,58,0.2)'
+                }}
+              >
+                🥽 เปิดดูโมเดล 3 มิติ / AR QuickLook
+              </Link>
+            )}
             <button onClick={() => setViewItem(null)} style={{ width: '100%', padding: '13px', borderRadius: 14, border: '1.5px solid #EDE9E1', background: 'white', color: '#8C8272', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'var(--font-primary)' }}>ปิด</button>
           </div>
         </div>

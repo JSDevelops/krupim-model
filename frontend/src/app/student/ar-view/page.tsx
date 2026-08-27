@@ -37,17 +37,18 @@ function ARViewerContent() {
   const [quizOptions, setQuizOptions] = useState<string[]>([])
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && id) {
+    if (typeof window !== 'undefined') {
       async function loadModel() {
         const fallbackGlb = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
 
-        // ─── 1. Try ar_items table (ตารางหลัก — ครูสร้างผ่านหน้า AR & 3D Items) ───
-        try {
-          const { data, error } = await localData
-            .from('ar_items')
-            .select('*')
-            .eq('id', id)
-            .single()
+        if (id) {
+          // ─── 1. Try ar_items table (ตารางหลัก — ครูสร้างผ่านหน้า AR & 3D Items) ───
+          try {
+            const { data, error } = await localData
+              .from('ar_items')
+              .select('*')
+              .eq('id', id)
+              .single()
 
           if (data && !error) {
             setModel({
@@ -68,7 +69,34 @@ function ARViewerContent() {
           console.warn('ar_items fetch failed, trying ai_scan_items:', e)
         }
 
-        // ─── 2. Try ai_scan_items table (AI Scan ที่สแกนผ่านกล้อง) ───
+        // ─── 2. Try vocabulary_items table (คลังคำศัพท์ที่ครูสร้าง/แก้ไข) ───
+        try {
+          const { data, error } = await localData
+            .from('vocabulary_items')
+            .select('*')
+            .eq('id', id)
+            .single()
+
+          if (data && !error) {
+            setModel({
+              id: data.id,
+              nameEn: data.name_en || '',
+              nameTh: data.name_th || '',
+              desc: data.use_desc || '',
+              glbUrl: (data as any).glb_url || fallbackGlb,
+              usdzUrl: (data as any).usdz_url || '',
+              pronounce: (data as any).pronounce || '',
+              sentence: data.sentence || '',
+              imageUrl: data.image_url || ''
+            })
+            setLoading(false)
+            return
+          }
+        } catch (e) {
+          console.warn('vocabulary_items fetch failed, trying ai_scan_items:', e)
+        }
+
+        // ─── 3. Try ai_scan_items table (AI Scan ที่สแกนผ่านกล้อง) ───
         try {
           const { data, error } = await localData
             .from('ai_scan_items')
@@ -118,8 +146,9 @@ function ARViewerContent() {
         } catch (e) {
           console.warn('fine_lesson_plans fetch failed:', e)
         }
+      }
 
-        // ─── 3. URL search parameters (for QR codes with embedded data) ───
+        // ─── 4. URL search parameters (for QR codes or legacy links with embedded text) ───
         const qNameEn = searchParams.get('nameEn')
         const qNameTh = searchParams.get('nameTh')
         const qDesc = searchParams.get('desc')

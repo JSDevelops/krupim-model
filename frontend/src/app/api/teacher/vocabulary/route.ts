@@ -11,13 +11,14 @@ type VocabularyInput = {
   pronounce?: unknown
   useDesc?: unknown
   sentence?: unknown
+  imageUrl?: unknown
   glbUrl?: unknown
   usdzUrl?: unknown
 }
 
 const selectFields = `
   id, name_en AS "nameEn", name_th AS "nameTh", category, category_th AS "categoryTh",
-  pronounce, use_desc AS "useDesc", sentence, glb_url AS "glbUrl", usdz_url AS "usdzUrl",
+  pronounce, use_desc AS "useDesc", sentence, image_url AS "imageUrl", glb_url AS "glbUrl", usdz_url AS "usdzUrl",
   created_at AS "createdAt", updated_at AS "updatedAt"
 `
 
@@ -37,6 +38,7 @@ function normalize(body: VocabularyInput) {
     pronounce: text(body.pronounce, 'คำอ่าน', 180),
     useDesc: text(body.useDesc, 'คำอธิบายการใช้งาน', 2_000),
     sentence: text(body.sentence, 'ประโยคตัวอย่าง', 1_000),
+    imageUrl: text(body.imageUrl, 'ที่อยู่รูปภาพ', 10_000_000),
     glbUrl: text(body.glbUrl, 'ที่อยู่ไฟล์ GLB', 4_000),
     usdzUrl: text(body.usdzUrl, 'ที่อยู่ไฟล์ USDZ', 4_000),
   }
@@ -65,9 +67,9 @@ export async function POST(request: NextRequest) {
     const item = normalize(await body(request))
     try {
       const result = await queryDb(`
-        INSERT INTO vocabulary_items (name_en, name_th, category, category_th, emoji, pronounce, use_desc, sentence, glb_url, usdz_url)
-        VALUES ($1,$2,$3,$4,'',$5,$6,$7,$8,$9) RETURNING ${selectFields}
-      `, [item.nameEn, item.nameTh, item.category, item.categoryTh, item.pronounce, item.useDesc, item.sentence, item.glbUrl, item.usdzUrl])
+        INSERT INTO vocabulary_items (name_en, name_th, category, category_th, emoji, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+        VALUES ($1,$2,$3,$4,'',$5,$6,$7,$8,$9,$10) RETURNING ${selectFields}
+      `, [item.nameEn, item.nameTh, item.category, item.categoryTh, item.pronounce, item.useDesc, item.sentence, item.imageUrl, item.glbUrl, item.usdzUrl])
       return NextResponse.json({ item: result.rows[0] }, { status: 201 })
     } catch (error) { databaseError(error) }
   } catch (error) { return apiErrorResponse(error) }
@@ -82,9 +84,9 @@ export async function PATCH(request: NextRequest) {
     try {
       const result = await queryDb(`
         UPDATE vocabulary_items SET name_en=$1, name_th=$2, category=$3, category_th=$4,
-          pronounce=$5, use_desc=$6, sentence=$7, glb_url=$8, usdz_url=$9, updated_at=NOW()
-        WHERE id=$10::uuid RETURNING ${selectFields}
-      `, [item.nameEn, item.nameTh, item.category, item.categoryTh, item.pronounce, item.useDesc, item.sentence, item.glbUrl, item.usdzUrl, id])
+          pronounce=$5, use_desc=$6, sentence=$7, image_url=$8, glb_url=$9, usdz_url=$10, updated_at=NOW()
+        WHERE id=$11::uuid RETURNING ${selectFields}
+      `, [item.nameEn, item.nameTh, item.category, item.categoryTh, item.pronounce, item.useDesc, item.sentence, item.imageUrl, item.glbUrl, item.usdzUrl, id])
       if (!result.rows[0]) throw new ApiError('ไม่พบคำศัพท์', 404, 'NOT_FOUND')
       return NextResponse.json({ item: result.rows[0] })
     } catch (error) { databaseError(error) }

@@ -145,6 +145,34 @@ export default function ChatPage() {
     synthesisRef.current.speak(utterance)
   }
 
+  function renderMessageText(text: string) {
+    if (!text) return null
+    const lines = text.split('\n')
+    return lines.map((line, i) => {
+      const isDivider = line.trim() === '---' || line.trim() === '***'
+      if (isDivider) {
+        return <hr key={i} style={{ margin: '8px 0', border: 'none', borderTop: '1px solid #E5DFD3' }} />
+      }
+
+      // Parse **bold** syntax
+      const parts = line.split(/(\*\*.*?\*\*)/g)
+      const formattedLine = parts.map((part, pIdx) => {
+        if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
+          return <strong key={pIdx} style={{ fontWeight: 600, color: 'inherit' }}>{part.slice(2, -2)}</strong>
+        }
+        return part
+      })
+
+      const isBullet = line.trim().startsWith('•') || line.trim().startsWith('*') || line.trim().startsWith('-')
+
+      return (
+        <span key={i} style={{ display: 'block', minHeight: line === '' ? '0.6em' : undefined, paddingLeft: isBullet ? 4 : 0 }}>
+          {formattedLine}
+        </span>
+      )
+    })
+  }
+
   async function sendMessage(text?: string) {
     const msg = text || input.trim()
     if (!msg || loading) return
@@ -171,22 +199,29 @@ export default function ChatPage() {
         },
         body: JSON.stringify({
           message: msg,
-          history: messages.map(m => ({ role: m.role, text: m.text })),
+          history: messages.filter(m => m.text && m.text.trim().length > 0).map(m => ({ role: m.role, text: m.text })),
           session_type: 'gemini_chat',
           topic: 'Learning Conversation',
           session_id: sessionId
         })
       })
-      const data = await response.json()
+      
+      const data = await response.json().catch(() => ({}))
+      
+      if (!response.ok || !data.response) {
+        throw new Error(data.error || `HTTP ${response.status}: Failed to get response`)
+      }
+
       if (data.session_id) {
         setSessionId(data.session_id)
       }
       const aiMsg: Message = { role: 'model', text: data.response, timestamp: new Date() }
       setMessages(prev => [...prev, aiMsg])
     } catch (error) {
+      console.error('Chat error:', error)
       const errMsg: Message = {
         role: 'model',
-        text: '⚠️ ขออภัย เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง',
+        text: '⚠️ ขออภัย ไม่สามารถเชื่อมต่อกับ AI ได้ในขณะนี้ กรุณาตรวจสอบการเชื่อมต่อแล้วลองใหม่อีกครั้งครับ',
         timestamp: new Date()
       }
       setMessages(prev => [...prev, errMsg])
@@ -225,9 +260,7 @@ export default function ChatPage() {
             )}
             <div className="msg-content">
               <div className={`chat-bubble ${msg.role === 'user' ? 'chat-bubble-user' : 'chat-bubble-ai'}`}>
-                {(msg.text || '').split('\n').map((line, j) => (
-                  <span key={j}>{line}{j < (msg.text || '').split('\n').length - 1 && <br />}</span>
-                ))}
+                {renderMessageText(msg.text)}
               </div>
               <div className="msg-time" style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start', marginTop: 4 }}>
                 {formatTime(msg.timestamp)}

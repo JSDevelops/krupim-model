@@ -35,7 +35,7 @@ function normalize(body: ArInput) {
     pronounce: text(body.pronounce, 'คำอ่าน', 180),
     sentence: text(body.sentence, 'ประโยคตัวอย่าง', 1_000),
     description: text(body.description, 'คำอธิบาย', 3_000),
-    imageUrl: text(body.imageUrl, 'ที่อยู่รูปภาพ', 4_000),
+    imageUrl: text(body.imageUrl, 'ที่อยู่รูปภาพ', 10_000_000),
     glbUrl: text(body.glbUrl, 'ที่อยู่ไฟล์ GLB', 4_000),
     usdzUrl: text(body.usdzUrl, 'ที่อยู่ไฟล์ USDZ', 4_000),
   }

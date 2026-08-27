@@ -67,10 +67,27 @@ export async function POST(req: NextRequest) {
     } else {
       const genAI = await getGemini(req)
       const model = genAI.getGenerativeModel({ model: configuredModel, systemInstruction: SYSTEM_PROMPT })
-      const formattedHistory = validHistory.map(h => ({
-        role: h.role === 'user' ? 'user' : 'model',
-        parts: [{ text: h.text }]
-      }))
+      
+      // Google Gemini requires history to start with 'user' and alternate strictly between user and model
+      const formattedHistory: Array<{ role: 'user' | 'model'; parts: [{ text: string }] }> = []
+      let expectedRole: 'user' | 'model' = 'user'
+      const firstUserIndex = validHistory.findIndex(h => h.role === 'user' && h.text?.trim())
+      if (firstUserIndex !== -1) {
+        for (let i = firstUserIndex; i < validHistory.length; i++) {
+          const h = validHistory[i]
+          if (h.role === expectedRole && h.text?.trim()) {
+            formattedHistory.push({
+              role: h.role,
+              parts: [{ text: h.text }]
+            })
+            expectedRole = expectedRole === 'user' ? 'model' : 'user'
+          }
+        }
+      }
+      if (formattedHistory.length > 0 && formattedHistory[formattedHistory.length - 1].role === 'user') {
+        formattedHistory.pop()
+      }
+
       const chat = model.startChat({ history: formattedHistory })
       const result = await chat.sendMessage(message)
       text = result.response.text()

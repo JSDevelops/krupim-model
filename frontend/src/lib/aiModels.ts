@@ -10,9 +10,8 @@ export type AIModelOption = {
 
 export const AI_MODEL_OPTIONS: Record<AIProvider, readonly AIModelOption[]> = {
   gemini: [
-    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'สมดุลคุณภาพ ความเร็ว และค่าใช้จ่าย' },
-    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash-Lite', description: 'ประหยัดและตอบสนองเร็วสำหรับงานปริมาณมาก' },
-    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'เหมาะกับงานวิเคราะห์และเหตุผลที่ซับซ้อน' },
+    { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash', description: 'สมดุลคุณภาพ ความเร็ว และรองรับฟีเจอร์ล่าสุด' },
+    { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash-Lite', description: 'ประหยัดและตอบสนองเร็วสำหรับงานปริมาณมาก' },
   ],
   openai: [
     { id: 'gpt-4.1-mini', name: 'GPT-4.1 mini', description: 'รวดเร็ว คุ้มค่า และรองรับภาพ' },

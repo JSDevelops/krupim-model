@@ -302,13 +302,28 @@ app.post('/api/chat', requireAuth, async (req, res) => {
       // Default: Google Gemini
       const genAI = getGemini(req)
       const model = genAI.getGenerativeModel({
-        model: 'gemini-2.0-flash',
+        model: 'gemini-3.6-flash',
         systemInstruction: systemPrompt
       })
-      const formattedHistory = (history || []).map((h: any) => ({
-        role: h.role === 'user' ? 'user' : 'model',
-        parts: [{ text: h.text }]
-      }))
+      const formattedHistory: Array<{ role: 'user' | 'model'; parts: [{ text: string }] }> = []
+      let expectedRole: 'user' | 'model' = 'user'
+      const rawHistory = history || []
+      const firstUserIndex = rawHistory.findIndex((h: any) => h.role === 'user' && h.text?.trim())
+      if (firstUserIndex !== -1) {
+        for (let i = firstUserIndex; i < rawHistory.length; i++) {
+          const h = rawHistory[i]
+          if (h.role === expectedRole && h.text?.trim()) {
+            formattedHistory.push({
+              role: h.role,
+              parts: [{ text: h.text }]
+            })
+            expectedRole = expectedRole === 'user' ? 'model' : 'user'
+          }
+        }
+      }
+      if (formattedHistory.length > 0 && formattedHistory[formattedHistory.length - 1].role === 'user') {
+        formattedHistory.pop()
+      }
       const chat = model.startChat({ history: formattedHistory })
       const result = await chat.sendMessage(message)
       text = result.response.text()
