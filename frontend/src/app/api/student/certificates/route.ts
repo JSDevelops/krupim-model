@@ -87,6 +87,10 @@ export async function POST(request: NextRequest) {
                   score_snapshot AS "scoreSnapshot", issued_at AS "issuedAt"
       `, [user.id, score.name, score.school_name, overall, JSON.stringify(snapshot)])
       await client.query(`
+        INSERT INTO certificate_events(certificate_id,actor_id,event_type,details_json)
+        VALUES($1::uuid,$2::uuid,'issue',$3::jsonb)
+      `, [inserted.rows[0].id, user.id, JSON.stringify({ overallScore: overall, source: 'student-self-service' })])
+      await client.query(`
         INSERT INTO audit_logs(actor_id,action,entity_type,entity_id,details_json)
         VALUES($1::uuid,'issue_certificate','certificate',$2::text,$3::jsonb)
       `, [user.id, inserted.rows[0].id, JSON.stringify({ overallScore: overall })])

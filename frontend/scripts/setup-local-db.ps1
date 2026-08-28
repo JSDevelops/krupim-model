@@ -8,6 +8,7 @@ $env:PGCLIENTENCODING = 'UTF8'
 $psqlExe = Join-Path $PostgresBin 'psql.exe'
 $createdbExe = Join-Path $PostgresBin 'createdb.exe'
 $schemaPath = Join-Path $PSScriptRoot '..\database\schema.local.sql'
+$localSeedPath = Join-Path $PSScriptRoot '..\database\seed.local.sql'
 $migrationsPath = Join-Path $PSScriptRoot '..\database\migrations'
 
 if (-not (Test-Path -LiteralPath $psqlExe)) {
@@ -15,6 +16,9 @@ if (-not (Test-Path -LiteralPath $psqlExe)) {
 }
 if (-not (Test-Path -LiteralPath $schemaPath)) {
   throw "Schema not found at $schemaPath"
+}
+if (-not (Test-Path -LiteralPath $localSeedPath)) {
+  throw "Local seed not found at $localSeedPath"
 }
 
 $ready = & (Join-Path $PostgresBin 'pg_isready.exe') -h 127.0.0.1 -p 5432
@@ -28,6 +32,9 @@ if ($exists -ne '1') {
 
 & $psqlExe -h 127.0.0.1 -U postgres -d $DatabaseName -w -v ON_ERROR_STOP=1 -f $schemaPath
 if ($LASTEXITCODE -ne 0) { throw 'Schema migration failed' }
+
+& $psqlExe -h 127.0.0.1 -U postgres -d $DatabaseName -w -v ON_ERROR_STOP=1 -f $localSeedPath
+if ($LASTEXITCODE -ne 0) { throw 'Local seed failed' }
 
 if (Test-Path -LiteralPath $migrationsPath -PathType Container) {
   $migrationFiles = Get-ChildItem -LiteralPath $migrationsPath -Filter '*.sql' -File | Sort-Object Name

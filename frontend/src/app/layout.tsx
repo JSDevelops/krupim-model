@@ -13,6 +13,7 @@ const kanit = Kanit({
   weight: ['300', '400', '500', '600', '700'],
   variable: '--font-kanit',
   display: 'swap',
+  preload: false,
 })
 
 const sarabun = Sarabun({
@@ -20,6 +21,7 @@ const sarabun = Sarabun({
   weight: ['300', '400', '500', '600', '700'],
   variable: '--font-sarabun',
   display: 'swap',
+  preload: false,
 })
 
 const prompt = Prompt({
@@ -27,6 +29,7 @@ const prompt = Prompt({
   weight: ['300', '400', '500', '600', '700'],
   variable: '--font-prompt',
   display: 'swap',
+  preload: false,
 })
 
 const notoSansThai = Noto_Sans_Thai({
@@ -34,10 +37,11 @@ const notoSansThai = Noto_Sans_Thai({
   weight: 'variable',
   variable: '--font-noto-sans-thai',
   display: 'swap',
+  preload: false,
 })
 
-const playfairDisplay = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair', display: 'swap' })
-const cormorantGaramond = Cormorant_Garamond({ subsets: ['latin'], variable: '--font-cormorant', display: 'swap' })
+const playfairDisplay = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair', display: 'swap', preload: false })
+const cormorantGaramond = Cormorant_Garamond({ subsets: ['latin'], variable: '--font-cormorant', display: 'swap', preload: false })
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://finemodel.app'),

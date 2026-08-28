@@ -2,10 +2,15 @@
   "name": "app",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.9.0"
+  },
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
+    "db:migrate": "node scripts/migrate-database.mjs",
+    "admin:create": "node scripts/create-admin.mjs",
     "db:setup": "powershell -ExecutionPolicy Bypass -File scripts/setup-local-db.ps1",
     "db:backup": "powershell -ExecutionPolicy Bypass -File scripts/backup-local-db.ps1",
     "db:backup:schedule": "powershell -ExecutionPolicy Bypass -File scripts/install-backup-task.ps1",
@@ -15,12 +20,14 @@
     "test:avatar": "powershell -ExecutionPolicy Bypass -File scripts/test-local-avatar.ps1",
     "test:mail": "powershell -ExecutionPolicy Bypass -File scripts/test-mailpit-reset.ps1",
     "test:certificates": "powershell -ExecutionPolicy Bypass -File scripts/test-certificates.ps1",
+    "test:3d": "powershell -ExecutionPolicy Bypass -File scripts/test-3d-generation.ps1",
     "lint": "eslint",
     "lint:security": "eslint src/app/api src/lib/api.ts src/lib/localData.ts src/lib/db.ts src/lib/session.ts src/proxy.ts --max-warnings=0"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.117.1",
     "@google/generative-ai": "^0.24.1",
+    "@vercel/functions": "^3.9.5",
     "@yudiel/react-qr-scanner": "^2.6.0",
     "bcryptjs": "^3.0.3",
     "jose": "^6.2.10",

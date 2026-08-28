@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
       services: {
         database: { status: dbStatus, latency: `${dbLatency}ms` },
         ai: { status: aiStatus, provider, model, note: 'Configuration check only (no token usage)' },
-        backend: { status: 'online', latency: '1ms' }
+        application: { status: 'online', runtime: 'nextjs-fullstack' }
       }
     })
   } catch (err: unknown) {

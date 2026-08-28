@@ -74,6 +74,18 @@ CREATE TABLE IF NOT EXISTS system_settings (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS integration_settings (
+  provider TEXT PRIMARY KEY,
+  api_key_encrypted TEXT,
+  config_json JSONB NOT NULL DEFAULT '{}',
+  updated_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO integration_settings (provider, config_json)
+VALUES ('tripo', '{"modelVersion":"v2.5-20250123"}'::jsonb)
+ON CONFLICT (provider) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS audit_logs (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   actor_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
@@ -296,6 +308,15 @@ CREATE TABLE IF NOT EXISTS certificates (
   UNIQUE(student_id, certificate_type)
 );
 
+CREATE TABLE IF NOT EXISTS certificate_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  certificate_id UUID NOT NULL REFERENCES certificates(id) ON DELETE CASCADE,
+  actor_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  event_type TEXT NOT NULL CHECK (event_type IN ('issue','reissue','revoke','restore')),
+  details_json JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS assignments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   class_id UUID REFERENCES classes(id) ON DELETE CASCADE,
@@ -444,6 +465,40 @@ CREATE TABLE IF NOT EXISTS ar_items (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS generated_model_assets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  owner_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  file_name TEXT NOT NULL,
+  mime_type TEXT NOT NULL DEFAULT 'model/gltf-binary',
+  size_bytes BIGINT NOT NULL CHECK (size_bytes > 0),
+  file_data BYTEA NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS model_generation_jobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider TEXT NOT NULL DEFAULT 'tripo',
+  external_task_id TEXT UNIQUE,
+  created_by UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  ar_item_id TEXT REFERENCES ar_items(id) ON DELETE SET NULL,
+  asset_id UUID REFERENCES generated_model_assets(id) ON DELETE SET NULL,
+  prompt TEXT NOT NULL,
+  negative_prompt TEXT,
+  model_version TEXT,
+  name_en TEXT NOT NULL,
+  name_th TEXT NOT NULL,
+  description TEXT,
+  status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','running','success','failed','cancelled','banned','expired','unknown','preview')),
+  progress INTEGER NOT NULL DEFAULT 0 CHECK (progress BETWEEN 0 AND 100),
+  glb_url TEXT,
+  preview_url TEXT,
+  error_message TEXT,
+  raw_response JSONB NOT NULL DEFAULT '{}',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at TIMESTAMPTZ
+);
+
 CREATE TABLE IF NOT EXISTS vocabulary_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name_en TEXT NOT NULL UNIQUE,
@@ -495,6 +550,7 @@ CREATE INDEX IF NOT EXISTS idx_classes_teacher_active ON classes(teacher_id, is_
 CREATE INDEX IF NOT EXISTS idx_class_students_student ON class_students(student_id, enrolled_at DESC);
 CREATE INDEX IF NOT EXISTS idx_learning_analytics_student_date ON learning_analytics(student_id, date DESC);
 CREATE INDEX IF NOT EXISTS idx_certificates_student ON certificates(student_id, issued_at DESC);
+CREATE INDEX IF NOT EXISTS idx_certificate_events_certificate_created ON certificate_events(certificate_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_student_assessments_student_submitted ON student_assessments(student_id, submitted_at DESC);
 CREATE INDEX IF NOT EXISTS idx_lesson_progress_student_updated ON lesson_progress(student_id, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_assignments_teacher_due ON assignments(teacher_id, due_date DESC);
@@ -510,6 +566,8 @@ CREATE INDEX IF NOT EXISTS idx_vocab_category ON vocabulary_items(category);
 CREATE INDEX IF NOT EXISTS idx_vocab_updated ON vocabulary_items(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_vocab_creator_updated ON vocabulary_items(created_by, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_ar_items_creator_updated ON ar_items(created_by, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_model_generation_jobs_creator_updated ON model_generation_jobs(created_by, updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_model_generation_jobs_status_updated ON model_generation_jobs(status, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_fine_lesson_plans_class_published
   ON fine_lesson_plans(class_id, publication_status, updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_class_invites_class_active
@@ -525,6 +583,14 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_entity_created
 CREATE INDEX IF NOT EXISTS idx_api_rate_limits_expires ON api_rate_limits(expires_at);
 CREATE INDEX IF NOT EXISTS idx_content_library_type_status ON content_library(content_type, status);
 CREATE INDEX IF NOT EXISTS idx_system_announcements_published ON system_announcements(published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_profiles_created_at ON profiles(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_courses_published ON courses(is_published);
+CREATE INDEX IF NOT EXISTS idx_learning_analytics_date ON learning_analytics(date DESC);
+CREATE INDEX IF NOT EXISTS idx_lesson_progress_status ON lesson_progress(status);
+CREATE INDEX IF NOT EXISTS idx_lesson_progress_updated_at ON lesson_progress(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_started_at ON chat_sessions(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_simulation_sessions_completed_at ON simulation_sessions(completed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_student_assessments_submitted_at ON student_assessments(submitted_at DESC);
 
 INSERT INTO content_library (id, content_type, name_th, name_en, unit_label, status)
 VALUES
@@ -548,29 +614,4 @@ ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO schools (id, name, address)
 VALUES ('11111111-1111-1111-1111-111111111111', 'วิทยาลัยอาชีวศึกษา ตัวอย่าง', 'กรุงเทพมหานคร')
-ON CONFLICT (id) DO NOTHING;
-
--- Local-only bootstrap account. Change this password after first login.
--- email: admin@local.test / password: Admin123!
-INSERT INTO app_users (id, email, password_hash)
-VALUES (
-  '00000000-0000-0000-0000-000000000001',
-  'admin@local.test',
-  crypt('Admin123!', gen_salt('bf', 12))
-)
-ON CONFLICT (id) DO NOTHING;
-
-INSERT INTO profiles (
-  id, name, email, role, requested_role, approval_status, school_id, school_name
-)
-VALUES (
-  '00000000-0000-0000-0000-000000000001',
-  'Local Developer',
-  'admin@local.test',
-  'developer',
-  'developer',
-  'active',
-  '11111111-1111-1111-1111-111111111111',
-  'วิทยาลัยอาชีวศึกษา ตัวอย่าง'
-)
 ON CONFLICT (id) DO NOTHING;

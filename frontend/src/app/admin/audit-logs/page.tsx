@@ -28,11 +28,14 @@ const actionLabels: Record<string, string> = {
   create_user: 'สร้างบัญชีผู้ใช้', update_user: 'แก้ไขบัญชีผู้ใช้', delete_user: 'ลบบัญชีผู้ใช้',
   approve: 'อนุมัติบัญชี', reject: 'ปฏิเสธบัญชี', suspend: 'ระงับบัญชี', activate: 'เปิดใช้งานบัญชี',
   reset_password: 'ตั้งรหัสผ่านใหม่', self_password_reset: 'ผู้ใช้รีเซ็ตรหัสผ่าน', change_password: 'เปลี่ยนรหัสผ่าน',
-  update_system_settings: 'แก้ไขการตั้งค่าระบบ', revoke_certificate: 'ยกเลิกใบรับรอง', restore_certificate: 'คืนสถานะใบรับรอง',
+  update_system_settings: 'แก้ไขการตั้งค่าระบบ', update_tripo_settings: 'แก้ไขการตั้งค่า Tripo',
+  issue_certificate: 'ออกใบรับรอง', reissue_certificate: 'ออกใบรับรองใหม่', revoke_certificate: 'ยกเลิกใบรับรอง', restore_certificate: 'คืนสถานะใบรับรอง',
+  create_3d_generation: 'ส่งงานสร้างโมเดล 3D', create_3d_preview: 'สร้างโมเดลตัวอย่าง', complete_3d_generation: 'บันทึกโมเดล 3D สำเร็จ',
 }
 
 const entityLabels: Record<string, string> = {
-  profile: 'บัญชีผู้ใช้', system_setting: 'การตั้งค่าระบบ', certificate: 'ใบรับรอง',
+  profile: 'บัญชีผู้ใช้', system_setting: 'การตั้งค่าระบบ', integration_setting: 'การตั้งค่าบริการภายนอก',
+  certificate: 'ใบรับรอง', model_generation_job: 'งานสร้างโมเดล 3D',
 }
 
 function label(value: string, labels: Record<string, string>) {

@@ -1,4 +1,5 @@
 import { Pool, type PoolClient, type QueryResultRow } from 'pg'
+import { attachDatabasePool } from '@vercel/functions'
 
 type DbError = { message: string; code?: string }
 // Compatibility boundary for legacy pages that previously relied on an untyped Local PostgreSQL client.
@@ -20,17 +21,35 @@ export type DataOperation = {
 
 const globalForDatabase = globalThis as typeof globalThis & { __krupimPool?: Pool }
 
+function integerEnvironment(name: string, fallback: number, minimum: number, maximum: number) {
+  const value = Number(process.env[name])
+  return Number.isInteger(value) && value >= minimum && value <= maximum ? value : fallback
+}
+
+function sslConfiguration() {
+  const mode = process.env.DATABASE_SSL?.trim().toLowerCase()
+  if (mode !== 'require') return undefined
+  return { rejectUnauthorized: process.env.DATABASE_SSL_REJECT_UNAUTHORIZED?.trim().toLowerCase() !== 'false' }
+}
+
 function getPool() {
   const connectionString = process.env.DATABASE_URL || ''
   if (!connectionString) throw new Error('DATABASE_URL is not configured')
 
   if (!globalForDatabase.__krupimPool) {
-    globalForDatabase.__krupimPool = new Pool({
+    // A Vercel deployment can create several warm function instances. Keep each
+    // instance's pool deliberately small so they do not exhaust Railway Postgres.
+    const defaultPoolMax = process.env.VERCEL ? 2 : 10
+    const pool = new Pool({
       connectionString,
-      max: 10,
-      idleTimeoutMillis: 30_000,
-      connectionTimeoutMillis: 5_000,
+      ssl: sslConfiguration(),
+      application_name: process.env.APP_SERVICE_NAME?.trim() || 'krupim-next-fullstack',
+      max: integerEnvironment('DATABASE_POOL_MAX', defaultPoolMax, 1, 50),
+      idleTimeoutMillis: integerEnvironment('DATABASE_POOL_IDLE_TIMEOUT_MS', 30_000, 1_000, 300_000),
+      connectionTimeoutMillis: integerEnvironment('DATABASE_CONNECTION_TIMEOUT_MS', 5_000, 1_000, 60_000),
     })
+    if (process.env.VERCEL) attachDatabasePool(pool)
+    globalForDatabase.__krupimPool = pool
   }
   return globalForDatabase.__krupimPool
 }

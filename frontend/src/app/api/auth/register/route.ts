@@ -128,8 +128,8 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({
       user: { id: profile.id, email },
       profile,
-      session: { access_token: token, user: { id: profile.id, email } },
-    }, { status: 201 })
+      session: { user: { id: profile.id, email } },
+    }, { status: 201, headers: { 'Cache-Control': 'no-store' } })
     setSessionCookie(response, token)
     return response
   } catch (error) {

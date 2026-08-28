@@ -43,11 +43,10 @@ export async function GET(request: NextRequest) {
     }
     return NextResponse.json({
       session: {
-        access_token: token,
         user: { id: profile.id, email: profile.email },
       },
       profile,
-    })
+    }, { headers: { 'Cache-Control': 'no-store' } })
   } catch {
     const response = NextResponse.json({ session: null }, { status: 401 })
     clearSessionCookie(response)

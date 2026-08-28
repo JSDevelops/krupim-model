@@ -12,29 +12,14 @@ export const FINE_SYSTEM_PROMPT = `คุณคือ AI ผู้ช่วย�
 
 ตอบแบบเป็นกันเอง กระชับ ชัดเจน และให้กำลังใจผู้เรียนเสมอ`
 
-const BACKEND_URL = '/api'
+// All browser calls stay on the same origin and are handled by Next.js Route Handlers.
+const API_BASE_PATH = '/api'
 
-// ดึง Local PostgreSQL access token จาก session ปัจจุบัน
-async function getAccessToken(): Promise<string> {
-  if (typeof window === 'undefined') return ''
-  try {
-    // dynamic import เพื่อหลีกเลี่ยง circular dependency
-    const { localData } = await import('@/lib/localData')
-    const { data } = await localData.auth.getSession()
-    return data.session?.access_token ?? ''
-  } catch {
-    return ''
-  }
-}
-
-// Helper to get the active provider and verified Local PostgreSQL JWT. API keys stay server-side.
+// Helper for the active provider. Authentication stays in the HttpOnly same-origin cookie.
 export async function getAIHeaders(): Promise<Record<string, string>> {
-  const token = await getAccessToken()
-
   if (typeof window === 'undefined') {
     return {
       'Content-Type': 'application/json',
-      'Authorization': token ? `Bearer ${token}` : '',
       'x-ai-provider': 'gemini'
     }
   }
@@ -42,12 +27,11 @@ export async function getAIHeaders(): Promise<Record<string, string>> {
   const activeProvider = localStorage.getItem('activeAiProvider') || 'gemini'
   return {
     'Content-Type': 'application/json',
-    'Authorization': token ? `Bearer ${token}` : '',
     'x-ai-provider': activeProvider
   }
 }
 
-// Chat with context (Routes via backend)
+// Chat with context (Next.js full-stack API)
 export async function chatWithGemini(
   messages: { role: 'user' | 'model'; text: string }[],
   userMessage: string,
@@ -57,7 +41,7 @@ export async function chatWithGemini(
   sessionId?: string
 ) {
   const headers = await getAIHeaders()
-  const response = await fetch(`${BACKEND_URL}/chat`, {
+  const response = await fetch(`${API_BASE_PATH}/chat`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -78,10 +62,10 @@ export async function chatWithGemini(
   return data
 }
 
-// AI Scan - analyze image (Routes via backend)
+// AI Scan - analyze image (Next.js full-stack API)
 export async function analyzeImage(imageBase64: string, mimeType: string = 'image/jpeg') {
   const headers = await getAIHeaders()
-  const response = await fetch(`${BACKEND_URL}/scan`, {
+  const response = await fetch(`${API_BASE_PATH}/scan`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -97,7 +81,7 @@ export async function analyzeImage(imageBase64: string, mimeType: string = 'imag
   return response.json()
 }
 
-// Generate simulation feedback (Routes via backend)
+// Generate simulation feedback (Next.js full-stack API)
 export async function generateSimulationFeedback(
   messages: { role: 'user' | 'model'; text: string }[],
   score: number,
@@ -105,7 +89,7 @@ export async function generateSimulationFeedback(
   scenarioId?: string
 ) {
   const headers = await getAIHeaders()
-  const response = await fetch(`${BACKEND_URL}/simulation`, {
+  const response = await fetch(`${API_BASE_PATH}/simulation`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
