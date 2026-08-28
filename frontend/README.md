@@ -60,6 +60,8 @@ Schema updates after the baseline live in `database/migrations` and `npm run db:
 
 Import this repository into Vercel and set **Root Directory** to `frontend`. Keep the detected Next.js framework settings; Vercel runs `npm run build` and the Route Handlers automatically, so no separate start command or backend service is required.
 
+`vercel.json` pins Node.js Functions to Singapore (`sin1`) to keep compute close to users in Thailand. Set the Railway PostgreSQL service region to **Southeast Asia / Singapore** as well. If the database is intentionally hosted elsewhere, change `regions` in `vercel.json` to the nearest Vercel region; distance between Functions and PostgreSQL directly adds latency to every protected API request.
+
 Add these variables in Vercel Project Settings for the Production environment:
 
 ```env
@@ -88,7 +90,7 @@ npm run db:migrate
 
 The migration command is idempotent and records applied files in `schema_migrations`. AI provider keys are optional environment fallbacks; the preferred workflow is to save them from `/admin/settings`, where they are encrypted in PostgreSQL. Keep `AI_SETTINGS_ENCRYPTION_KEY` unchanged between deployments or saved keys cannot be decrypted.
 
-After deployment, verify `GET /api/health`; it performs a lightweight database query and returns HTTP 503 when PostgreSQL cannot be reached. All browser requests use same-origin Next.js Route Handlers under `/api`; Railway runs PostgreSQL only.
+After deployment, verify `GET /api/health`; it reports the active Vercel region and PostgreSQL latency, and returns HTTP 503 when PostgreSQL cannot be reached. All browser requests use same-origin Next.js Route Handlers under `/api`; Railway runs PostgreSQL only.
 
 ## Security model
 

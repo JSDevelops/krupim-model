@@ -1,4 +1,5 @@
 import { Pool, type PoolClient, type QueryResultRow } from 'pg'
+import { attachDatabasePool } from '@vercel/functions'
 
 type DbError = { message: string; code?: string }
 // Compatibility boundary for legacy pages that previously relied on an untyped Local PostgreSQL client.
@@ -39,7 +40,7 @@ function getPool() {
     // A Vercel deployment can create several warm function instances. Keep each
     // instance's pool deliberately small so they do not exhaust Railway Postgres.
     const defaultPoolMax = process.env.VERCEL ? 2 : 10
-    globalForDatabase.__krupimPool = new Pool({
+    const pool = new Pool({
       connectionString,
       ssl: sslConfiguration(),
       application_name: process.env.APP_SERVICE_NAME?.trim() || 'krupim-next-fullstack',
@@ -47,6 +48,8 @@ function getPool() {
       idleTimeoutMillis: integerEnvironment('DATABASE_POOL_IDLE_TIMEOUT_MS', 30_000, 1_000, 300_000),
       connectionTimeoutMillis: integerEnvironment('DATABASE_CONNECTION_TIMEOUT_MS', 5_000, 1_000, 60_000),
     })
+    if (process.env.VERCEL) attachDatabasePool(pool)
+    globalForDatabase.__krupimPool = pool
   }
   return globalForDatabase.__krupimPool
 }

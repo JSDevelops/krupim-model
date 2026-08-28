@@ -583,6 +583,14 @@ CREATE INDEX IF NOT EXISTS idx_audit_logs_entity_created
 CREATE INDEX IF NOT EXISTS idx_api_rate_limits_expires ON api_rate_limits(expires_at);
 CREATE INDEX IF NOT EXISTS idx_content_library_type_status ON content_library(content_type, status);
 CREATE INDEX IF NOT EXISTS idx_system_announcements_published ON system_announcements(published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_profiles_created_at ON profiles(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_courses_published ON courses(is_published);
+CREATE INDEX IF NOT EXISTS idx_learning_analytics_date ON learning_analytics(date DESC);
+CREATE INDEX IF NOT EXISTS idx_lesson_progress_status ON lesson_progress(status);
+CREATE INDEX IF NOT EXISTS idx_lesson_progress_updated_at ON lesson_progress(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_chat_sessions_started_at ON chat_sessions(started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_simulation_sessions_completed_at ON simulation_sessions(completed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_student_assessments_submitted_at ON student_assessments(submitted_at DESC);
 
 INSERT INTO content_library (id, content_type, name_th, name_en, unit_label, status)
 VALUES

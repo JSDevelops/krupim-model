@@ -8,7 +8,12 @@ export async function GET() {
   const startedAt = Date.now()
   try {
     await queryDb('SELECT 1')
-    return NextResponse.json({ status: 'ok', database: 'online', latencyMs: Date.now() - startedAt }, {
+    return NextResponse.json({
+      status: 'ok',
+      database: 'online',
+      latencyMs: Date.now() - startedAt,
+      region: process.env.VERCEL_REGION || 'local',
+    }, {
       headers: { 'Cache-Control': 'no-store' },
     })
   } catch {
