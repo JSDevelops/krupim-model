@@ -338,7 +338,7 @@ export default function AdminSettingsPage() {
         </article>
         <article className={styles.statusCard} data-tone="green">
           <span><AdminIcon name="database" size={19} /></span>
-          <div><small>ฐานข้อมูล</small><strong>Local PostgreSQL</strong><p>เชื่อมต่อผ่าน Server</p></div>
+          <div><small>ฐานข้อมูล</small><strong>PostgreSQL</strong><p>เชื่อมต่อผ่าน Next.js Server</p></div>
         </article>
         <article className={styles.statusCard} data-tone="purple">
           <span><AdminIcon name="cube" size={19} /></span>
