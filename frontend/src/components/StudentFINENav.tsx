@@ -22,11 +22,11 @@ type NavItem = {
 const EMPTY_COUNTS: TaskCounts = { F: 0, I: 0, N: 0, E: 0, P: 0 }
 
 const TABS: NavItem[] = [
-  { href: '/student/explore', letter: 'F', label: 'สำรวจ', fineLabel: 'Familiarize', icon: 'explore' },
-  { href: '/student/interact', letter: 'I', label: 'ฝึกพูด', fineLabel: 'Interact', icon: 'interact', aliases: ['/chat', '/live'] },
-  { href: '/student/navigate', letter: 'N', label: 'สถานการณ์', fineLabel: 'Navigate', icon: 'navigate', aliases: ['/simulation', '/student/simulation'] },
-  { href: '/student/exhibit', letter: 'E', label: 'ทบทวน', fineLabel: 'Exhibit', icon: 'exhibit' },
-  { href: '/student/profile', letter: 'P', label: 'โปรไฟล์', fineLabel: 'Portfolio', icon: 'profile', aliases: ['/student/progress'] },
+  { href: '/student/explore', letter: 'F', label: 'Familiarize', fineLabel: 'Explore', icon: 'explore' },
+  { href: '/student/interact', letter: 'I', label: 'Interact', fineLabel: 'Speak', icon: 'interact', aliases: ['/chat', '/live'] },
+  { href: '/student/navigate', letter: 'N', label: 'Navigate', fineLabel: 'Scenario', icon: 'navigate', aliases: ['/simulation', '/student/simulation'] },
+  { href: '/student/exhibit', letter: 'E', label: 'Exhibit', fineLabel: 'Review', icon: 'exhibit' },
+  { href: '/student/profile', letter: 'P', label: 'Portfolio', fineLabel: 'Profile', icon: 'profile', aliases: ['/student/progress'] },
 ]
 
 function FineNavIcon({ name }: { name: NavIcon }) {
@@ -95,7 +95,7 @@ export default function StudentFINENav() {
 
   return (
     <div className={styles.dockWrap}>
-      <nav className={styles.dock} aria-label="เมนูหลักนักเรียน">
+      <nav className={styles.dock} aria-label="Student Navigation Menu">
         {TABS.map(tab => {
           const active = isCurrentPath(pathname, tab)
           const pendingCount = taskCounts[tab.letter]
@@ -106,7 +106,7 @@ export default function StudentFINENav() {
               href={tab.href}
               prefetch={false}
               aria-current={active ? 'page' : undefined}
-              aria-label={`${tab.label} — ${tab.fineLabel}${pendingCount ? `, มีงานค้าง ${pendingCount} รายการ` : ''}`}
+              aria-label={`${tab.label} — ${tab.letter} · ${tab.fineLabel}${pendingCount ? `, ${pendingCount} pending items` : ''}`}
               className={`${styles.item} ${active ? styles.active : ''}`}
             >
               {pendingCount > 0 && <span className={styles.badge} aria-hidden="true">{pendingCount > 99 ? '99+' : pendingCount}</span>}

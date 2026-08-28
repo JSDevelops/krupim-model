@@ -24,7 +24,7 @@ const teacherNav: NavItem[] = [
 const studentNav: NavItem[] = [
   { href: '/student/explore', icon: 'cube', label: 'F-Familiarize' },
   { href: '/student/interact', icon: 'message', label: 'I-Interact' },
-  { href: '/student/scanner', icon: 'camera', label: 'สแกน AR' },
+  { href: '/student/scanner', icon: 'camera', label: 'AR Scan' },
   { href: '/student/learn', icon: 'book', label: 'N-Navigate' },
   { href: '/student/progress', icon: 'award', label: 'E-Exhibit' },
 ]

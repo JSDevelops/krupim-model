@@ -105,13 +105,15 @@
 }
 
 .label {
-  max-width: 58px;
+  max-width: 62px;
   overflow: hidden;
-  font-size: 9px;
-  font-weight: 500;
+  font-size: 8.5px;
+  font-weight: 600;
   line-height: 1.25;
+  letter-spacing: -0.015em;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: center;
 }
 
 .fineLabel { display: none; }
@@ -152,7 +154,7 @@
 @media (min-width: 360px) {
   .dock { padding-inline: 6px; }
   .label {
-    max-width: 64px;
+    max-width: 68px;
     font-size: 9.5px;
   }
 }
@@ -189,22 +191,24 @@
   }
 
   .label {
-    max-width: 74px;
-    font-size: 10.5px;
-    font-weight: 500;
+    max-width: 84px;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: left;
+    letter-spacing: 0;
   }
 
   .fineLabel {
     display: block;
-    color: #9ca49f;
-    font-size: 7.5px;
-    font-weight: 500;
+    color: #8c9690;
+    font-size: 8px;
+    font-weight: 600;
     line-height: 1.2;
-    letter-spacing: .045em;
+    letter-spacing: .05em;
     text-transform: uppercase;
   }
 
-  .active .fineLabel { color: rgba(255, 255, 255, .58); }
+  .active .fineLabel { color: rgba(255, 255, 255, .65); }
 
   .badge {
     top: 5px;
