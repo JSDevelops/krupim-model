@@ -134,7 +134,9 @@ export async function getActiveAISetting() {
 
 function validateApiKey(provider: AIProvider, value: string) {
   if (value.length < 12 || value.length > 512) throw new Error('API Key ต้องมีความยาวระหว่าง 12 ถึง 512 ตัวอักษร')
-  if (provider === 'gemini' && !value.startsWith('AIza')) throw new Error('Gemini API Key ต้องขึ้นต้นด้วย AIza')
+  if (provider === 'gemini' && !value.startsWith('AIza') && !value.startsWith('AQ.')) {
+    throw new Error('Gemini API Key ต้องขึ้นต้นด้วย AIza หรือ AQ.')
+  }
   if (provider === 'openai' && !value.startsWith('sk-')) throw new Error('OpenAI API Key ต้องขึ้นต้นด้วย sk-')
   if (provider === 'claude' && !value.startsWith('sk-ant-')) throw new Error('Anthropic API Key ต้องขึ้นต้นด้วย sk-ant-')
 }
