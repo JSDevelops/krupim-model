@@ -15,6 +15,7 @@
     "test:avatar": "powershell -ExecutionPolicy Bypass -File scripts/test-local-avatar.ps1",
     "test:mail": "powershell -ExecutionPolicy Bypass -File scripts/test-mailpit-reset.ps1",
     "test:certificates": "powershell -ExecutionPolicy Bypass -File scripts/test-certificates.ps1",
+    "test:3d": "powershell -ExecutionPolicy Bypass -File scripts/test-3d-generation.ps1",
     "lint": "eslint",
     "lint:security": "eslint src/app/api src/lib/api.ts src/lib/localData.ts src/lib/db.ts src/lib/session.ts src/proxy.ts --max-warnings=0"
   },

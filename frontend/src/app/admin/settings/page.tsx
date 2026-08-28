@@ -38,6 +38,20 @@ type AISettingsResponse = {
   settings?: PublicProviderSetting[]
 }
 
+type TripoSetting = {
+  modelVersion: string
+  keyConfigured: boolean
+  keyHint: string | null
+  source: 'database' | 'environment' | 'none'
+  updatedAt?: string | null
+}
+
+type TripoSettingsResponse = {
+  error?: string
+  setting?: TripoSetting
+  modelVersions?: string[]
+}
+
 const initialProviderSettings: ProviderSettings = {
   gemini: { model: DEFAULT_AI_MODELS.gemini, keyConfigured: false, keyHint: null, source: 'none' },
   openai: { model: DEFAULT_AI_MODELS.openai, keyConfigured: false, keyHint: null, source: 'none' },
@@ -75,6 +89,11 @@ export default function AdminSettingsPage() {
   const [apiKeyInputs, setApiKeyInputs] = useState(emptyApiKeys)
   const [showApiKey, setShowApiKey] = useState(false)
   const [loadingAISettings, setLoadingAISettings] = useState(true)
+  const [tripoSetting, setTripoSetting] = useState<TripoSetting>({ modelVersion: 'v2.5-20250123', keyConfigured: false, keyHint: null, source: 'none' })
+  const [tripoModelVersions, setTripoModelVersions] = useState<string[]>(['v2.5-20250123'])
+  const [tripoApiKey, setTripoApiKey] = useState('')
+  const [showTripoKey, setShowTripoKey] = useState(false)
+  const [loadingTripo, setLoadingTripo] = useState(true)
   const [savingSystem, setSavingSystem] = useState(false)
   const [schoolName, setSchoolName] = useState('วิทยาลัยอาชีวศึกษากรุงเทพ')
   const [maintenance, setMaintenance] = useState(false)
@@ -140,6 +159,18 @@ export default function AdminSettingsPage() {
       .catch(error => toast.error('โหลดการตั้งค่าระบบไม่สำเร็จ', {
         description: error instanceof Error ? error.message : 'กรุณาลองใหม่อีกครั้ง',
       }))
+
+    void authenticatedFetch('/api/admin/tripo-settings', { cache: 'no-store' })
+      .then(async response => {
+        const payload = await response.json() as TripoSettingsResponse
+        if (!response.ok || !payload.setting) throw new Error(payload.error || 'โหลดการตั้งค่า Tripo ไม่สำเร็จ')
+        setTripoSetting(payload.setting)
+        if (payload.modelVersions?.length) setTripoModelVersions(payload.modelVersions)
+      })
+      .catch(error => toast.error('โหลดการตั้งค่า Tripo ไม่สำเร็จ', {
+        description: error instanceof Error ? error.message : 'กรุณารัน migration ล่าสุด',
+      }))
+      .finally(() => setLoadingTripo(false))
   }, [])
 
   async function handleSaveSystem(event: FormEvent<HTMLFormElement>) {
@@ -147,8 +178,8 @@ export default function AdminSettingsPage() {
     setSavingSystem(true)
     const toastId = toast.loading('กำลังบันทึกการตั้งค่า AI...')
     try {
-      const [response, systemResponse] = await Promise.all([
-        fetch('/api/admin/ai-settings', {
+      const [response, systemResponse, tripoResponse] = await Promise.all([
+        authenticatedFetch('/api/admin/ai-settings', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           body: JSON.stringify({
@@ -163,13 +194,23 @@ export default function AdminSettingsPage() {
           headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
           body: JSON.stringify({ schoolName: schoolName.trim(), maintenance }),
         }),
+        authenticatedFetch('/api/admin/tripo-settings', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({
+            modelVersion: tripoSetting.modelVersion,
+            apiKey: tripoApiKey.trim() || undefined,
+          }),
+        }),
       ])
-      const [payload, systemPayload] = await Promise.all([
+      const [payload, systemPayload, tripoPayload] = await Promise.all([
         response.json() as Promise<AISettingsResponse>,
         systemResponse.json() as Promise<{ error?: string }>,
+        tripoResponse.json() as Promise<TripoSettingsResponse>,
       ])
       if (!response.ok) throw new Error(payload.error || 'บันทึกการตั้งค่า AI ไม่สำเร็จ')
       if (!systemResponse.ok) throw new Error(systemPayload.error || 'บันทึกการตั้งค่าระบบไม่สำเร็จ')
+      if (!tripoResponse.ok || !tripoPayload.setting) throw new Error(tripoPayload.error || 'บันทึกการตั้งค่า Tripo ไม่สำเร็จ')
 
       const nextSettings = { ...providerSettings }
       for (const setting of payload.settings || []) {
@@ -183,6 +224,8 @@ export default function AdminSettingsPage() {
       }
       setProviderSettings(nextSettings)
       setApiKeyInputs(current => ({ ...current, [activeProvider]: '' }))
+      setTripoSetting(tripoPayload.setting)
+      setTripoApiKey('')
       removeLegacyApiKeys()
       window.localStorage.setItem('activeAiProvider', activeProvider)
       toast.success('บันทึกการตั้งค่าระบบแล้ว', {
@@ -297,6 +340,10 @@ export default function AdminSettingsPage() {
           <span><AdminIcon name="database" size={19} /></span>
           <div><small>ฐานข้อมูล</small><strong>Local PostgreSQL</strong><p>เชื่อมต่อผ่าน Server</p></div>
         </article>
+        <article className={styles.statusCard} data-tone="purple">
+          <span><AdminIcon name="cube" size={19} /></span>
+          <div><small>3D Provider</small><strong>Tripo AI</strong><p>{tripoSetting.keyConfigured ? tripoSetting.modelVersion : 'ยังไม่ได้ตั้งค่า API Key'}</p></div>
+        </article>
         <article className={styles.statusCard} data-tone={maintenance ? 'red' : 'gold'}>
           <span><AdminIcon name={maintenance ? 'pause' : 'check'} size={19} /></span>
           <div><small>สถานะระบบ</small><strong>{maintenance ? 'Maintenance' : 'พร้อมใช้งาน'}</strong><p>{maintenance ? 'จำกัดการเข้าใช้งาน' : 'ให้บริการตามปกติ'}</p></div>
@@ -373,6 +420,26 @@ export default function AdminSettingsPage() {
               </div>
             </section>
 
+            <section className={styles.settingsSection} data-tone="purple">
+              <header className={styles.sectionHeader}>
+                <span><AdminIcon name="cube" size={18} /></span>
+                <div><h2>Tripo AI สำหรับสร้างโมเดล 3D</h2><p>กำหนด API Key และเวอร์ชันโมเดลสำหรับ Text-to-3D ทั้งระบบ</p></div>
+              </header>
+              <div className={styles.sectionBody}>
+                <div className={styles.aiConfigPanel}>
+                  <div className={styles.aiConfigHeader}>
+                    <span className={styles.providerLogo}><AdminIcon name="cube" size={22} /></span>
+                    <div><strong>Tripo 3D Generation</strong><p>ระบบจะ polling งานและบันทึก GLB ลง PostgreSQL อัตโนมัติ</p></div>
+                    <span className={styles.keyStatus} data-configured={tripoSetting.keyConfigured}><AdminIcon name={tripoSetting.keyConfigured ? 'check' : 'key'} size={13} />{loadingTripo ? 'กำลังตรวจสอบ' : tripoSetting.keyConfigured ? `ตั้งค่าแล้ว ${tripoSetting.keyHint || ''}` : 'ยังไม่มี API Key'}</span>
+                  </div>
+                  <div className={styles.aiConfigGrid}>
+                    <label className={styles.field}><span>Model version</span><select value={tripoSetting.modelVersion} disabled={loadingTripo || savingSystem} onChange={event => setTripoSetting(current => ({ ...current, modelVersion: event.target.value }))}>{tripoModelVersions.map(version => <option key={version} value={version}>{version}</option>)}</select><small>เวอร์ชันเริ่มต้นที่แนะนำคือ v2.5 และสามารถเลือก P1/Turbo/v3.1 ได้</small></label>
+                    <label className={styles.field}><span>Tripo API Key {tripoSetting.keyConfigured && <em>เว้นว่างเพื่อใช้คีย์เดิม</em>}</span><div className={styles.secretInput}><AdminIcon name="key" size={16} /><input type={showTripoKey ? 'text' : 'password'} value={tripoApiKey} disabled={loadingTripo || savingSystem} autoComplete="new-password" spellCheck={false} placeholder={tripoSetting.keyConfigured ? `คีย์ปัจจุบัน ${tripoSetting.keyHint || ''}` : 'tsk_...'} onChange={event => setTripoApiKey(event.target.value)} /><button type="button" onClick={() => setShowTripoKey(current => !current)}>{showTripoKey ? 'ซ่อน' : 'แสดง'}</button></div><small>คีย์ถูกเข้ารหัส AES-256-GCM ก่อนบันทึก และไม่ส่งค่าจริงกลับมาที่หน้าเว็บ</small></label>
+                  </div>
+                </div>
+              </div>
+            </section>
+
             <div className={styles.settingsTwoColumns}>
               <section className={styles.settingsSection} data-tone="green">
                 <header className={styles.sectionHeader}><span><AdminIcon name="database" size={18} /></span><div><h2>ฐานข้อมูล</h2><p>การเชื่อมต่อสำหรับพัฒนาในเครื่อง</p></div></header>
@@ -402,7 +469,7 @@ export default function AdminSettingsPage() {
               <div className={styles.cacheRow}><div><strong>เปลี่ยนรหัสผ่านบัญชีปัจจุบัน</strong><p>กำหนดอย่างน้อย 10 ตัวอักษร พร้อมตัวพิมพ์ใหญ่ ตัวพิมพ์เล็ก และตัวเลข</p></div><button className={styles.secondaryButton} type="button" onClick={() => setPasswordOpen(true)}><AdminIcon name="key" size={15} />เปลี่ยนรหัสผ่าน</button></div>
             </section>
 
-            <div className={styles.settingsFooter}><button className={styles.primaryButton} type="submit" disabled={loadingAISettings || savingSystem}><AdminIcon name={savingSystem ? 'refresh' : 'check'} size={16} />{savingSystem ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่าระบบ'}</button></div>
+            <div className={styles.settingsFooter}><button className={styles.primaryButton} type="submit" disabled={loadingAISettings || loadingTripo || savingSystem}><AdminIcon name={savingSystem ? 'refresh' : 'check'} size={16} />{savingSystem ? 'กำลังบันทึก...' : 'บันทึกการตั้งค่าระบบ'}</button></div>
           </form>
         ) : (
           <form className={styles.settingsForm} onSubmit={handleSaveAppearance}>

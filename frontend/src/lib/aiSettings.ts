@@ -45,7 +45,7 @@ function encryptionKey() {
   return createHash('sha256').update(secret, 'utf8').digest()
 }
 
-function encryptSecret(value: string) {
+export function encryptSecret(value: string) {
   const iv = randomBytes(12)
   const cipher = createCipheriv('aes-256-gcm', encryptionKey(), iv)
   const encrypted = Buffer.concat([cipher.update(value, 'utf8'), cipher.final()])
@@ -53,7 +53,7 @@ function encryptSecret(value: string) {
   return ['v1', iv.toString('base64url'), authTag.toString('base64url'), encrypted.toString('base64url')].join('.')
 }
 
-function decryptSecret(payload: string) {
+export function decryptSecret(payload: string) {
   const [version, ivValue, authTagValue, encryptedValue] = payload.split('.')
   if (version !== 'v1' || !ivValue || !authTagValue || !encryptedValue) {
     throw new Error('Invalid encrypted AI key payload')

@@ -12,6 +12,21 @@ $session = New-Object Microsoft.PowerShell.Commands.WebRequestSession
 $loginBody = @{ email = $AdminEmail; password = $AdminPassword; selectedRole = 'developer' } | ConvertTo-Json
 $login = Invoke-WebRequest -Uri "$BaseUrl/api/auth/login" -Method POST -ContentType 'application/json' -Body $loginBody -WebSession $session -UseBasicParsing
 if ([int]$login.StatusCode -ne 200) { throw 'Developer login smoke test failed' }
+$loginPayload = $login.Content | ConvertFrom-Json
+if ($loginPayload.access_token) { throw 'Login response exposed the session token to JavaScript' }
+$sessionPayload = Invoke-RestMethod -Uri "$BaseUrl/api/auth/session" -WebSession $session -UseBasicParsing
+if (-not $sessionPayload.session.user.id -or $sessionPayload.session.access_token) { throw 'Cookie-only session response validation failed' }
+Write-Host 'PASS HttpOnly cookie-only browser session'
+
+$crossOriginStatus = 0
+try {
+  Invoke-WebRequest -Uri "$BaseUrl/api/auth/logout" -Method POST -Headers @{ Origin = 'https://malicious.example'; 'X-Forwarded-For' = $testIp } -WebSession $session -UseBasicParsing | Out-Null
+  $crossOriginStatus = 200
+} catch {
+  $crossOriginStatus = [int]$_.Exception.Response.StatusCode
+}
+if ($crossOriginStatus -ne 403) { throw "Cross-origin mutation returned $crossOriginStatus instead of 403" }
+Write-Host 'PASS cross-origin mutation protection'
 
 $paths = @(
   '/api/admin/system-settings',

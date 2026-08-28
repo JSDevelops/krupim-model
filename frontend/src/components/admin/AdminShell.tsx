@@ -51,9 +51,9 @@ const adminNavigation: Array<{ label: string; items: NavigationItem[] }> = [
       { href: '/admin/students', label: 'ทะเบียนนักเรียน', description: 'สมาชิกและผลการเรียนรายห้อง', icon: 'student' },
       { href: '/admin/lessons', label: 'แผนการสอน', description: 'แผน FINE และการเผยแพร่', icon: 'content' },
       { href: '/admin/assignments', label: 'งานและการประเมิน', description: 'งาน การส่ง และคะแนน KSA-C', icon: 'score' },
-      { href: '/admin/certificates', label: 'ใบรับรองสมรรถนะ', description: 'ตรวจสอบ ยกเลิก และคืนสถานะใบรับรอง', icon: 'archive' },
+      { href: '/admin/certificates', label: 'ใบรับรองสมรรถนะ', description: 'ออกใหม่ ควบคุมสถานะ และดูประวัติ', icon: 'archive' },
       { href: '/admin/vocabulary', label: 'คลังคำศัพท์', description: 'คำศัพท์ส่วนกลางและของครู', icon: 'course' },
-      { href: '/admin/ar-models', label: 'โมเดล AR 3D', description: 'สื่อสามมิติทั้งระบบ', icon: 'cube' },
+      { href: '/admin/ar-models', label: 'โมเดล AR 3D', description: 'สร้างด้วย AI และจัดการสื่อสามมิติ', icon: 'cube' },
     ],
   },
   {

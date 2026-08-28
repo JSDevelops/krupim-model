@@ -95,7 +95,28 @@ function getClientIp(req: NextRequest) {
   return (forwarded?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown').slice(0, 80)
 }
 
+export function enforceSameOrigin(req: NextRequest) {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method.toUpperCase())) return
+  if ((req.headers.get('authorization') || '').startsWith('Bearer ')) return
+
+  const origin = req.headers.get('origin')
+  if (!origin) return
+  let originUrl: URL
+  try {
+    originUrl = new URL(origin)
+  } catch {
+    throw new ApiError('Invalid request origin', 403, 'INVALID_ORIGIN')
+  }
+
+  const expectedHost = req.headers.get('x-forwarded-host') || req.headers.get('host') || req.nextUrl.host
+  const expectedProtocol = (req.headers.get('x-forwarded-proto') || req.nextUrl.protocol.replace(':', '')).split(',')[0].trim()
+  if (originUrl.host !== expectedHost || originUrl.protocol !== `${expectedProtocol}:`) {
+    throw new ApiError('Cross-origin request rejected', 403, 'INVALID_ORIGIN')
+  }
+}
+
 export async function enforceRateLimit(req: NextRequest, max = 10, windowMs = 60_000) {
+  enforceSameOrigin(req)
   const now = Date.now()
   const safeWindowMs = Math.min(Math.max(windowMs, 1_000), 24 * 60 * 60_000)
   const windowNumber = Math.floor(now / safeWindowMs)

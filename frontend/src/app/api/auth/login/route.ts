@@ -76,8 +76,7 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({
       user: { id: account.id, email: account.email },
       profile,
-      access_token: token,
-    })
+    }, { headers: { 'Cache-Control': 'no-store' } })
     setSessionCookie(response, token)
     return response
   } catch (error) {

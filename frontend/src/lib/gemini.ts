@@ -14,27 +14,11 @@ export const FINE_SYSTEM_PROMPT = `คุณคือ AI ผู้ช่วย�
 
 const BACKEND_URL = '/api'
 
-// ดึง Local PostgreSQL access token จาก session ปัจจุบัน
-async function getAccessToken(): Promise<string> {
-  if (typeof window === 'undefined') return ''
-  try {
-    // dynamic import เพื่อหลีกเลี่ยง circular dependency
-    const { localData } = await import('@/lib/localData')
-    const { data } = await localData.auth.getSession()
-    return data.session?.access_token ?? ''
-  } catch {
-    return ''
-  }
-}
-
-// Helper to get the active provider and verified Local PostgreSQL JWT. API keys stay server-side.
+// Helper for the active provider. Authentication stays in the HttpOnly same-origin cookie.
 export async function getAIHeaders(): Promise<Record<string, string>> {
-  const token = await getAccessToken()
-
   if (typeof window === 'undefined') {
     return {
       'Content-Type': 'application/json',
-      'Authorization': token ? `Bearer ${token}` : '',
       'x-ai-provider': 'gemini'
     }
   }
@@ -42,7 +26,6 @@ export async function getAIHeaders(): Promise<Record<string, string>> {
   const activeProvider = localStorage.getItem('activeAiProvider') || 'gemini'
   return {
     'Content-Type': 'application/json',
-    'Authorization': token ? `Bearer ${token}` : '',
     'x-ai-provider': activeProvider
   }
 }
