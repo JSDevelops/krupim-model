@@ -14,6 +14,7 @@ type VocabularyItem = {
   nameTh: string
   category: string
   categoryTh: string
+  emoji: string
   pronounce: string
   useDesc: string
   sentence: string
@@ -45,6 +46,7 @@ const emptyForm: VocabularyForm = {
   nameTh: '',
   category: 'tableware',
   categoryTh: 'เครื่องใช้บนโต๊ะอาหาร',
+  emoji: '🍽️',
   pronounce: '',
   useDesc: '',
   sentence: '',
@@ -155,6 +157,7 @@ export default function TeacherVocabularyPage() {
       nameTh: item.nameTh,
       category: item.category,
       categoryTh: item.categoryTh,
+      emoji: item.emoji || '🍽️',
       pronounce: item.pronounce || '',
       useDesc: item.useDesc || '',
       sentence: item.sentence || '',
@@ -380,7 +383,9 @@ export default function TeacherVocabularyPage() {
                     title={item.nameEn}
                   />
                 ) : (
-                  <span className={styles.wordMark}>{item.nameEn.slice(0, 2).toUpperCase()}</span>
+                  <span className={styles.wordMark} style={{ fontSize: item.emoji ? 21 : 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {item.emoji || item.nameEn.slice(0, 2).toUpperCase()}
+                  </span>
                 )}
                 
                 <div className={styles.wordIdentity}>
@@ -493,9 +498,14 @@ export default function TeacherVocabularyPage() {
                   <input required value={form.categoryTh} onChange={event => update('categoryTh', event.target.value)} placeholder="เครื่องใช้บนโต๊ะอาหาร" />
                 </label>
 
-                <label className={styles.fullField}>
+                <label>
                   <span>คำอ่าน / สัทอักษร (Phonetics)</span>
-                  <input value={form.pronounce} onChange={event => update('pronounce', event.target.value)} placeholder="เช่น /ˈwɔːtər ˈɡɒblət/ หรือ วอ-เทอะ กอบ-เลิท" />
+                  <input value={form.pronounce} onChange={event => update('pronounce', event.target.value)} placeholder="เช่น /ˈwɔːtər ˈɡɑːblɪt/" />
+                </label>
+
+                <label>
+                  <span>ไอคอนอีโมจิ (Emoji)</span>
+                  <input value={form.emoji} onChange={event => update('emoji', event.target.value)} placeholder="เช่น 🍽️, 🍷, 🔪, 🧂" />
                 </label>
 
                 <label className={styles.fullField}>

@@ -34,7 +34,7 @@ type ScanRow = {
 
 export async function GET(request: NextRequest) {
   try {
-    await guardApi(request, { roles: ['student', 'developer'], maxRequests: 120 })
+    await guardApi(request, { roles: ['student', 'teacher', 'developer'], maxRequests: 120 })
 
     const [vocabularyResult, scanResult] = await Promise.all([
       queryDb<VocabularyRow>(`
