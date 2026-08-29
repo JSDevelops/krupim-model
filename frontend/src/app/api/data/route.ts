@@ -55,9 +55,9 @@ function authorizeOperation(operation: DataOperation, user: AuthUser) {
 
   if (operation.table === 'notifications') {
     forceEq(operation, 'user_id', user.id)
-    return operation
+    if (operation.action === 'select') return operation
     if (operation.action !== 'update') throw new ApiError('Notification operation is not allowed', 403, 'FORBIDDEN')
-    operation.values = keepFields(rows(operation)[0] || {}, new Set(['is_read']))
+    operation.values = keepFields(rows(operation)[0] || {}, new Set(['is_read', 'read_at']))
     return operation
   }
 

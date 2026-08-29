@@ -205,7 +205,7 @@ export async function PATCH(req: NextRequest) {
     }
 
     if (result.rowCount !== 1) throw new ApiError('User not found', 404, 'NOT_FOUND')
-    if (action === 'reject' || action === 'toggle') {
+    if (action === 'reject' || action === 'toggle' || action === 'approve') {
       await queryDb('UPDATE app_users SET session_version=session_version+1,updated_at=NOW() WHERE id=$1::uuid', [id])
     }
     if (action === 'approve') {

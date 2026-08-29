@@ -89,9 +89,9 @@ export async function PATCH(request: NextRequest) {
       const result = await queryDb(`
         UPDATE vocabulary_items SET name_en=$1, name_th=$2, category=$3, category_th=$4, emoji=$5,
           pronounce=$6, use_desc=$7, sentence=$8, image_url=$9, glb_url=$10, usdz_url=$11, updated_at=NOW()
-        WHERE id=$12::uuid${user.role === 'developer' ? '' : ' AND (created_by=$13::uuid OR created_by IS NULL)'} RETURNING ${selectFields}
+        WHERE id=$12::uuid${user.role === 'developer' ? '' : ' AND created_by=$13::uuid'} RETURNING ${selectFields}
       `, [item.nameEn, item.nameTh, item.category, item.categoryTh, item.emoji, item.pronounce, item.useDesc, item.sentence, item.imageUrl, item.glbUrl, item.usdzUrl, id, ...(user.role === 'developer' ? [] : [user.id])])
-      if (!result.rows[0]) throw new ApiError('ไม่พบคำศัพท์', 404, 'NOT_FOUND')
+      if (!result.rows[0]) throw new ApiError('ไม่พบคำศัพท์ หรือไม่มีสิทธิ์แก้ไขคำศัพท์นี้', 404, 'NOT_FOUND')
       return NextResponse.json({ item: result.rows[0] })
     } catch (error) { databaseError(error) }
   } catch (error) { return apiErrorResponse(error) }
@@ -102,8 +102,8 @@ export async function DELETE(request: NextRequest) {
     const user = await guardApi(request, { roles: ['teacher', 'developer'], maxRequests: 50 })
     const id = request.nextUrl.searchParams.get('id')?.trim()
     if (!id) throw new ApiError('กรุณาระบุคำศัพท์', 400, 'VALIDATION_ERROR')
-    const result = await queryDb(`DELETE FROM vocabulary_items WHERE id=$1::uuid${user.role === 'developer' ? '' : ' AND (created_by=$2::uuid OR created_by IS NULL)'} RETURNING id`, [id, ...(user.role === 'developer' ? [] : [user.id])])
-    if (!result.rows[0]) throw new ApiError('ไม่พบคำศัพท์', 404, 'NOT_FOUND')
+    const result = await queryDb(`DELETE FROM vocabulary_items WHERE id=$1::uuid${user.role === 'developer' ? '' : ' AND created_by=$2::uuid'} RETURNING id`, [id, ...(user.role === 'developer' ? [] : [user.id])])
+    if (!result.rows[0]) throw new ApiError('ไม่พบคำศัพท์ หรือไม่มีสิทธิ์ลบคำศัพท์นี้', 404, 'NOT_FOUND')
     return NextResponse.json({ deletedId: id })
   } catch (error) { return apiErrorResponse(error) }
 }

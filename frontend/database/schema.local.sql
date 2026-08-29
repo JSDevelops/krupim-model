@@ -509,6 +509,7 @@ CREATE TABLE IF NOT EXISTS vocabulary_items (
   pronounce TEXT,
   use_desc TEXT NOT NULL,
   sentence TEXT NOT NULL,
+  image_url TEXT,                 -- Base64 data URL หรือ https:// URL
   glb_url TEXT,
   usdz_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -516,6 +517,7 @@ CREATE TABLE IF NOT EXISTS vocabulary_items (
 );
 
 ALTER TABLE vocabulary_items ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES profiles(id) ON DELETE SET NULL;
+ALTER TABLE vocabulary_items ADD COLUMN IF NOT EXISTS image_url TEXT;
 
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS link_url TEXT;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS read_at TIMESTAMPTZ;

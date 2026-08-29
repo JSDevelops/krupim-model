@@ -226,9 +226,25 @@ export default function TeacherVocabularyPage() {
     setUploadingField(field)
     try {
       if (field === 'imageUrl') {
+        // Resize ก่อน แล้วส่งผ่าน /api/upload เหมือน GLB/USDZ
+        if (!file.type.startsWith('image/')) throw new Error('กรุณาเลือกไฟล์รูปภาพ (PNG, JPEG, WebP)')
+        if (file.size > 12 * 1024 * 1024) throw new Error('ไฟล์ต้นฉบับต้องมีขนาดไม่เกิน 12 MB')
         const dataUrl = await processImageToDataUrl(file)
-        update('imageUrl', dataUrl)
-        toast.success(`บันทึกรูปภาพ "${file.name}" พร้อมเก็บในฐานข้อมูลเรียบร้อย`)
+        // แปลง data URL เป็น Blob แล้วส่งผ่าน /api/upload
+        const response = await fetch(dataUrl)
+        const blob = await response.blob()
+        const ext = blob.type === 'image/png' ? '.png' : '.webp'
+        const resizedFile = new File([blob], file.name.replace(/\.[^.]+$/, ext), { type: blob.type })
+        const formData = new FormData()
+        formData.append('file', resizedFile)
+        const uploadResponse = await authenticatedFetch('/api/upload', { method: 'POST', body: formData })
+        if (!uploadResponse.ok) {
+          const err = await uploadResponse.json().catch(() => ({}))
+          throw new Error((err as { error?: string }).error || 'การอัปโหลดรูปภาพล้มเหลว')
+        }
+        const data = await uploadResponse.json() as { url: string; originalName: string }
+        update('imageUrl', data.url)
+        toast.success(`อัปโหลดรูปภาพ "${file.name}" เรียบร้อยแล้ว`)
         return
       }
 
@@ -427,7 +443,7 @@ export default function TeacherVocabularyPage() {
                 </div>
 
                 <div className={styles.rowActions}>
-                  {(user?.role === 'developer' || !item.createdBy || item.createdBy === user?.id) ? (
+                  {(user?.role === 'developer' || (item.createdBy && item.createdBy === user?.id)) ? (
                     <>
                       <button type="button" onClick={() => openEdit(item)} title="แก้ไขคำศัพท์">
                         <AdminIcon name="edit" size={16} />
@@ -436,8 +452,10 @@ export default function TeacherVocabularyPage() {
                         <AdminIcon name="trash" size={16} />
                       </button>
                     </>
+                  ) : item.createdBy === null || item.createdBy === undefined ? (
+                    <span className={styles.neutralBadge} title="คำศัพท์ส่วนกลาง แก้ไขได้เฉพาะ Developer">🔒 ส่วนกลาง</span>
                   ) : (
-                    <span className={styles.neutralBadge}>ส่วนกลาง</span>
+                    <span className={styles.neutralBadge} title="ของครูคนอื่น">👤 ครูคนอื่น</span>
                   )}
                 </div>
               </article>
