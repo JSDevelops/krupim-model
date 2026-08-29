@@ -28,6 +28,16 @@ ALTER TABLE IF EXISTS vocabulary_items ADD COLUMN IF NOT EXISTS image_url TEXT;
 CREATE INDEX IF NOT EXISTS idx_vocab_name_en ON vocabulary_items(name_en);
 CREATE INDEX IF NOT EXISTS idx_vocab_category ON vocabulary_items(category);
 
+-- 1.1 ตรวจสอบคอลัมน์ใน vocabulary_items
+ALTER TABLE IF EXISTS vocabulary_items ADD COLUMN IF NOT EXISTS created_by UUID;
+ALTER TABLE IF EXISTS vocabulary_items ADD COLUMN IF NOT EXISTS emoji TEXT;
+ALTER TABLE IF EXISTS vocabulary_items ADD COLUMN IF NOT EXISTS pronounce TEXT;
+ALTER TABLE IF EXISTS vocabulary_items ADD COLUMN IF NOT EXISTS use_desc TEXT;
+ALTER TABLE IF EXISTS vocabulary_items ADD COLUMN IF NOT EXISTS sentence TEXT;
+ALTER TABLE IF EXISTS vocabulary_items ADD COLUMN IF NOT EXISTS image_url TEXT;
+ALTER TABLE IF EXISTS vocabulary_items ADD COLUMN IF NOT EXISTS glb_url TEXT;
+ALTER TABLE IF EXISTS vocabulary_items ADD COLUMN IF NOT EXISTS usdz_url TEXT;
+
 -- 2. ตั้งค่า RLS (Row Level Security) สำหรับ Supabase
 ALTER TABLE vocabulary_items ENABLE ROW LEVEL SECURITY;
 
