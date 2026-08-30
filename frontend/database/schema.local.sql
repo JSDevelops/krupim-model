@@ -505,7 +505,6 @@ CREATE TABLE IF NOT EXISTS vocabulary_items (
   name_th TEXT NOT NULL,
   category TEXT NOT NULL DEFAULT 'tableware',
   category_th TEXT NOT NULL DEFAULT 'อุปกรณ์บนโต๊ะอาหาร',
-  emoji TEXT NOT NULL DEFAULT '🍽️',
   pronounce TEXT,
   use_desc TEXT NOT NULL,
   sentence TEXT NOT NULL,

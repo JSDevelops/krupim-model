@@ -11,13 +11,12 @@ async function run() {
 
   for (const item of defaultEquipment) {
     await pool.query(
-      `INSERT INTO vocabulary_items (name_en, name_th, category, category_th, emoji, pronounce, use_desc, sentence)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        ON CONFLICT (name_en) DO UPDATE SET
          name_th = EXCLUDED.name_th,
          category = EXCLUDED.category,
          category_th = EXCLUDED.category_th,
-         emoji = EXCLUDED.emoji,
          pronounce = EXCLUDED.pronounce,
          use_desc = EXCLUDED.use_desc,
          sentence = EXCLUDED.sentence,
@@ -27,7 +26,6 @@ async function run() {
         item.name,
         item.category || 'tableware',
         item.categoryTh || 'เครื่องใช้บนโต๊ะอาหาร',
-        item.emoji || '',
         item.pronounce || '',
         item.use || '',
         item.sentence || ''
@@ -39,7 +37,7 @@ async function run() {
   const result = await pool.query('SELECT count(*) FROM vocabulary_items')
   console.log(`Successfully synced ${count} items. Total in database: ${result.rows[0].count}`)
   
-  const sample = await pool.query('SELECT name_en, name_th, emoji, category, pronounce FROM vocabulary_items LIMIT 5')
+  const sample = await pool.query('SELECT name_en, name_th, category, pronounce FROM vocabulary_items LIMIT 5')
   console.log('Sample updated records:', sample.rows)
 
   await pool.end()

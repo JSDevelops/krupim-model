@@ -22,7 +22,6 @@ type VocabularyRow = {
   id: string
   name_th: string
   name_en: string
-  emoji: string | null
   use_desc: string | null
   sentence: string | null
   pronounce: string | null
@@ -50,7 +49,7 @@ export async function GET(request: NextRequest) {
 
     const [vocabularyResult, scanResult] = await Promise.all([
       queryDb<VocabularyRow>(`
-        SELECT id, name_th, name_en, emoji, use_desc, sentence, pronounce,
+        SELECT id, name_th, name_en, use_desc, sentence, pronounce,
                image_url, glb_url, usdz_url, category, category_th
         FROM vocabulary_items
         ORDER BY updated_at DESC
@@ -72,7 +71,7 @@ export async function GET(request: NextRequest) {
         id: row.id,
         name: row.name_th,
         nameEn: row.name_en,
-        emoji: row.emoji || '',
+        emoji: '',
         use: row.use_desc || 'ยังไม่มีรายละเอียดวิธีใช้งาน',
         sentence: row.sentence || 'Please handle this item with care.',
         pronounce: row.pronounce || undefined,

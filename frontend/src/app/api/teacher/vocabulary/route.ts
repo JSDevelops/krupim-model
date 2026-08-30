@@ -8,7 +8,6 @@ type VocabularyInput = {
   nameTh?: unknown
   category?: unknown
   categoryTh?: unknown
-  emoji?: unknown
   pronounce?: unknown
   useDesc?: unknown
   sentence?: unknown
@@ -18,7 +17,7 @@ type VocabularyInput = {
 }
 
 const selectFields = `
-  id, name_en AS "nameEn", name_th AS "nameTh", category, category_th AS "categoryTh", emoji,
+  id, name_en AS "nameEn", name_th AS "nameTh", category, category_th AS "categoryTh",
   pronounce, use_desc AS "useDesc", sentence, image_url AS "imageUrl", glb_url AS "glbUrl", usdz_url AS "usdzUrl",
   created_by AS "createdBy",
   created_at AS "createdAt", updated_at AS "updatedAt"
@@ -37,7 +36,6 @@ function normalize(body: VocabularyInput) {
     nameTh: text(body.nameTh, 'คำแปลภาษาไทย', 180, true),
     category: text(body.category, 'รหัสหมวดหมู่', 100, true).toLocaleLowerCase('en-US'),
     categoryTh: text(body.categoryTh, 'ชื่อหมวดหมู่', 180, true),
-    emoji: text(body.emoji, 'อีโมจิ', 20),
     pronounce: text(body.pronounce, 'คำอ่าน', 180),
     useDesc: text(body.useDesc, 'คำอธิบายการใช้งาน', 2_000),
     sentence: text(body.sentence, 'ประโยคตัวอย่าง', 1_000),
@@ -71,9 +69,9 @@ export async function POST(request: NextRequest) {
     const item = normalize(await body(request))
     try {
       const result = await queryDb(`
-        INSERT INTO vocabulary_items (name_en, name_th, category, category_th, emoji, pronounce, use_desc, sentence, image_url, glb_url, usdz_url, created_by)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::uuid) RETURNING ${selectFields}
-      `, [item.nameEn, item.nameTh, item.category, item.categoryTh, item.emoji, item.pronounce, item.useDesc, item.sentence, item.imageUrl, item.glbUrl, item.usdzUrl, user.id])
+        INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url, created_by)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::uuid) RETURNING ${selectFields}
+      `, [item.nameEn, item.nameTh, item.category, item.categoryTh, item.pronounce, item.useDesc, item.sentence, item.imageUrl, item.glbUrl, item.usdzUrl, user.id])
       return NextResponse.json({ item: result.rows[0] }, { status: 201 })
     } catch (error) { databaseError(error) }
   } catch (error) { return apiErrorResponse(error) }
@@ -87,10 +85,10 @@ export async function PATCH(request: NextRequest) {
     const item = normalize(payload)
     try {
       const result = await queryDb(`
-        UPDATE vocabulary_items SET name_en=$1, name_th=$2, category=$3, category_th=$4, emoji=$5,
-          pronounce=$6, use_desc=$7, sentence=$8, image_url=$9, glb_url=$10, usdz_url=$11, updated_at=NOW()
-        WHERE id=$12::uuid${user.role === 'developer' ? '' : ' AND created_by=$13::uuid'} RETURNING ${selectFields}
-      `, [item.nameEn, item.nameTh, item.category, item.categoryTh, item.emoji, item.pronounce, item.useDesc, item.sentence, item.imageUrl, item.glbUrl, item.usdzUrl, id, ...(user.role === 'developer' ? [] : [user.id])])
+        UPDATE vocabulary_items SET name_en=$1, name_th=$2, category=$3, category_th=$4,
+          pronounce=$5, use_desc=$6, sentence=$7, image_url=$8, glb_url=$9, usdz_url=$10, updated_at=NOW()
+        WHERE id=$11::uuid${user.role === 'developer' ? '' : ' AND created_by=$12::uuid'} RETURNING ${selectFields}
+      `, [item.nameEn, item.nameTh, item.category, item.categoryTh, item.pronounce, item.useDesc, item.sentence, item.imageUrl, item.glbUrl, item.usdzUrl, id, ...(user.role === 'developer' ? [] : [user.id])])
       if (!result.rows[0]) throw new ApiError('ไม่พบคำศัพท์ หรือไม่มีสิทธิ์แก้ไขคำศัพท์นี้', 404, 'NOT_FOUND')
       return NextResponse.json({ item: result.rows[0] })
     } catch (error) { databaseError(error) }
