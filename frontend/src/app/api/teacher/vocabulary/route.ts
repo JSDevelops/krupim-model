@@ -87,7 +87,7 @@ export async function PATCH(request: NextRequest) {
       const result = await queryDb(`
         UPDATE vocabulary_items SET name_en=$1, name_th=$2, category=$3, category_th=$4,
           pronounce=$5, use_desc=$6, sentence=$7, image_url=$8, glb_url=$9, usdz_url=$10, updated_at=NOW()
-        WHERE id=$11::uuid${user.role === 'developer' ? '' : ' AND created_by=$12::uuid'} RETURNING ${selectFields}
+        WHERE id=$11::uuid${user.role === 'developer' ? '' : ' AND (created_by=$12::uuid OR created_by IS NULL)'} RETURNING ${selectFields}
       `, [item.nameEn, item.nameTh, item.category, item.categoryTh, item.pronounce, item.useDesc, item.sentence, item.imageUrl, item.glbUrl, item.usdzUrl, id, ...(user.role === 'developer' ? [] : [user.id])])
       if (!result.rows[0]) throw new ApiError('ไม่พบคำศัพท์ หรือไม่มีสิทธิ์แก้ไขคำศัพท์นี้', 404, 'NOT_FOUND')
       return NextResponse.json({ item: result.rows[0] })
@@ -100,7 +100,7 @@ export async function DELETE(request: NextRequest) {
     const user = await guardApi(request, { roles: ['teacher', 'developer'], maxRequests: 50 })
     const id = request.nextUrl.searchParams.get('id')?.trim()
     if (!id) throw new ApiError('กรุณาระบุคำศัพท์', 400, 'VALIDATION_ERROR')
-    const result = await queryDb(`DELETE FROM vocabulary_items WHERE id=$1::uuid${user.role === 'developer' ? '' : ' AND created_by=$2::uuid'} RETURNING id`, [id, ...(user.role === 'developer' ? [] : [user.id])])
+    const result = await queryDb(`DELETE FROM vocabulary_items WHERE id=$1::uuid${user.role === 'developer' ? '' : ' AND (created_by=$2::uuid OR created_by IS NULL)'} RETURNING id`, [id, ...(user.role === 'developer' ? [] : [user.id])])
     if (!result.rows[0]) throw new ApiError('ไม่พบคำศัพท์ หรือไม่มีสิทธิ์ลบคำศัพท์นี้', 404, 'NOT_FOUND')
     return NextResponse.json({ deletedId: id })
   } catch (error) { return apiErrorResponse(error) }

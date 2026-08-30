@@ -440,19 +440,17 @@ export default function TeacherVocabularyPage() {
                 </div>
 
                 <div className={styles.rowActions}>
-                  {(user?.role === 'developer' || (item.createdBy && item.createdBy === user?.id)) ? (
+                  {(user?.role === 'developer' || !item.createdBy || item.createdBy === user?.id) ? (
                     <>
-                      <button type="button" onClick={() => openEdit(item)} title="แก้ไขคำศัพท์">
+                      <button type="button" onClick={() => openEdit(item)} title="แก้ไขคำศัพท์" aria-label={`แก้ไข ${item.nameEn}`}>
                         <AdminIcon name="edit" size={16} />
                       </button>
-                      <button className={styles.dangerIconButton} type="button" onClick={() => void remove(item)} disabled={Boolean(busy)} title="ลบคำศัพท์">
+                      <button className={styles.dangerIconButton} type="button" onClick={() => void remove(item)} disabled={Boolean(busy)} title="ลบคำศัพท์" aria-label={`ลบ ${item.nameEn}`}>
                         <AdminIcon name="trash" size={16} />
                       </button>
                     </>
-                  ) : item.createdBy === null || item.createdBy === undefined ? (
-                    <span className={styles.neutralBadge} title="คำศัพท์ส่วนกลาง แก้ไขได้เฉพาะ Developer">🔒 ส่วนกลาง</span>
                   ) : (
-                    <span className={styles.neutralBadge} title="ของครูคนอื่น">👤 ครูคนอื่น</span>
+                    <span className={styles.neutralBadge} title="สร้างโดยครูท่านอื่น">👤 ครูท่านอื่น</span>
                   )}
                 </div>
               </article>
