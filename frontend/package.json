@@ -10,6 +10,7 @@
     "build": "next build",
     "start": "next start",
     "db:migrate": "node scripts/migrate-database.mjs",
+    "db:import-vocab": "node scripts/import-production-vocab.mjs",
     "admin:create": "node scripts/create-admin.mjs",
     "db:setup": "powershell -ExecutionPolicy Bypass -File scripts/setup-local-db.ps1",
     "db:backup": "powershell -ExecutionPolicy Bypass -File scripts/backup-local-db.ps1",
