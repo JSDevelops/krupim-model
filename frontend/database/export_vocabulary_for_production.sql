@@ -8,10 +8,30 @@ BEGIN;
 -- 1. ปรับปรุงโครงสร้างตาราง app_users
 ALTER TABLE IF EXISTS app_users ADD COLUMN IF NOT EXISTS session_version INTEGER NOT NULL DEFAULT 1;
 
--- 2. ปรับปรุงโครงสร้างตาราง vocabulary_items
+-- 2. สร้าง/ปรับปรุงโครงสร้างตาราง vocabulary_items
+CREATE TABLE IF NOT EXISTS vocabulary_items (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  name_en TEXT NOT NULL UNIQUE,
+  name_th TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'tableware',
+  category_th TEXT NOT NULL DEFAULT 'เครื่องใช้บนโต๊ะอาหาร',
+  pronounce TEXT,
+  use_desc TEXT NOT NULL,
+  sentence TEXT NOT NULL,
+  image_url TEXT,
+  glb_url TEXT,
+  usdz_url TEXT,
+  created_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 ALTER TABLE IF EXISTS vocabulary_items DROP COLUMN IF EXISTS emoji;
 ALTER TABLE IF EXISTS vocabulary_items ADD COLUMN IF NOT EXISTS image_url TEXT;
 ALTER TABLE IF EXISTS vocabulary_items ADD COLUMN IF NOT EXISTS created_by UUID REFERENCES profiles(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS idx_vocab_name_en ON vocabulary_items(name_en);
+CREATE INDEX IF NOT EXISTS idx_vocab_category ON vocabulary_items(category);
 
 -- 3. นำเข้า/อัปเดตคำศัพท์ทั้ง 79 รายการ
 INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
