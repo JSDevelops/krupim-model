@@ -1141,3 +1141,197 @@ ON CONFLICT (name_en) DO UPDATE SET
   updated_at = NOW();
 
 COMMIT;
+
+
+-- ── ชุดคำศัพท์เครื่องแก้ว 16 รายการ พร้อมรูปภาพประกอบ ──────────────────
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Water Goblet', 'แก้วน้ำ', 'glassware', 'เครื่องแก้ว', '/ˈwɔːtər ˈɡɑːblət/', 'แก้วทรงมีขาสำหรับเสิร์ฟน้ำดื่ม น้ำเปล่า หรือน้ำแร่บนโต๊ะอาหาร มักใช้ในงานบริการอาหารและโรงแรม', 'Please serve the water in a water goblet.', '/uploads/glass_water_goblet.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Highball Glass', 'แก้วไฮบอล', 'glassware', 'เครื่องแก้ว', '/ˈhaɪbɔːl ɡlæs/', 'แก้วทรงสูง ใช้เสิร์ฟเครื่องดื่มผสม เช่น Highball, Whisky Soda, น้ำอัดลม และค็อกเทลที่มีปริมาณมาก มักเสิร์ฟพร้อมน้ำแข็ง', 'Please serve the cocktail in a highball glass.', '/uploads/glass_highball_glass.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Collins Glass', 'แก้วคอลลินส์', 'glassware', 'เครื่องแก้ว', '/ˈkɑːlɪnz ɡlæs/', 'แก้วทรงสูงและเรียวยาว ใช้สำหรับเสิร์ฟค็อกเทลประเภท Collins เช่น Tom Collins รวมถึงเครื่องดื่มผสมและเครื่องดื่มที่มีโซดา', 'A Tom Collins is usually served in a Collins glass.', '/uploads/glass_collins_glass.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Red Wine Glass', 'แก้วไวน์แดง', 'glassware', 'เครื่องแก้ว', '/red waɪn ɡlæs/', 'แก้วไวน์ที่มีโถแก้วค่อนข้างกว้าง ช่วยให้ไวน์แดงสัมผัสอากาศและพัฒนากลิ่น เหมาะสำหรับการเสิร์ฟไวน์แดง', 'Please pour the red wine into a red wine glass.', '/uploads/glass_red_wine_glass.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('White Wine Glass', 'แก้วไวน์ขาว', 'glassware', 'เครื่องแก้ว', '/waɪt waɪn ɡlæs/', 'แก้วไวน์ที่มีขนาดเล็กและแคบกว่าแก้วไวน์แดง ใช้เสิร์ฟไวน์ขาวและช่วยรักษาอุณหภูมิและกลิ่นของไวน์', 'White wine should be served in a white wine glass.', '/uploads/glass_white_wine_glass.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Champagne Flute', 'แก้วแชมเปญฟลูต', 'glassware', 'เครื่องแก้ว', '/ʃæmˈpeɪn fluːt/', 'แก้วทรงสูงเรียว มีขา ใช้เสิร์ฟแชมเปญและไวน์สปาร์กลิง ช่วยรักษาฟองและความซ่าของเครื่องดื่ม', 'Please serve the champagne in a champagne flute.', '/uploads/glass_champagne_flute.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Champagne Coupe', 'แก้วแชมเปญคูเป้', 'glassware', 'เครื่องแก้ว', '/ʃæmˈpeɪn kuːp/', 'แก้วแชมเปญทรงตื้น ปากกว้าง มีขา ใช้สำหรับเสิร์ฟแชมเปญ ค็อกเทล และเครื่องดื่มที่ต้องการนำเสนอในรูปแบบคลาสสิก', 'The champagne is served in a coupe glass.', '/uploads/glass_champagne_coupe.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Martini Glass', 'แก้วมาร์ตินี่', 'glassware', 'เครื่องแก้ว', '/mɑːrˈtiːni ɡlæs/', 'แก้วก้านยาวที่มีปากกว้างและรูปทรงกรวย ใช้เสิร์ฟ Martini และค็อกเทลประเภทที่ไม่ใส่น้ำแข็งในแก้ว', 'Please serve the Martini in a martini glass.', '/uploads/glass_martini_glass.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Rock Glass', 'แก้วร็อก / แก้ววิสกี้', 'glassware', 'เครื่องแก้ว', '/rɑːk ɡlæs/', 'แก้วทรงเตี้ย ปากกว้าง และก้นหนา ใช้เสิร์ฟวิสกี้ บรั่นดี และเครื่องดื่มประเภท Spirits แบบเพียวหรือใส่น้ำแข็ง', 'Please serve the whisky in a rock glass.', '/uploads/glass_rock_glass.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Margarita Glass', 'แก้วมาร์การิต้า', 'glassware', 'เครื่องแก้ว', '/ˌmɑːrɡəˈriːtə ɡlæs/', 'แก้วก้านที่มีรูปทรงเป็นชั้นหรือปากกว้าง ใช้เสิร์ฟ Margarita และค็อกเทลที่มีลักษณะคล้ายกัน โดยมักตกแต่งขอบแก้วด้วยเกลือ', 'The Margarita is served in a margarita glass.', '/uploads/glass_margarita_glass.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Hurricane Glass', 'แก้วเฮอริเคน', 'glassware', 'เครื่องแก้ว', '/ˈhɜːrɪkeɪn ɡlæs/', 'แก้วทรงสูงที่มีส่วนโค้งคล้ายตะเกียง ใช้เสิร์ฟค็อกเทลที่มีปริมาณมาก เช่น Hurricane และเครื่องดื่มผลไม้หรือเครื่องดื่มเขตร้อน', 'Please serve the tropical cocktail in a hurricane glass.', '/uploads/glass_hurricane_glass.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Shot Glass', 'แก้วช็อต', 'glassware', 'เครื่องแก้ว', '/ʃɑːt ɡlæs/', 'แก้วขนาดเล็ก ใช้สำหรับเสิร์ฟเครื่องดื่ม Spirits ในปริมาณเล็ก เช่น Tequila, Vodka หรือเครื่องดื่มสำหรับการดื่มแบบ Shot', 'Please pour the tequila into a shot glass.', '/uploads/glass_shot_glass.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Beer Pilsner Glass', 'แก้วเบียร์พิลส์เนอร์', 'glassware', 'เครื่องแก้ว', '/bɪr ˈpɪlsnər ɡlæs/', 'แก้วเบียร์ทรงสูงและเรียว ใช้เสิร์ฟเบียร์ประเภท Pilsner และ Lager ช่วยให้เห็นสีของเบียร์และรักษาชั้นฟอง', 'Please serve the Pilsner beer in a Pilsner glass.', '/uploads/glass_beer_pilsner_glass.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Beer Mug', 'แก้วเบียร์มีหูจับ', 'glassware', 'เครื่องแก้ว', '/bɪr mʌɡ/', 'แก้วเบียร์ที่มีหูจับ ใช้สำหรับเสิร์ฟเบียร์หลายประเภท โดยเฉพาะเบียร์ที่เสิร์ฟในปริมาณมากและเหมาะกับการถือด้วยมือจับ', 'Please serve the beer in a beer mug.', '/uploads/glass_beer_mug.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Brandy Snifter', 'แก้วบรั่นดี / แก้วสนิฟเตอร์', 'glassware', 'เครื่องแก้ว', '/ˈbrændi ˈsnɪftər/', 'แก้วก้านสั้น โถแก้วกลมและปากแคบ ใช้สำหรับเสิร์ฟ Brandy หรือ Cognac ช่วยกักเก็บและรวมกลิ่นหอมของเครื่องดื่ม', 'Brandy is traditionally served in a brandy snifter.', '/uploads/glass_brandy_snifter.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Irish Coffee Glass', 'แก้วไอริชคอฟฟี่', 'glassware', 'เครื่องแก้ว', '/ˌaɪrɪʃ ˈkɔːfi ɡlæs/', 'แก้วใสทนความร้อน มีหูจับและก้าน ใช้เสิร์ฟ Irish Coffee และเครื่องดื่มกาแฟร้อนที่ต้องการให้เห็นชั้นของเครื่องดื่ม', 'Please serve the Irish coffee in an Irish coffee glass.', '/uploads/glass_irish_coffee_glass.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
