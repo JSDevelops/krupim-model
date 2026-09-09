@@ -1335,3 +1335,221 @@ ON CONFLICT (name_en) DO UPDATE SET
   sentence = EXCLUDED.sentence,
   image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
   updated_at = NOW();
+
+-- Tableware & Chinaware (18 items)
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Appetizer Plate', 'จานอาหารเรียกน้ำย่อย', 'tableware', 'เครื่องใช้บนโต๊ะอาหาร', '/ˈæpətaɪzər pleɪt/', 'จานขนาดเล็กสำหรับเสิร์ฟอาหารเรียกน้ำย่อย ของว่าง หรืออาหารจานเล็กก่อนอาหารมื้อหลัก', 'The appetizer plate is used to serve small starters before the main course.', '/uploads/tableware_appetizer_plate.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Soup Bowl (Soup Plate)', 'ชามซุป (จานซุป)', 'tableware', 'เครื่องใช้บนโต๊ะอาหาร', '/suːp boʊl/', 'ภาชนะสำหรับเสิร์ฟซุป แกง หรืออาหารที่มีน้ำเป็นส่วนประกอบ โดยมีขอบลึกกว่าจานทั่วไป', 'The soup bowl is used to serve hot soup.', '/uploads/tableware_soup_bowl.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Cereal Bowl', 'ชามซีเรียล', 'tableware', 'เครื่องใช้บนโต๊ะอาหาร', '/ˈsɪəriəl boʊl/', 'ชามสำหรับเสิร์ฟซีเรียล ข้าวต้ม ผลไม้ หรืออาหารเช้าที่รับประทานร่วมกับนมหรือของเหลว', 'She uses a cereal bowl for breakfast.', '/uploads/tableware_cereal_bowl.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Salad Bowl', 'ชามสลัด', 'tableware', 'เครื่องใช้บนโต๊ะอาหาร', '/ˈsæləd boʊl/', 'ชามสำหรับเสิร์ฟสลัด ผัก หรืออาหารประเภทคลุกเคล้า', 'The salad bowl is placed in the center of the table.', '/uploads/tableware_salad_bowl.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Dessert Bowl', 'ชามของหวาน', 'tableware', 'เครื่องใช้บนโต๊ะอาหาร', '/dɪˈzɜːrt boʊl/', 'ชามขนาดเล็กสำหรับเสิร์ฟของหวาน เช่น ไอศกรีม ผลไม้ หรือพุดดิ้ง', 'The dessert bowl is used for serving ice cream.', '/uploads/tableware_dessert_bowl.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Bouillon Cup (Broth Bowl)', 'ถ้วยน้ำซุป (ชามน้ำซุป)', 'tableware', 'เครื่องใช้บนโต๊ะอาหาร', '/ˈbuːjɒn kʌp/', 'ถ้วยมีหูจับสำหรับเสิร์ฟน้ำซุป น้ำแกง หรือซุปใส สามารถถือรับประทานได้สะดวก', 'The bouillon cup is used to serve clear broth.', '/uploads/tableware_bouillon_cup.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Ramekin', 'ถ้วยราเมคิน / ถ้วยอบขนาดเล็ก', 'tableware', 'เครื่องใช้บนโต๊ะอาหาร', '/ˈræməkɪn/', 'ถ้วยขนาดเล็กสำหรับใส่ซอส เครื่องปรุง ของหวาน หรืออาหารที่ต้องนำเข้าอบ', 'The sauce is served in a small ramekin.', '/uploads/tableware_ramekin.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Finger Bowl', 'ถ้วยล้างปลายนิ้ว', 'tableware', 'เครื่องใช้บนโต๊ะอาหาร', '/ˈfɪŋɡər boʊl/', 'ถ้วยขนาดเล็กที่ใส่น้ำสำหรับล้างปลายนิ้วบนโต๊ะอาหาร โดยเฉพาะในการรับประทานอาหารที่ใช้มือ', 'The finger bowl is placed on the table after the meal.', '/uploads/tableware_finger_bowl.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Tea Cup', 'ถ้วยชา', 'tableware', 'เครื่องใช้บนโต๊ะอาหาร', '/tiː kʌp/', 'ถ้วยสำหรับเสิร์ฟและดื่มชา มักใช้คู่กับจานรองถ้วยชา', 'The waiter serves tea in a tea cup.', '/uploads/tableware_tea_cup.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Coffee Cup', 'ถ้วยกาแฟ', 'tableware', 'เครื่องใช้บนโต๊ะอาหาร', '/ˈkɔːfi kʌp/', 'ถ้วยสำหรับเสิร์ฟและดื่มกาแฟร้อน โดยทั่วไปใช้คู่กับจานรอง', 'The coffee cup is placed on the saucer.', '/uploads/tableware_coffee_cup.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Espresso Cup (Demitasse Cup)', 'ถ้วยเอสเปรสโซ (ถ้วยเดอมิตาส)', 'tableware', 'เครื่องใช้บนโต๊ะอาหาร', '/eˈspresoʊ kʌp/', 'ถ้วยขนาดเล็กสำหรับเสิร์ฟกาแฟเอสเปรสโซหรือกาแฟเข้มข้นในปริมาณน้อย', 'The espresso is served in a small espresso cup.', '/uploads/tableware_espresso_cup.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Cappuccino Cup', 'ถ้วยคาปูชิโน', 'tableware', 'เครื่องใช้บนโต๊ะอาหาร', '/ˌkæpəˈtʃiːnoʊ kʌp/', 'ถ้วยสำหรับเสิร์ฟกาแฟคาปูชิโน โดยมีขนาดใหญ่กว่าถ้วยเอสเปรสโซ', 'The cappuccino is served in a cappuccino cup.', '/uploads/tableware_cappuccino_cup.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Saucer', 'จานรองถ้วย', 'tableware', 'เครื่องใช้บนโต๊ะอาหาร', '/ˈsɔːsər/', 'จานขนาดเล็กสำหรับรองถ้วยชา กาแฟ หรือเครื่องดื่มร้อน และใช้รองป้องกันของเหลวหกบนโต๊ะ', 'The cup is placed on the saucer.', '/uploads/tableware_saucer.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Mug', 'แก้วมัค / ถ้วยมีหู', 'tableware', 'เครื่องใช้บนโต๊ะอาหาร', '/mʌɡ/', 'แก้วหรือถ้วยขนาดค่อนข้างใหญ่ที่มีหูจับ สำหรับเสิร์ฟกาแฟ ชา หรือเครื่องดื่มร้อนและเย็น', 'He drinks coffee from a large mug.', '/uploads/tableware_mug.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Serving Platter (Oval Platter)', 'จานเสิร์ฟอาหาร (จานเสิร์ฟทรงรี)', 'tableware', 'เครื่องใช้บนโต๊ะอาหาร', '/ˈsɜːrvɪŋ ˈplætər/', 'จานขนาดใหญ่สำหรับจัดวางและเสิร์ฟอาหารหลายชนิด โดยเฉพาะอาหารที่ต้องเสิร์ฟเป็นชุด', 'The roast chicken is served on an oval platter.', '/uploads/tableware_serving_platter_oval.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Serving Platter (Meat Platter)', 'จานเสิร์ฟอาหาร (จานเสิร์ฟเนื้อ)', 'tableware', 'เครื่องใช้บนโต๊ะอาหาร', '/ˈsɜːrvɪŋ ˈplætər/', 'จานขนาดใหญ่สำหรับจัดวางและเสิร์ฟเนื้อสัตว์ อาหารจานหลัก หรืออาหารที่หั่นเป็นชิ้น', 'The sliced meat is arranged on the meat platter.', '/uploads/tableware_serving_platter_meat.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Soup Tureen', 'หม้อซุปสำหรับเสิร์ฟ', 'tableware', 'เครื่องใช้บนโต๊ะอาหาร', '/suːp təˈriːn/', 'ภาชนะขนาดใหญ่สำหรับใส่และเสิร์ฟซุปหรืออาหารประเภทน้ำให้กับผู้รับประทานหลายคน มักมีฝาปิดและหูจับ', 'The soup is served from a large soup tureen.', '/uploads/tableware_soup_tureen.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Soup Tureen (Open with Ladle)', 'หม้อซุปสำหรับเสิร์ฟ (แบบเปิดพร้อมกระบวย)', 'tableware', 'เครื่องใช้บนโต๊ะอาหาร', '/suːp təˈriːn/', 'ภาชนะขนาดใหญ่สำหรับเสิร์ฟซุปหรืออาหารประเภทน้ำ โดยเปิดฝาและใช้กระบวยตักแบ่งให้ผู้รับประทาน', 'The soup tureen is open and ready to serve with a ladle.', '/uploads/tableware_soup_tureen_open.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
