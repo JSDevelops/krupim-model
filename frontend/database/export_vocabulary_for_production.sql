@@ -1553,3 +1553,209 @@ ON CONFLICT (name_en) DO UPDATE SET
   image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
   updated_at = NOW();
 
+
+-- Cutlery: Forks, Knives, Spoons (17 items)
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Dinner Fork', 'ส้อมรับประทานอาหาร', 'cutlery', 'เครื่องใช้บนโต๊ะอาหาร', '/ˈdɪnər fɔːrk/', 'ส้อมขนาดมาตรฐานสำหรับใช้รับประทานอาหารมื้อหลัก เช่น ข้าว เนื้อสัตว์ ผัก และอาหารทั่วไป', 'The dinner fork is placed on the left side of the plate.', '/uploads/cutlery_dinner_fork.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Salad Fork', 'ส้อมสลัด', 'cutlery', 'เครื่องใช้บนโต๊ะอาหาร', '/ˈsæləd fɔːrk/', 'ส้อมขนาดเล็กกว่าส้อมอาหารหลัก ใช้สำหรับรับประทานสลัดและอาหารเรียกน้ำย่อย', 'Use the salad fork to eat the salad.', '/uploads/cutlery_salad_fork.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Dessert Fork', 'ส้อมขนมหวาน', 'cutlery', 'เครื่องใช้บนโต๊ะอาหาร', '/dɪˈzɜːrt fɔːrk/', 'ส้อมขนาดเล็กสำหรับรับประทานเค้ก ขนมหวาน และผลไม้', 'She uses a dessert fork to eat the cake.', '/uploads/cutlery_dessert_fork.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Fish Fork', 'ส้อมสำหรับรับประทานปลา', 'cutlery', 'เครื่องใช้บนโต๊ะอาหาร', '/fɪʃ fɔːrk/', 'ส้อมที่ออกแบบสำหรับรับประทานอาหารประเภทปลา โดยมีรูปทรงเหมาะกับการแยกและจับเนื้อปลา', 'The fish fork is used for eating fish.', '/uploads/cutlery_fish_fork.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Oyster Fork', 'ส้อมหอยนางรม', 'cutlery', 'เครื่องใช้บนโต๊ะอาหาร', '/ˈɔɪstər fɔːrk/', 'ส้อมขนาดเล็กสำหรับรับประทานหอยนางรมและอาหารทะเลประเภทต่าง ๆ', 'The oyster fork is used to eat oysters.', '/uploads/cutlery_oyster_fork.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Snail Fork', 'ส้อมสำหรับรับประทานหอยทาก', 'cutlery', 'เครื่องใช้บนโต๊ะอาหาร', '/sneɪl fɔːrk/', 'ส้อมขนาดเล็กปลายแหลม ใช้สำหรับคีบหรือดึงเนื้อหอยทากออกจากเปลือก', 'The waiter brought a snail fork with the dish.', '/uploads/cutlery_snail_fork.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Fruit Fork', 'ส้อมผลไม้', 'cutlery', 'เครื่องใช้บนโต๊ะอาหาร', '/fruːt fɔːrk/', 'ส้อมขนาดเล็กสำหรับรับประทานผลไม้และของว่าง', 'Use the fruit fork to pick up the pieces of fruit.', '/uploads/cutlery_fruit_fork.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Dinner Knife', 'มีดรับประทานอาหาร', 'cutlery', 'เครื่องใช้บนโต๊ะอาหาร', '/ˈdɪnər naɪf/', 'มีดมาตรฐานสำหรับใช้ตัดและรับประทานอาหารในมื้อหลัก', 'The dinner knife is placed on the right side of the plate.', '/uploads/cutlery_dinner_knife.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Steak Knife', 'มีดสเต๊ก', 'cutlery', 'เครื่องใช้บนโต๊ะอาหาร', '/steɪk naɪf/', 'มีดที่มีคมเหมาะสำหรับตัดเนื้อสเต๊กและเนื้อสัตว์', 'A steak knife is used to cut meat.', '/uploads/cutlery_steak_knife.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Butter Knife', 'มีดทาเนย', 'cutlery', 'เครื่องใช้บนโต๊ะอาหาร', '/ˈbʌtər naɪf/', 'มีดปลายมนสำหรับตักและทาเนย แยม หรือสเปรดบนขนมปัง', 'Use the butter knife to spread butter on the bread.', '/uploads/cutlery_butter_knife.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Fish Knife', 'มีดสำหรับรับประทานปลา', 'cutlery', 'เครื่องใช้บนโต๊ะอาหาร', '/fɪʃ naɪf/', 'มีดที่ออกแบบสำหรับแยกและรับประทานเนื้อปลา', 'The fish knife is used to separate the fish from the bones.', '/uploads/cutlery_fish_knife.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Fish Serving Knife', 'มีดสำหรับเสิร์ฟปลา', 'cutlery', 'เครื่องใช้บนโต๊ะอาหาร', '/fɪʃ ˈsɜːrvɪŋ naɪf/', 'มีดสำหรับตัด แบ่ง หรือเสิร์ฟอาหารประเภทปลา', 'The fish serving knife is used to serve the fish.', '/uploads/cutlery_fish_serving_knife.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Dessert Knife', 'มีดขนมหวาน', 'cutlery', 'เครื่องใช้บนโต๊ะอาหาร', '/dɪˈzɜːrt naɪf/', 'มีดขนาดเล็กสำหรับตัดเค้ก ขนมหวาน และผลไม้', 'The dessert knife is used to cut the cake.', '/uploads/cutlery_dessert_knife.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Cheese Knife', 'มีดสำหรับตัดชีส', 'cutlery', 'เครื่องใช้บนโต๊ะอาหาร', '/tʃiːz naɪf/', 'มีดสำหรับตัดและแบ่งชีสประเภทต่าง ๆ', 'Use the cheese knife to cut the cheese.', '/uploads/cutlery_cheese_knife.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Carving Knife', 'มีดแล่เนื้อ', 'cutlery', 'เครื่องใช้บนโต๊ะอาหาร', '/ˈkɑːrvɪŋ naɪf/', 'มีดใบยาวสำหรับหั่นหรือแล่เนื้อสัตว์ เช่น เนื้ออบ ไก่งวง หรือแฮม', 'The chef uses a carving knife to slice the roast.', '/uploads/cutlery_carving_knife.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Soup Spoon', 'ช้อนซุป', 'cutlery', 'เครื่องใช้บนโต๊ะอาหาร', '/suːp spuːn/', 'ช้อนที่มีหัวลึกสำหรับตักและรับประทานซุปหรืออาหารที่มีน้ำ', 'Use the soup spoon to eat the soup.', '/uploads/cutlery_soup_spoon.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
+INSERT INTO vocabulary_items (name_en, name_th, category, category_th, pronounce, use_desc, sentence, image_url, glb_url, usdz_url)
+VALUES ('Dinner Spoon', 'ช้อนรับประทานอาหาร', 'cutlery', 'เครื่องใช้บนโต๊ะอาหาร', '/ˈdɪnər spuːn/', 'ช้อนขนาดมาตรฐานสำหรับใช้รับประทานอาหารในมื้อหลัก', 'The dinner spoon is placed next to the knife.', '/uploads/cutlery_dinner_spoon.webp', NULL, NULL)
+ON CONFLICT (name_en) DO UPDATE SET
+  name_th = EXCLUDED.name_th,
+  category = EXCLUDED.category,
+  category_th = EXCLUDED.category_th,
+  pronounce = EXCLUDED.pronounce,
+  use_desc = EXCLUDED.use_desc,
+  sentence = EXCLUDED.sentence,
+  image_url = COALESCE(EXCLUDED.image_url, vocabulary_items.image_url),
+  updated_at = NOW();
+
