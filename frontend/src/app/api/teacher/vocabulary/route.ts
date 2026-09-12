@@ -50,8 +50,12 @@ async function body(request: NextRequest) {
 }
 
 function databaseError(error: unknown): never {
-  if ((error as { code?: string }).code === '23505') throw new ApiError('คำศัพท์ภาษาอังกฤษนี้มีอยู่ในระบบแล้ว', 409, 'DUPLICATE_NAME')
-  throw error
+  const code = (error as { code?: string }).code
+  if (code === '23505') throw new ApiError('คำศัพท์ภาษาอังกฤษนี้มีอยู่ในระบบแล้ว', 409, 'DUPLICATE_NAME')
+  if (code === '22P02') throw new ApiError('รหัสคำศัพท์ไม่ถูกต้องตามรูปแบบ UUID', 400, 'INVALID_ID')
+  if (code === '23502') throw new ApiError('กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน', 400, 'REQUIRED_FIELD_MISSING')
+  console.error('Vocabulary database error:', error)
+  throw new ApiError((error as Error)?.message || 'เกิดข้อผิดพลาดในการบันทึกข้อมูล', 500, 'DATABASE_ERROR')
 }
 
 export async function GET(request: NextRequest) {
