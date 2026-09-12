@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D & AR Preview — Soup Bowl (ถ้วยซุป)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,600;1,600&display=swap" rel="stylesheet">
+  <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"></script>
+  <style>
+    :root {
+      --bg-primary: #0F172A;
+      --bg-card: rgba(30, 41, 59, 0.75);
+      --accent: #38BDF8;
+      --accent-gold: #F59E0B;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --border: rgba(148, 163, 184, 0.15);
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Kanit', sans-serif;
+    }
+    body {
+      background: radial-gradient(circle at top, #1E293B 0%, #0F172A 100%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 24px 16px;
+    }
+    .container {
+      width: 100%;
+      max-width: 900px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    header {
+      text-align: center;
+      padding: 12px 0;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      color: var(--accent);
+      border-radius: 9999px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 2.2rem;
+      color: #FFFFFF;
+      letter-spacing: 0.5px;
+    }
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 1rem;
+      margin-top: 4px;
+    }
+    .viewer-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.5);
+      position: relative;
+    }
+    model-viewer {
+      width: 100%;
+      height: 480px;
+      background: radial-gradient(circle at center, #23334d 0%, #162032 100%);
+      --poster-color: transparent;
+    }
+    .hint-overlay {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(8px);
+      padding: 6px 12px;
+      border-radius: 10px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      pointer-events: none;
+    }
+    .ar-custom-button {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, #0284C7 0%, #0369A1 100%);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 12px;
+      font-weight: 500;
+      font-size: 0.95rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 16px rgba(2, 132, 199, 0.4);
+      transition: all 0.2s ease;
+    }
+    .ar-custom-button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(2, 132, 199, 0.6);
+    }
+    .details-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+    .detail-card {
+      background: var(--bg-card);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+    }
+    .detail-card h3 {
+      font-size: 1.05rem;
+      margin-bottom: 12px;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .spec-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.08);
+      font-size: 0.9rem;
+    }
+    .spec-item:last-child {
+      border-bottom: none;
+    }
+    .spec-label {
+      color: var(--text-muted);
+    }
+    .spec-value {
+      color: var(--text-main);
+      font-weight: 500;
+    }
+    .download-group {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .btn-download {
+      flex: 1;
+      min-width: 140px;
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text-main);
+      text-decoration: none;
+      font-size: 0.88rem;
+      text-align: center;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn-download:hover {
+      background: rgba(56, 189, 248, 0.15);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .app-link {
+      display: block;
+      width: 100%;
+      text-align: center;
+      padding: 14px;
+      background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+      color: white;
+      text-decoration: none;
+      border-radius: 12px;
+      font-weight: 600;
+      margin-top: 12px;
+      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+      transition: transform 0.2s;
+    }
+    .app-link:hover {
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="badge">✨ FINE MODEL 3D + AR Tableware</div>
+      <h1>Soup Bowl — ถ้วยซุป</h1>
+      <p class="subtitle">ภาชนะเซรามิกเนื้อขาวขอบลายถักสีฟ้า สำหรับบริการซุปร้อนตามมาตรฐาน F&B</p>
+    </header>
+
+    <div class="viewer-card">
+      <div class="hint-overlay">
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="10" stroke-width="2"/>
+          <path d="m10 15 5-3-5-3v6Z" fill="currentColor"/>
+        </svg>
+        ลากเพื่อหมุน 360° | เลื่อน/บีบเพื่อซูม
+      </div>
+
+      <model-viewer 
+        src="/uploads/soup_bowl_sample.glb" 
+        ios-src="/uploads/soup_bowl_sample.usdz" 
+        alt="3D Model of Soup Bowl" 
+        ar 
+        ar-modes="webxr scene-viewer quick-look" 
+        camera-controls 
+        auto-rotate 
+        shadow-intensity="1.5"
+        shadow-softness="0.8"
+        exposure="1.0"
+        environment-image="neutral"
+      >
+        <button slot="ar-button" class="ar-custom-button">
+          <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+            <line x1="12" y1="22.08" x2="12" y2="12"/>
+          </svg>
+          เปิดกล้อง AR ในพื้นที่จริง
+        </button>
+      </model-viewer>
+    </div>
+
+    <div class="details-grid">
+      <div class="detail-card">
+        <h3>📐 ข้อมูลทางเทคนิคโมเดล (3D Specifications)</h3>
+        <div class="spec-item">
+          <span class="spec-label">เส้นผ่านศูนย์กลางปากชาม:</span>
+          <span class="spec-value">14.0 ซม. (0.14 ม.)</span>
+        </div>
+        <div class="spec-item">
+          <span class="spec-label">ความสูง:</span>
+          <span class="spec-value">5.58 ซม. (0.0558 ม.)</span>
+        </div>
+        <div class="spec-item">
+          <span class="spec-label">ฐานชาม (Foot Ring):</span>
+          <span class="spec-value">7.2 ซม. ยกสูง 2 มม.</span>
+        </div>
+        <div class="spec-item">
+          <span class="spec-label">จำนวนโพลีกอน:</span>
+          <span class="spec-value">5,504 Triangles (2,860 Vertices)</span>
+        </div>
+        <div class="spec-item">
+          <span class="spec-label">วัสดุ (PBR Material):</span>
+          <span class="spec-value">Ceramic Porcelain (เงา 0.22)</span>
+        </div>
+      </div>
+
+      <div class="detail-card">
+        <h3>💾 ดาวน์โหลดไฟล์ 3D (Asset Files)</h3>
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 12px;">
+          สามารถดาวน์โหลดไฟล์เพื่อนำไปใช้ใน Blender, Unity, Unreal หรือใส่ในแอป iOS/Android:
+        </p>
+        <div class="download-group">
+          <a href="/uploads/soup_bowl_sample.glb" download class="btn-download">
+            ⬇️ ดาวน์โหลด .GLB (132 KB)
+          </a>
+          <a href="/uploads/soup_bowl_sample.usdz" download class="btn-download">
+            ⬇️ ดาวน์โหลด .USDZ (347 KB)
+          </a>
+        </div>
+        <a href="/student/ar-view?nameEn=Soup%20Bowl&nameTh=ถ้วยซุป&glbUrl=/uploads/soup_bowl_sample.glb&usdzUrl=/uploads/soup_bowl_sample.usdz" class="app-link">
+          🚀 เปิดในหน้าบทเรียน AR ของแอป (FINE Learning)
+        </a>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

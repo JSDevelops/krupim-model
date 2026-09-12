@@ -8,7 +8,7 @@ const ROLE_GUARDS: Record<string, ('developer' | 'teacher' | 'student')[]> = {
   '/student': ['student', 'developer'],
 }
 
-const PUBLIC_PATHS = ['/', '/role-select', '/forgot-password', '/register-teacher', '/register-student']
+const PUBLIC_PATHS = ['/', '/role-select', '/forgot-password', '/register-teacher', '/register-student', '/preview-soup-bowl.html']
 
 function redirectToLogin(request: NextRequest, code?: string) {
   const url = request.nextUrl.clone()
@@ -52,6 +52,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api|icons|manifest.json|.*\\.(?:png|jpg|svg|ico|webp|glb|usdz)).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api|icons|manifest.json|.*\\.(?:png|jpg|svg|ico|webp|glb|usdz|html)).*)',
   ],
 }
