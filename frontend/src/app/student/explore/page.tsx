@@ -143,7 +143,7 @@ export default function ExplorePage() {
           const key = item.nameEn.trim().toLocaleLowerCase('en')
           if (!merged.has(key)) merged.set(key, item)
         }
-        const items = [...merged.values()]
+        const items = [...merged.values()].filter(item => Boolean(item.imageUrl || item.glbUrl))
         equipmentRef.current = items
         setEquipment(items)
       } catch (error) {
