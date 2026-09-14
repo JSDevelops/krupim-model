@@ -24,6 +24,13 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'modelviewer.dev' },
       // Apple AR Quick Look models
       { protocol: 'https', hostname: 'developer.apple.com' },
+      // Railway storage (uploaded GLB/USDZ files)
+      { protocol: 'https', hostname: '*.railway.app' },
+      // Supabase storage
+      { protocol: 'https', hostname: '*.supabase.co' },
+      // Cloudflare R2 / Workers
+      { protocol: 'https', hostname: '*.r2.dev' },
+      { protocol: 'https', hostname: '*.workers.dev' },
     ]
   },
 };
