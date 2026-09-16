@@ -38,7 +38,7 @@ VALUES (
   'ปวช.1 สาขาวิชาการโรงแรม',
   'ภาคเรียนที่ 1',
   '4 ชั่วโมง (240 นาที)',
-  'ปวช.1 สาขาวิชาการโรงแรม',
+  COALESCE((SELECT name FROM classes WHERE teacher_id = (SELECT id FROM app_users WHERE email = 'krupim@ktc.ac.th' LIMIT 1) LIMIT 1), 'ปวช. 1/1'),
   'สัปดาห์ที่ 2',
   'การที่ผู้เรียนมีความรู้เข้าใจเกี่ยวกับคำศัพท์ในงานบริการอาหารและเครื่องดื่ม ตลอดจนสามารถจำแนกประเภทของเมนูได้อย่างถูกต้องนั้น ถือเป็นสมรรถนะหลักที่พนักงานบริการอาหารและเครื่องดื่มต้องใช้ในการปฏิบัติงาน ในธุรกิจโรงแรมและภัตตาคาร ซึ่งการจัดการเรียนรู้นี้ได้บูรณาการ FINE Model ร่วมกับเทคโนโลยี Augmented Reality (AR) 3D และ Artificial Intelligence (AI) ได้แก่ AI Scan และระบบ Gemini ตลอดจนการเรียนรู้ผ่านสถานการณ์จำลอง (Simulation-Based Learning) เพื่อพัฒนาผู้เรียนให้มีทักษะการวิเคราะห์จำแนกประเภทเมนู และพัฒนาทักษะการออกเสียงคำศัพท์ชื่ออาหาร และเครื่องดื่ม ได้อย่างถูกต้องตามมาตรฐานคุณวุฒิวิชาชีพ',
   '[
@@ -162,12 +162,13 @@ SET title = EXCLUDED.title,
 -- 2. Insert Week 2 Assignments for ครูพิมพ์
 -- F: Familiarize
 INSERT INTO assignments (
-  id, class_id, teacher_id, title, description, activity_type, max_score, due_date, created_at, updated_at
+  id, class_id, teacher_id, lesson_plan_id, title, description, activity_type, max_score, due_date, created_at, updated_at
 )
 VALUES (
   'a1111111-1111-4111-8111-222222222201',
   COALESCE((SELECT id FROM classes WHERE teacher_id = (SELECT id FROM app_users WHERE email = 'krupim@ktc.ac.th' LIMIT 1) LIMIT 1), '22222222-2222-2222-2222-222222222201'::uuid),
   COALESCE((SELECT id FROM app_users WHERE email = 'krupim@ktc.ac.th' LIMIT 1), '00000000-0000-0000-0000-000000000020'::uuid),
+  'lesson-plan-week-2',
   'สัปดาห์ที่ 2 [F]: ใบงาน Worksheet & AI Scan รายการอาหารและเครื่องดื่ม 20 ชนิด',
   'ให้นักเรียนสแกนดูโมเดล 3D และทำใบงานจับคู่คำศัพท์ประเภทอาหารและเครื่องดื่ม (Appetizers, Main Courses, Desserts, Beverages) จำนวน 20 ชนิด พร้อมใช้ฟีเจอร์ AI Scan สแกนภาพหรือโมเดลอาหารจำลองและบันทึกผลลงใน AI Scan Learning Record',
   'Familiarize',
@@ -181,16 +182,18 @@ SET title = EXCLUDED.title,
     description = EXCLUDED.description,
     activity_type = EXCLUDED.activity_type,
     max_score = EXCLUDED.max_score,
-    due_date = EXCLUDED.due_date;
+    due_date = EXCLUDED.due_date,
+    lesson_plan_id = EXCLUDED.lesson_plan_id;
 
 -- I: Interact
 INSERT INTO assignments (
-  id, class_id, teacher_id, title, description, activity_type, max_score, due_date, created_at, updated_at
+  id, class_id, teacher_id, lesson_plan_id, title, description, activity_type, max_score, due_date, created_at, updated_at
 )
 VALUES (
   'a1111111-1111-4111-8111-222222222202',
   COALESCE((SELECT id FROM classes WHERE teacher_id = (SELECT id FROM app_users WHERE email = 'krupim@ktc.ac.th' LIMIT 1) LIMIT 1), '22222222-2222-2222-2222-222222222201'::uuid),
   COALESCE((SELECT id FROM app_users WHERE email = 'krupim@ktc.ac.th' LIMIT 1), '00000000-0000-0000-0000-000000000020'::uuid),
+  'lesson-plan-week-2',
   'สัปดาห์ที่ 2 [I]: ฝึกพูดและแต่งประโยคจำแนกประเภทเมนูอาหารกับ AI Voice',
   'ให้นักเรียนฝึกออกเสียงคำศัพท์และพูดประโยคจำแนกประเภทเมนูตามโครงสร้าง "[Dish/Drink Name] is categorized as [Category]." ผ่านระบบ AI Voice เพื่อรับคำแนะนำด้านสำเนียง ความถูกต้อง และการเน้นเสียง (Stress)',
   'Interact',
@@ -204,16 +207,18 @@ SET title = EXCLUDED.title,
     description = EXCLUDED.description,
     activity_type = EXCLUDED.activity_type,
     max_score = EXCLUDED.max_score,
-    due_date = EXCLUDED.due_date;
+    due_date = EXCLUDED.due_date,
+    lesson_plan_id = EXCLUDED.lesson_plan_id;
 
 -- N: Navigate
 INSERT INTO assignments (
-  id, class_id, teacher_id, title, description, activity_type, max_score, due_date, created_at, updated_at
+  id, class_id, teacher_id, lesson_plan_id, title, description, activity_type, max_score, due_date, created_at, updated_at
 )
 VALUES (
   'a1111111-1111-4111-8111-222222222203',
   COALESCE((SELECT id FROM classes WHERE teacher_id = (SELECT id FROM app_users WHERE email = 'krupim@ktc.ac.th' LIMIT 1) LIMIT 1), '22222222-2222-2222-2222-222222222201'::uuid),
   COALESCE((SELECT id FROM app_users WHERE email = 'krupim@ktc.ac.th' LIMIT 1), '00000000-0000-0000-0000-000000000020'::uuid),
+  'lesson-plan-week-2',
   'สัปดาห์ที่ 2 [N]: ภารกิจจำลองการจัดระเบียบเมนูห้องอาหาร The Menu Master Challenge',
   'ให้นักเรียนร่วมกันจัดหมวดหมู่และคัดแยกรายการอาหารและเครื่องดื่มลงบนบอร์ดจำลองโครงสร้างเมนูห้องอาหาร (Restaurant Menu Board) ตามมาตรฐานสากล (Appetizers -> Main Courses -> Desserts -> Beverages) พร้อมวิเคราะห์เมนูฟิวชั่น',
   'Navigate',
@@ -227,16 +232,18 @@ SET title = EXCLUDED.title,
     description = EXCLUDED.description,
     activity_type = EXCLUDED.activity_type,
     max_score = EXCLUDED.max_score,
-    due_date = EXCLUDED.due_date;
+    due_date = EXCLUDED.due_date,
+    lesson_plan_id = EXCLUDED.lesson_plan_id;
 
 -- E: Exhibit
 INSERT INTO assignments (
-  id, class_id, teacher_id, title, description, activity_type, max_score, due_date, created_at, updated_at
+  id, class_id, teacher_id, lesson_plan_id, title, description, activity_type, max_score, due_date, created_at, updated_at
 )
 VALUES (
   'a1111111-1111-4111-8111-222222222204',
   COALESCE((SELECT id FROM classes WHERE teacher_id = (SELECT id FROM app_users WHERE email = 'krupim@ktc.ac.th' LIMIT 1) LIMIT 1), '22222222-2222-2222-2222-222222222201'::uuid),
   COALESCE((SELECT id FROM app_users WHERE email = 'krupim@ktc.ac.th' LIMIT 1), '00000000-0000-0000-0000-000000000020'::uuid),
+  'lesson-plan-week-2',
   'สัปดาห์ที่ 2 [E]: กิจกรรม Exit Ticket สรุปองค์ประกอบเมนู และ Quiz ประจำสัปดาห์ที่ 2',
   'ให้นักเรียนทำ Quiz ทดสอบความรู้เรื่องการจำแนกประเภทเมนูอาหารและเครื่องดื่ม พร้อมพิมพ์สรุปองค์ประกอบเมนูอาหารจานหลัก 2 เมนู, ของหวาน 2 เมนู และเครื่องดื่ม 1 เมนู เป็นภาษาอังกฤษในกิจกรรม Exit Ticket',
   'Exhibit',
@@ -250,6 +257,7 @@ SET title = EXCLUDED.title,
     description = EXCLUDED.description,
     activity_type = EXCLUDED.activity_type,
     max_score = EXCLUDED.max_score,
-    due_date = EXCLUDED.due_date;
+    due_date = EXCLUDED.due_date,
+    lesson_plan_id = EXCLUDED.lesson_plan_id;
 
 COMMIT;
