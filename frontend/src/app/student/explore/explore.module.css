@@ -311,24 +311,90 @@
   background: #174b37;
   box-shadow: 0 4px 12px rgba(23, 75, 55, 0.2);
 }
+.missionSliderControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 6px 0 10px;
+  padding: 0 4px;
+}
+.missionSlideHint {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #58685f;
+  font-weight: 500;
+}
+.missionSliderArrows {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.missionSliderArrowBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #d4ded8;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #174b37;
+  font-size: 18px;
+  line-height: 1;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+.missionSliderArrowBtn:hover {
+  background: #eaf3ee;
+  border-color: #9ac2ad;
+}
 .missionGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-  gap: 10px;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 12px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding: 4px 4px 14px;
+  scrollbar-width: thin;
+  scrollbar-color: #bcdac9 transparent;
+}
+.missionGrid::-webkit-scrollbar {
+  height: 6px;
+}
+.missionGrid::-webkit-scrollbar-track {
+  background: #eef4f0;
+  border-radius: 999px;
+}
+.missionGrid::-webkit-scrollbar-thumb {
+  background: #9bc5b0;
+  border-radius: 999px;
 }
 .missionItemCard {
   position: relative;
+  flex: 0 0 280px;
+  width: 280px;
+  min-width: 280px;
+  max-width: 85vw;
+  scroll-snap-align: start;
   display: flex;
   flex-direction: column;
-  padding: 12px 14px;
+  justify-content: space-between;
+  padding: 14px 16px;
   border: 1px solid #e1e7e3;
-  border-radius: 16px;
+  border-radius: 18px;
   background: #ffffff;
-  transition: 0.2s ease;
+  box-shadow: 0 4px 12px rgba(23, 75, 55, 0.05);
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
 }
 .missionItemCard:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(23, 75, 55, 0.08);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px rgba(23, 75, 55, 0.1);
 }
 .missionItemCompleted {
   border-color: #79c79f;

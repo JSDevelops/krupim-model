@@ -130,6 +130,16 @@ export default function ExplorePage() {
   const autoScanTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const requestPendingRef = useRef(false)
   const equipmentRef = useRef<Equipment[]>([])
+  const missionSliderRef = useRef<HTMLDivElement>(null)
+
+  const scrollMissionSlider = (direction: 'left' | 'right') => {
+    if (missionSliderRef.current) {
+      missionSliderRef.current.scrollBy({
+        left: direction === 'left' ? -290 : 290,
+        behavior: 'smooth',
+      })
+    }
+  }
 
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get('mode') === 'scan') {
@@ -607,8 +617,33 @@ export default function ExplorePage() {
                 })}
               </div>
 
-              {/* 20 Mission Items Grid */}
-              <div className={styles.missionGrid}>
+              {/* Slider Controls & Touch Hint */}
+              <div className={styles.missionSliderControls}>
+                <span className={styles.missionSlideHint}>
+                  👉 เลื่อนสไลด์ซ้าย-ขวาเพื่อดูเมนู (แถวเดียว 20 รายการ)
+                </span>
+                <div className={styles.missionSliderArrows}>
+                  <button
+                    type="button"
+                    onClick={() => scrollMissionSlider('left')}
+                    className={styles.missionSliderArrowBtn}
+                    aria-label="เลื่อนซ้าย"
+                  >
+                    ‹
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => scrollMissionSlider('right')}
+                    className={styles.missionSliderArrowBtn}
+                    aria-label="เลื่อนขวา"
+                  >
+                    ›
+                  </button>
+                </div>
+              </div>
+
+              {/* 20 Mission Items Single-Row Slider */}
+              <div ref={missionSliderRef} className={styles.missionGrid}>
                 {WEEK2_MISSION_ITEMS.filter(item => selectedMissionCategory === 'ALL' || item.category === selectedMissionCategory).map(item => {
                   const prog = missionProgress[item.id]
                   const isDone = Boolean(prog?.scanned)
