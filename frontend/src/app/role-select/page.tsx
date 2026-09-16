@@ -2,10 +2,10 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import logo from '../../../public/logo.png'
 import { signInLocal, type UserRole } from '@/lib/localData'
+import { useRole } from '@/context/RoleContext'
 import styles from '../page.module.css'
 
 type IconName =
@@ -105,7 +105,7 @@ function destinationFor(role: UserRole) {
 }
 
 export default function RoleSelectPage() {
-  const router = useRouter()
+  const { setUser } = useRole()
   const [selectedRole, setSelectedRole] = useState<RoleChoice | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -132,11 +132,21 @@ export default function RoleSelectPage() {
     setLoading(true)
     setError('')
     try {
-      const { profile } = await signInLocal(email.trim().toLowerCase(), password, selectedRole.id)
-      router.replace(destinationFor(profile.role))
+      const { user: loggedInUser, profile } = await signInLocal(email.trim().toLowerCase(), password, selectedRole.id)
+      setUser({
+        id: profile.id,
+        name: profile.name,
+        role: profile.role,
+        avatar_url: profile.avatar_url,
+        school_id: profile.school_id,
+        email: loggedInUser.email,
+        pdpa_consent: profile.pdpa_consent,
+        pdpa_consent_at: profile.pdpa_consent_at,
+        pdpa_consent_version: profile.pdpa_consent_version,
+      })
+      window.location.href = destinationFor(profile.role)
     } catch (loginError) {
       setError(loginErrorMessage(loginError))
-    } finally {
       setLoading(false)
     }
   }

@@ -12,13 +12,17 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     if (loading) return
-    if (!user || (role !== 'student' && role !== 'developer')) {
+    if (!user) {
+      router.replace('/role-select')
+      return
+    }
+    if (role !== 'student' && role !== 'developer') {
       if (role === 'teacher') router.replace('/teacher/dashboard')
-      else router.replace('/')
+      else router.replace('/role-select')
     }
   }, [user, role, loading, router])
 
-  if (loading) {
+  if (loading || !user) {
     return <div className="min-h-screen bg-[#0F291E] text-white flex items-center justify-center p-4">กำลังโหลด...</div>
   }
 

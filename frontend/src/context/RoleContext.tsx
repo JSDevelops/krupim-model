@@ -83,10 +83,12 @@ export function RoleProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = localData.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT') {
         setUserState(null)
+        setLoading(false)
         localStorage.removeItem('userRole')
         localStorage.removeItem('userInfo')
       } else if (event === 'SIGNED_IN' && session?.user) {
-        const profile = await getProfileFromDB(session.user.id)
+        setLoading(true)
+        const profile = session.profile ?? await getProfileFromDB(session.user.id)
 
         if (profile?.approval_status === 'active' || (profile && !profile.approval_status)) {
           const userInfo: UserInfo = {
@@ -106,6 +108,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
           localStorage.removeItem('userRole')
           localStorage.removeItem('userInfo')
         }
+        setLoading(false)
       }
     })
 
@@ -114,6 +117,7 @@ export function RoleProvider({ children }: { children: ReactNode }) {
 
   function setUser(u: UserInfo) {
     setUserState(u)
+    setLoading(false)
   }
 
   async function logout() {

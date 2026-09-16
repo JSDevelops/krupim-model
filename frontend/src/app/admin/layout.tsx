@@ -2,6 +2,8 @@
 import { useRole } from '@/context/RoleContext'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import PdpaConsentModal from '@/components/PdpaConsentModal'
+import IdleSecurityGuard from '@/components/IdleSecurityGuard'
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user, role, loading } = useRole()
@@ -9,16 +11,27 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   useEffect(() => {
     if (loading) return
-    if (!user || role !== 'developer') {
+    if (!user) {
+      router.replace('/role-select')
+      return
+    }
+    if (role !== 'developer') {
       if (role === 'teacher') router.replace('/teacher/dashboard')
       else if (role === 'student') router.replace('/student/dashboard')
-      else router.replace('/')
+      else router.replace('/role-select')
     }
   }, [user, role, loading, router])
 
-  if (loading) {
+  if (loading || !user) {
     return <div className="min-h-screen bg-slate-900 text-white flex items-center justify-center p-4">กำลังโหลด...</div>
   }
 
-  return <>{children}</>
+  return (
+    <>
+      <PdpaConsentModal />
+      <IdleSecurityGuard />
+      {children}
+    </>
+  )
 }
+

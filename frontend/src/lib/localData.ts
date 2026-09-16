@@ -3,7 +3,7 @@
 import type { DataOperation, DbResult } from './db'
 
 type LocalUser = { id: string; email: string }
-type LocalSession = { user: LocalUser }
+export type LocalSession = { user: LocalUser; profile?: Profile }
 type AuthEvent = 'SIGNED_IN' | 'SIGNED_OUT'
 type AuthListener = (event: AuthEvent, session: LocalSession | null) => void | Promise<void>
 
@@ -117,7 +117,7 @@ export const localData = {
           body: JSON.stringify(input),
         })
         const payload = await jsonResponse<{ user: LocalUser; profile: Profile }>(response)
-        const session = { user: payload.user }
+        const session: LocalSession = { user: payload.user, profile: payload.profile }
         await Promise.all([...authListeners].map(listener => listener('SIGNED_IN', session)))
         return { data: { user: payload.user, session, profile: payload.profile }, error: null }
       } catch (error) {
