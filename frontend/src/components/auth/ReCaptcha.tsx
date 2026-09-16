@@ -44,13 +44,14 @@ export function ReCaptcha({
 
   // Keep latest callbacks in refs to prevent re-triggering effect and stale closures
   const onVerifyRef = useRef(onVerify)
-  onVerifyRef.current = onVerify
-
   const onExpireRef = useRef(onExpire)
-  onExpireRef.current = onExpire
-
   const onErrorRef = useRef(onError)
-  onErrorRef.current = onError
+
+  useEffect(() => {
+    onVerifyRef.current = onVerify
+    onExpireRef.current = onExpire
+    onErrorRef.current = onError
+  }, [onVerify, onExpire, onError])
 
   useEffect(() => {
     const currentSiteKey = siteKey

@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import AdminIcon from '@/components/admin/AdminIcon'
+import { confirmAction as confirmPopup } from '@/components/AppConfirmDialog'
 import { authenticatedFetch } from '@/lib/api'
 import styles from './page.module.css'
 
@@ -284,6 +285,16 @@ export default function AdminUsersPage() {
       toast.warning('รหัสผ่านใหม่และการยืนยันรหัสผ่านไม่ตรงกัน')
       return
     }
+
+    const confirmed = await confirmPopup({
+      title: 'ยืนยันการบันทึกการแก้ไข?',
+      description: `คุณต้องการบันทึกการเปลี่ยนแปลงข้อมูลบัญชีของ "${editForm.name || editTarget.name}" หรือไม่`,
+      confirmText: 'บันทึกการแก้ไข',
+      cancelText: 'ยกเลิก',
+      tone: 'default',
+    })
+    if (!confirmed) return
+
     clearFeedback()
     setBusyAction(`update:${editTarget.id}`)
     try {

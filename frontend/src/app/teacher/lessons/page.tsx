@@ -275,6 +275,15 @@ export default function TeacherLessonsPage() {
       toast.warning('กรุณากรอกชื่อแผนการสอน')
       return
     }
+    if (editingId) {
+      const confirmed = await confirmAction({
+        title: 'ยืนยันการแก้ไขแผนการสอน?',
+        description: `คุณต้องการบันทึกการแก้ไขข้อมูลของแผน “${form.title}” หรือไม่`,
+        confirmText: 'บันทึกการแก้ไข',
+        tone: 'default',
+      })
+      if (!confirmed) return
+    }
     setBusyAction('save')
     try {
       const response = await authenticatedFetch('/api/teacher/lessons', {

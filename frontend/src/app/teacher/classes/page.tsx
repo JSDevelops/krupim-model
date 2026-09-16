@@ -111,7 +111,17 @@ export default function TeacherClassesPage() {
   function openEdit(item: Classroom) { setEditingId(item.id); setClassForm({ name: item.name, description: item.description || '', year: String(item.year), semester: String(item.semester) }); setClassEditorOpen(true) }
 
   async function saveClass(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy('save-class')
+    event.preventDefault()
+    if (editingId) {
+      const confirmed = await confirmAction({
+        title: 'ยืนยันการแก้ไขห้องเรียน?',
+        description: `คุณต้องการบันทึกการแก้ไขข้อมูลของห้องเรียน “${classForm.name}” หรือไม่`,
+        confirmText: 'บันทึกการแก้ไข',
+        tone: 'default',
+      })
+      if (!confirmed) return
+    }
+    setBusy('save-class')
     try {
       const response = await authenticatedFetch('/api/teacher/classes', { method: editingId ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...(editingId ? { id: editingId } : { action: 'create_class' }), ...classForm }) })
       if (!response.ok) throw new Error(await responseError(response))

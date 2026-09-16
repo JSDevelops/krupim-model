@@ -271,6 +271,15 @@ export default function TeacherVocabularyPage() {
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (editingId) {
+      const confirmed = await confirmAction({
+        title: 'ยืนยันการแก้ไขคำศัพท์?',
+        description: `คุณต้องการบันทึกการแก้ไขข้อมูลของคำศัพท์ “${form.nameEn}” หรือไม่`,
+        confirmText: 'บันทึกการแก้ไข',
+        tone: 'default',
+      })
+      if (!confirmed) return
+    }
     setBusy('save')
     try {
       const response = await authenticatedFetch('/api/teacher/vocabulary', {
