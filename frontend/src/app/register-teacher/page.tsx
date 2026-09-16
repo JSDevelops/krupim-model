@@ -5,7 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { signUpLocal } from '@/lib/localData'
 import StudentIcon from '@/app/student/StudentIcon'
-import { ReCaptcha } from '@/components/auth/ReCaptcha'
+import { ReCaptcha, getActiveRecaptchaToken } from '@/components/auth/ReCaptcha'
 
 function RegisterForm() {
   const router = useRouter()
@@ -39,7 +39,8 @@ function RegisterForm() {
     }
 
     try {
-      await signUpLocal({ email, password, name, requestedRole: 'teacher', school, recaptchaToken })
+      const activeToken = getActiveRecaptchaToken(recaptchaToken)
+      await signUpLocal({ email, password, name, requestedRole: 'teacher', school, recaptchaToken: activeToken })
       setSuccess(true)
       setTimeout(() => {
         router.push('/role-select')

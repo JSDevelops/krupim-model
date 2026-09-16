@@ -42,14 +42,22 @@ export function ReCaptcha({
   const widgetIdRef = useRef<number | null>(null)
   const siteKey = process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY
 
+  // Keep latest callbacks in refs to prevent re-triggering effect and stale closures
+  const onVerifyRef = useRef(onVerify)
+  onVerifyRef.current = onVerify
+
+  const onExpireRef = useRef(onExpire)
+  onExpireRef.current = onExpire
+
+  const onErrorRef = useRef(onError)
+  onErrorRef.current = onError
+
   useEffect(() => {
     const currentSiteKey = siteKey
     if (!currentSiteKey) return
 
-    let isMounted = true
-
     function renderWidget() {
-      if (!isMounted || !containerRef.current || !window.grecaptcha?.render || !currentSiteKey) return
+      if (!containerRef.current || !window.grecaptcha?.render || !currentSiteKey) return
       if (widgetIdRef.current !== null) return // already rendered
 
       try {
@@ -57,13 +65,13 @@ export function ReCaptcha({
           sitekey: currentSiteKey,
           theme,
           callback: (token: string) => {
-            if (isMounted) onVerify(token)
+            onVerifyRef.current?.(token)
           },
           'expired-callback': () => {
-            if (isMounted && onExpire) onExpire()
+            onExpireRef.current?.()
           },
           'error-callback': () => {
-            if (isMounted && onError) onError()
+            onErrorRef.current?.()
           },
         })
       } catch (err) {
@@ -94,11 +102,7 @@ export function ReCaptcha({
         document.head.appendChild(script)
       }
     }
-
-    return () => {
-      isMounted = false
-    }
-  }, [siteKey, theme, onVerify, onExpire, onError])
+  }, [siteKey, theme])
 
   // If site key is not configured, show a helper note in dev/local mode
   if (!siteKey) {
@@ -139,4 +143,29 @@ export function ReCaptcha({
       <div ref={containerRef} />
     </div>
   )
+}
+
+/**
+ * Utility to reliably get active reCAPTCHA token from DOM or grecaptcha API
+ */
+export function getActiveRecaptchaToken(fallbackToken?: string): string {
+  if (fallbackToken && fallbackToken.trim()) return fallbackToken.trim()
+
+  if (typeof window !== 'undefined' && window.grecaptcha?.getResponse) {
+    try {
+      const response = window.grecaptcha.getResponse()
+      if (response && response.trim()) return response.trim()
+    } catch {
+      // ignore
+    }
+  }
+
+  if (typeof document !== 'undefined') {
+    const textarea = document.querySelector<HTMLTextAreaElement>('textarea[name="g-recaptcha-response"]')
+    if (textarea?.value && textarea.value.trim()) {
+      return textarea.value.trim()
+    }
+  }
+
+  return ''
 }

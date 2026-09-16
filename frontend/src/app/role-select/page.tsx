@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import logo from '../../../public/logo.png'
-import { ReCaptcha } from '@/components/auth/ReCaptcha'
+import { ReCaptcha, getActiveRecaptchaToken } from '@/components/auth/ReCaptcha'
 import { signInLocal, type UserRole } from '@/lib/localData'
 import { useRole } from '@/context/RoleContext'
 import styles from '../page.module.css'
@@ -144,11 +144,12 @@ export default function RoleSelectPage() {
     setLoading(true)
     setError('')
     try {
+      const activeToken = getActiveRecaptchaToken(recaptchaToken)
       const { user: loggedInUser, profile } = await signInLocal(
         email.trim().toLowerCase(),
         password,
         selectedRole.id,
-        recaptchaToken,
+        activeToken,
       )
       setUser({
         id: profile.id,
