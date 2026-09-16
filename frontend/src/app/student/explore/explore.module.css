@@ -51,8 +51,8 @@
 .statIcon { display: grid; flex: 0 0 auto; place-items: center; width: 38px; height: 38px; color: #ead184; border-radius: 12px; background: rgba(234,209,132,.12); }
 .statValue { display: block; font-size: 15px; font-weight: 500; }
 .statLabel { display: block; margin-top: 1px; color: rgba(255,255,255,.62); font-size: 10.5px; }
-.tabs { position: sticky; top: 8px; z-index: 20; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: min(520px, 100%); margin: 14px auto; padding: 6px; border: 1px solid #dfe4df; border-radius: 18px; background: rgba(255,255,255,.88); box-shadow: 0 9px 30px rgba(25,50,37,.07); backdrop-filter: blur(18px); }
-.tab { display: flex; align-items: center; justify-content: center; gap: 9px; min-height: 46px; padding: 9px 12px; border: 0; border-radius: 13px; color: #667069; background: transparent; font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer; transition: .2s ease; }
+.tabs { position: sticky; top: 8px; z-index: 20; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: min(680px, 100%); margin: 14px auto; padding: 6px; border: 1px solid #dfe4df; border-radius: 18px; background: rgba(255,255,255,.88); box-shadow: 0 9px 30px rgba(25,50,37,.07); backdrop-filter: blur(18px); }
+.tab { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 46px; padding: 9px 8px; border: 0; border-radius: 13px; color: #667069; background: transparent; font: inherit; font-size: 12px; font-weight: 500; cursor: pointer; transition: .2s ease; text-align: center; }
 .tabActive { color: #fff; background: linear-gradient(135deg, var(--green), var(--green-2)); box-shadow: 0 8px 20px rgba(23,75,55,.22); }
 .contentGrid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-items: start; }
 .contentGrid > *, .cameraLayout > * { min-width: 0; }
@@ -200,4 +200,256 @@
 @media (prefers-reduced-motion: reduce) {
   .scanLine { animation: none; }
   .vocabCard, .tab { transition: none; }
+}
+
+/* ── ภารกิจสัปดาห์ที่ 2 [F]: Mission Tracker Styles ── */
+.missionSection {
+  margin: 18px 0 24px;
+}
+.missionCard {
+  position: relative;
+  overflow: hidden;
+  padding: 20px;
+  border: 1px solid rgba(23, 75, 55, 0.18);
+  border-radius: 24px;
+  background: linear-gradient(135deg, #ffffff 0%, #f4faf6 100%);
+  box-shadow: 0 14px 40px rgba(23, 75, 55, 0.08);
+}
+.missionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.missionBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  color: #174b37;
+  background: #e1efe7;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+.missionTitle {
+  margin: 4px 0 0;
+  color: #14281f;
+  font-size: 18px;
+  font-weight: 600;
+}
+.missionSubtitle {
+  margin: 4px 0 0;
+  color: #5c6861;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.missionProgressWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 16px 0;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #ffffff;
+  border: 1px solid #e1e9e4;
+}
+.missionProgressHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #3b4740;
+  font-weight: 500;
+}
+.missionProgressBar {
+  width: 100%;
+  height: 10px;
+  border-radius: 999px;
+  background: #eef3f0;
+  overflow: hidden;
+}
+.missionProgressFill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #174b37, #3eb17c);
+  transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.missionCategoryFilters {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  margin-bottom: 14px;
+  scrollbar-width: none;
+}
+.missionCategoryFilters::-webkit-scrollbar {
+  display: none;
+}
+.missionFilterBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid #dce4df;
+  border-radius: 12px;
+  color: #4f5a54;
+  background: #ffffff;
+  font-size: 11.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+.missionFilterBtnActive {
+  border-color: #174b37;
+  color: #ffffff;
+  background: #174b37;
+  box-shadow: 0 4px 12px rgba(23, 75, 55, 0.2);
+}
+.missionGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+}
+.missionItemCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 14px;
+  border: 1px solid #e1e7e3;
+  border-radius: 16px;
+  background: #ffffff;
+  transition: 0.2s ease;
+}
+.missionItemCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(23, 75, 55, 0.08);
+}
+.missionItemCompleted {
+  border-color: #79c79f;
+  background: #f3faf6;
+}
+.missionItemTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.missionItemEmoji {
+  font-size: 24px;
+  line-height: 1;
+}
+.missionCheckBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+.missionCheckDone {
+  color: #126b42;
+  background: #daf3e6;
+  border: 1px solid #82d8aa;
+}
+.missionCheckPending {
+  color: #8c9790;
+  background: #f0f4f1;
+}
+.missionItemEn {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #1c2b23;
+}
+.missionItemTh {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #6d7b73;
+}
+.missionItemPronounce {
+  margin: 4px 0 0;
+  font-size: 10px;
+  color: #b58c32;
+  font-family: monospace;
+}
+.missionItemActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px dashed #e3eae5;
+}
+.missionActionBtn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 1px solid #dce4df;
+  border-radius: 99px;
+  background: #ffffff;
+  color: #274b3a;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: 0.15s ease;
+}
+.missionActionBtn:hover {
+  background: #edf5f0;
+  border-color: #b6d3c3;
+}
+.missionSubmitBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 18px;
+  padding: 16px 20px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, #174b37 0%, #206248 100%);
+  color: #ffffff;
+  box-shadow: 0 12px 32px rgba(23, 75, 55, 0.22);
+}
+.missionSubmitText h4 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.missionSubmitText p {
+  margin: 3px 0 0;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.8);
+}
+.missionSubmitBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border: none;
+  border-radius: 13px;
+  color: #173829;
+  background: linear-gradient(135deg, #f5e297, #daba54);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.missionSubmitBtn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 9px 24px rgba(0, 0, 0, 0.2);
+}
+.missionSubmitBtn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }

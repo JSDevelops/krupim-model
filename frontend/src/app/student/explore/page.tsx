@@ -8,6 +8,7 @@ import { analyzeImage as analyzeImageAPI } from '@/lib/gemini'
 import { toast } from 'sonner'
 import ExploreIcon from './ExploreIcon'
 import styles from './explore.module.css'
+import { WEEK2_MISSION_ITEMS, matchMissionItem, type MissionCategory, type Week2MissionItem } from './week2-mission'
 
 interface Equipment {
   id?: string
@@ -94,7 +95,7 @@ function EquipmentVisual({ item, size = 22 }: { item: Equipment; size?: number }
 }
 
 export default function ExplorePage() {
-  const [activeTab, setActiveTab] = useState<'library' | 'scan'>('library')
+  const [activeTab, setActiveTab] = useState<'mission' | 'library' | 'scan'>('mission')
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [viewItem, setViewItem] = useState<Equipment | null>(null)
   const [showVocabulary, setShowVocabulary] = useState(false)
@@ -113,6 +114,14 @@ export default function ExplorePage() {
   const [speechScore, setSpeechScore] = useState<number | null>(null)
   const [isRecording, setIsRecording] = useState(false)
 
+  // ── Week 2 Mission State ──
+  const [missionProgress, setMissionProgress] = useState<Record<string, { scanned: boolean; score?: number; timestamp?: string }>>({})
+  const [selectedMissionCategory, setSelectedMissionCategory] = useState<'ALL' | MissionCategory>('ALL')
+  const [isSubmittingMission, setIsSubmittingMission] = useState(false)
+  const [missionSubmitted, setMissionSubmitted] = useState(false)
+  const [week2AssignmentId, setWeek2AssignmentId] = useState<string>('a1111111-1111-4111-8111-222222222201')
+  const [activeSpeechMissionId, setActiveSpeechMissionId] = useState<string | null>(null)
+
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -123,9 +132,31 @@ export default function ExplorePage() {
   const equipmentRef = useRef<Equipment[]>([])
 
   useEffect(() => {
-    if (new URLSearchParams(window.location.search).get('mode') !== 'scan') return
-    const timer = window.setTimeout(() => setActiveTab('scan'), 0)
-    return () => window.clearTimeout(timer)
+    if (new URLSearchParams(window.location.search).get('mode') === 'scan') {
+      const timer = window.setTimeout(() => setActiveTab('scan'), 0)
+      return () => window.clearTimeout(timer)
+    }
+  }, [])
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('finemodel_week2_f_mission')
+      if (saved) {
+        setMissionProgress(JSON.parse(saved))
+      }
+    } catch (e) {
+      console.warn('Could not load week 2 mission progress', e)
+    }
+
+    authenticatedFetch('/api/student/dashboard')
+      .then(res => res.json())
+      .then((data: { tasks?: Array<{ id: string; title: string }> }) => {
+        const found = data.tasks?.find(t => t.title?.includes('สัปดาห์ที่ 2') || t.title?.includes('20 ชนิด') || t.id?.endsWith('2201'))
+        if (found) {
+          setWeek2AssignmentId(found.id)
+        }
+      })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -214,6 +245,29 @@ export default function ExplorePage() {
     const normalizedName = String(result.name_en || result.name || '').trim().toLocaleLowerCase('en')
     const matched = equipmentRef.current.find(item => item.nameEn.trim().toLocaleLowerCase('en') === normalizedName)
     setMatchedModelId(matched?.modelId || null)
+
+    // ── Auto-Detect Week 2 Mission Item ──
+    const searchTarget = `${result.name_en || ''} ${result.name || ''} ${result.name_th || ''}`
+    const missionMatch = matchMissionItem(searchTarget)
+    if (missionMatch) {
+      setMissionProgress(prev => {
+        const next = {
+          ...prev,
+          [missionMatch.id]: {
+            scanned: true,
+            score: prev[missionMatch.id]?.score || 100,
+            timestamp: new Date().toISOString(),
+          },
+        }
+        try {
+          localStorage.setItem('finemodel_week2_f_mission', JSON.stringify(next))
+        } catch {}
+        return next
+      })
+      toast.success(`🎯 ภารกิจสัปดาห์ที่ 2: สแกน "${missionMatch.nameEn}" สำเร็จแล้ว!`, {
+        description: `จัดอยู่ในหมวดหมู่: ${missionMatch.categoryTh} (ระบบบันทึกเช็คลิสต์แล้ว ✓)`,
+      })
+    }
   }, [stopCamera])
 
   async function analyzeImage(base64: string, mimeType: string, image?: string) {
@@ -311,8 +365,8 @@ export default function ExplorePage() {
     setScanError('')
   }
 
-  function changeTab(tab: 'library' | 'scan') {
-    if (tab === 'library') {
+  function changeTab(tab: 'mission' | 'library' | 'scan') {
+    if (tab !== 'scan') {
       setAutoScan(false)
       stopCamera()
     }
@@ -335,7 +389,87 @@ export default function ExplorePage() {
     const targetWords = target.split(/\s+/).map(clean).filter(Boolean)
     const spokenWords = new Set(spoken.split(/\s+/).map(clean).filter(Boolean))
     const matched = targetWords.filter(word => spokenWords.has(word)).length
-    setSpeechScore(targetWords.length ? Math.round((matched / targetWords.length) * 100) : 0)
+    const score = targetWords.length ? Math.round((matched / targetWords.length) * 100) : 0
+    setSpeechScore(score)
+
+    if (activeSpeechMissionId) {
+      setMissionProgress(prev => {
+        const next = {
+          ...prev,
+          [activeSpeechMissionId]: {
+            scanned: true,
+            score,
+            timestamp: new Date().toISOString(),
+          },
+        }
+        try {
+          localStorage.setItem('finemodel_week2_f_mission', JSON.stringify(next))
+        } catch {}
+        return next
+      })
+      toast.success(`🎙️ ประเมินการออกเสียง: ได้ ${score}%`, {
+        description: score >= 80 ? 'ยอดเยี่ยมมาก! สำเนียงถูกต้องชัดเจน' : 'แนะนำให้ฝึกออกเสียงอีกครั้งเพื่อความแม่นยำ',
+      })
+      setActiveSpeechMissionId(null)
+    }
+  }
+
+  function startMissionSpeechPractice(item: Week2MissionItem) {
+    setActiveSpeechMissionId(item.id)
+    startSpeechPractice(item.nameEn)
+  }
+
+  function toggleMissionItem(id: string) {
+    setMissionProgress(prev => {
+      const isDone = Boolean(prev[id]?.scanned)
+      const next = {
+        ...prev,
+        [id]: isDone ? { scanned: false } : { scanned: true, score: 100, timestamp: new Date().toISOString() },
+      }
+      try {
+        localStorage.setItem('finemodel_week2_f_mission', JSON.stringify(next))
+      } catch {}
+      return next
+    })
+  }
+
+  async function submitWeek2Mission() {
+    const completedItems = WEEK2_MISSION_ITEMS.filter(item => missionProgress[item.id]?.scanned)
+    if (completedItems.length === 0) {
+      toast.warning('กรุณาสแกนหรือซ้อมอ่านออกเสียงรายการอาหารและเครื่องดื่มก่อนส่งงาน')
+      return
+    }
+
+    setIsSubmittingMission(true)
+    try {
+      const scores = completedItems.map(i => missionProgress[i.id]?.score || 95)
+      const avgScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+
+      const response = await authenticatedFetch('/api/student/assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assignmentId: week2AssignmentId,
+          attachmentName: `AI Scan Learning Record สัปดาห์ที่ 2 (${completedItems.length}/20 รายการ • คะแนนเฉลี่ย ${avgScore}%)`,
+          attachmentUrl: `https://www.krupim-finemodel3d-ar.com/student/explore?week=2&items=${completedItems.length}`,
+        }),
+      })
+
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.error || 'ส่งงานไม่สำเร็จ')
+      }
+
+      setMissionSubmitted(true)
+      toast.success('🎉 ส่งงานและบันทึกผลการสแกนสัปดาห์ที่ 2 [F] เรียบร้อยแล้ว!', {
+        description: `บันทึกรายการสำเร็จ ${completedItems.length}/20 รายการ พร้อมส่งตรงถึงแดชบอร์ดครูพิมพ์`,
+      })
+      window.dispatchEvent(new Event('assignment-submitted'))
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'ไม่สามารถส่งงานได้ กรุณาลองใหม่อีกครั้ง')
+    } finally {
+      setIsSubmittingMission(false)
+    }
   }
 
   function startSpeechPractice(target: string) {
@@ -405,14 +539,163 @@ export default function ExplorePage() {
           </div>
         </section>
 
+        {/* ── Tabs Navigation ── */}
         <div className={styles.tabs} role="tablist" aria-label="โหมดสำรวจ">
+          <button type="button" role="tab" aria-selected={activeTab === 'mission'} className={`${styles.tab} ${activeTab === 'mission' ? styles.tabActive : ''}`} onClick={() => changeTab('mission')}>
+            <ExploreIcon name="sparkles" size={17} /> ภารกิจสัปดาห์ที่ 2
+          </button>
           <button type="button" role="tab" aria-selected={activeTab === 'library'} className={`${styles.tab} ${activeTab === 'library' ? styles.tabActive : ''}`} onClick={() => changeTab('library')}>
-            <ExploreIcon name="book" size={18} /> คลังคำศัพท์
+            <ExploreIcon name="book" size={17} /> คลังคำศัพท์
           </button>
           <button type="button" role="tab" aria-selected={activeTab === 'scan'} className={`${styles.tab} ${activeTab === 'scan' ? styles.tabActive : ''}`} onClick={() => changeTab('scan')}>
-            <ExploreIcon name="camera" size={18} /> AI Scan
+            <ExploreIcon name="camera" size={17} /> AI Scan
           </button>
         </div>
+
+        {/* ── TAB 1: Week 2 Mission Tracker ── */}
+        {activeTab === 'mission' && (
+          <section className={styles.missionSection}>
+            <div className={styles.missionCard}>
+              <div className={styles.missionHeader}>
+                <div>
+                  <span className={styles.missionBadge}>
+                    <ExploreIcon name="sparkles" size={14} /> สัปดาห์ที่ 2 [F]: Familiarize
+                  </span>
+                  <h2 className={styles.missionTitle}>ภารกิจ AI Scan & Worksheet 20 เมนูอาหารและเครื่องดื่ม</h2>
+                  <p className={styles.missionSubtitle}>
+                    ใช้ AI Scan สแกนภาพ/โมเดลจริง หรือกดฟังเสียงและฝึกออกเสียงคำศัพท์ 4 หมวดหมู่ (20 รายการ) เพื่อบันทึกผลการเรียนรู้และส่งงาน
+                  </p>
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              {(() => {
+                const completedCount = WEEK2_MISSION_ITEMS.filter(i => missionProgress[i.id]?.scanned).length
+                const percent = Math.round((completedCount / WEEK2_MISSION_ITEMS.length) * 100)
+                return (
+                  <div className={styles.missionProgressWrap}>
+                    <div className={styles.missionProgressHeader}>
+                      <span>ความคืบหน้าการสแกนและการฝึกฝน</span>
+                      <strong>
+                        {completedCount} / {WEEK2_MISSION_ITEMS.length} เมนู ({percent}%)
+                      </strong>
+                    </div>
+                    <div className={styles.missionProgressBar}>
+                      <div className={styles.missionProgressFill} style={{ width: `${percent}%` }} />
+                    </div>
+                  </div>
+                )
+              })()}
+
+              {/* Category Filter Pills */}
+              <div className={styles.missionCategoryFilters}>
+                {(['ALL', 'Appetizers', 'Main Courses', 'Desserts', 'Beverages'] as const).map(cat => {
+                  const label = cat === 'ALL' ? 'ทั้งหมด (20)' :
+                    cat === 'Appetizers' ? '🥗 Appetizers (4)' :
+                    cat === 'Main Courses' ? '🥩 Main Courses (4)' :
+                    cat === 'Desserts' ? '🍰 Desserts (4)' : '🍹 Beverages (8)'
+                  return (
+                    <button
+                      key={cat}
+                      type="button"
+                      className={`${styles.missionFilterBtn} ${selectedMissionCategory === cat ? styles.missionFilterBtnActive : ''}`}
+                      onClick={() => setSelectedMissionCategory(cat)}
+                    >
+                      {label}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* 20 Mission Items Grid */}
+              <div className={styles.missionGrid}>
+                {WEEK2_MISSION_ITEMS.filter(item => selectedMissionCategory === 'ALL' || item.category === selectedMissionCategory).map(item => {
+                  const prog = missionProgress[item.id]
+                  const isDone = Boolean(prog?.scanned)
+                  return (
+                    <div
+                      key={item.id}
+                      className={`${styles.missionItemCard} ${isDone ? styles.missionItemCompleted : ''}`}
+                    >
+                      <div className={styles.missionItemTop}>
+                        <span className={styles.missionItemEmoji}>{item.emoji}</span>
+                        <button
+                          type="button"
+                          className={`${styles.missionCheckBadge} ${isDone ? styles.missionCheckDone : styles.missionCheckPending}`}
+                          onClick={() => toggleMissionItem(item.id)}
+                          title="คลิกเพื่อสลับสถานะ"
+                          style={{ border: 'none', cursor: 'pointer', font: 'inherit' }}
+                        >
+                          {isDone ? `✓ สแกนแล้ว ${prog?.score ? `(${prog.score}%)` : ''}` : '○ รอสแกน'}
+                        </button>
+                      </div>
+                      <h4 className={styles.missionItemEn}>{item.nameEn}</h4>
+                      <p className={styles.missionItemTh}>{item.nameTh} • <span style={{ color: '#174b37', fontWeight: 600 }}>{item.categoryTh}</span></p>
+                      <p className={styles.missionItemPronounce}>{item.pronounce}</p>
+
+                      <div className={styles.missionItemActions}>
+                        <button
+                          type="button"
+                          className={styles.missionActionBtn}
+                          onClick={() => speak(item.nameEn, item.id)}
+                          title="ฟังการออกเสียง"
+                        >
+                          {speaking === item.id ? '🔊 อ่าน...' : '🔊 ฟัง'}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.missionActionBtn}
+                          onClick={() => startMissionSpeechPractice(item)}
+                          title="ฝึกพูดออกเสียงด้วยไมโครโฟน"
+                        >
+                          {isRecording && activeSpeechMissionId === item.id ? '🎙️ ฟัง...' : '🎙️ ซ้อม'}
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.missionActionBtn}
+                          onClick={() => {
+                            changeTab('scan')
+                            void startCamera()
+                          }}
+                          title="เปิดกล้อง AI Scan เมนูนี้"
+                        >
+                          📷 สแกน
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+
+              {/* 1-Click Submit Banner */}
+              {(() => {
+                const completedCount = WEEK2_MISSION_ITEMS.filter(i => missionProgress[i.id]?.scanned).length
+                return (
+                  <div className={styles.missionSubmitBanner}>
+                    <div className={styles.missionSubmitText}>
+                      <h4>
+                        {missionSubmitted ? '✓ ส่งงานสัปดาห์ที่ 2 [F] เรียบร้อยแล้ว' : 'พร้อมประเมินและส่งงานสัปดาห์ที่ 2 หรือยัง?'}
+                      </h4>
+                      <p>
+                        {missionSubmitted
+                          ? `บันทึกรายการสำเร็จ ${completedCount}/20 เมนู ส่งเข้าสู่ระบบคุณครูเรียบร้อยแล้ว (สามารถส่งซ้ำเพื่ออัปเดตคะแนนได้)`
+                          : `สแกนครบแล้ว ${completedCount}/20 รายการ กดปุ่มนี้เพื่อส่งงานตรงเข้าสู่ระบบคุณครูทันที`}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.missionSubmitBtn}
+                      onClick={submitWeek2Mission}
+                      disabled={isSubmittingMission || completedCount === 0}
+                    >
+                      {isSubmittingMission ? 'กำลังส่งงาน...' : missionSubmitted ? '✓ ส่งงานเรียบร้อย (กดส่งซ้ำได้)' : '🎉 บันทึกผล & ส่งงานสัปดาห์ที่ 2 [F]'}
+                    </button>
+                  </div>
+                )
+              })()}
+            </div>
+          </section>
+        )}
 
         {activeTab === 'library' ? (
           <div className={styles.contentGrid}>
@@ -455,6 +738,44 @@ export default function ExplorePage() {
           </div>
         ) : (
           <div className={styles.cameraLayout}>
+            <div style={{
+              gridColumn: '1 / -1',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 10,
+              padding: '12px 18px',
+              borderRadius: 16,
+              background: 'linear-gradient(135deg, #eaf4ee, #d8ebe1)',
+              border: '1px solid #c2ded0',
+              color: '#174b37',
+              fontSize: '12.5px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <ExploreIcon name="sparkles" size={16} />
+                <span>
+                  <strong>🎯 สแกนอาหาร 20 ชนิด สัปดาห์ที่ 2:</strong> สำเร็จแล้ว{' '}
+                  {WEEK2_MISSION_ITEMS.filter(i => missionProgress[i.id]?.scanned).length}/20 เมนู
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => changeTab('mission')}
+                style={{
+                  border: 'none',
+                  borderRadius: 10,
+                  background: '#174b37',
+                  color: '#ffffff',
+                  padding: '6px 14px',
+                  fontSize: '11.5px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                ดูรายการเช็คลิสต์ & ส่งงาน →
+              </button>
+            </div>
             <section className={styles.cameraCard}>
               <div className={styles.cameraViewport}>
                 <canvas ref={canvasRef} hidden />
