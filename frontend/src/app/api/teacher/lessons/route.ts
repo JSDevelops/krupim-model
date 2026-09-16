@@ -163,7 +163,7 @@ export async function GET(request: NextRequest) {
                        AND activities_n <> '' AND activities_e <> '' THEN true ELSE false END AS complete
       FROM fine_lesson_plans
       ${where}
-      ORDER BY COALESCE(NULLIF(regexp_replace(weeks, '\D', '', 'g'), '')::int, NULLIF(regexp_replace(id, '\D', '', 'g'), '')::int, 999) ASC, updated_at DESC
+      ORDER BY COALESCE(NULLIF(regexp_replace(weeks, '[^0-9]', '', 'g'), '')::int, NULLIF(regexp_replace(id, '[^0-9]', '', 'g'), '')::int, 999) ASC, updated_at DESC
       LIMIT 300
     `, values)
     return NextResponse.json({ lessons: result.rows }, { headers: { 'Cache-Control': 'private, no-store' } })

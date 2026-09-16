@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
                activities_i AS "activitiesI",activities_n AS "activitiesN",activities_e AS "activitiesE"
         FROM fine_lesson_plans
         WHERE publication_status='published' ${scope}
-        ORDER BY COALESCE(NULLIF(regexp_replace(weeks, '\D', '', 'g'), '')::int, NULLIF(regexp_replace(id, '\D', '', 'g'), '')::int, 999) ASC, updated_at DESC LIMIT 100
+        ORDER BY COALESCE(NULLIF(regexp_replace(weeks, '[^0-9]', '', 'g'), '')::int, NULLIF(regexp_replace(id, '[^0-9]', '', 'g'), '')::int, 999) ASC, updated_at DESC LIMIT 100
       `, user.role === 'developer' ? [] : [user.id]),
       user.role === 'student'
         ? queryDb<{ reference_id: string }>(`
