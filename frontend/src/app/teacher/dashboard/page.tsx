@@ -39,6 +39,8 @@ type PendingGradingItem = {
   unit: string
   submittedAt: string
   maxScore: number
+  attachmentName?: string | null
+  attachmentUrl?: string | null
 }
 
 const scoreDefinitions = [
@@ -87,7 +89,22 @@ export default function TeacherDashboard() {
         id: string; name: string; className: string; classNames?: string[]; school: string; sessions: number
         knowledge: number; skills: number; attitude: number; competency: number; lastActive?: string | null
       }>
-      pending?: Array<Omit<PendingGradingItem, 'class' | 'submittedAt'> & { className: string; submittedAt: string }>
+      pending?: Array<
+        Omit<PendingGradingItem, 'class' | 'submittedAt'> & {
+          className: string
+          submittedAt: string
+          attachmentName?: string | null
+          attachmentUrl?: string | null
+        }
+      >
+      pendingSubmissions?: Array<
+        Omit<PendingGradingItem, 'class' | 'submittedAt'> & {
+          className: string
+          submittedAt: string
+          attachmentName?: string | null
+          attachmentUrl?: string | null
+        }
+      >
       announcements?: Array<Omit<TeacherAnnouncement, 'publishedAt'> & { publishedAt: string }>
     }
     if (!response.ok) throw new Error(payload.error || 'ไม่สามารถโหลดแดชบอร์ดได้')
@@ -105,10 +122,13 @@ export default function TeacherDashboard() {
       },
       lastActive: formatActivityDate(item.lastActive),
     })))
-    setPendingList((payload.pending ?? []).map(item => ({
+    const pendingData = payload.pending || payload.pendingSubmissions || []
+    setPendingList(pendingData.map(item => ({
       ...item,
       class: item.className,
       submittedAt: formatActivityDate(item.submittedAt),
+      attachmentName: item.attachmentName || null,
+      attachmentUrl: item.attachmentUrl || null,
     })))
     setAnnouncements((payload.announcements ?? []).map(item => ({
       ...item,
@@ -232,6 +252,26 @@ export default function TeacherDashboard() {
         </div>
       </section>
 
+      {pendingList.length > 0 && (
+        <section className={styles.submissionAlert} role="region" aria-label="แจ้งเตือนการส่งงาน">
+          <div className={styles.alertIcon}>
+            <AdminIcon name="score" size={22} />
+          </div>
+          <div className={styles.alertContent}>
+            <h3>📢 มีงานที่นักเรียนส่งรอตรวจ {pendingList.length} รายการ</h3>
+            <p>
+              รายการล่าสุด: <strong>{pendingList[0]?.studentName}</strong> ({pendingList[0]?.class}) — “{pendingList[0]?.taskName}”
+              {pendingList[0]?.attachmentName ? ` (📎 ไฟล์แนบ: ${pendingList[0]?.attachmentName})` : ''}
+            </p>
+          </div>
+          <div className={styles.alertAction}>
+            <Link href="/teacher/assignments" className={styles.reviewBtn}>
+              <AdminIcon name="check" size={15} /> ไปที่หน้ารายงานการส่งงาน
+            </Link>
+          </div>
+        </section>
+      )}
+
       <section className={styles.metrics} aria-label="ข้อมูลสรุปชั้นเรียน">
         {metrics.map(metric => (
           <article className={styles.metricCard} data-tone={metric.tone} key={metric.label}>
@@ -286,7 +326,15 @@ export default function TeacherDashboard() {
               <article className={styles.gradingRow} key={item.id}>
                 <span className={styles.avatar}>{initials(item.studentName)}</span>
                 <span className={styles.gradingIdentity}><strong>{item.studentName}</strong><small>{item.class} · {item.submittedAt}</small></span>
-                <span className={styles.gradingTask}><strong>{item.taskName}</strong><small>{item.unit}</small></span>
+                <span className={styles.gradingTask}>
+                  <strong>{item.taskName}</strong>
+                  <small>{item.unit}</small>
+                  {item.attachmentName && (
+                    <span className={styles.attachmentTag} title={`ไฟล์แนบ: ${item.attachmentName}`}>
+                      📎 {item.attachmentName}
+                    </span>
+                  )}
+                </span>
                 <span className={styles.typeBadge}>{item.type}</span>
                 <button type="button" onClick={() => openGrading(item)}>ตรวจงาน</button>
               </article>

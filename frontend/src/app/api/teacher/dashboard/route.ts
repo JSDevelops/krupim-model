@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
     const classScope = user.role === 'developer' ? '' : 'WHERE c.teacher_id=$1::uuid'
     const assignmentScope = user.role === 'developer' ? '' : 'WHERE a.teacher_id=$1::uuid'
 
-    const [classes, students, pending, announcements] = await Promise.all([
+    const [classes, students, pending, announcements, notifications] = await Promise.all([
       queryDb(`
         SELECT c.id, c.name, c.year, c.semester, c.is_active AS "isActive",
                COUNT(cs.id)::int AS "studentCount"
@@ -87,14 +87,15 @@ export async function GET(request: NextRequest) {
                p.name AS "studentName", c.id AS "classId", c.name AS "className",
                a.title AS "taskName", a.activity_type AS type,
                COALESCE(NULLIF(a.description,''), 'คะแนนเต็ม ' || a.max_score || ' คะแนน') AS unit,
-               a.max_score AS "maxScore", s.submitted_at AS "submittedAt"
+               a.max_score AS "maxScore", s.submitted_at AS "submittedAt",
+               s.attachment_name AS "attachmentName", s.attachment_url AS "attachmentUrl"
         FROM assignment_submissions s
         JOIN assignments a ON a.id=s.assignment_id
         JOIN classes c ON c.id=a.class_id
         JOIN profiles p ON p.id=s.student_id
         ${assignmentScope}
         ${assignmentScope ? 'AND' : 'WHERE'} s.score IS NULL
-        ORDER BY s.submitted_at ASC
+        ORDER BY s.submitted_at DESC
         LIMIT 100
       `, values),
       queryDb(`
@@ -103,6 +104,13 @@ export async function GET(request: NextRequest) {
         ORDER BY published_at DESC
         LIMIT 3
       `),
+      queryDb(`
+        SELECT id, title, message, type, link_url AS "linkUrl", is_read AS "isRead", created_at AS "createdAt"
+        FROM notifications
+        ${user.role === 'developer' ? '' : 'WHERE user_id=$1::uuid'}
+        ORDER BY created_at DESC
+        LIMIT 10
+      `, values),
     ])
 
     return NextResponse.json(
@@ -110,7 +118,9 @@ export async function GET(request: NextRequest) {
         classes: classes.rows,
         students: students.rows,
         pending: pending.rows,
+        pendingSubmissions: pending.rows,
         announcements: announcements.rows,
+        notifications: notifications.rows,
       },
       { headers: { 'Cache-Control': 'private, no-store' } },
     )
