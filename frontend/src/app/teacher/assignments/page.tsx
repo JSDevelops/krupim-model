@@ -117,6 +117,37 @@ const activityMeta: Record<
   },
 };
 
+const FEEDBACK_CHIPS = [
+  "โมเดล 3D มีความละเอียดและสัดส่วนสมบูรณ์ 🌟",
+  "การจัดแสงและ Texture สวยงามสมจริง 👍",
+  "ควรปรับแต่ง Topology และลด polygon ที่ซ้ำซ้อน 💡",
+  "ออกแบบสร้างสรรค์ ตรงตามเกณฑ์ KSA-C ครบถ้วน ✅",
+  "ส่งงานตรงต่อเวลา มีวินัยในการทำงานยอดเยี่ยม 👏",
+  "ควรระมัดระวังเรื่อง Scale และแกนหมุนของโมเดล ⚙️",
+];
+
+function getSubmissionFileType(
+  url?: string | null,
+  name?: string | null,
+): "model" | "image" | "file" | "none" {
+  if (!url) return "none";
+  const str = (name || url).toLowerCase().split("?")[0];
+  if (str.endsWith(".glb") || str.endsWith(".gltf") || str.endsWith(".usdz")) {
+    return "model";
+  }
+  if (
+    str.endsWith(".png") ||
+    str.endsWith(".jpg") ||
+    str.endsWith(".jpeg") ||
+    str.endsWith(".webp") ||
+    str.endsWith(".gif") ||
+    str.endsWith(".svg")
+  ) {
+    return "image";
+  }
+  return "file";
+}
+
 async function responseError(response: Response) {
   try {
     return (
@@ -194,6 +225,12 @@ function TeacherAssignmentsContent() {
   const [grading, setGrading] = useState<Submission | null>(null);
   const [gradeScore, setGradeScore] = useState("");
   const [gradeFeedback, setGradeFeedback] = useState("");
+  const [ksaScores, setKsaScores] = useState({
+    knowledge: 80,
+    skills: 75,
+    attitude: 85,
+    competency: 70,
+  });
 
   const loadAssignments = useCallback(async () => {
     const response = await authenticatedFetch("/api/teacher/assignments", {
@@ -521,13 +558,105 @@ function TeacherAssignmentsContent() {
       setReportLoading(false);
     }
   }
+  const submittedList = useMemo(
+    () => submissions.filter((s) => s.status === "submitted"),
+    [submissions],
+  );
+  const currentGradeIndex = useMemo(
+    () =>
+      grading
+        ? submittedList.findIndex((s) => s.studentId === grading.studentId)
+        : -1,
+    [grading, submittedList],
+  );
+  const nextStudent = useMemo(
+    () =>
+      currentGradeIndex >= 0 && currentGradeIndex < submittedList.length - 1
+        ? submittedList[currentGradeIndex + 1]
+        : null,
+    [currentGradeIndex, submittedList],
+  );
+  const studentPositionText =
+    currentGradeIndex >= 0
+      ? `คนที่ ${currentGradeIndex + 1} จาก ${submittedList.length} คนที่ส่งงาน`
+      : "";
+
   function openGrade(item: Submission) {
     setGrading(item);
-    setGradeScore(item.score == null ? "" : String(item.score));
+    const max = reportAssignment?.maxScore || 100;
+    if (item.score != null) {
+      setGradeScore(String(item.score));
+      const pct = Math.min(
+        100,
+        Math.max(0, Math.round((item.score / max) * 100)),
+      );
+      setKsaScores({
+        knowledge: pct,
+        skills: pct,
+        attitude: Math.min(100, pct + 5),
+        competency: pct,
+      });
+    } else {
+      setGradeScore(String(Math.round(max * 0.75)));
+      setKsaScores({
+        knowledge: 80,
+        skills: 75,
+        attitude: 85,
+        competency: 70,
+      });
+    }
     setGradeFeedback(item.feedback || "");
   }
-  async function saveGrade(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+
+  function handleKsaChange(key: keyof typeof ksaScores, val: number) {
+    const clamped = Math.min(100, Math.max(0, val));
+    setKsaScores((prev) => {
+      const updated = { ...prev, [key]: clamped };
+      if (reportAssignment && reportAssignment.maxScore > 0) {
+        const overallPct =
+          updated.knowledge * 0.2 +
+          updated.skills * 0.3 +
+          updated.attitude * 0.1 +
+          updated.competency * 0.4;
+        const calculatedScore = Math.round(
+          (overallPct / 100) * reportAssignment.maxScore,
+        );
+        setGradeScore(String(calculatedScore));
+      }
+      return updated;
+    });
+  }
+
+  function handleScoreInputChange(val: string) {
+    setGradeScore(val);
+    const num = Number(val);
+    if (!isNaN(num) && reportAssignment && reportAssignment.maxScore > 0) {
+      const pct = Math.min(
+        100,
+        Math.max(0, Math.round((num / reportAssignment.maxScore) * 100)),
+      );
+      setKsaScores({
+        knowledge: pct,
+        skills: pct,
+        attitude: pct,
+        competency: pct,
+      });
+    }
+  }
+
+  function addFeedbackChip(chip: string) {
+    setGradeFeedback((prev) => {
+      if (!prev.trim()) return chip;
+      if (prev.includes(chip)) return prev;
+      return `${prev}\n${chip}`;
+    });
+  }
+
+  async function saveGrade(
+    event?: FormEvent<HTMLFormElement> | React.MouseEvent,
+    andNext: boolean = false,
+  ) {
+    if (event) event.preventDefault();
     if (!grading || !reportAssignment) return;
     setBusy("grade");
     try {
@@ -540,33 +669,50 @@ function TeacherAssignmentsContent() {
           studentId: grading.studentId,
           score: gradeScore,
           feedback: gradeFeedback,
+          knowledge: ksaScores.knowledge,
+          skills: ksaScores.skills,
+          attitude: ksaScores.attitude,
+          competency: ksaScores.competency,
         }),
       });
       if (!response.ok) throw new Error(await responseError(response));
+
+      const updatedScore = Number(gradeScore);
+      const gradedStudentName = grading.studentName;
+
       setSubmissions((current) =>
         current.map((item) =>
           item.studentId === grading.studentId
             ? {
                 ...item,
-                score: Number(gradeScore),
+                score: updatedScore,
                 feedback: gradeFeedback,
                 gradedAt: new Date().toISOString(),
               }
             : item,
         ),
       );
-      setGrading(null);
       setAssignments((current) =>
         current.map((item) =>
           item.id === reportAssignment.id
             ? {
                 ...item,
-                gradedCount: item.gradedCount + (grading.score == null ? 1 : 0),
+                gradedCount:
+                  item.gradedCount + (grading.score == null ? 1 : 0),
               }
             : item,
         ),
       );
-      toast.success("บันทึกคะแนนแล้ว", { description: grading.studentName });
+      toast.success("บันทึกคะแนนแล้ว", { description: gradedStudentName });
+
+      if (andNext && nextStudent) {
+        openGrade(nextStudent);
+      } else if (andNext && !nextStudent) {
+        setGrading(null);
+        toast.info("ตรวจครบทุกคนที่ส่งงานแล้ว 🎉");
+      } else {
+        setGrading(null);
+      }
     } catch (gradeError) {
       toast.error(
         gradeError instanceof Error
@@ -1230,7 +1376,7 @@ function TeacherAssignmentsContent() {
       {grading && reportAssignment && (
         <div className={`${styles.modalOverlay} ${styles.gradeOverlay}`}>
           <section
-            className={`${styles.modal} ${styles.compactModal}`}
+            className={`${styles.modal} ${styles.gradeModal}`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="grade-title"
@@ -1241,7 +1387,10 @@ function TeacherAssignmentsContent() {
               </span>
               <div>
                 <h2 id="grade-title">ประเมิน {grading.studentName}</h2>
-                <p>คะแนนเต็ม {reportAssignment.maxScore} คะแนน</p>
+                <p>
+                  คะแนนเต็ม {reportAssignment.maxScore} คะแนน • {grading.email}
+                  {studentPositionText ? ` (${studentPositionText})` : ""}
+                </p>
               </div>
               <button
                 type="button"
@@ -1251,32 +1400,305 @@ function TeacherAssignmentsContent() {
                 <AdminIcon name="close" size={18} />
               </button>
             </header>
-            <form onSubmit={saveGrade}>
+            <form onSubmit={(e) => saveGrade(e, false)}>
               <div className={styles.formGrid}>
+                {/* 1. In-App 3D & Media Previewer */}
+                {(() => {
+                  const fileType = getSubmissionFileType(
+                    grading.attachmentUrl,
+                    grading.attachmentName,
+                  );
+                  if (fileType === "model") {
+                    return (
+                      <div className={`${styles.fullField} ${styles.mediaPreviewBox}`}>
+                        <div
+                          style={{
+                            width: "100%",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: 8,
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: "11px",
+                              fontWeight: 800,
+                              color: "#1e4d35",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                            }}
+                          >
+                            <AdminIcon name="cube" size={16} /> ผลงานโมเดล 3D (หมุน / ซูม 360°)
+                          </span>
+                          {grading.attachmentUrl && (
+                            <a
+                              href={grading.attachmentUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              download
+                              style={{
+                                fontSize: "10px",
+                                color: "#1f573c",
+                                textDecoration: "underline",
+                                fontWeight: 600,
+                              }}
+                            >
+                              ดาวน์โหลดไฟล์ ({grading.attachmentName || "model.glb"}) ⬇
+                            </a>
+                          )}
+                        </div>
+                        <model-viewer
+                          src={grading.attachmentUrl || undefined}
+                          alt={grading.attachmentName || "โมเดล 3D ผลงานนักเรียน"}
+                          camera-controls=""
+                          auto-rotate=""
+                          shadow-intensity="1.2"
+                          exposure="1.0"
+                          class={styles.modelViewerElement}
+                        />
+                      </div>
+                    );
+                  }
+                  if (fileType === "image") {
+                    return (
+                      <div className={`${styles.fullField} ${styles.mediaPreviewBox}`}>
+                        <div
+                          style={{
+                            width: "100%",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: 8,
+                          }}
+                        >
+                          <span
+                            style={{
+                              fontSize: "11px",
+                              fontWeight: 800,
+                              color: "#1e4d35",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 6,
+                            }}
+                          >
+                            <AdminIcon name="content" size={16} /> ภาพผลงานที่นักเรียนแนบมา
+                          </span>
+                          {grading.attachmentUrl && (
+                            <a
+                              href={grading.attachmentUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                fontSize: "10px",
+                                color: "#1f573c",
+                                textDecoration: "underline",
+                                fontWeight: 600,
+                              }}
+                            >
+                              เปิดดูภาพเต็มจอ ↗
+                            </a>
+                          )}
+                        </div>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={grading.attachmentUrl || ""}
+                          alt={grading.attachmentName || "ภาพผลงาน"}
+                          className={styles.imagePreviewElement}
+                        />
+                      </div>
+                    );
+                  }
+                  if (fileType === "file") {
+                    return (
+                      <div className={styles.fullField}>
+                        <div className={styles.fileDownloadBox}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <AdminIcon name="content" size={20} />
+                            <div>
+                              <strong>{grading.attachmentName || "ไฟล์ผลงานของนักเรียน"}</strong>
+                              <p style={{ margin: "2px 0 0", fontSize: "9px", color: "#6a7b72" }}>
+                                แนบเมื่อ {formatDate(grading.submittedAt || "", true)}
+                              </p>
+                            </div>
+                          </div>
+                          <a
+                            href={grading.attachmentUrl || "#"}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download
+                          >
+                            ดาวน์โหลดไฟล์ ⬇
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <div
+                      className={styles.fullField}
+                      style={{
+                        padding: "8px 12px",
+                        borderRadius: "8px",
+                        background: "#f4f7f5",
+                        color: "#6b7a72",
+                        fontSize: "10px",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
+                    >
+                      <AdminIcon name="activity" size={14} />
+                      <span>นักเรียนส่งงานแบบข้อความ / ไม่มีไฟล์แนบ 3D</span>
+                    </div>
+                  );
+                })()}
+
+                {/* 2. Unified KSA-C Assessment */}
+                <div className={`${styles.fullField} ${styles.ksaSection}`}>
+                  <div className={styles.ksaHeader}>
+                    <h4>
+                      <AdminIcon name="analytics" size={15} /> เกณฑ์ประเมินสมรรถนะ KSA-C (คำนวณคะแนนรวมอัตโนมัติ)
+                    </h4>
+                    <span>
+                      สมรรถนะรวม:{" "}
+                      {Math.round(
+                        ksaScores.knowledge * 0.2 +
+                          ksaScores.skills * 0.3 +
+                          ksaScores.attitude * 0.1 +
+                          ksaScores.competency * 0.4,
+                      )}
+                      %
+                    </span>
+                  </div>
+                  <div className={styles.ksaGrid}>
+                    <div className={styles.ksaItem}>
+                      <div className={styles.ksaItemTop}>
+                        <span>
+                          <b style={{ background: "#2563eb" }}>K</b> ความรู้ความเข้าใจ (Knowledge 20%)
+                        </span>
+                        <strong>{ksaScores.knowledge}/100</strong>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={ksaScores.knowledge}
+                        onChange={(e) =>
+                          handleKsaChange("knowledge", Number(e.target.value))
+                        }
+                        className={styles.ksaSlider}
+                      />
+                    </div>
+                    <div className={styles.ksaItem}>
+                      <div className={styles.ksaItemTop}>
+                        <span>
+                          <b style={{ background: "#059669" }}>S</b> ทักษะปฏิบัติ 3D (Skills 30%)
+                        </span>
+                        <strong>{ksaScores.skills}/100</strong>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={ksaScores.skills}
+                        onChange={(e) =>
+                          handleKsaChange("skills", Number(e.target.value))
+                        }
+                        className={styles.ksaSlider}
+                      />
+                    </div>
+                    <div className={styles.ksaItem}>
+                      <div className={styles.ksaItemTop}>
+                        <span>
+                          <b style={{ background: "#d97706" }}>A</b> วินัยและความรับผิดชอบ (Attitude 10%)
+                        </span>
+                        <strong>{ksaScores.attitude}/100</strong>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={ksaScores.attitude}
+                        onChange={(e) =>
+                          handleKsaChange("attitude", Number(e.target.value))
+                        }
+                        className={styles.ksaSlider}
+                      />
+                    </div>
+                    <div className={styles.ksaItem}>
+                      <div className={styles.ksaItemTop}>
+                        <span>
+                          <b style={{ background: "#7c3aed" }}>C</b> สมรรถนะสำคัญ (Competency 40%)
+                        </span>
+                        <strong>{ksaScores.competency}/100</strong>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={ksaScores.competency}
+                        onChange={(e) =>
+                          handleKsaChange("competency", Number(e.target.value))
+                        }
+                        className={styles.ksaSlider}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Score Input */}
                 <label className={styles.fullField}>
-                  <span>คะแนน *</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span>คะแนนที่ได้รับ (เต็ม {reportAssignment.maxScore} คะแนน) *</span>
+                    <span style={{ fontSize: "10px", color: "#52665a", fontWeight: 700 }}>
+                      {reportAssignment.maxScore > 0
+                        ? `${Math.round((Number(gradeScore || 0) / reportAssignment.maxScore) * 100)}% ของคะแนนเต็ม`
+                        : ""}
+                    </span>
+                  </div>
                   <input
-                    autoFocus
                     required
                     type="number"
                     min="0"
                     max={reportAssignment.maxScore}
                     value={gradeScore}
-                    onChange={(event) => setGradeScore(event.target.value)}
+                    onChange={(event) => handleScoreInputChange(event.target.value)}
                   />
                 </label>
+
+                {/* 4. Feedback & Quick Feedback Chips */}
                 <label className={styles.fullField}>
-                  <span>ข้อเสนอแนะ</span>
+                  <span>ข้อเสนอแนะและคำติชม</span>
+                  <div className={styles.chipsContainer}>
+                    {FEEDBACK_CHIPS.map((chip, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        className={styles.chipBtn}
+                        onClick={() => addFeedbackChip(chip)}
+                      >
+                        + {chip}
+                      </button>
+                    ))}
+                  </div>
                   <textarea
-                    rows={4}
+                    rows={3}
                     maxLength={2000}
                     value={gradeFeedback}
                     onChange={(event) => setGradeFeedback(event.target.value)}
-                    placeholder="ระบุจุดเด่นและสิ่งที่ควรปรับปรุง"
+                    placeholder="ระบุจุดเด่น ข้อเสนอแนะ หรือคลิกชิปข้อเสนอแนะด่วนด้านบน"
+                    style={{ marginTop: 6 }}
                   />
                 </label>
               </div>
+
+              {/* 5. Continuous Grading Footer */}
               <footer className={styles.modalFooter}>
+                <div className={styles.continuousNav}>
+                  {studentPositionText && <span>{studentPositionText}</span>}
+                </div>
                 <button type="button" onClick={() => setGrading(null)}>
                   ยกเลิก
                 </button>
@@ -1291,6 +1713,17 @@ function TeacherAssignmentsContent() {
                   />
                   บันทึกคะแนน
                 </button>
+                {nextStudent && (
+                  <button
+                    type="button"
+                    className={styles.nextBtn}
+                    disabled={busy === "grade"}
+                    onClick={(e) => saveGrade(e, true)}
+                    title={`บันทึกและตรวจต่อ: ${nextStudent.studentName}`}
+                  >
+                    บันทึก & ตรวจคนถัดไป ➔
+                  </button>
+                )}
               </footer>
             </form>
           </section>
