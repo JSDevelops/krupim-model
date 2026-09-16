@@ -78,3 +78,77 @@
   font-weight: 600;
   margin-top: 8px;
 }
+
+.quizRecordedNotice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  background: #eaf4ee;
+  border: 1px solid #bce2ca;
+  color: #164f33;
+  text-align: left;
+  margin: 12px 0;
+}
+
+.quizRecordedNotice strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #124029;
+}
+
+.quizRecordedNotice span {
+  font-size: 11px;
+  color: #4b6355;
+}
+
+.assignmentSubmitCard {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border-radius: 16px;
+  background: #fdfaf3;
+  border: 1px solid #ebd9a9;
+  text-align: left;
+  margin: 12px 0;
+}
+
+.assignmentSubmitHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.assignmentSubmitBadge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8c5b08;
+  background: #faeecf;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.assignmentSubmitTitle {
+  font-size: 13px;
+  font-weight: 700;
+  color: #2b3a32;
+  margin: 0;
+}
+
+.actionButtonGroup {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+@media (min-width: 480px) {
+  .actionButtonGroup {
+    grid-template-columns: 1fr 1fr;
+  }
+}

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { toast } from 'sonner'
 import { authenticatedFetch } from '@/lib/api'
 import StudentIcon, { type StudentIconName } from '../StudentIcon'
 import styles from '../studentPages.module.css'
@@ -9,6 +10,14 @@ type HistoryType = 'chat' | 'live' | 'simulation'
 type HistoryEntry = { id: string; occurredAt: string; type: HistoryType; preview: string; score: number | null; durationMinutes: number }
 type Scores = { averageScore: number; knowledgeScore: number; skillsScore: number; attitudeScore: number; competencyScore: number; assessments: number }
 type QuizQuestion = { question: string; options: string[]; correct: number }
+
+type ExhibitTask = {
+  id: string
+  title: string
+  activityType?: string
+  weekName?: string
+  lessonTitle?: string
+}
 
 const emptyScores: Scores = { averageScore: 0, knowledgeScore: 0, skillsScore: 0, attitudeScore: 0, competencyScore: 0, assessments: 0 }
 const quizBank: QuizQuestion[] = [
@@ -39,17 +48,33 @@ export default function ExhibitPage() {
   const [selected, setSelected] = useState<number | null>(null)
   const [answers, setAnswers] = useState<boolean[]>([])
   const [quizDone, setQuizDone] = useState(false)
+  const [recordedAt, setRecordedAt] = useState<string | null>(null)
+  const [pendingExhibitTask, setPendingExhibitTask] = useState<ExhibitTask | null>(null)
+  const [submittedTask, setSubmittedTask] = useState(false)
+  const [submittingAssignment, setSubmittingAssignment] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
     async function load() {
       try {
-        const response = await authenticatedFetch('/api/student/exhibit', { signal: controller.signal })
-        if (!response.ok) return
-        const payload = await response.json() as { history?: HistoryEntry[]; scores?: Scores }
-        setHistory(payload.history || [])
-        setScores(payload.scores || emptyScores)
+        const [response, dashRes] = await Promise.all([
+          authenticatedFetch('/api/student/exhibit', { signal: controller.signal }),
+          authenticatedFetch('/api/student/dashboard', { signal: controller.signal }),
+        ])
+        if (response.ok) {
+          const payload = await response.json() as { history?: HistoryEntry[]; scores?: Scores }
+          setHistory(payload.history || [])
+          setScores(payload.scores || emptyScores)
+        }
+        if (dashRes.ok) {
+          const dashPayload = await dashRes.json() as { tasks?: ExhibitTask[] }
+          const exhibitTask = (dashPayload.tasks || []).find(t => {
+            const act = (t.activityType || '').toLowerCase()
+            return act.includes('exhibit') || act.startsWith('e')
+          })
+          if (exhibitTask) setPendingExhibitTask(exhibitTask)
+        }
       } catch (error) {
         if (!controller.signal.aborted) console.warn('Unable to load exhibit data:', error)
       }
@@ -77,7 +102,22 @@ export default function ExhibitPage() {
       else {
         setQuizDone(true)
         const score = Math.round((next.filter(Boolean).length / quizBank.length) * 100)
-        void authenticatedFetch('/api/student/exhibit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ score }) }).catch(error => console.warn('Unable to save quiz score:', error))
+        const nowStr = new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date())
+        setRecordedAt(nowStr)
+
+        void authenticatedFetch('/api/student/exhibit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ score })
+        }).then(() => {
+          setScores(prev => ({
+            ...prev,
+            assessments: prev.assessments + 1,
+            knowledgeScore: Math.round((prev.knowledgeScore + score) / 2) || score,
+            averageScore: Math.round(((prev.averageScore * prev.assessments) + score) / (prev.assessments + 1)) || score,
+          }))
+          toast.success('บันทึกผลการทดสอบเข้าระบบแล้ว', { description: `คะแนนของคุณ: ${score}%` })
+        }).catch(error => console.warn('Unable to save quiz score:', error))
       }
     }, 650)
   }
@@ -85,6 +125,36 @@ export default function ExhibitPage() {
   function resetQuiz() {
     if (timerRef.current) clearTimeout(timerRef.current)
     setQuestionIndex(0); setSelected(null); setAnswers([]); setQuizDone(false); setQuizStarted(false)
+    setSubmittedTask(false)
+  }
+
+  async function submitScoreAsAssignment() {
+    if (!pendingExhibitTask) return
+    setSubmittingAssignment(true)
+    try {
+      const correctCount = answers.filter(Boolean).length
+      const response = await authenticatedFetch('/api/student/assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assignmentId: pendingExhibitTask.id,
+          attachmentName: `ผลการทดสอบ Exhibit Quiz (${quizScore}%) - ถูก ${correctCount}/${quizBank.length} ข้อ`,
+          attachmentUrl: typeof window !== 'undefined' ? window.location.href : '',
+        }),
+      })
+      const payload = await response.json() as { error?: string }
+      if (!response.ok) throw new Error(payload.error || 'ส่งงานไม่สำเร็จ')
+
+      toast.success('ส่งผลคะแนนเป็นการบ้านเรียบร้อยแล้ว!', { description: pendingExhibitTask.title })
+      setSubmittedTask(true)
+
+      // Notify StudentFINENav to refresh pending task badges immediately!
+      window.dispatchEvent(new Event('storage'))
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'ส่งงานไม่สำเร็จ')
+    } finally {
+      setSubmittingAssignment(false)
+    }
   }
 
   const tabs = [
@@ -113,7 +183,68 @@ export default function ExhibitPage() {
 
       {activeTab === 'quiz' && <>{!quizStarted && !quizDone && <div className={`${styles.card} ${styles.quizIntro}`}><span className={styles.largeIcon}><StudentIcon name="exhibit" size={27} /></span><h2>แบบทดสอบ F&amp;B Service</h2><p>ทดสอบคำศัพท์และการเลือกประโยคในสถานการณ์งานบริการ</p><div className={styles.factGrid}><div className={styles.fact}><span>จำนวนคำถาม</span><strong>{quizBank.length} ข้อ</strong></div><div className={styles.fact}><span>คะแนนผ่าน</span><strong>70%</strong></div><div className={styles.fact}><span>ทักษะที่วัด</span><strong>Knowledge + Skills</strong></div><div className={styles.fact}><span>เวลาโดยประมาณ</span><strong>5 นาที</strong></div></div><button type="button" className={`${styles.button} ${styles.full}`} onClick={() => setQuizStarted(true)}>เริ่มทำแบบทดสอบ <StudentIcon name="arrowRight" size={16} /></button></div>}
         {quizStarted && !quizDone && <div className={styles.card}><div className={styles.progressRow}><div className={styles.progressTrack}><div className={styles.progressBar} style={{ width: `${((questionIndex + 1) / quizBank.length) * 100}%` }} /></div><span>{questionIndex + 1}/{quizBank.length}</span></div><span className={styles.questionLabel}>คำถามที่ {questionIndex + 1}</span><h2 className={styles.question}>{quizBank[questionIndex].question}</h2><div className={styles.options}>{quizBank[questionIndex].options.map((option, index) => { const correct = selected !== null && index === quizBank[questionIndex].correct; const wrong = selected === index && !correct; return <button type="button" disabled={selected !== null} className={`${styles.option} ${correct ? styles.optionCorrect : ''} ${wrong ? styles.optionWrong : ''}`} key={option} onClick={() => chooseAnswer(index)}><span className={styles.optionLetter}>{String.fromCharCode(65 + index)}</span><span>{option}</span>{(correct || wrong) && <StudentIcon name={correct ? 'check' : 'x'} size={16} />}</button>})}</div></div>}
-        {quizDone && <div className={`${styles.card} ${styles.quizResult}`}><span className={styles.largeIcon}><StudentIcon name={quizScore >= 70 ? 'award' : 'refresh'} size={28} /></span><span className={styles.questionLabel}>คะแนนของคุณ</span><div className={styles.scoreValue}>{quizScore}%</div><strong>{answers.filter(Boolean)}/{quizBank.length} ข้อถูกต้อง</strong><p className={styles.resultNote}>{quizScore >= 70 ? 'ผ่านเกณฑ์แล้ว คุณสามารถทบทวนบทเรียนและกลับมาทำใหม่เพื่อรักษาความแม่นยำ' : 'ยังไม่ถึงเกณฑ์ แนะนำให้ทบทวนคำศัพท์และประโยคใน Navigate ก่อนลองอีกครั้ง'}</p><button type="button" className={`${styles.button} ${styles.full}`} onClick={resetQuiz}><StudentIcon name="refresh" size={16} />ทำแบบทดสอบใหม่</button></div>}
+        {quizDone && <div className={`${styles.card} ${styles.quizResult}`}>
+          <span className={styles.largeIcon}><StudentIcon name={quizScore >= 70 ? 'award' : 'refresh'} size={28} /></span>
+          <span className={styles.questionLabel}>คะแนนของคุณ</span>
+          <div className={styles.scoreValue}>{quizScore}%</div>
+          <strong>{answers.filter(Boolean).length} / {quizBank.length} ข้อถูกต้อง</strong>
+
+          <div className={styles.quizRecordedNotice}>
+            <strong>
+              <StudentIcon name="check" size={16} />
+              บันทึกคะแนนเข้าสู่ระบบและการประเมินของครูแล้ว
+            </strong>
+            <span>
+              {recordedAt ? `บันทึกเมื่อ: ${recordedAt}` : 'บันทึกเรียบร้อย'} · ข้อมูลจะสะท้อนในคะแนนสมรรถนะ KSA-C และรายงานของคุณครูทันที
+            </span>
+          </div>
+
+          <p className={styles.resultNote}>
+            {quizScore >= 70 ? 'ผ่านเกณฑ์แล้ว คุณสามารถทบทวนบทเรียนและกลับมาทำใหม่เพื่อรักษาความแม่นยำ' : 'ยังไม่ถึงเกณฑ์ แนะนำให้ทบทวนคำศัพท์และประโยคใน Navigate ก่อนลองอีกครั้ง'}
+          </p>
+
+          {pendingExhibitTask && (
+            <div className={styles.assignmentSubmitCard}>
+              <div className={styles.assignmentSubmitHeader}>
+                <span className={styles.assignmentSubmitBadge}>📋 ส่งเป็นภารกิจการบ้านขั้น Exhibit</span>
+                {pendingExhibitTask.weekName && (
+                  <span style={{ fontSize: 11, color: '#725916', fontWeight: 600 }}>
+                    {pendingExhibitTask.weekName}
+                  </span>
+                )}
+              </div>
+              <h4 className={styles.assignmentSubmitTitle}>{pendingExhibitTask.title}</h4>
+              {submittedTask ? (
+                <div className={styles.completedNoticeBox} style={{ margin: 0 }}>
+                  <StudentIcon name="check" size={15} />
+                  ส่งผลคะแนนเป็นการบ้านชิ้นนี้เรียบร้อยแล้ว (ตัวเลขการบ้านค้างลดลงแล้ว)
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className={styles.button}
+                  style={{ width: '100%' }}
+                  disabled={submittingAssignment}
+                  onClick={submitScoreAsAssignment}
+                >
+                  <StudentIcon name="check" size={16} />
+                  {submittingAssignment ? 'กำลังส่งงาน...' : `ส่งผลคะแนน ${quizScore}% นี้เป็นการบ้านทันที`}
+                </button>
+              )}
+            </div>
+          )}
+
+          <div className={styles.actionButtonGroup}>
+            <button type="button" className={styles.outlineButton} onClick={resetQuiz}>
+              <StudentIcon name="refresh" size={16} />
+              ทำแบบทดสอบใหม่
+            </button>
+            <button type="button" className={styles.button} onClick={() => setActiveTab('score')}>
+              <StudentIcon name="chart" size={16} />
+              ดูผลในสมรรถนะ KSA-C
+            </button>
+          </div>
+        </div>}
       </>}
 
       {activeTab === 'score' && <div className={styles.scoreGrid}><div className={styles.card}><div className={styles.cardTitle}><span className={styles.iconBox}><StudentIcon name="chart" /></span><div><h2>คะแนนเฉลี่ยสะสม</h2><p>จากกิจกรรมที่มีการประเมินผล</p></div></div><div className={styles.scoreRing} style={{ '--score': `${historyAverage}%` } as React.CSSProperties}><div><strong>{historyAverage}%</strong><span>คะแนนเฉลี่ย</span></div></div><div className={styles.level}>{historyAverage >= 80 ? 'ระดับยอดเยี่ยม' : historyAverage >= 70 ? 'ระดับดี' : 'กำลังพัฒนา'}</div></div>
