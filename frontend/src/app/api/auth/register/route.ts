@@ -4,6 +4,7 @@ import { withTransaction } from '@/lib/db'
 import { createSessionToken, setSessionCookie, type SessionRole } from '@/lib/session'
 import { apiErrorResponse, enforceRateLimit, ApiError } from '../../_lib/auth'
 import { passwordPolicyError } from '@/lib/passwordPolicy'
+import { verifyRecaptcha } from '@/lib/recaptcha'
 
 type InviteRow = {
   short_code: string
@@ -25,9 +26,16 @@ export async function POST(request: NextRequest) {
     const name = typeof body.name === 'string' ? body.name.trim() : ''
     const submittedSchool = typeof body.school === 'string' ? body.school.trim() : ''
     const requestedRole: SessionRole = body.requestedRole === 'teacher' ? 'teacher' : 'student'
+    const recaptchaToken = typeof body.recaptchaToken === 'string' ? body.recaptchaToken : undefined
     const inviteCode = requestedRole === 'student' && typeof body.inviteCode === 'string'
       ? body.inviteCode.trim().toUpperCase()
       : ''
+
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown'
+    const recaptchaCheck = await verifyRecaptcha(recaptchaToken, clientIp)
+    if (!recaptchaCheck.success) {
+      throw new ApiError(recaptchaCheck.error || 'การยืนยันตัวตน reCAPTCHA ไม่ผ่าน', 403, 'RECAPTCHA_FAILED')
+    }
 
     if (!name || !submittedSchool || !/^\S+@\S+\.\S+$/.test(email)) {
       throw new ApiError('กรุณากรอกชื่อ สถานศึกษา และอีเมลให้ถูกต้อง', 400, 'INVALID_INPUT')

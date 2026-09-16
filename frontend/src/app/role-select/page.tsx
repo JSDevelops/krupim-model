@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import logo from '../../../public/logo.png'
+import { ReCaptcha } from '@/components/auth/ReCaptcha'
 import { signInLocal, type UserRole } from '@/lib/localData'
 import { useRole } from '@/context/RoleContext'
 import styles from '../page.module.css'
@@ -114,6 +115,7 @@ export default function RoleSelectPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [recaptchaToken, setRecaptchaToken] = useState('')
 
   useEffect(() => {
     if (!roleLoading && user && role) {
@@ -123,6 +125,7 @@ export default function RoleSelectPage() {
 
   function chooseRole(role: RoleChoice) {
     setSelectedRole(role)
+    setRecaptchaToken('')
     setError('')
   }
 
@@ -130,6 +133,7 @@ export default function RoleSelectPage() {
     setSelectedRole(null)
     setPassword('')
     setShowPassword(false)
+    setRecaptchaToken('')
     setError('')
   }
 
@@ -140,7 +144,12 @@ export default function RoleSelectPage() {
     setLoading(true)
     setError('')
     try {
-      const { user: loggedInUser, profile } = await signInLocal(email.trim().toLowerCase(), password, selectedRole.id)
+      const { user: loggedInUser, profile } = await signInLocal(
+        email.trim().toLowerCase(),
+        password,
+        selectedRole.id,
+        recaptchaToken,
+      )
       setUser({
         id: profile.id,
         name: profile.name,
@@ -301,6 +310,12 @@ export default function RoleSelectPage() {
                 </div>
                 <p id="password-help" className={styles.helpText}>ลืมรหัสผ่าน? <Link href="/forgot-password">กู้คืนบัญชี</Link> หรือติดต่อผู้ดูแลระบบ</p>
               </div>
+
+              <ReCaptcha
+                onVerify={token => setRecaptchaToken(token)}
+                onExpire={() => setRecaptchaToken('')}
+                onError={() => setRecaptchaToken('')}
+              />
 
               <button className={styles.submit} type="submit" disabled={loading}>
                 {loading ? <span className={styles.spinner} aria-hidden="true" /> : <Icon name="arrow" size={20} />}

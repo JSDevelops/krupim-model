@@ -109,7 +109,7 @@ class BrowserQueryBuilder<T = Record<string, unknown>> implements PromiseLike<Db
 
 export const localData = {
   auth: {
-    async signInWithPassword(input: { email: string; password: string; selectedRole: UserRole }) {
+    async signInWithPassword(input: { email: string; password: string; selectedRole: UserRole; recaptchaToken?: string }) {
       try {
         const response = await fetch('/api/auth/login', {
           method: 'POST',
@@ -128,7 +128,7 @@ export const localData = {
     async signUp(input: {
       email: string
       password: string
-      options?: { data?: { name?: string; requested_role?: string; school_name?: string; invite_code?: string } }
+      options?: { data?: { name?: string; requested_role?: string; school_name?: string; invite_code?: string; recaptcha_token?: string } }
     }) {
       try {
         const response = await fetch('/api/auth/register', {
@@ -141,6 +141,7 @@ export const localData = {
             requestedRole: input.options?.data?.requested_role,
             school: input.options?.data?.school_name,
             inviteCode: input.options?.data?.invite_code,
+            recaptchaToken: input.options?.data?.recaptcha_token,
           }),
         })
         const payload = await jsonResponse<{ user: LocalUser; profile: Profile; session: LocalSession | null }>(response)
@@ -184,8 +185,8 @@ export const localData = {
   },
 }
 
-export async function signInLocal(email: string, password: string, selectedRole: UserRole) {
-  const { data, error } = await localData.auth.signInWithPassword({ email, password, selectedRole })
+export async function signInLocal(email: string, password: string, selectedRole: UserRole, recaptchaToken?: string) {
+  const { data, error } = await localData.auth.signInWithPassword({ email, password, selectedRole, recaptchaToken })
   if (error || !data.user || !data.profile) throw new Error(error?.message || 'Invalid login credentials')
   return { user: data.user, profile: data.profile }
 }
@@ -197,6 +198,7 @@ export async function signUpLocal(input: {
   requestedRole: 'teacher' | 'student'
   school: string
   inviteCode?: string
+  recaptchaToken?: string
 }) {
   const { data, error } = await localData.auth.signUp({
     email: input.email.trim().toLowerCase(),
@@ -207,6 +209,7 @@ export async function signUpLocal(input: {
         requested_role: input.requestedRole,
         school_name: input.school.trim(),
         invite_code: input.inviteCode?.trim(),
+        recaptcha_token: input.recaptchaToken,
       },
     },
   })

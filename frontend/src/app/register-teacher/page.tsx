@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { signUpLocal } from '@/lib/localData'
 import StudentIcon from '@/app/student/StudentIcon'
+import { ReCaptcha } from '@/components/auth/ReCaptcha'
 
 function RegisterForm() {
   const router = useRouter()
@@ -18,6 +19,7 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [recaptchaToken, setRecaptchaToken] = useState('')
 
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault()
@@ -30,8 +32,14 @@ function RegisterForm() {
       return
     }
 
+    if (password !== confirmPassword) {
+      setError('รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน')
+      setLoading(false)
+      return
+    }
+
     try {
-      await signUpLocal({ email, password, name, requestedRole: 'teacher', school })
+      await signUpLocal({ email, password, name, requestedRole: 'teacher', school, recaptchaToken })
       setSuccess(true)
       setTimeout(() => {
         router.push('/role-select')
@@ -40,11 +48,6 @@ function RegisterForm() {
       setError(registrationError instanceof Error ? registrationError.message : 'ไม่สามารถลงทะเบียนได้')
     } finally {
       setLoading(false)
-    }
-    if (password !== confirmPassword) {
-      setError('รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน')
-      setLoading(false)
-      return
     }
   }
 
@@ -135,6 +138,13 @@ function RegisterForm() {
             <input className="form-input with-icon" type={showPassword ? 'text' : 'password'} placeholder="กรอกรหัสผ่านอีกครั้ง" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} minLength={10} required />
           </div>
         </div>
+
+        <ReCaptcha
+          theme="light"
+          onVerify={setRecaptchaToken}
+          onExpire={() => setRecaptchaToken('')}
+          onError={() => setRecaptchaToken('')}
+        />
 
         <button className="btn-luxury" type="submit" disabled={loading || success} style={{ marginTop: '8px' }}>
           {loading ? 'กำลังลงทะเบียน...' : 'ส่งคำขอสมัครครูผู้สอน'}

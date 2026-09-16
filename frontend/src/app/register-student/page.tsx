@@ -5,6 +5,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { signUpLocal } from '@/lib/localData'
 import StudentIcon from '@/app/student/StudentIcon'
+import { ReCaptcha } from '@/components/auth/ReCaptcha'
 
 function RegisterForm() {
   const router = useRouter()
@@ -19,6 +20,7 @@ function RegisterForm() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [recaptchaToken, setRecaptchaToken] = useState('')
 
   // Class Invite Params
   const codeParam = searchParams.get('code')
@@ -53,6 +55,12 @@ function RegisterForm() {
       return
     }
 
+    if (password !== confirmPassword) {
+      setError('รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน')
+      setLoading(false)
+      return
+    }
+
     try {
       const data = await signUpLocal({
         email: email.trim(),
@@ -61,6 +69,7 @@ function RegisterForm() {
         requestedRole: 'student',
         school: school.trim(),
         inviteCode: codeParam || undefined,
+        recaptchaToken,
       })
 
       setSuccess(true)
@@ -71,11 +80,6 @@ function RegisterForm() {
       setError(err instanceof Error ? err.message : 'ไม่สามารถลงทะเบียนได้')
     } finally {
       setLoading(false)
-    }
-    if (password !== confirmPassword) {
-      setError('รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน')
-      setLoading(false)
-      return
     }
   }
 
@@ -176,6 +180,13 @@ function RegisterForm() {
             <input className="form-input with-icon" type={showPassword ? 'text' : 'password'} placeholder="กรอกรหัสผ่านอีกครั้ง" value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} minLength={10} required />
           </div>
         </div>
+
+        <ReCaptcha
+          theme="light"
+          onVerify={setRecaptchaToken}
+          onExpire={() => setRecaptchaToken('')}
+          onError={() => setRecaptchaToken('')}
+        />
 
         <button className="btn-luxury" type="submit" disabled={loading || success} style={{ marginTop: '8px' }}>
           {loading ? 'กำลังลงทะเบียน...' : 'ลงทะเบียนเพื่อเข้าเรียน'}

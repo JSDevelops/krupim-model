@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { queryDb } from '@/lib/db'
 import { createSessionToken, setSessionCookie, type SessionRole } from '@/lib/session'
 import { apiErrorResponse, enforceRateLimit } from '../../_lib/auth'
+import { verifyRecaptcha } from '@/lib/recaptcha'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -39,11 +40,22 @@ export async function POST(request: NextRequest) {
     const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : ''
     const password = typeof body.password === 'string' ? body.password : ''
     const selectedRole = typeof body.selectedRole === 'string' ? body.selectedRole : ''
+    const recaptchaToken = typeof body.recaptchaToken === 'string' ? body.recaptchaToken : undefined
+
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
     if (!['developer', 'teacher', 'student'].includes(selectedRole)) {
       return NextResponse.json({ error: 'A valid login role is required' }, { status: 400 })
+    }
+
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown'
+    const recaptchaCheck = await verifyRecaptcha(recaptchaToken, clientIp)
+    if (!recaptchaCheck.success) {
+      return NextResponse.json(
+        { error: recaptchaCheck.error || 'การยืนยันตัวตน reCAPTCHA ไม่ผ่าน' },
+        { status: 403, headers: NO_CACHE_HEADERS },
+      )
     }
 
     const result = await queryDb<LoginRow>(`
