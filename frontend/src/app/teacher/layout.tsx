@@ -3,6 +3,7 @@ import { useRole } from '@/context/RoleContext'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
 import PdpaConsentModal from '@/components/PdpaConsentModal'
+import IdleSecurityGuard from '@/components/IdleSecurityGuard'
 
 export default function TeacherLayout({ children }: { children: React.ReactNode }) {
   const { user, role, loading } = useRole()
@@ -23,8 +24,10 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
   return (
     <>
       <PdpaConsentModal />
+      <IdleSecurityGuard />
       {children}
     </>
   )
 }
+
 
