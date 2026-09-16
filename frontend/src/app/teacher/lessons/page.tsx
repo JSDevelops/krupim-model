@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useCallback, useDeferredValue, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import AdminIcon, { type AdminIconName } from '@/components/admin/AdminIcon'
 import { confirmAction } from '@/components/AppConfirmDialog'
 import { authenticatedFetch } from '@/lib/api'
@@ -133,6 +134,7 @@ async function responseError(response: Response) {
 }
 
 export default function TeacherLessonsPage() {
+  const router = useRouter()
   const [lessons, setLessons] = useState<LessonSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -376,6 +378,15 @@ export default function TeacherLessonsPage() {
               <div className={styles.lessonStats}><span><strong>{lesson.objectiveCount || 0}</strong><small>จุดประสงค์</small></span><span><strong>{lesson.vocabularyCount || 0}</strong><small>คำศัพท์</small></span></div>
               <div className={styles.lessonUpdated}><small>แก้ไขล่าสุด</small><strong>{formatDate(lesson.updatedAt)}</strong></div>
               <div className={styles.lessonActions}>
+                <button
+                  type="button"
+                  className={styles.assignButton}
+                  onClick={() => router.push(`/teacher/assignments?fromPlan=${encodeURIComponent(lesson.id)}`)}
+                  title="⚡ มอบหมายงานจากแผนนี้"
+                  aria-label={`มอบหมายงานจากแผน ${lesson.title}`}
+                >
+                  <AdminIcon name="plus" size={16} />
+                </button>
                 <button type="button" onClick={() => void openEdit(lesson.id)} disabled={Boolean(busyAction)} aria-label={`แก้ไข ${lesson.title}`}><AdminIcon name={busyAction === `load:${lesson.id}` ? 'clock' : 'edit'} size={16} /></button>
                 <button type="button" onClick={() => void duplicateLesson(lesson.id)} disabled={Boolean(busyAction)} aria-label={`คัดลอก ${lesson.title}`}><AdminIcon name="archive" size={16} /></button>
                 <button type="button" className={styles.deleteButton} onClick={() => void deleteLesson(lesson)} disabled={Boolean(busyAction)} aria-label={`ลบ ${lesson.title}`}><AdminIcon name="trash" size={16} /></button>

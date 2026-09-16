@@ -333,6 +333,7 @@ CREATE TABLE IF NOT EXISTS assignments (
 );
 
 ALTER TABLE assignments ADD COLUMN IF NOT EXISTS activity_type TEXT NOT NULL DEFAULT 'Familiarize';
+ALTER TABLE assignments ADD COLUMN IF NOT EXISTS lesson_plan_id TEXT;
 ALTER TABLE assignments ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW();
 
 CREATE TABLE IF NOT EXISTS assignment_submissions (

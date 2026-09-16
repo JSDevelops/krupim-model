@@ -83,6 +83,8 @@
 .lessonActions { display: flex; gap: 5px; }
 .lessonActions button { width: 34px; height: 34px; display: grid; place-items: center; color: #527062; border: 1px solid #dce5df; border-radius: 9px; background: #fff; cursor: pointer; transition: border-color 140ms ease, background 140ms ease, transform 140ms ease; }
 .lessonActions button:hover:not(:disabled) { transform: translateY(-1px); border-color: #b9cec1; background: #f4faf6; }
+.lessonActions .assignButton { color: #1e7048; border-color: #b8deca; background: #eef8f2; }
+.lessonActions .assignButton:hover:not(:disabled) { border-color: #8cc4a4; background: #e0f2e7; color: #155536; }
 .lessonActions .deleteButton { color: #9a5048; border-color: #ead6d3; }
 .lessonActions .deleteButton:hover:not(:disabled) { border-color: #ddbdb9; background: #fff5f4; }
 .lessonActions button:disabled { cursor: wait; opacity: .5; }

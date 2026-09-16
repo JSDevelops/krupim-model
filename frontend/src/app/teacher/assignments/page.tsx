@@ -2,13 +2,15 @@
 
 import {
   FormEvent,
+  Suspense,
   useCallback,
   useDeferredValue,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AdminIcon, { type AdminIconName } from "@/components/admin/AdminIcon";
 import { confirmAction } from "@/components/AppConfirmDialog";
 import { authenticatedFetch } from "@/lib/api";
@@ -24,6 +26,18 @@ type Classroom = {
   isActive: boolean;
   studentCount: number;
 };
+type LessonPlanItem = {
+  id: string;
+  title: string;
+  subject?: string;
+  targetClass?: string;
+  classId?: string;
+  concept?: string;
+  activitiesF?: string;
+  activitiesI?: string;
+  activitiesN?: string;
+  activitiesE?: string;
+};
 type Assignment = {
   id: string;
   title: string;
@@ -31,6 +45,8 @@ type Assignment = {
   activityType: ActivityType;
   classId: string;
   className: string;
+  lessonPlanId?: string | null;
+  lessonPlanTitle?: string | null;
   dueDate: string;
   maxScore: number;
   studentCount: number;
@@ -60,6 +76,7 @@ type AssignmentForm = {
   classId: string;
   dueDate: string;
   maxScore: string;
+  lessonPlanId?: string;
 };
 const emptyForm: AssignmentForm = {
   title: "",
@@ -68,6 +85,7 @@ const emptyForm: AssignmentForm = {
   classId: "",
   dueDate: "",
   maxScore: "100",
+  lessonPlanId: "",
 };
 const activityMeta: Record<
   ActivityType,
@@ -149,12 +167,15 @@ function initials(name: string) {
   );
 }
 
-export default function TeacherAssignmentsPage() {
+function TeacherAssignmentsContent() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const classesPath = pathname.startsWith("/admin") ? "/admin/classes" : "/teacher/classes";
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [classrooms, setClassrooms] = useState<Classroom[]>([]);
+  const [lessonPlans, setLessonPlans] = useState<LessonPlanItem[]>([]);
+  const handledFromPlanRef = useRef(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -187,10 +208,24 @@ export default function TeacherAssignmentsPage() {
     setClassrooms(payload.classrooms || []);
   }, []);
 
+  const loadLessons = useCallback(async () => {
+    try {
+      const response = await authenticatedFetch("/api/teacher/lessons", {
+        cache: "no-store",
+      });
+      if (response.ok) {
+        const payload = (await response.json()) as { lessons?: LessonPlanItem[] };
+        setLessonPlans(payload.lessons || []);
+      }
+    } catch {
+      // silent fallback
+    }
+  }, []);
+
   useEffect(() => {
     const timer = window.setTimeout(
       () =>
-        void loadAssignments()
+        void Promise.all([loadAssignments(), loadLessons()])
           .then(() => setError(""))
           .catch((loadError) =>
             setError(
@@ -203,7 +238,7 @@ export default function TeacherAssignmentsPage() {
       0,
     );
     return () => window.clearTimeout(timer);
-  }, [loadAssignments]);
+  }, [loadAssignments, loadLessons]);
 
   const visibleAssignments = useMemo(() => {
     const keyword = deferredSearch.trim().toLocaleLowerCase("th-TH");
@@ -270,7 +305,7 @@ export default function TeacherAssignmentsPage() {
   async function refresh() {
     setBusy("refresh");
     try {
-      await loadAssignments();
+      await Promise.all([loadAssignments(), loadLessons()]);
       setError("");
       toast.success("อัปเดตงานมอบหมายแล้ว");
     } catch (refreshError) {
@@ -283,11 +318,96 @@ export default function TeacherAssignmentsPage() {
       setBusy(null);
     }
   }
-  function openCreate() {
+
+  function applyPlanActivity(plan: LessonPlanItem, step: ActivityType) {
+    let activityDetail = "";
+    if (step === "Familiarize") activityDetail = plan.activitiesF || "";
+    else if (step === "Interact") activityDetail = plan.activitiesI || "";
+    else if (step === "Navigate") activityDetail = plan.activitiesN || "";
+    else if (step === "Exhibit") activityDetail = plan.activitiesE || "";
+
+    let targetClassId = form.classId;
+    if (plan.classId && classrooms.some((c) => c.id === plan.classId)) {
+      targetClassId = plan.classId;
+    } else if (plan.targetClass) {
+      const found = classrooms.find(
+        (c) =>
+          c.name.includes(plan.targetClass!) ||
+          plan.targetClass!.includes(c.name),
+      );
+      if (found) targetClassId = found.id;
+    }
+
+    const stepLabels: Record<ActivityType, string> = {
+      Familiarize: "กิจกรรม F: สำรวจคำศัพท์และโมเดล 3D (Familiarize)",
+      Interact: "กิจกรรม I: ฝึกสื่อสารและโต้ตอบ (Interact)",
+      Navigate: "กิจกรรม N: แก้ปัญหาผ่านสถานการณ์ AR (Navigate)",
+      Exhibit: "กิจกรรม E: สรุปผลงานและประเมินผล (Exhibit)",
+    };
+
+    setForm((prev) => ({
+      ...prev,
+      lessonPlanId: plan.id,
+      classId: targetClassId || prev.classId,
+      activityType: step,
+      title: `${plan.title} - ${stepLabels[step]}`,
+      description: activityDetail || plan.concept || prev.description,
+      maxScore: step === "Exhibit" ? "20" : prev.maxScore || "10",
+    }));
+    toast.info(`ดึงกิจกรรม [${step[0]}] จากแผนการสอนเรียบร้อย`);
+  }
+
+  function openCreate(initialPlanId?: unknown, initialStep?: ActivityType) {
     setEditingId(null);
-    setForm({ ...emptyForm, classId: classrooms[0]?.id || "" });
+    const planId = typeof initialPlanId === "string" ? initialPlanId : "";
+    const plan = lessonPlans.find((p) => p.id === planId);
+    let classId = classrooms[0]?.id || "";
+    if (plan?.classId && classrooms.some((c) => c.id === plan.classId)) {
+      classId = plan.classId;
+    } else if (plan?.targetClass) {
+      const found = classrooms.find(
+        (c) =>
+          c.name.includes(plan.targetClass!) ||
+          plan.targetClass!.includes(c.name),
+      );
+      if (found) classId = found.id;
+    }
+
+    let defaultDate = "";
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    nextWeek.setHours(23, 59, 0, 0);
+    defaultDate = localDateTime(nextWeek.toISOString());
+
+    const step = initialStep || "Familiarize";
+    const stepLabels: Record<ActivityType, string> = {
+      Familiarize: "กิจกรรม F: สำรวจคำศัพท์และโมเดล 3D (Familiarize)",
+      Interact: "กิจกรรม I: ฝึกสื่อสารและโต้ตอบ (Interact)",
+      Navigate: "กิจกรรม N: แก้ปัญหาผ่านสถานการณ์ AR (Navigate)",
+      Exhibit: "กิจกรรม E: สรุปผลงานและประเมินผล (Exhibit)",
+    };
+
+    let activityDetail = "";
+    if (plan) {
+      if (step === "Familiarize") activityDetail = plan.activitiesF || "";
+      else if (step === "Interact") activityDetail = plan.activitiesI || "";
+      else if (step === "Navigate") activityDetail = plan.activitiesN || "";
+      else if (step === "Exhibit") activityDetail = plan.activitiesE || "";
+    }
+
+    setForm({
+      ...emptyForm,
+      classId,
+      lessonPlanId: planId,
+      activityType: step,
+      title: plan ? `${plan.title} - ${stepLabels[step]}` : "",
+      description: plan ? activityDetail || plan.concept || "" : "",
+      dueDate: defaultDate,
+      maxScore: plan ? (step === "Exhibit" ? "20" : "10") : "100",
+    });
     setEditorOpen(true);
   }
+
   function openEdit(item: Assignment) {
     setEditingId(item.id);
     setForm({
@@ -297,9 +417,27 @@ export default function TeacherAssignmentsPage() {
       classId: item.classId,
       dueDate: localDateTime(item.dueDate),
       maxScore: String(item.maxScore),
+      lessonPlanId: item.lessonPlanId || "",
     });
     setEditorOpen(true);
   }
+
+  useEffect(() => {
+    const fromPlan = searchParams.get("fromPlan");
+    if (
+      fromPlan &&
+      !handledFromPlanRef.current &&
+      lessonPlans.length > 0 &&
+      classrooms.length > 0
+    ) {
+      handledFromPlanRef.current = true;
+      const matched = lessonPlans.find((p) => p.id === fromPlan);
+      if (matched) {
+        openCreate(matched.id, "Familiarize");
+        toast.success(`พร้อมมอบหมายงานจากแผน: ${matched.title}`);
+      }
+    }
+  }, [searchParams, lessonPlans, classrooms]);
   function updateField<Key extends keyof AssignmentForm>(
     key: Key,
     value: AssignmentForm[Key],
@@ -584,6 +722,14 @@ export default function TeacherAssignmentsPage() {
                             ? "ส่งครบแล้ว"
                             : "กำลังดำเนินการ"}
                       </span>
+                      {item.lessonPlanTitle && (
+                        <span
+                          className={styles.planBadge}
+                          title={`อ้างอิงจากแผนการสอน: ${item.lessonPlanTitle}`}
+                        >
+                          📘 แผน: {item.lessonPlanTitle}
+                        </span>
+                      )}
                     </div>
                     <h3>{item.title}</h3>
                     <p>{item.description || meta.detail}</p>
@@ -707,6 +853,131 @@ export default function TeacherAssignmentsPage() {
             {classrooms.length ? (
               <form onSubmit={saveAssignment}>
                 <div className={styles.formGrid}>
+                  <div
+                    className={styles.fullField}
+                    style={{
+                      background: "#f4f9f6",
+                      padding: "12px",
+                      borderRadius: "12px",
+                      border: "1px solid #d4e7dc",
+                      display: "grid",
+                      gap: "8px",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        flexWrap: "wrap",
+                        gap: "6px",
+                      }}
+                    >
+                      <span
+                        style={{
+                          fontWeight: 800,
+                          fontSize: "11px",
+                          color: "#214e36",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
+                      >
+                        <AdminIcon name="content" size={15} />
+                        อ้างอิงจากแผนการสอน FINE Model (Smart Template)
+                      </span>
+                      {form.lessonPlanId && (
+                        <span style={{ fontSize: "10px", color: "#37704e" }}>
+                          ⚡ คลิกปุ่มลัดด้านล่างเพื่อดึงกิจกรรม
+                        </span>
+                      )}
+                    </div>
+
+                    <select
+                      value={form.lessonPlanId || ""}
+                      onChange={(event) => {
+                        const planId = event.target.value;
+                        updateField("lessonPlanId", planId);
+                        if (planId) {
+                          const p = lessonPlans.find((lp) => lp.id === planId);
+                          if (p) applyPlanActivity(p, form.activityType);
+                        }
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "8px 10px",
+                        borderRadius: "8px",
+                        border: "1px solid #c9dfd2",
+                        background: "#ffffff",
+                        fontSize: "10px",
+                        color: "#244336",
+                        fontWeight: 600,
+                      }}
+                    >
+                      <option value="">-- ไม่ผูกกับแผนการสอน (กรอกข้อมูลเองอิสระ) --</option>
+                      {lessonPlans.map((lp) => (
+                        <option value={lp.id} key={lp.id}>
+                          📘 {lp.title} {lp.targetClass ? `(${lp.targetClass})` : ""}
+                        </option>
+                      ))}
+                    </select>
+
+                    {form.lessonPlanId && (
+                      <div
+                        style={{
+                          display: "grid",
+                          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                          gap: "6px",
+                        }}
+                      >
+                        {(
+                          ["Familiarize", "Interact", "Navigate", "Exhibit"] as ActivityType[]
+                        ).map((step) => {
+                          const isActive = form.activityType === step;
+                          return (
+                            <button
+                              key={step}
+                              type="button"
+                              onClick={() => {
+                                const p = lessonPlans.find(
+                                  (lp) => lp.id === form.lessonPlanId,
+                                );
+                                if (p) applyPlanActivity(p, step);
+                              }}
+                              style={{
+                                padding: "6px 8px",
+                                fontSize: "10px",
+                                fontWeight: 700,
+                                borderRadius: "8px",
+                                border: isActive
+                                  ? "2px solid #2d7a55"
+                                  : "1px solid #d0e2d7",
+                                background: isActive ? "#e3f3ea" : "#ffffff",
+                                color: isActive ? "#1c5e3d" : "#4a6355",
+                                cursor: "pointer",
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                gap: "2px",
+                                transition: "all 0.15s ease",
+                              }}
+                            >
+                              <span>[{step[0]}] {step}</span>
+                              <small
+                                style={{
+                                  fontSize: "8px",
+                                  opacity: 0.85,
+                                  fontWeight: 400,
+                                }}
+                              >
+                                {activityMeta[step].detail}
+                              </small>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                   <label className={styles.fullField}>
                     <span>ชื่องานหรือกิจกรรม *</span>
                     <input
@@ -1026,5 +1297,19 @@ export default function TeacherAssignmentsPage() {
         </div>
       )}
     </main>
+  );
+}
+
+export default function TeacherAssignmentsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div style={{ padding: "40px", textAlign: "center", color: "#66766d" }}>
+          กำลังโหลดข้อมูลงานมอบหมาย...
+        </div>
+      }
+    >
+      <TeacherAssignmentsContent />
+    </Suspense>
   );
 }

@@ -60,10 +60,11 @@
 .cardActions button,.rowActions button { width: 32px; height: 32px; display: grid; place-items: center; color: #557064; border: 1px solid #dbe5df; border-radius: 8px; background: #fff; cursor: pointer; }
 .dangerIconButton { color: #9b5048!important; border-color: #ead5d2!important; }
 
-.readyBadge,.draftBadge,.modelBadge,.neutralBadge { width: fit-content; display: inline-flex; align-items: center; gap: 4px; padding: 4px 7px; border-radius: 6px; font-size: 7px; font-weight: 850; white-space: nowrap; }
+.readyBadge,.draftBadge,.modelBadge,.neutralBadge,.planBadge { width: fit-content; display: inline-flex; align-items: center; gap: 4px; padding: 4px 7px; border-radius: 6px; font-size: 7px; font-weight: 850; white-space: nowrap; }
 .readyBadge,.modelBadge { color: #347553; background: #e2f1e7; }
 .draftBadge { color: #8b7120; background: #f7edcc; }
 .neutralBadge { color: #758079; background: #edf1ef; }
+.planBadge { color: #1d5584; background: #e5f1fa; border: 1px solid #c5dff2; }
 
 .dataList { display: grid; padding: 7px 18px 13px; }
 .dataRow { min-width: 0; display: grid; grid-template-columns: 42px minmax(145px,.7fr) minmax(110px,.45fr) minmax(210px,1fr) auto auto; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid #edf1ee; }

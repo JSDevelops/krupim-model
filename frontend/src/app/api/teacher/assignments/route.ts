@@ -10,6 +10,7 @@ type AssignmentInput = {
   title?: unknown; description?: unknown; classId?: unknown; activityType?: unknown
   dueDate?: unknown; maxScore?: unknown; score?: unknown; feedback?: unknown
   knowledge?: unknown; skills?: unknown; attitude?: unknown; competency?: unknown
+  lessonPlanId?: unknown
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -48,6 +49,7 @@ function normalize(body: AssignmentInput) {
     activityType: activity(body.activityType),
     dueDate: date(body.dueDate),
     maxScore: integer(body.maxScore, 'คะแนนเต็ม', 1, 1_000),
+    lessonPlanId: typeof body.lessonPlanId === 'string' && body.lessonPlanId.trim() ? body.lessonPlanId.trim().slice(0, 100) : null,
   }
 }
 async function requestBody(request: NextRequest) {
@@ -83,9 +85,13 @@ export async function GET(request: NextRequest) {
       const [assignmentResult, submissionResult] = await Promise.all([
         queryDb(`
           SELECT a.id, a.title, a.description, a.activity_type AS "activityType",
-                 a.due_date AS "dueDate", a.max_score AS "maxScore", a.created_at AS "createdAt",
-                 a.updated_at AS "updatedAt", c.id AS "classId", c.name AS "className"
-          FROM assignments a JOIN classes c ON c.id=a.class_id WHERE a.id=$1::uuid LIMIT 1
+                 a.due_date AS "dueDate", a.max_score AS "maxScore", a.lesson_plan_id AS "lessonPlanId",
+                 flp.title AS "lessonPlanTitle",
+                 a.created_at AS "createdAt", a.updated_at AS "updatedAt", c.id AS "classId", c.name AS "className"
+          FROM assignments a
+          JOIN classes c ON c.id=a.class_id
+          LEFT JOIN fine_lesson_plans flp ON flp.id=a.lesson_plan_id
+          WHERE a.id=$1::uuid LIMIT 1
         `, [id]),
         queryDb(`
           SELECT p.id AS "studentId", p.name AS "studentName", p.email,
@@ -108,18 +114,20 @@ export async function GET(request: NextRequest) {
     const [assignmentResult, classResult] = await Promise.all([
       queryDb(`
         SELECT a.id, a.title, a.description, a.activity_type AS "activityType",
-               a.due_date AS "dueDate", a.max_score AS "maxScore", a.created_at AS "createdAt",
-               a.updated_at AS "updatedAt", c.id AS "classId", c.name AS "className",
+               a.due_date AS "dueDate", a.max_score AS "maxScore", a.lesson_plan_id AS "lessonPlanId",
+               flp.title AS "lessonPlanTitle",
+               a.created_at AS "createdAt", a.updated_at AS "updatedAt", c.id AS "classId", c.name AS "className",
                COUNT(DISTINCT cs.student_id)::int AS "studentCount",
                COUNT(DISTINCT s.student_id)::int AS "submittedCount",
                COUNT(DISTINCT s.student_id) FILTER (WHERE s.score IS NOT NULL)::int AS "gradedCount",
                COALESCE(ROUND(AVG((s.score::numeric / NULLIF(a.max_score,0)) * 100)),0)::int AS "averagePercent"
         FROM assignments a
         JOIN classes c ON c.id=a.class_id
+        LEFT JOIN fine_lesson_plans flp ON flp.id=a.lesson_plan_id
         LEFT JOIN class_students cs ON cs.class_id=c.id
         LEFT JOIN assignment_submissions s ON s.assignment_id=a.id AND s.student_id=cs.student_id
         ${where}
-        GROUP BY a.id, c.id
+        GROUP BY a.id, c.id, flp.title
         ORDER BY a.due_date ASC NULLS LAST, a.created_at DESC
         LIMIT 500
       `, values),
@@ -140,11 +148,11 @@ export async function POST(request: NextRequest) {
     await requireClass(user, item.classId)
     const assignment = await withTransaction(async client => {
       const result = await client.query(`
-        INSERT INTO assignments (class_id, teacher_id, title, description, activity_type, due_date, max_score)
-        VALUES ($1::uuid,$2::uuid,$3,$4,$5,$6,$7)
+        INSERT INTO assignments (class_id, teacher_id, title, description, activity_type, due_date, max_score, lesson_plan_id)
+        VALUES ($1::uuid,$2::uuid,$3,$4,$5,$6,$7,$8)
         RETURNING id, title, description, activity_type AS "activityType", due_date AS "dueDate",
-                  max_score AS "maxScore", created_at AS "createdAt", updated_at AS "updatedAt"
-      `, [item.classId, user.id, item.title, item.description, item.activityType, item.dueDate, item.maxScore])
+                  max_score AS "maxScore", lesson_plan_id AS "lessonPlanId", created_at AS "createdAt", updated_at AS "updatedAt"
+      `, [item.classId, user.id, item.title, item.description, item.activityType, item.dueDate, item.maxScore, item.lessonPlanId])
       await client.query(`
         INSERT INTO notifications (user_id, title, message, type, link_url)
         SELECT cs.student_id, 'มีงานใหม่จากครูผู้สอน', $2, 'assignment', '/student/dashboard'
@@ -247,14 +255,14 @@ export async function PATCH(request: NextRequest) {
     await requireAssignment(user, id)
     const item = normalize(body)
     await requireClass(user, item.classId)
-    const values: unknown[] = [item.classId, item.title, item.description, item.activityType, item.dueDate, item.maxScore, id]
+    const values: unknown[] = [item.classId, item.title, item.description, item.activityType, item.dueDate, item.maxScore, item.lessonPlanId, id]
     if (user.role !== 'developer') values.push(user.id)
     const result = await queryDb(`
       UPDATE assignments a SET class_id=$1::uuid, title=$2, description=$3, activity_type=$4,
-             due_date=$5, max_score=$6, updated_at=NOW()
-      WHERE a.id=$7::uuid${teacherScope(user, 'a', 8)}
+             due_date=$5, max_score=$6, lesson_plan_id=$7, updated_at=NOW()
+      WHERE a.id=$8::uuid${teacherScope(user, 'a', 9)}
       RETURNING id, title, description, activity_type AS "activityType", due_date AS "dueDate",
-                max_score AS "maxScore", created_at AS "createdAt", updated_at AS "updatedAt"
+                max_score AS "maxScore", lesson_plan_id AS "lessonPlanId", created_at AS "createdAt", updated_at AS "updatedAt"
     `, values)
     if (!result.rows[0]) throw new ApiError('ไม่พบงานหรือคุณไม่มีสิทธิ์แก้ไข', 404, 'NOT_FOUND')
     return NextResponse.json({ assignment: { ...result.rows[0], classId: item.classId } })

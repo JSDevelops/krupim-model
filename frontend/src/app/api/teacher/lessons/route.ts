@@ -151,7 +151,9 @@ export async function GET(request: NextRequest) {
     const where = user.role === 'developer' ? '' : 'WHERE teacher_email = $1'
     if (user.role !== 'developer') values.push(user.email)
     const result = await queryDb(`
-      SELECT id, title, subject, level, term, duration, target_class AS "targetClass", weeks,
+      SELECT id, title, subject, level, term, duration, target_class AS "targetClass", weeks, concept,
+             activities_f AS "activitiesF", activities_i AS "activitiesI",
+             activities_n AS "activitiesN", activities_e AS "activitiesE",
              teacher_name AS "teacherName", created_at AS "createdAt", updated_at AS "updatedAt",
              class_id AS "classId", publication_status AS "publicationStatus", published_at AS "publishedAt",
              jsonb_array_length(objectives_k) + jsonb_array_length(objectives_s)
