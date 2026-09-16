@@ -27,12 +27,16 @@ export async function GET(request: NextRequest) {
         FROM learning_analytics WHERE student_id=$1::uuid
       `, [user.id]),
       queryDb(`
-        SELECT a.id,a.title,a.activity_type AS "activityType",a.due_date AS "dueDate",c.name AS "className"
+        SELECT a.id, a.title, a.description, a.activity_type AS "activityType",
+               a.due_date AS "dueDate", a.max_score AS "maxScore",
+               c.name AS "className",
+               lp.title AS "lessonTitle", lp.weeks AS "weekName"
         FROM assignments a
         JOIN classes c ON c.id=a.class_id
         JOIN class_students cs ON cs.class_id=c.id AND cs.student_id=$1::uuid
+        LEFT JOIN fine_lesson_plans lp ON lp.id=a.lesson_plan_id
         LEFT JOIN assignment_submissions s ON s.assignment_id=a.id AND s.student_id=$1::uuid
-        WHERE s.id IS NULL ORDER BY a.due_date ASC NULLS LAST LIMIT 8
+        WHERE s.id IS NULL ORDER BY a.due_date ASC NULLS LAST, a.created_at DESC LIMIT 50
       `, [user.id]),
       queryDb(`
         SELECT id,title,subject,level,weeks,concept FROM fine_lesson_plans

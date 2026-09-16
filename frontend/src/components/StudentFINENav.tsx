@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { toast } from 'sonner'
 import { authenticatedFetch } from '@/lib/api'
 import styles from './StudentFINENav.module.css'
 
@@ -17,6 +18,18 @@ type NavItem = {
   fineLabel: string
   icon: NavIcon
   aliases?: string[]
+}
+
+type DashboardTask = {
+  id: string
+  title: string
+  description?: string
+  activityType?: string
+  dueDate?: string | null
+  maxScore?: number
+  className?: string
+  lessonTitle?: string
+  weekName?: string
 }
 
 const EMPTY_COUNTS: TaskCounts = { F: 0, I: 0, N: 0, E: 0, P: 0 }
@@ -58,68 +71,440 @@ function isCurrentPath(pathname: string, tab: NavItem) {
   return paths.some(path => pathname === path || pathname.startsWith(path + '/'))
 }
 
+function taskPath(type?: string) {
+  const value = (type || '').toLowerCase()
+  if (value.includes('interact') || value.startsWith('i')) return '/student/interact'
+  if (value.includes('navigate') || value.startsWith('n')) return '/student/navigate'
+  if (value.includes('exhibit') || value.startsWith('e')) return '/student/exhibit'
+  return '/student/explore'
+}
+
+function getStageBadge(type?: string) {
+  const value = (type || '').toUpperCase()
+  if (value.includes('INTERACT') || value.startsWith('I')) return { letter: 'I', label: 'Interact · Speak', chipClass: styles.stageChipI }
+  if (value.includes('NAVIGATE') || value.startsWith('N')) return { letter: 'N', label: 'Navigate · Scenario', chipClass: styles.stageChipN }
+  if (value.includes('EXHIBIT') || value.startsWith('E')) return { letter: 'E', label: 'Exhibit · Review', chipClass: styles.stageChipE }
+  return { letter: 'F', label: 'Familiarize · Explore', chipClass: styles.stageChipF }
+}
+
+function formatDate(value?: string | null) {
+  if (!value) return 'ไม่กำหนด'
+  const date = new Date(value)
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium' }).format(date)
+}
+
 export default function StudentFINENav() {
   const pathname = usePathname()
   const [taskCounts, setTaskCounts] = useState<TaskCounts>(EMPTY_COUNTS)
+  const [tasks, setTasks] = useState<DashboardTask[]>([])
+  const [isQuickViewOpen, setIsQuickViewOpen] = useState(false)
+  const [activeFilter, setActiveFilter] = useState<'ALL' | FineLetter>('ALL')
+
+  // Submission Sub-modal
+  const [submitTask, setSubmitTask] = useState<DashboardTask | null>(null)
+  const [submission, setSubmission] = useState({ attachmentName: '', attachmentUrl: '' })
+  const [submissionFile, setSubmissionFile] = useState<File | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  const fetchTasks = async (signal?: AbortSignal) => {
+    try {
+      const response = await authenticatedFetch('/api/student/dashboard', { signal })
+      if (!response.ok) return
+      const payload = await response.json() as { taskCounts?: TaskCounts; tasks?: DashboardTask[] }
+      const nextCounts = payload.taskCounts || EMPTY_COUNTS
+      setTaskCounts(previous => countsMatch(previous, nextCounts) ? previous : nextCounts)
+      if (payload.tasks) setTasks(payload.tasks)
+    } catch { /* session/layout guard handles authentication */ }
+  }
 
   useEffect(() => {
     const controller = new AbortController()
-    const updateCounts = async () => {
-      try {
-        const response = await authenticatedFetch('/api/student/dashboard', { signal: controller.signal })
-        if (!response.ok) return
-        const payload = await response.json() as { taskCounts?: TaskCounts }
-        const next = payload.taskCounts || EMPTY_COUNTS
-        setTaskCounts(previous => countsMatch(previous, next) ? previous : next)
-      } catch { /* session/layout guard handles authentication */ }
-    }
     const handleVisibility = () => {
-      if (document.visibilityState === 'visible') updateCounts()
+      if (document.visibilityState === 'visible') void fetchTasks(controller.signal)
     }
 
-    void updateCounts()
+    void fetchTasks(controller.signal)
     const interval = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void updateCounts()
+      if (document.visibilityState === 'visible') void fetchTasks(controller.signal)
     }, 60_000)
-    window.addEventListener('focus', updateCounts)
-    window.addEventListener('storage', updateCounts)
+    window.addEventListener('focus', () => void fetchTasks())
+    window.addEventListener('storage', () => void fetchTasks())
     document.addEventListener('visibilitychange', handleVisibility)
     return () => {
       window.clearInterval(interval)
-      window.removeEventListener('focus', updateCounts)
-      window.removeEventListener('storage', updateCounts)
+      window.removeEventListener('focus', () => void fetchTasks())
+      window.removeEventListener('storage', () => void fetchTasks())
       document.removeEventListener('visibilitychange', handleVisibility)
       controller.abort()
     }
   }, [])
 
-  return (
-    <div className={styles.dockWrap}>
-      <nav className={styles.dock} aria-label="Student Navigation Menu">
-        {TABS.map(tab => {
-          const active = isCurrentPath(pathname, tab)
-          const pendingCount = taskCounts[tab.letter]
+  const filteredTasks = useMemo(() => {
+    if (activeFilter === 'ALL' || activeFilter === 'P') return tasks
+    return tasks.filter(task => {
+      const key = task.activityType?.[0]?.toUpperCase()
+      return key === activeFilter
+    })
+  }, [tasks, activeFilter])
 
-          return (
-            <Link
-              key={tab.href}
-              href={tab.href}
-              prefetch={false}
-              aria-current={active ? 'page' : undefined}
-              aria-label={`${tab.label} — ${tab.letter} · ${tab.fineLabel}${pendingCount ? `, ${pendingCount} pending items` : ''}`}
-              className={`${styles.item} ${active ? styles.active : ''}`}
+  const handleBadgeClick = (event: React.MouseEvent, tab: NavItem) => {
+    event.preventDefault()
+    event.stopPropagation()
+    setActiveFilter(tab.letter === 'P' ? 'ALL' : tab.letter)
+    setIsQuickViewOpen(true)
+  }
+
+  const handleDirectSubmit = async () => {
+    if (!submitTask) return
+    setSubmitting(true)
+    try {
+      let attachmentName = submission.attachmentName
+      let attachmentUrl = submission.attachmentUrl
+
+      if (submissionFile) {
+        const upload = new FormData()
+        upload.set('assignmentId', submitTask.id)
+        upload.set('file', submissionFile)
+        const uploadRes = await authenticatedFetch('/api/student/files', {
+          method: 'POST',
+          body: upload,
+        })
+        const uploadPayload = await uploadRes.json() as { file?: { name: string; url: string }; error?: string }
+        if (!uploadRes.ok || !uploadPayload.file) {
+          throw new Error(uploadPayload.error || 'อัปโหลดไฟล์ไม่สำเร็จ')
+        }
+        attachmentName = attachmentName || uploadPayload.file.name
+        attachmentUrl = uploadPayload.file.url
+      }
+
+      const response = await authenticatedFetch('/api/student/assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assignmentId: submitTask.id,
+          attachmentName,
+          attachmentUrl,
+        }),
+      })
+      const payload = await response.json() as { error?: string }
+      if (!response.ok) throw new Error(payload.error || 'ส่งงานไม่สำเร็จ')
+
+      toast.success('ส่งงานเรียบร้อยแล้ว!', { description: submitTask.title })
+
+      const updatedTasks = tasks.filter(t => t.id !== submitTask.id)
+      setTasks(updatedTasks)
+
+      const nextCounts: TaskCounts = { F: 0, I: 0, N: 0, E: 0, P: updatedTasks.length }
+      for (const t of updatedTasks) {
+        const k = t.activityType?.[0]?.toUpperCase()
+        if (k === 'F' || k === 'I' || k === 'N' || k === 'E') nextCounts[k] += 1
+      }
+      setTaskCounts(nextCounts)
+
+      setSubmitTask(null)
+      setSubmission({ attachmentName: '', attachmentUrl: '' })
+      setSubmissionFile(null)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'ส่งงานไม่สำเร็จ')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <>
+      <div className={styles.dockWrap}>
+        {/* Quick View Pill Trigger */}
+        {tasks.length > 0 && (
+          <div className={styles.pillContainer}>
+            <button
+              type="button"
+              className={styles.pillTrigger}
+              onClick={() => {
+                setActiveFilter('ALL')
+                setIsQuickViewOpen(true)
+              }}
+              aria-label={`เปิดดูงานค้างทั้งหมด ${tasks.length} รายการ`}
             >
-              {pendingCount > 0 && <span className={styles.badge} aria-hidden="true">{pendingCount > 99 ? '99+' : pendingCount}</span>}
-              <span className={styles.iconWrap}><FineNavIcon name={tab.icon} /></span>
-              <span className={styles.copy}>
-                <span className={styles.label}>{tab.label}</span>
-                <span className={styles.fineLabel}>{tab.letter} · {tab.fineLabel}</span>
-              </span>
-              {active && <span className={styles.activeMark} aria-hidden="true" />}
-            </Link>
-          )
-        })}
-      </nav>
-    </div>
+              <span>📋 งานค้าง</span>
+              <span className={styles.pillCount}>{tasks.length}</span>
+            </button>
+          </div>
+        )}
+
+        <nav className={styles.dock} aria-label="Student Navigation Menu">
+          {TABS.map(tab => {
+            const active = isCurrentPath(pathname, tab)
+            const pendingCount = taskCounts[tab.letter]
+
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                prefetch={false}
+                aria-current={active ? 'page' : undefined}
+                aria-label={`${tab.label} — ${tab.letter} · ${tab.fineLabel}${pendingCount ? `, ${pendingCount} pending items` : ''}`}
+                className={`${styles.item} ${active ? styles.active : ''}`}
+              >
+                {pendingCount > 0 && (
+                  <button
+                    type="button"
+                    className={styles.badge}
+                    onClick={e => handleBadgeClick(e, tab)}
+                    title={`แตะเพื่อดูภารกิจ ${tab.label} (${pendingCount} งาน)`}
+                    aria-label={`แตะเพื่อดูภารกิจ ${tab.label} (${pendingCount} งาน)`}
+                  >
+                    {pendingCount > 99 ? '99+' : pendingCount}
+                  </button>
+                )}
+                <span className={styles.iconWrap}><FineNavIcon name={tab.icon} /></span>
+                <span className={styles.copy}>
+                  <span className={styles.label}>{tab.label}</span>
+                  <span className={styles.fineLabel}>{tab.letter} · {tab.fineLabel}</span>
+                </span>
+                {active && <span className={styles.activeMark} aria-hidden="true" />}
+              </Link>
+            )
+          })}
+        </nav>
+      </div>
+
+      {/* Quick View Modal / Bottom Sheet */}
+      {isQuickViewOpen && (
+        <div
+          className={styles.quickOverlay}
+          onClick={e => e.target === e.currentTarget && setIsQuickViewOpen(false)}
+        >
+          <section
+            className={styles.quickSheet}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="quick-view-title"
+          >
+            {/* Sheet Header */}
+            <header className={styles.quickHeader}>
+              <div className={styles.quickHeaderContent}>
+                <h2 id="quick-view-title" className={styles.quickTitle}>
+                  <span>📋 ภารกิจและการบ้าน FINE</span>
+                </h2>
+                <span className={styles.quickSubtitle}>
+                  งานที่ได้รับมอบหมายตามแผนการสอน ({filteredTasks.length} รายการ)
+                </span>
+              </div>
+              <button
+                type="button"
+                className={styles.closeButton}
+                onClick={() => setIsQuickViewOpen(false)}
+                aria-label="ปิดหน้าต่างภารกิจ"
+              >
+                ✕
+              </button>
+            </header>
+
+            {/* Filter Pills */}
+            <nav className={styles.filterBar} aria-label="ตัวกรองภารกิจตามขั้นตอน FINE">
+              <button
+                type="button"
+                className={`${styles.filterPill} ${activeFilter === 'ALL' ? styles.filterPillActive : ''}`}
+                onClick={() => setActiveFilter('ALL')}
+              >
+                <span>ทั้งหมด</span>
+                <span className={styles.filterBadge}>{tasks.length}</span>
+              </button>
+              <button
+                type="button"
+                className={`${styles.filterPill} ${activeFilter === 'F' ? styles.filterPillActive : ''}`}
+                onClick={() => setActiveFilter('F')}
+              >
+                <span>F · Explore</span>
+                <span className={styles.filterBadge}>{taskCounts.F}</span>
+              </button>
+              <button
+                type="button"
+                className={`${styles.filterPill} ${activeFilter === 'I' ? styles.filterPillActive : ''}`}
+                onClick={() => setActiveFilter('I')}
+              >
+                <span>I · Speak</span>
+                <span className={styles.filterBadge}>{taskCounts.I}</span>
+              </button>
+              <button
+                type="button"
+                className={`${styles.filterPill} ${activeFilter === 'N' ? styles.filterPillActive : ''}`}
+                onClick={() => setActiveFilter('N')}
+              >
+                <span>N · Scenario</span>
+                <span className={styles.filterBadge}>{taskCounts.N}</span>
+              </button>
+              <button
+                type="button"
+                className={`${styles.filterPill} ${activeFilter === 'E' ? styles.filterPillActive : ''}`}
+                onClick={() => setActiveFilter('E')}
+              >
+                <span>E · Review</span>
+                <span className={styles.filterBadge}>{taskCounts.E}</span>
+              </button>
+            </nav>
+
+            {/* Sheet Body: Task Cards */}
+            <div className={styles.quickBody}>
+              {filteredTasks.length > 0 ? (
+                filteredTasks.map(task => {
+                  const stage = getStageBadge(task.activityType)
+                  return (
+                    <article key={task.id} className={styles.taskCard}>
+                      <div className={styles.taskHeaderRow}>
+                        <span className={`${styles.stageChip} ${stage.chipClass}`}>
+                          {stage.label}
+                        </span>
+                        {task.weekName && (
+                          <span className={styles.weekChip}>{task.weekName}</span>
+                        )}
+                      </div>
+
+                      <h3 className={styles.cardTitle}>{task.title}</h3>
+
+                      {task.lessonTitle && (
+                        <div className={styles.cardLesson}>
+                          <span>📖</span>
+                          <span>{task.lessonTitle}</span>
+                        </div>
+                      )}
+
+                      {task.description && (
+                        <p className={styles.cardDesc}>{task.description}</p>
+                      )}
+
+                      <div className={styles.cardMetaRow}>
+                        <span>📅 ส่งภายใน: {formatDate(task.dueDate)}</span>
+                        <span>⭐ คะแนนเต็ม: {task.maxScore || 10}</span>
+                      </div>
+
+                      <div className={styles.cardActions}>
+                        <Link
+                          href={taskPath(task.activityType)}
+                          onClick={() => setIsQuickViewOpen(false)}
+                          className={styles.actionOpenBtn}
+                        >
+                          <span>🚀 ไปทำกิจกรรม</span>
+                        </Link>
+                        <button
+                          type="button"
+                          className={styles.actionSubmitBtn}
+                          onClick={() => {
+                            setSubmitTask(task)
+                            setSubmission({ attachmentName: '', attachmentUrl: '' })
+                            setSubmissionFile(null)
+                          }}
+                        >
+                          <span>📤 ส่งงาน</span>
+                        </button>
+                      </div>
+                    </article>
+                  )
+                })
+              ) : (
+                <div className={styles.emptyTasks}>
+                  <span style={{ fontSize: 32 }}>🎉</span>
+                  <strong>ไม่มีงานค้างในหมวดนี้</strong>
+                  <span>คุณส่งงานในหมวดนี้ครบเรียบร้อยแล้ว เยี่ยมมาก!</span>
+                </div>
+              )}
+            </div>
+
+            {/* Direct Submit Sub-Modal */}
+            {submitTask && (
+              <div
+                className={styles.submitModalBackdrop}
+                onClick={e => e.target === e.currentTarget && setSubmitTask(null)}
+              >
+                <div className={styles.submitDialog} role="dialog" aria-modal="true">
+                  <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                      <h3 style={{ fontSize: 16, fontWeight: 700, color: '#174735', margin: 0 }}>
+                        ส่งงาน: {submitTask.title}
+                      </h3>
+                      <span style={{ fontSize: 12, color: '#68756d' }}>
+                        {submitTask.weekName || 'การบ้านตามแผนการสอน'}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.closeButton}
+                      onClick={() => setSubmitTask(null)}
+                      aria-label="ปิดกล่องส่งงาน"
+                    >
+                      ✕
+                    </button>
+                  </header>
+
+                  <div className={styles.fieldGroup}>
+                    <label className={styles.fieldLabel} htmlFor="task-attachment-name">
+                      ชื่อผลงานหรือหมายเหตุ
+                    </label>
+                    <input
+                      id="task-attachment-name"
+                      className={styles.fieldInput}
+                      value={submission.attachmentName}
+                      onChange={e => setSubmission(prev => ({ ...prev, attachmentName: e.target.value }))}
+                      placeholder="เช่น สรุปการฝึกสนทนา, ภาพถ่ายการสแกน AR"
+                      maxLength={240}
+                    />
+                  </div>
+
+                  <div className={styles.fieldGroup}>
+                    <label className={styles.fieldLabel} htmlFor="task-file-input">
+                      แนบไฟล์ผลงาน (รูปภาพ, แคปหน้าจอ, PDF ไม่เกิน 12 MB)
+                    </label>
+                    <input
+                      id="task-file-input"
+                      type="file"
+                      className={styles.fieldFileInput}
+                      accept=".pdf,.jpg,.jpeg,.png,.webp,.txt,.doc,.docx,.ppt,.pptx"
+                      onChange={e => setSubmissionFile(e.target.files?.[0] || null)}
+                    />
+                  </div>
+
+                  <div className={styles.fieldGroup}>
+                    <label className={styles.fieldLabel} htmlFor="task-url-input">
+                      หรือระบุลิงก์ผลงาน (เช่น Google Drive, YouTube, Canva)
+                    </label>
+                    <input
+                      id="task-url-input"
+                      type="url"
+                      className={styles.fieldInput}
+                      value={submission.attachmentUrl}
+                      onChange={e => setSubmission(prev => ({ ...prev, attachmentUrl: e.target.value }))}
+                      placeholder="https://..."
+                      maxLength={2000}
+                    />
+                  </div>
+
+                  <div className={styles.submitActions}>
+                    <button
+                      type="button"
+                      className={styles.cancelBtn}
+                      onClick={() => setSubmitTask(null)}
+                    >
+                      ยกเลิก
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.confirmSubmitBtn}
+                      disabled={submitting}
+                      onClick={handleDirectSubmit}
+                    >
+                      {submitting ? 'กำลังส่งงาน...' : 'ยืนยันการส่งงาน'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+    </>
   )
 }
+
