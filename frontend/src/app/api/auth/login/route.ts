@@ -4,6 +4,14 @@ import { queryDb } from '@/lib/db'
 import { createSessionToken, setSessionCookie, type SessionRole } from '@/lib/session'
 import { apiErrorResponse, enforceRateLimit } from '../../_lib/auth'
 
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+const NO_CACHE_HEADERS = {
+  'Cache-Control': 'private, no-cache, no-store, max-age=0, must-revalidate',
+  Pragma: 'no-cache',
+}
+
 type LoginRow = {
   id: string
   email: string
@@ -17,6 +25,9 @@ type LoginRow = {
   school_name: string | null
   phone: string | null
   bio: string | null
+  pdpa_consent?: boolean
+  pdpa_consent_at?: string | null
+  pdpa_consent_version?: string | null
   created_at: string
   session_version: number
 }
@@ -38,7 +49,11 @@ export async function POST(request: NextRequest) {
     const result = await queryDb<LoginRow>(`
       SELECT u.id, u.email, u.password_hash, u.session_version, p.name, p.role, p.requested_role,
              p.approval_status, p.avatar_url, p.school_id, p.school_name,
-             p.phone, p.bio, p.created_at
+             p.phone, p.bio,
+             COALESCE(p.pdpa_consent, FALSE) AS pdpa_consent,
+             p.pdpa_consent_at,
+             COALESCE(p.pdpa_consent_version, '1.0') AS pdpa_consent_version,
+             p.created_at
       FROM app_users u
       JOIN profiles p ON p.id = u.id
       WHERE u.email = $1
@@ -46,16 +61,16 @@ export async function POST(request: NextRequest) {
     `, [email])
     const account = result.rows[0]
     if (!account || !(await compare(password, account.password_hash))) {
-      return NextResponse.json({ error: 'Invalid login credentials' }, { status: 401 })
+      return NextResponse.json({ error: 'Invalid login credentials' }, { status: 401, headers: NO_CACHE_HEADERS })
     }
     if (account.approval_status === 'pending') {
-      return NextResponse.json({ error: 'Account pending approval' }, { status: 403 })
+      return NextResponse.json({ error: 'Account pending approval' }, { status: 403, headers: NO_CACHE_HEADERS })
     }
     if (account.approval_status !== 'active') {
-      return NextResponse.json({ error: 'Account is inactive' }, { status: 403 })
+      return NextResponse.json({ error: 'Account is inactive' }, { status: 403, headers: NO_CACHE_HEADERS })
     }
     if (account.role !== selectedRole) {
-      return NextResponse.json({ error: 'Account role mismatch' }, { status: 403 })
+      return NextResponse.json({ error: 'Account role mismatch' }, { status: 403, headers: NO_CACHE_HEADERS })
     }
 
     const token = await createSessionToken({ id: account.id, email: account.email, role: account.role, sessionVersion: account.session_version })
@@ -71,12 +86,15 @@ export async function POST(request: NextRequest) {
       school_name: account.school_name,
       phone: account.phone,
       bio: account.bio,
+      pdpa_consent: Boolean(account.pdpa_consent),
+      pdpa_consent_at: account.pdpa_consent_at ?? null,
+      pdpa_consent_version: account.pdpa_consent_version ?? '1.0',
       created_at: account.created_at,
     }
     const response = NextResponse.json({
       user: { id: account.id, email: account.email },
       profile,
-    }, { headers: { 'Cache-Control': 'no-store' } })
+    }, { headers: NO_CACHE_HEADERS })
     setSessionCookie(response, token)
     return response
   } catch (error) {

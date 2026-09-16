@@ -2,7 +2,8 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import logo from '../../../public/logo.png'
 import { signInLocal, type UserRole } from '@/lib/localData'
 import { useRole } from '@/context/RoleContext'
@@ -105,13 +106,20 @@ function destinationFor(role: UserRole) {
 }
 
 export default function RoleSelectPage() {
-  const { setUser } = useRole()
+  const router = useRouter()
+  const { user, role, loading: roleLoading, setUser } = useRole()
   const [selectedRole, setSelectedRole] = useState<RoleChoice | null>(null)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+
+  useEffect(() => {
+    if (!roleLoading && user && role) {
+      router.replace(destinationFor(role))
+    }
+  }, [user, role, roleLoading, router])
 
   function chooseRole(role: RoleChoice) {
     setSelectedRole(role)

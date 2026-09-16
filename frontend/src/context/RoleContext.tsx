@@ -39,15 +39,46 @@ const RoleContext = createContext<RoleContextType>({
   loading: true
 })
 
+const USER_SESSION_KEY = 'krupim_active_user'
+
+function getStoredUser(): UserInfo | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = sessionStorage.getItem(USER_SESSION_KEY)
+    if (!raw) return null
+    return JSON.parse(raw) as UserInfo
+  } catch {
+    return null
+  }
+}
+
+function storeUser(user: UserInfo | null) {
+  if (typeof window === 'undefined') return
+  try {
+    if (user) sessionStorage.setItem(USER_SESSION_KEY, JSON.stringify(user))
+    else sessionStorage.removeItem(USER_SESSION_KEY)
+  } catch {}
+}
+
 export function RoleProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
-  const [user, setUserState] = useState<UserInfo | null>(null)
+  const [user, setUserState] = useState<UserInfo | null>(getStoredUser)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    let active = true
+
     // 1. ดึง session ปัจจุบันจาก Local PostgreSQL Auth
-    localData.auth.getSession().then(async ({ data }) => {
-      const sessionUser = data.session?.user
+    localData.auth.getSession().then(async ({ data, error }) => {
+      if (!active) return
+      if (error) {
+        console.warn('Session verification notice:', error.message)
+        // If there is an error communicating with server, do not prematurely wipe out state
+        setLoading(false)
+        return
+      }
+
+      const sessionUser = data?.session?.user
       if (sessionUser) {
         // ดึง profile จาก DB เพื่อรับ role
         const profile = data.profile ?? await getProfileFromDB(sessionUser.id)
@@ -63,26 +94,39 @@ export function RoleProvider({ children }: { children: ReactNode }) {
             pdpa_consent_at: profile.pdpa_consent_at,
             pdpa_consent_version: profile.pdpa_consent_version,
           }
-          setUserState(userInfo)
+          if (active) {
+            setUserState(userInfo)
+            storeUser(userInfo)
+          }
         } else {
-          // หากไม่มี profile ใน DB — ล้างสิทธิ์ที่ไม่ถูกต้อง
+          // หากไม่มี profile ใน DB หรือถูกระงับ — ล้างสิทธิ์
+          if (active) {
+            setUserState(null)
+            storeUser(null)
+            localStorage.removeItem('userRole')
+            localStorage.removeItem('userInfo')
+          }
+        }
+      } else {
+        // ไม่มี Local PostgreSQL session
+        if (active) {
           setUserState(null)
+          storeUser(null)
           localStorage.removeItem('userRole')
           localStorage.removeItem('userInfo')
         }
-      } else {
-        // ไม่มี Local PostgreSQL session — ไม่ใช้ localStorage fallback เพื่อความปลอดภัย
-        setUserState(null)
-        localStorage.removeItem('userRole')
-        localStorage.removeItem('userInfo')
       }
-      setLoading(false)
+      if (active) setLoading(false)
+    }).catch(err => {
+      console.warn('Session fetch caught error:', err)
+      if (active) setLoading(false)
     })
 
     // 2. ฟัง Auth state changes (login/logout จาก tab อื่น)
     const { data: { subscription } } = localData.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT') {
         setUserState(null)
+        storeUser(null)
         setLoading(false)
         localStorage.removeItem('userRole')
         localStorage.removeItem('userInfo')
@@ -103,8 +147,10 @@ export function RoleProvider({ children }: { children: ReactNode }) {
             pdpa_consent_version: profile.pdpa_consent_version,
           }
           setUserState(userInfo)
+          storeUser(userInfo)
         } else {
           setUserState(null)
+          storeUser(null)
           localStorage.removeItem('userRole')
           localStorage.removeItem('userInfo')
         }
@@ -112,17 +158,22 @@ export function RoleProvider({ children }: { children: ReactNode }) {
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      active = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   function setUser(u: UserInfo) {
     setUserState(u)
+    storeUser(u)
     setLoading(false)
   }
 
   async function logout() {
     await localData.auth.signOut()
     setUserState(null)
+    storeUser(null)
     localStorage.removeItem('userRole')
     localStorage.removeItem('userInfo')
     router.replace('/')

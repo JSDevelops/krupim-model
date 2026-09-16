@@ -155,7 +155,10 @@ export const localData = {
 
     async getSession() {
       try {
-        const response = await fetch('/api/auth/session', { cache: 'no-store' })
+        const response = await fetch('/api/auth/session', {
+          cache: 'no-store',
+          credentials: 'same-origin',
+        })
         if (response.status === 401) return { data: { session: null, profile: null }, error: null }
         const payload = await jsonResponse<{ session: LocalSession | null; profile?: Profile }>(response)
         return { data: payload, error: null }
