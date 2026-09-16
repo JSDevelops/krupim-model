@@ -193,11 +193,18 @@ export default function TeacherLessonsPage() {
   ])).sort(), [availableClasses, lessons])
   const visibleLessons = useMemo(() => {
     const keyword = deferredSearch.trim().toLocaleLowerCase('th-TH')
-    return lessons.filter(lesson => {
+    const filtered = lessons.filter(lesson => {
       if (classFilter !== 'all' && lesson.targetClass !== classFilter) return false
       if (!keyword) return true
       return [lesson.title, lesson.subject, lesson.level, lesson.targetClass, lesson.weeks]
         .some(value => value?.toLocaleLowerCase('th-TH').includes(keyword))
+    })
+    return [...filtered].sort((a, b) => {
+      const getWeek = (l: LessonSummary) => {
+        const m = l.weeks?.match(/\d+/) || l.id?.match(/week-(\d+)/) || l.title?.match(/สัปดาห์ที่\s*(\d+)/)
+        return m ? parseInt(m[1] || m[0], 10) : 999
+      }
+      return getWeek(a) - getWeek(b)
     })
   }, [classFilter, deferredSearch, lessons])
 
