@@ -10,6 +10,8 @@ type AssignmentInput = {
   title?: unknown; description?: unknown; classId?: unknown; activityType?: unknown
   dueDate?: unknown; maxScore?: unknown; score?: unknown; feedback?: unknown
   knowledge?: unknown; skills?: unknown; attitude?: unknown; competency?: unknown
+  rubricLevelK?: unknown; rubricLevelS?: unknown; rubricLevelA?: unknown; rubricLevelC?: unknown
+  returnReason?: unknown
   lessonPlanId?: unknown
 }
 
@@ -95,8 +97,14 @@ export async function GET(request: NextRequest) {
         `, [id]),
         queryDb(`
           SELECT p.id AS "studentId", p.name AS "studentName", p.email,
-                 s.id AS "submissionId", CASE WHEN s.id IS NULL THEN 'pending' ELSE 'submitted' END AS status,
-                 s.score, s.feedback, s.attachment_name AS "attachmentName", s.attachment_url AS "attachmentUrl",
+                 s.id AS "submissionId",
+                 CASE
+                   WHEN s.id IS NULL THEN 'pending'
+                   ELSE COALESCE(s.status, 'submitted')
+                 END AS status,
+                 s.score, s.feedback,
+                 s.attachment_name AS "attachmentName", s.attachment_url AS "attachmentUrl",
+                 s.return_reason AS "returnReason", s.returned_at AS "returnedAt",
                  s.submitted_at AS "submittedAt", s.graded_at AS "gradedAt"
           FROM assignments a
           JOIN class_students cs ON cs.class_id=a.class_id
@@ -182,6 +190,19 @@ export async function PATCH(request: NextRequest) {
         attitude: optionalScore(body.attitude, percent),
         competency: optionalScore(body.competency, percent),
       }
+      // Rubric levels (optional 1-4, null if not provided)
+      function optionalRubric(val: unknown): number | null {
+        if (val === undefined || val === null || val === '') return null
+        const n = Number(val)
+        if (!Number.isInteger(n) || n < 1 || n > 4) return null
+        return n
+      }
+      const rubricLevels = {
+        k: optionalRubric(body.rubricLevelK),
+        s: optionalRubric(body.rubricLevelS),
+        a: optionalRubric(body.rubricLevelA),
+        c: optionalRubric(body.rubricLevelC),
+      }
       const overall = Math.round(
         competencyScores.knowledge * 0.2
         + competencyScores.skills * 0.3
@@ -200,11 +221,12 @@ export async function PATCH(request: NextRequest) {
         await client.query(`
           INSERT INTO student_assessments (
             student_id, score, knowledge_score, skills_score, attitude_score,
-            competency_score, feedback, graded_by
-          ) VALUES ($1::uuid,$2,$3,$4,$5,$6,$7,$8::uuid)
+            competency_score, feedback, rubric_level_k, rubric_level_s, rubric_level_a, rubric_level_c, graded_by
+          ) VALUES ($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::uuid)
         `, [
           studentId, overall, competencyScores.knowledge, competencyScores.skills,
-          competencyScores.attitude, competencyScores.competency, feedback || null, user.id,
+          competencyScores.attitude, competencyScores.competency, feedback || null,
+          rubricLevels.k, rubricLevels.s, rubricLevels.a, rubricLevels.c, user.id,
         ])
 
         const daily = await client.query<{
@@ -248,7 +270,35 @@ export async function PATCH(request: NextRequest) {
 
         return result.rows[0]
       })
-      return NextResponse.json({ submission, competencyScores: { ...competencyScores, overall } })
+      return NextResponse.json({ submission, competencyScores: { ...competencyScores, overall }, rubricLevels })
+    }
+
+    if (action === 'return_submission') {
+      const assignmentId = uuid(body.assignmentId, 'งาน')
+      const studentId = uuid(body.studentId, 'นักเรียน')
+      const assignment = await requireAssignment(user, assignmentId)
+      const returnReason = text(body.returnReason, 'เหตุผลส่งกลับ', 1_000)
+
+      await withTransaction(async client => {
+        const result = await client.query(`
+          UPDATE assignment_submissions
+          SET status='returned', return_reason=$1, returned_at=NOW(), score=NULL, graded_at=NULL
+          WHERE assignment_id=$2::uuid AND student_id=$3::uuid AND status IN ('submitted','resubmitted')
+          RETURNING id
+        `, [returnReason || null, assignmentId, studentId])
+        if (!result.rows[0]) throw new ApiError('ไม่พบการส่งงานของนักเรียนนี้', 409, 'NOT_SUBMITTED')
+
+        await client.query(`
+          INSERT INTO notifications (user_id, title, message, type, link_url)
+          VALUES ($1::uuid, 'งานถูกส่งกลับให้แก้ไข', $2, 'warning', '/student/assignments')
+        `, [studentId, `${assignment.title}: ${returnReason || 'กรุณาแก้ไขและส่งงานใหม่'}` ])
+
+        await client.query(`
+          INSERT INTO audit_logs (actor_id,action,entity_type,entity_id,details_json)
+          VALUES ($1::uuid,'return_submission','assignment',$2,$3::jsonb)
+        `, [user.id, assignmentId, JSON.stringify({ studentId, returnReason })])
+      })
+      return NextResponse.json({ returned: true, studentId, assignmentId })
     }
 
     const id = uuid(body.id, 'งาน')

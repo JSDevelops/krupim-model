@@ -36,6 +36,7 @@ export type AdminIconName =
   | 'cube'
   | 'scan'
   | 'archive'
+  | 'download'
   | 'eye'
   | 'eyeOff'
 
@@ -96,6 +97,7 @@ export default function AdminIcon({
   if (name === 'cube') return <svg {...common}><path d="m12 2 9 5-9 5-9-5 9-5Z"/><path d="m3 7 9 5 9-5M3 7v10l9 5 9-5V7M12 12v10"/></svg>
   if (name === 'scan') return <svg {...common}><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2M7 12h10"/></svg>
   if (name === 'archive') return <svg {...common}><path d="M4 7h16v14H4zM3 3h18v4H3zM9 11h6"/></svg>
+  if (name === 'download') return <svg {...common}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></svg>
   if (name === 'eye') return <svg {...common}><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="2.5"/></svg>
   if (name === 'eyeOff') return <svg {...common}><path d="m3 3 18 18M10.6 6.2A10.6 10.6 0 0 1 12 6c6 0 9.5 6 9.5 6a16 16 0 0 1-2.3 3M6.2 6.2C3.8 8 2.5 12 2.5 12s3.5 6 9.5 6a9.7 9.7 0 0 0 3.1-.5M10.2 10.2a2.5 2.5 0 0 0 3.6 3.6"/></svg>
   return <svg {...common}><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5"/></svg>

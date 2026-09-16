@@ -14,6 +14,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AdminIcon, { type AdminIconName } from "@/components/admin/AdminIcon";
 import { confirmAction } from "@/components/AppConfirmDialog";
 import { authenticatedFetch } from "@/lib/api";
+import { exportSubmissionsToExcel, exportSubmissionsToPDF } from "@/lib/export";
 import { toast } from "sonner";
 import styles from "../management.module.css";
 
@@ -61,11 +62,17 @@ type Submission = {
   studentName: string;
   email: string;
   submissionId?: string | null;
-  status: "submitted" | "pending";
+  status: "submitted" | "pending" | "returned" | "resubmitted";
   score?: number | null;
   feedback?: string | null;
   attachmentName?: string | null;
   attachmentUrl?: string | null;
+  returnReason?: string | null;
+  returnedAt?: string | null;
+  rubricLevelK?: number | null;
+  rubricLevelS?: number | null;
+  rubricLevelA?: number | null;
+  rubricLevelC?: number | null;
   submittedAt?: string | null;
   gradedAt?: string | null;
 };
@@ -231,6 +238,18 @@ function TeacherAssignmentsContent() {
     attitude: 85,
     competency: 70,
   });
+  // Phase 2: Rubric levels (1-4) per KSA dimension
+  const [rubricLevels, setRubricLevels] = useState<{
+    knowledge: number | null;
+    skills: number | null;
+    attitude: number | null;
+    competency: number | null;
+  }>({ knowledge: null, skills: null, attitude: null, competency: null });
+  // Phase 2: Return for Revision
+  const [showReturnDialog, setShowReturnDialog] = useState(false);
+  const [returnReason, setReturnReason] = useState("");
+  // Phase 2: Export busy state
+  const [exporting, setExporting] = useState<"excel" | "pdf" | null>(null);
 
   const loadAssignments = useCallback(async () => {
     const response = await authenticatedFetch("/api/teacher/assignments", {
@@ -559,7 +578,7 @@ function TeacherAssignmentsContent() {
     }
   }
   const submittedList = useMemo(
-    () => submissions.filter((s) => s.status === "submitted"),
+    () => submissions.filter((s) => s.status === "submitted" || s.status === "resubmitted"),
     [submissions],
   );
   const currentGradeIndex = useMemo(
@@ -606,6 +625,14 @@ function TeacherAssignmentsContent() {
       });
     }
     setGradeFeedback(item.feedback || "");
+    setRubricLevels({
+      knowledge: item.rubricLevelK ?? null,
+      skills: item.rubricLevelS ?? null,
+      attitude: item.rubricLevelA ?? null,
+      competency: item.rubricLevelC ?? null,
+    });
+    setShowReturnDialog(false);
+    setReturnReason("");
   }
 
   function handleKsaChange(key: keyof typeof ksaScores, val: number) {
@@ -673,6 +700,10 @@ function TeacherAssignmentsContent() {
           skills: ksaScores.skills,
           attitude: ksaScores.attitude,
           competency: ksaScores.competency,
+          rubricLevelK: rubricLevels.knowledge,
+          rubricLevelS: rubricLevels.skills,
+          rubricLevelA: rubricLevels.attitude,
+          rubricLevelC: rubricLevels.competency,
         }),
       });
       if (!response.ok) throw new Error(await responseError(response));
@@ -721,6 +752,140 @@ function TeacherAssignmentsContent() {
       );
     } finally {
       setBusy(null);
+    }
+  }
+
+  // Phase 2: Rubric selection helper
+  const RUBRIC_PCT: Record<number, number> = { 4: 95, 3: 85, 2: 70, 1: 50 };
+  function handleRubricSelect(
+    key: "knowledge" | "skills" | "attitude" | "competency",
+    level: number,
+  ) {
+    const isCurrent = rubricLevels[key] === level;
+    const newLevel = isCurrent ? null : level;
+    setRubricLevels((prev) => ({ ...prev, [key]: newLevel }));
+    if (!isCurrent) {
+      handleKsaChange(key, RUBRIC_PCT[level] ?? 80);
+    }
+  }
+
+  // Phase 2: Return for Revision handler
+  async function returnSubmission() {
+    if (!grading || !reportAssignment) return;
+    if (!returnReason.trim()) {
+      toast.error("กรุณาระบุสิ่งที่ต้องการให้นักเรียนแก้ไข");
+      return;
+    }
+    setBusy("return");
+    try {
+      const response = await authenticatedFetch("/api/teacher/assignments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "return_submission",
+          assignmentId: reportAssignment.id,
+          studentId: grading.studentId,
+          returnReason: returnReason.trim(),
+        }),
+      });
+      if (!response.ok) throw new Error(await responseError(response));
+      const returnedStudentName = grading.studentName;
+      setSubmissions((current) =>
+        current.map((item) =>
+          item.studentId === grading.studentId
+            ? {
+                ...item,
+                status: "returned",
+                returnReason: returnReason.trim(),
+                score: null,
+                gradedAt: null,
+              }
+            : item,
+        ),
+      );
+      toast.success("ส่งกลับให้แก้ไขแล้ว", { description: returnedStudentName });
+      setShowReturnDialog(false);
+      setReturnReason("");
+      setGrading(null);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "ส่งกลับให้แก้ไขไม่สำเร็จ",
+      );
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  // Phase 2: Export handlers
+  async function handleExportExcel() {
+    if (!reportAssignment || submissions.length === 0) return;
+    setExporting("excel");
+    try {
+      await exportSubmissionsToExcel(
+        submissions.map((s) => ({
+          studentName: s.studentName,
+          email: s.email,
+          class: reportAssignment.className,
+          status: s.status,
+          score: s.score ?? null,
+          maxScore: reportAssignment.maxScore,
+          feedback: s.feedback,
+          rubricLevelK: s.rubricLevelK,
+          rubricLevelS: s.rubricLevelS,
+          rubricLevelA: s.rubricLevelA,
+          rubricLevelC: s.rubricLevelC,
+          submittedAt: s.submittedAt ? formatDate(s.submittedAt, true) : null,
+          gradedAt: s.gradedAt ? formatDate(s.gradedAt, true) : null,
+        })),
+        {
+          title: reportAssignment.title,
+          className: reportAssignment.className,
+          activityType: reportAssignment.activityType,
+          maxScore: reportAssignment.maxScore,
+          dueDate: reportAssignment.dueDate,
+        },
+      );
+      toast.success("ดาวน์โหลด Excel เรียบร้อยแล้ว");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "ส่งออก Excel ไม่สำเร็จ");
+    } finally {
+      setExporting(null);
+    }
+  }
+
+  async function handleExportPDF() {
+    if (!reportAssignment || submissions.length === 0) return;
+    setExporting("pdf");
+    try {
+      await exportSubmissionsToPDF(
+        submissions.map((s) => ({
+          studentName: s.studentName,
+          email: s.email,
+          class: reportAssignment.className,
+          status: s.status,
+          score: s.score ?? null,
+          maxScore: reportAssignment.maxScore,
+          feedback: s.feedback,
+          rubricLevelK: s.rubricLevelK,
+          rubricLevelS: s.rubricLevelS,
+          rubricLevelA: s.rubricLevelA,
+          rubricLevelC: s.rubricLevelC,
+          submittedAt: s.submittedAt ? formatDate(s.submittedAt, true) : null,
+          gradedAt: s.gradedAt ? formatDate(s.gradedAt, true) : null,
+        })),
+        {
+          title: reportAssignment.title,
+          className: reportAssignment.className,
+          activityType: reportAssignment.activityType,
+          maxScore: reportAssignment.maxScore,
+          dueDate: reportAssignment.dueDate,
+        },
+      );
+      toast.success("ดาวน์โหลด PDF เรียบร้อยแล้ว");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "ส่งออก PDF ไม่สำเร็จ");
+    } finally {
+      setExporting(null);
     }
   }
 
@@ -1306,6 +1471,29 @@ function TeacherAssignmentsContent() {
                 <strong>{reportAssignment.maxScore}</strong>
               </span>
             </div>
+            {/* Phase 2: Export Bar */}
+            <div className={styles.exportBar}>
+              <span>ส่งออกข้อมูลผลการเรียน ({submissions.length} คน)</span>
+              <button
+                type="button"
+                className={styles.exportBtn}
+                onClick={handleExportExcel}
+                disabled={exporting !== null || submissions.length === 0}
+              >
+                <AdminIcon name="download" size={14} />
+                {exporting === "excel" ? "กำลังส่งออก..." : "Export Excel (.xlsx)"}
+              </button>
+              <button
+                type="button"
+                className={styles.exportBtn}
+                data-variant="pdf"
+                onClick={handleExportPDF}
+                disabled={exporting !== null || submissions.length === 0}
+              >
+                <AdminIcon name="download" size={14} />
+                {exporting === "pdf" ? "กำลังส่งออก..." : "Export PDF"}
+              </button>
+            </div>
             <div className={styles.submissionList}>
               {reportLoading ? (
                 Array.from({ length: 4 }).map((_, index) => (
@@ -1326,12 +1514,22 @@ function TeacherAssignmentsContent() {
                     </div>
                     <span
                       className={
-                        item.status === "submitted"
+                        item.status === "returned"
+                          ? styles.returnedBadge
+                          : item.status === "resubmitted"
+                          ? styles.resubmittedBadge
+                          : item.status === "submitted"
                           ? styles.readyBadge
                           : styles.draftBadge
                       }
                     >
-                      {item.status === "submitted" ? "ส่งแล้ว" : "ยังไม่ส่ง"}
+                      {item.status === "returned"
+                        ? "ส่งกลับแก้ไข"
+                        : item.status === "resubmitted"
+                        ? "ส่งใหม่แล้ว"
+                        : item.status === "submitted"
+                        ? "ส่งแล้ว"
+                        : "ยังไม่ส่ง"}
                     </span>
                     <div>
                       <strong>
@@ -1340,14 +1538,16 @@ function TeacherAssignmentsContent() {
                           : `${item.score}/${reportAssignment.maxScore}`}
                       </strong>
                       <small>
-                        {item.status === "submitted"
+                        {item.status === "returned"
+                          ? `ส่งกลับ ${formatDate(item.returnedAt || "", true)}`
+                          : item.status === "submitted" || item.status === "resubmitted"
                           ? `ส่ง ${formatDate(item.submittedAt || "", true)}`
                           : "รอชิ้นงาน"}
                       </small>
                     </div>
                     <button
                       type="button"
-                      disabled={item.status !== "submitted"}
+                      disabled={item.status === "pending"}
                       onClick={() => openGrade(item)}
                     >
                       <AdminIcon
@@ -1590,6 +1790,26 @@ function TeacherAssignmentsContent() {
                         }
                         className={styles.ksaSlider}
                       />
+                      <div className={styles.rubricLevels}>
+                        {[
+                          { level: 4, label: "ดีเยี่ยม (4)" },
+                          { level: 3, label: "ดี (3)" },
+                          { level: 2, label: "พอใช้ (2)" },
+                          { level: 1, label: "ปรับปรุง (1)" },
+                        ].map(({ level, label }) => (
+                          <button
+                            key={level}
+                            type="button"
+                            className={styles.rubricBtn}
+                            data-level={level}
+                            data-active={rubricLevels.knowledge === level}
+                            onClick={() => handleRubricSelect("knowledge", level)}
+                            title={`เกณฑ์ระดับ ${level}`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                     <div className={styles.ksaItem}>
                       <div className={styles.ksaItemTop}>
@@ -1608,6 +1828,26 @@ function TeacherAssignmentsContent() {
                         }
                         className={styles.ksaSlider}
                       />
+                      <div className={styles.rubricLevels}>
+                        {[
+                          { level: 4, label: "ดีเยี่ยม (4)" },
+                          { level: 3, label: "ดี (3)" },
+                          { level: 2, label: "พอใช้ (2)" },
+                          { level: 1, label: "ปรับปรุง (1)" },
+                        ].map(({ level, label }) => (
+                          <button
+                            key={level}
+                            type="button"
+                            className={styles.rubricBtn}
+                            data-level={level}
+                            data-active={rubricLevels.skills === level}
+                            onClick={() => handleRubricSelect("skills", level)}
+                            title={`เกณฑ์ระดับ ${level}`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                     <div className={styles.ksaItem}>
                       <div className={styles.ksaItemTop}>
@@ -1626,6 +1866,26 @@ function TeacherAssignmentsContent() {
                         }
                         className={styles.ksaSlider}
                       />
+                      <div className={styles.rubricLevels}>
+                        {[
+                          { level: 4, label: "ดีเยี่ยม (4)" },
+                          { level: 3, label: "ดี (3)" },
+                          { level: 2, label: "พอใช้ (2)" },
+                          { level: 1, label: "ปรับปรุง (1)" },
+                        ].map(({ level, label }) => (
+                          <button
+                            key={level}
+                            type="button"
+                            className={styles.rubricBtn}
+                            data-level={level}
+                            data-active={rubricLevels.attitude === level}
+                            onClick={() => handleRubricSelect("attitude", level)}
+                            title={`เกณฑ์ระดับ ${level}`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                     <div className={styles.ksaItem}>
                       <div className={styles.ksaItemTop}>
@@ -1644,6 +1904,26 @@ function TeacherAssignmentsContent() {
                         }
                         className={styles.ksaSlider}
                       />
+                      <div className={styles.rubricLevels}>
+                        {[
+                          { level: 4, label: "ดีเยี่ยม (4)" },
+                          { level: 3, label: "ดี (3)" },
+                          { level: 2, label: "พอใช้ (2)" },
+                          { level: 1, label: "ปรับปรุง (1)" },
+                        ].map(({ level, label }) => (
+                          <button
+                            key={level}
+                            type="button"
+                            className={styles.rubricBtn}
+                            data-level={level}
+                            data-active={rubricLevels.competency === level}
+                            onClick={() => handleRubricSelect("competency", level)}
+                            title={`เกณฑ์ระดับ ${level}`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1694,11 +1974,55 @@ function TeacherAssignmentsContent() {
                 </label>
               </div>
 
+              {/* Phase 2: Return for Revision Dialog */}
+              {showReturnDialog && (
+                <div className={styles.returnDialog}>
+                  <p>↩️ ส่งกลับให้นักเรียนแก้ไขชิ้นงาน</p>
+                  <small>
+                    สถานะการส่งงานจะเปลี่ยนเป็น &quot;ส่งกลับแก้ไข&quot; และระบบจะแจ้งเตือนไปยังนักเรียนพร้อมข้อความนี้
+                  </small>
+                  <textarea
+                    rows={2}
+                    maxLength={1000}
+                    placeholder="ระบุสิ่งที่ต้องการให้นักเรียนปรับปรุง เช่น แก้ไขรูปทรง 3D, ปรับขนาด หรือแนบรูปเพิ่มเติม..."
+                    value={returnReason}
+                    onChange={(e) => setReturnReason(e.target.value)}
+                  />
+                  <div className={styles.returnDialogActions}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowReturnDialog(false);
+                        setReturnReason("");
+                      }}
+                    >
+                      ยกเลิก
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.returnConfirmBtn}
+                      disabled={busy === "return" || !returnReason.trim()}
+                      onClick={returnSubmission}
+                    >
+                      {busy === "return" ? "กำลังส่งกลับ..." : "ยืนยันส่งกลับให้แก้ไข"}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* 5. Continuous Grading Footer */}
               <footer className={styles.modalFooter}>
                 <div className={styles.continuousNav}>
                   {studentPositionText && <span>{studentPositionText}</span>}
                 </div>
+                <button
+                  type="button"
+                  className={styles.returnBtn}
+                  disabled={busy === "grade" || busy === "return"}
+                  onClick={() => setShowReturnDialog((prev) => !prev)}
+                >
+                  ↩️ ส่งกลับแก้ไข
+                </button>
                 <button type="button" onClick={() => setGrading(null)}>
                   ยกเลิก
                 </button>

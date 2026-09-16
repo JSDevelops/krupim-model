@@ -64,11 +64,20 @@ export async function POST(request: NextRequest) {
         LIMIT 1
       `, [assignmentId, user.id])
 
+      const previousSub = await client.query<{ id: string; status: string }>(`
+        SELECT id, status FROM assignment_submissions
+        WHERE assignment_id=$1::uuid AND student_id=$2::uuid
+        LIMIT 1
+      `, [assignmentId, user.id])
+      const isResubmit = previousSub.rows[0]?.status === 'returned'
+
       const result = await client.query(`
-        INSERT INTO assignment_submissions (assignment_id,student_id,attachment_name,attachment_url)
-        VALUES ($1::uuid,$2::uuid,$3,$4)
+        INSERT INTO assignment_submissions (assignment_id,student_id,attachment_name,attachment_url,status)
+        VALUES ($1::uuid,$2::uuid,$3,$4,'submitted')
         ON CONFLICT (assignment_id,student_id) DO UPDATE
         SET attachment_name=EXCLUDED.attachment_name, attachment_url=EXCLUDED.attachment_url,
+            status=CASE WHEN assignment_submissions.status='returned' THEN 'resubmitted' ELSE 'submitted' END,
+            return_reason=NULL, returned_at=NULL,
             score=NULL, feedback=NULL, graded_at=NULL, submitted_at=NOW()
         RETURNING id, submitted_at AS "submittedAt"
       `, [assignmentId, user.id, name || null, url || null])
@@ -83,10 +92,11 @@ export async function POST(request: NextRequest) {
       if (teacherId) {
         await client.query(`
           INSERT INTO notifications (user_id, title, message, type, link_url)
-          VALUES ($1::uuid, 'มีการส่งงานใหม่', $2, 'submission', '/teacher/assignments')
+          VALUES ($1::uuid, $2, $3, 'submission', '/teacher/assignments')
         `, [
           teacherId,
-          `${studentName} [${className}] ได้ส่งงาน “${taskTitle}”${attachInfo}`,
+          isResubmit ? 'มีการส่งงานที่แก้ไขแล้ว' : 'มีการส่งงานใหม่',
+          `${studentName} [${className}] ได้${isResubmit ? 'ส่งงานที่แก้ไข' : 'ส่งงาน'} “${taskTitle}”${attachInfo}`,
         ])
       }
       let obsoleteStorageName: string | null = null
