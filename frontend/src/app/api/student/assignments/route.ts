@@ -26,13 +26,15 @@ export async function POST(request: NextRequest) {
         id: string
         title: string
         teacher_id: string | null
+        lesson_plan_id: string | null
+        activity_type: string | null
         teacher_email: string | null
         teacher_name: string | null
         student_name: string
         student_email: string
         class_name: string
       }>(`
-        SELECT a.id, a.title, a.teacher_id,
+        SELECT a.id, a.title, a.teacher_id, a.lesson_plan_id, a.activity_type,
                tp.email AS teacher_email, tp.name AS teacher_name,
                sp.name AS student_name, sp.email AS student_email,
                c.name AS class_name
@@ -98,6 +100,59 @@ export async function POST(request: NextRequest) {
           isResubmit ? 'มีการส่งงานที่แก้ไขแล้ว' : 'มีการส่งงานใหม่',
           `${studentName} [${className}] ได้${isResubmit ? 'ส่งงานที่แก้ไข' : 'ส่งงาน'} “${taskTitle}”${attachInfo}`,
         ])
+      }
+
+      // Auto-trigger completion and tested events when linked to a lesson plan
+      if (row.lesson_plan_id) {
+        const lessonPlanId = row.lesson_plan_id
+        const actType = (row.activity_type || '').toLowerCase()
+        const stage = actType.includes('interact') ? 'i' : actType.includes('navigate') ? 'n' : actType.includes('exhibit') ? 'e' : 'f'
+
+        // 1. Mark lesson as completed
+        await client.query(`
+          INSERT INTO learning_events (student_id, event_type, reference_type, reference_id, metadata_json)
+          VALUES ($1::uuid, 'lesson_completed', 'fine_lesson_plan', $2, $3::jsonb)
+          ON CONFLICT (student_id, event_type, reference_type, reference_id) DO NOTHING
+        `, [user.id, lessonPlanId, JSON.stringify({ assignmentId, title: taskTitle, stage })])
+
+        // 2. Mark specific stage completed (stage_f, stage_i, stage_n, stage_e)
+        await client.query(`
+          INSERT INTO learning_events (student_id, event_type, reference_type, reference_id, metadata_json)
+          VALUES ($1::uuid, $3, 'fine_lesson_plan', $2, $4::jsonb)
+          ON CONFLICT (student_id, event_type, reference_type, reference_id) DO NOTHING
+        `, [user.id, lessonPlanId, `stage_${stage}`, JSON.stringify({ assignmentId, stage })])
+
+        // 3. If stage is Exhibit (E), mark lesson as tested
+        if (stage === 'e') {
+          await client.query(`
+            INSERT INTO learning_events (student_id, event_type, reference_type, reference_id, metadata_json)
+            VALUES ($1::uuid, 'lesson_tested', 'fine_lesson_plan', $2, $3::jsonb)
+            ON CONFLICT (student_id, event_type, reference_type, reference_id) DO NOTHING
+          `, [user.id, lessonPlanId, JSON.stringify({ assignmentId, title: taskTitle })])
+        }
+
+        // 4. Update learning_analytics lessons_completed and time spent
+        const analytics = await client.query<{ id: string }>(`
+          SELECT id FROM learning_analytics
+          WHERE student_id=$1::uuid AND course_id IS NULL AND date=CURRENT_DATE
+          ORDER BY id LIMIT 1 FOR UPDATE
+        `, [user.id])
+        if (analytics.rows[0]) {
+          await client.query(`
+            UPDATE learning_analytics
+            SET lessons_completed=(
+              SELECT COUNT(DISTINCT reference_id)::int FROM learning_events
+              WHERE student_id=$1::uuid AND event_type='lesson_completed' AND reference_type='fine_lesson_plan'
+            ),
+            time_spent_minutes=time_spent_minutes+10
+            WHERE id=$2::uuid
+          `, [user.id, analytics.rows[0].id])
+        } else {
+          await client.query(`
+            INSERT INTO learning_analytics (student_id, course_id, date, lessons_completed, time_spent_minutes, knowledge_score, overall_score)
+            VALUES ($1::uuid, NULL, CURRENT_DATE, 1, 10, 80, 80)
+          `, [user.id])
+        }
       }
       let obsoleteStorageName: string | null = null
       const previous = previousFile.rows[0]

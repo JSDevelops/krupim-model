@@ -45,6 +45,19 @@ export async function POST(request: NextRequest) {
     const payload = await request.json() as { score?: unknown }
     const score = Number(payload.score)
     if (!Number.isInteger(score) || score < 0 || score > 100) return NextResponse.json({ error: 'คะแนนไม่ถูกต้อง' }, { status: 400 })
+    // Record assessment for teacher and student analytics
+    await Promise.all([
+      queryDb(`
+        INSERT INTO student_assessments (student_id, score, knowledge_score, skills_score, attitude_score, competency_score, feedback)
+        VALUES ($1::uuid, $2, $2, $2, 85, $2, 'แบบทดสอบ Exhibit Quiz')
+      `, [user.id, score]),
+      queryDb(`
+        INSERT INTO learning_events (student_id, event_type, reference_type, reference_id, score, metadata_json)
+        VALUES ($1::uuid, 'quiz_completed', 'exhibit_quiz', 'exhibit-quiz-' || TO_CHAR(NOW(), 'YYYYMMDD-HH24MI'), $2, json_build_object('score', $2)::jsonb)
+        ON CONFLICT DO NOTHING
+      `, [user.id, score]),
+    ])
+
     const existing = await queryDb<{ id: string }>(`SELECT id FROM learning_analytics WHERE student_id=$1::uuid AND course_id IS NULL AND date=CURRENT_DATE LIMIT 1`, [user.id])
     if (existing.rows[0]) {
       await queryDb(`
@@ -55,8 +68,8 @@ export async function POST(request: NextRequest) {
       `, [score, existing.rows[0].id])
     } else {
       await queryDb(`
-        INSERT INTO learning_analytics(student_id,course_id,date,knowledge_score,overall_score)
-        VALUES($1::uuid,NULL,CURRENT_DATE,$2,ROUND($2*0.2))
+        INSERT INTO learning_analytics(student_id,course_id,date,knowledge_score,skills_score,attitude_score,competency_score,overall_score)
+        VALUES($1::uuid,NULL,CURRENT_DATE,$2,$2,85,$2,ROUND($2*0.2))
       `, [user.id, score])
     }
     return NextResponse.json({ ok: true })

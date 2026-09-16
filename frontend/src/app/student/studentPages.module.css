@@ -8,3 +8,73 @@
 .scannerGrid{display:grid;min-width:0;grid-template-columns:minmax(0,1fr);gap:12px}.scannerFrame{min-width:0;overflow:hidden;border:6px solid #fff;border-radius:22px;background:#101713;box-shadow:0 14px 38px rgba(11,35,25,.16)}.scannerLoading{display:grid;min-height:320px;place-content:center;justify-items:center;gap:9px;color:#fff}.scannerLoading strong{font-size:11px;font-weight:500}@container(min-width:720px){.scannerGrid{grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);align-items:start}}
 .taskFooter .outlineButton{margin-left:auto;min-height:34px;padding:7px 10px;font-size:9px}.taskFooter .button{margin-left:0}.dashboardHeroActions{position:relative;z-index:1;display:flex;min-width:0;flex-wrap:wrap;gap:7px;margin-top:14px}.dashboardHeroActions .heroAction{min-height:36px;padding:7px 10px;text-decoration:none}.logoutModal{width:min(420px,100%)}.logoutIcon{display:grid;width:40px;height:40px;flex:0 0 auto;place-items:center;border-radius:12px;color:#963e47;background:#f8e9eb}.logoutCopy{margin:14px;padding:11px 12px;border:1px solid #e5e9e6;border-radius:12px;color:#68756e;background:#f7f9f7;font-size:9.5px;line-height:1.65}.logoutModal .dangerButton{border-color:#9b414a;color:#fff;background:#9b414a}
 @media(prefers-reduced-motion:reduce){.progressBar,.chevron{transition:none}.modal{animation:none}}
+
+.lessonBadgeRow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+.lessonBadgeCompleted {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #e8f4ed;
+  color: #175336;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.lessonBadgeTested {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #fdf3e5;
+  color: #9c5509;
+  font-size: 10.5px;
+  font-weight: 600;
+}
+
+.stageChipList {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  margin-left: 4px;
+}
+
+.stageMiniChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  background: #eef2ef;
+  color: #7b8881;
+}
+
+.stageMiniChipActive {
+  background: #174735;
+  color: #fff;
+}
+
+.completedNoticeBox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #eaf4ee;
+  color: #164f33;
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 8px;
+}

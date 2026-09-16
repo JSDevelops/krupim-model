@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
         SELECT c.name FROM classes c JOIN class_students cs ON cs.class_id=c.id WHERE cs.student_id=$1::uuid
       ))
     )`
-    const [result, completionResult] = await Promise.all([
+    const [result, completionResult, testedResult, stageProgressResult] = await Promise.all([
       queryDb(`
         SELECT id,title,subject,level,term,duration,target_class AS "targetClass",weeks,concept,
                objectives_k AS "objectivesK",objectives_s AS "objectivesS",objectives_a AS "objectivesA",
@@ -25,12 +25,51 @@ export async function GET(request: NextRequest) {
         ? queryDb<{ reference_id: string }>(`
             SELECT reference_id FROM learning_events
             WHERE student_id=$1::uuid AND event_type='lesson_completed' AND reference_type='fine_lesson_plan'
+            UNION
+            SELECT DISTINCT a.lesson_plan_id AS reference_id
+            FROM assignment_submissions s
+            JOIN assignments a ON a.id=s.assignment_id
+            WHERE s.student_id=$1::uuid AND a.lesson_plan_id IS NOT NULL
           `, [user.id])
         : Promise.resolve({ rows: [] as Array<{ reference_id: string }> }),
+      user.role === 'student'
+        ? queryDb<{ reference_id: string }>(`
+            SELECT reference_id FROM learning_events
+            WHERE student_id=$1::uuid AND event_type='lesson_tested' AND reference_type='fine_lesson_plan'
+            UNION
+            SELECT DISTINCT a.lesson_plan_id AS reference_id
+            FROM assignment_submissions s
+            JOIN assignments a ON a.id=s.assignment_id
+            WHERE s.student_id=$1::uuid AND a.lesson_plan_id IS NOT NULL
+              AND (a.activity_type ILIKE '%exhibit%' OR a.activity_type ILIKE 'E%')
+          `, [user.id])
+        : Promise.resolve({ rows: [] as Array<{ reference_id: string }> }),
+      user.role === 'student'
+        ? queryDb<{ lessonId: string; stage: string }>(`
+            SELECT a.lesson_plan_id AS "lessonId",
+                   COALESCE(NULLIF(UPPER(SUBSTRING(a.activity_type FROM 1 FOR 1)), ''), 'F') AS "stage"
+            FROM assignment_submissions s
+            JOIN assignments a ON a.id=s.assignment_id
+            WHERE s.student_id=$1::uuid AND a.lesson_plan_id IS NOT NULL
+            GROUP BY a.lesson_plan_id, "stage"
+          `, [user.id])
+        : Promise.resolve({ rows: [] as Array<{ lessonId: string; stage: string }> }),
     ])
+
+    const stageMap: Record<string, Record<string, boolean>> = {}
+    for (const row of stageProgressResult.rows) {
+      if (!stageMap[row.lessonId]) stageMap[row.lessonId] = { F: false, I: false, N: false, E: false }
+      stageMap[row.lessonId][row.stage] = true
+    }
+
     return NextResponse.json(
-      { lessons: result.rows, completedIds: completionResult.rows.map(item => item.reference_id) },
-      { headers: { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=300' } },
+      {
+        lessons: result.rows,
+        completedIds: Array.from(new Set(completionResult.rows.map(item => item.reference_id))),
+        testedIds: Array.from(new Set(testedResult.rows.map(item => item.reference_id))),
+        stageProgress: stageMap,
+      },
+      { headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=120' } },
     )
   } catch (error) {
     return apiErrorResponse(error)
