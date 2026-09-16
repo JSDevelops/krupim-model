@@ -54,6 +54,9 @@ CREATE TABLE IF NOT EXISTS profiles (
   avatar_url TEXT,
   phone TEXT,
   bio TEXT,
+  pdpa_consent BOOLEAN NOT NULL DEFAULT FALSE,
+  pdpa_consent_at TIMESTAMPTZ,
+  pdpa_consent_version TEXT DEFAULT '1.0',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

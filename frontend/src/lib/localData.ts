@@ -224,7 +224,7 @@ export async function getSessionUser() {
 export async function getProfileFromDB(userId: string): Promise<Profile | null> {
   const { data, error } = await localData
     .from<Profile>('profiles')
-    .select('id, name, role, requested_role, approval_status, avatar_url, school_id, school_name, phone, bio, created_at')
+    .select('id, name, role, requested_role, approval_status, avatar_url, school_id, school_name, phone, bio, pdpa_consent, pdpa_consent_at, pdpa_consent_version, created_at')
     .eq('id', userId)
     .single()
   if (error) {
@@ -247,6 +247,9 @@ export interface Profile extends Record<string, unknown> {
   avatar_url?: string
   phone?: string
   bio?: string
+  pdpa_consent?: boolean
+  pdpa_consent_at?: string
+  pdpa_consent_version?: string
   created_at: string
 }
 

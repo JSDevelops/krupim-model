@@ -19,6 +19,9 @@ type ActiveProfile = {
   school_name: string | null
   phone: string | null
   bio: string | null
+  pdpa_consent?: boolean
+  pdpa_consent_at?: string | null
+  pdpa_consent_version?: string | null
   created_at: string
   session_version: number
 }
@@ -30,7 +33,8 @@ export async function GET(request: NextRequest) {
     const sessionUser = await verifySessionToken(token)
     const result = await queryDb<ActiveProfile>(`
       SELECT p.id, p.email, p.name, p.role, p.requested_role, p.approval_status, p.avatar_url,
-             p.school_id, p.school_name, p.phone, p.bio, p.created_at, u.session_version
+             p.school_id, p.school_name, p.phone, p.bio, p.pdpa_consent, p.pdpa_consent_at, p.pdpa_consent_version,
+             p.created_at, u.session_version
       FROM profiles p JOIN app_users u ON u.id=p.id
       WHERE p.id = $1
       LIMIT 1

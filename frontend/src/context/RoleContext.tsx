@@ -16,6 +16,9 @@ export interface UserInfo {
   email?: string
   teacherName?: string
   enrolledClass?: string
+  pdpa_consent?: boolean
+  pdpa_consent_at?: string
+  pdpa_consent_version?: string
 }
 
 interface RoleContextType {
@@ -55,7 +58,10 @@ export function RoleProvider({ children }: { children: ReactNode }) {
             role: profile.role,
             avatar_url: profile.avatar_url,
             school_id: profile.school_id,
-            email: sessionUser.email
+            email: sessionUser.email,
+            pdpa_consent: profile.pdpa_consent,
+            pdpa_consent_at: profile.pdpa_consent_at,
+            pdpa_consent_version: profile.pdpa_consent_version,
           }
           setUserState(userInfo)
         } else {
@@ -89,7 +95,10 @@ export function RoleProvider({ children }: { children: ReactNode }) {
             role: profile.role,
             avatar_url: profile.avatar_url,
             school_id: profile.school_id,
-            email: session.user.email
+            email: session.user.email,
+            pdpa_consent: profile.pdpa_consent,
+            pdpa_consent_at: profile.pdpa_consent_at,
+            pdpa_consent_version: profile.pdpa_consent_version,
           }
           setUserState(userInfo)
         } else {

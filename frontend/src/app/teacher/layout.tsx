@@ -2,6 +2,7 @@
 import { useRole } from '@/context/RoleContext'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import PdpaConsentModal from '@/components/PdpaConsentModal'
 
 export default function TeacherLayout({ children }: { children: React.ReactNode }) {
   const { user, role, loading } = useRole()
@@ -19,5 +20,11 @@ export default function TeacherLayout({ children }: { children: React.ReactNode 
     return <div className="min-h-screen bg-[#0F291E] text-white flex items-center justify-center p-4">กำลังโหลด...</div>
   }
 
-  return <>{children}</>
+  return (
+    <>
+      <PdpaConsentModal />
+      {children}
+    </>
+  )
 }
+

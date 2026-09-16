@@ -3,6 +3,7 @@ import StudentFINENav from '@/components/StudentFINENav'
 import { useRole } from '@/context/RoleContext'
 import { useRouter } from 'next/navigation'
 import { useEffect } from 'react'
+import PdpaConsentModal from '@/components/PdpaConsentModal'
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const { user, role, loading } = useRole()
@@ -22,8 +23,10 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
   return (
     <>
+      <PdpaConsentModal />
       {children}
       <StudentFINENav />
     </>
   )
 }
+
