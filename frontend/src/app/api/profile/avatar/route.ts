@@ -44,17 +44,21 @@ export async function POST(request: NextRequest) {
     }
 
     newStorageName = `${randomUUID()}${MIME_EXTENSION[imageType]}`
-    const uploadsDirectory = path.resolve(process.cwd(), '.data', 'uploads')
-    await mkdir(uploadsDirectory, { recursive: true })
-    await writeFile(storagePath(newStorageName), bytes, { flag: 'wx' })
+    try {
+      const uploadsDirectory = path.resolve(process.cwd(), '.data', 'uploads')
+      await mkdir(uploadsDirectory, { recursive: true })
+      await writeFile(storagePath(newStorageName), bytes, { flag: 'wx' })
+    } catch {
+      // In read-only serverless environments (Vercel), disk write is safely bypassed
+    }
 
     const result = await withTransaction(async client => {
       const current = await client.query<{ avatar_url: string | null }>('SELECT avatar_url FROM profiles WHERE id=$1::uuid FOR UPDATE', [user.id])
       if (!current.rows[0]) throw new ApiError('ไม่พบโปรไฟล์ผู้ใช้', 404, 'NOT_FOUND')
       const inserted = await client.query<{ id: string }>(`
-        INSERT INTO stored_files(owner_id,purpose,original_name,storage_name,mime_type,size_bytes)
-        VALUES($1::uuid,'avatar',$2,$3,$4,$5) RETURNING id
-      `, [user.id, `avatar${MIME_EXTENSION[imageType]}`, newStorageName, `image/${imageType}`, bytes.length])
+        INSERT INTO stored_files(owner_id,purpose,original_name,storage_name,mime_type,size_bytes,file_data)
+        VALUES($1::uuid,'avatar',$2,$3,$4,$5,$6) RETURNING id
+      `, [user.id, `avatar${MIME_EXTENSION[imageType]}`, newStorageName, `image/${imageType}`, bytes.length, bytes])
       const avatarUrl = `/api/files/${inserted.rows[0].id}`
       await client.query('UPDATE profiles SET avatar_url=$1,updated_at=NOW() WHERE id=$2::uuid', [avatarUrl, user.id])
 

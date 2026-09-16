@@ -15,6 +15,7 @@ type StoredFile = {
   mime_type: string
   teacher_id: string | null
   purpose: string
+  file_data: Buffer | null
 }
 
 export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     const { id } = await context.params
     if (!UUID.test(id)) throw new ApiError('รหัสไฟล์ไม่ถูกต้อง', 400, 'VALIDATION_ERROR')
     const result = await queryDb<StoredFile>(`
-      SELECT f.owner_id, f.original_name, f.storage_name, f.mime_type, f.purpose, a.teacher_id
+      SELECT f.owner_id, f.original_name, f.storage_name, f.mime_type, f.purpose, f.file_data, a.teacher_id
       FROM stored_files f
       LEFT JOIN assignments a ON a.id=f.assignment_id
       WHERE f.id=$1::uuid LIMIT 1
@@ -34,10 +35,21 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     if (!permitted) throw new ApiError('คุณไม่มีสิทธิ์เปิดไฟล์นี้', 403, 'FORBIDDEN')
     if (!/^[0-9a-f-]{36}\.[a-z0-9]{2,5}$/i.test(file.storage_name)) throw new ApiError('ข้อมูลไฟล์ไม่ถูกต้อง', 500, 'INVALID_STORAGE_PATH')
 
-    const storageDirectory = path.resolve(process.cwd(), '.data', 'uploads')
-    const filePath = path.resolve(storageDirectory, file.storage_name)
-    if (!filePath.startsWith(storageDirectory + path.sep)) throw new ApiError('ข้อมูลไฟล์ไม่ถูกต้อง', 500, 'INVALID_STORAGE_PATH')
-    const bytes = await readFile(filePath).catch(() => null)
+    let bytes: Buffer | null = null
+    try {
+      const storageDirectory = path.resolve(process.cwd(), '.data', 'uploads')
+      const filePath = path.resolve(storageDirectory, file.storage_name)
+      if (filePath.startsWith(storageDirectory + path.sep)) {
+        bytes = await readFile(filePath)
+      }
+    } catch {
+      // Local disk file not found or serverless environment
+    }
+
+    if (!bytes && file.file_data) {
+      bytes = file.file_data
+    }
+
     if (!bytes) throw new ApiError('ไม่พบไฟล์ในพื้นที่จัดเก็บ', 404, 'FILE_MISSING')
     const encodedName = encodeURIComponent(file.original_name).replace(/'/g, '%27')
     return new NextResponse(new Uint8Array(bytes), {

@@ -44,17 +44,26 @@ export async function POST(request: NextRequest) {
     if (!allowed.rows[0]) throw new ApiError('ไม่พบงานหรือคุณไม่มีสิทธิ์ส่งงานนี้', 404, 'NOT_FOUND')
 
     const storageName = `${randomUUID()}${extension}`
-    const storageDirectory = path.resolve(process.cwd(), '.data', 'uploads')
-    storedPath = path.join(storageDirectory, storageName)
-    await mkdir(storageDirectory, { recursive: true })
-    await writeFile(storedPath, new Uint8Array(await file.arrayBuffer()), { flag: 'wx' })
+    const buffer = Buffer.from(await file.arrayBuffer())
 
+    // 1. Try local disk write if writable (e.g. local dev)
+    try {
+      const storageDirectory = path.resolve(process.cwd(), '.data', 'uploads')
+      storedPath = path.join(storageDirectory, storageName)
+      await mkdir(storageDirectory, { recursive: true })
+      await writeFile(storedPath, buffer, { flag: 'wx' })
+    } catch {
+      // In read-only serverless environments (Vercel), disk write is safely bypassed
+      storedPath = ''
+    }
+
+    // 2. Always persist to PostgreSQL database including file_data bytea
     const stored = await withTransaction(async client => {
       const result = await client.query<{ id: string }>(`
-        INSERT INTO stored_files(owner_id,assignment_id,purpose,original_name,storage_name,mime_type,size_bytes)
-        VALUES($1::uuid,$2::uuid,'assignment',$3,$4,$5,$6)
+        INSERT INTO stored_files(owner_id,assignment_id,purpose,original_name,storage_name,mime_type,size_bytes,file_data)
+        VALUES($1::uuid,$2::uuid,'assignment',$3,$4,$5,$6,$7)
         RETURNING id
-      `, [user.id, assignmentId, file.name.slice(0, 240), storageName, file.type, file.size])
+      `, [user.id, assignmentId, file.name.slice(0, 240), storageName, file.type, file.size, buffer])
       await client.query(`
         INSERT INTO audit_logs(actor_id,action,entity_type,entity_id,details_json)
         VALUES($1::uuid,'upload_assignment_file','stored_file',$2,$3::jsonb)

@@ -357,8 +357,11 @@ CREATE TABLE IF NOT EXISTS stored_files (
   storage_name TEXT NOT NULL UNIQUE,
   mime_type TEXT NOT NULL,
   size_bytes INTEGER NOT NULL CHECK (size_bytes > 0 AND size_bytes <= 12582912),
+  file_data BYTEA,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE stored_files ADD COLUMN IF NOT EXISTS file_data BYTEA;
 
 ALTER TABLE assignment_submissions ADD COLUMN IF NOT EXISTS attachment_name TEXT;
 ALTER TABLE assignment_submissions ADD COLUMN IF NOT EXISTS attachment_url TEXT;
