@@ -49,11 +49,7 @@ export async function POST(request: NextRequest) {
     const result = await queryDb<LoginRow>(`
       SELECT u.id, u.email, u.password_hash, u.session_version, p.name, p.role, p.requested_role,
              p.approval_status, p.avatar_url, p.school_id, p.school_name,
-             p.phone, p.bio,
-             COALESCE(p.pdpa_consent, FALSE) AS pdpa_consent,
-             p.pdpa_consent_at,
-             COALESCE(p.pdpa_consent_version, '1.0') AS pdpa_consent_version,
-             p.created_at
+             p.phone, p.bio, p.created_at
       FROM app_users u
       JOIN profiles p ON p.id = u.id
       WHERE u.email = $1
@@ -73,7 +69,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Account role mismatch' }, { status: 403, headers: NO_CACHE_HEADERS })
     }
 
-    const token = await createSessionToken({ id: account.id, email: account.email, role: account.role, sessionVersion: account.session_version })
+    let pdpaConsent = false
+    let pdpaConsentAt: string | null = null
+    let pdpaConsentVersion = '1.0'
+    try {
+      const pdpaCheck = await queryDb<{ pdpa_consent: boolean; pdpa_consent_at: string | null; pdpa_consent_version: string | null }>(
+        `SELECT pdpa_consent, pdpa_consent_at, pdpa_consent_version FROM profiles WHERE id = $1::uuid LIMIT 1`,
+        [account.id]
+      )
+      if (pdpaCheck.rows[0]) {
+        pdpaConsent = Boolean(pdpaCheck.rows[0].pdpa_consent)
+        pdpaConsentAt = pdpaCheck.rows[0].pdpa_consent_at ?? null
+        pdpaConsentVersion = pdpaCheck.rows[0].pdpa_consent_version ?? '1.0'
+      }
+    } catch {
+      // Graceful fallback if migration 017 has not yet run on production PostgreSQL
+    }
+
+    const token = await createSessionToken({ id: account.id, email: account.email, role: account.role, sessionVersion: account.session_version || 1 })
     const profile = {
       id: account.id,
       email: account.email,
@@ -86,9 +99,9 @@ export async function POST(request: NextRequest) {
       school_name: account.school_name,
       phone: account.phone,
       bio: account.bio,
-      pdpa_consent: Boolean(account.pdpa_consent),
-      pdpa_consent_at: account.pdpa_consent_at ?? null,
-      pdpa_consent_version: account.pdpa_consent_version ?? '1.0',
+      pdpa_consent: pdpaConsent,
+      pdpa_consent_at: pdpaConsentAt,
+      pdpa_consent_version: pdpaConsentVersion,
       created_at: account.created_at,
     }
     const response = NextResponse.json({
