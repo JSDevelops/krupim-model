@@ -9,6 +9,7 @@ import { passwordPolicyError } from "@/lib/passwordPolicy";
 import { toast } from "sonner";
 import StudentIcon, { type StudentIconName } from "../StudentIcon";
 import styles from "../studentPages.module.css";
+import StudentManualView from "@/components/student/StudentManualView";
 
 type Profile = {
   id: string;
@@ -69,36 +70,6 @@ const emptyStats: Stats = {
   timeSpentMinutes: 0,
   sessions: 0,
 };
-const manuals: Array<{
-  icon: StudentIconName;
-  title: string;
-  content: string;
-}> = [
-  {
-    icon: "target",
-    title: "F — Familiarize: สำรวจและเรียนรู้คำศัพท์",
-    content:
-      "เริ่มจากหน้า Explore เพื่อดูอุปกรณ์ คำศัพท์ คำอ่าน และประโยคตัวอย่าง ก่อนนำไปฝึกในขั้นถัดไป",
-  },
-  {
-    icon: "message",
-    title: "I — Interact: ฝึกฟังและพูดตาม",
-    content:
-      "ฟังเสียงต้นแบบ พูดตาม และดูผลประเมินรายคำ ระบบจะช่วยชี้คำที่ควรกลับไปฝึกเพิ่มเติม",
-  },
-  {
-    icon: "task",
-    title: "N — Navigate: ฝึกตามสถานการณ์",
-    content:
-      "เลือกสถานการณ์จากแผนการสอน เตรียมคำศัพท์และประโยค แล้วทดลองใช้ในห้องจำลองเสมือนจริง",
-  },
-  {
-    icon: "exhibit",
-    title: "E — Exhibit: ทดสอบและทบทวนผล",
-    content:
-      "ตรวจประวัติการฝึก ทำแบบทดสอบ และติดตามคะแนนที่ได้รับจากกิจกรรมและการประเมินของคุณครู",
-  },
-];
 
 function formatDate(value: string | null) {
   if (!value) return "ไม่กำหนด";
@@ -149,7 +120,6 @@ export default function StudentProfilePage() {
   const [activeTab, setActiveTab] = useState<"overview" | "tasks" | "manual">(
     "overview",
   );
-  const [expandedManual, setExpandedManual] = useState<number | null>(null);
   const [profileModal, setProfileModal] = useState(false);
   const [passwordModal, setPasswordModal] = useState(false);
   const [certificateModal, setCertificateModal] = useState(false);
@@ -728,42 +698,7 @@ export default function StudentProfilePage() {
           )}
 
           {activeTab === "manual" && (
-            <>
-              <header className={styles.sectionHeader}>
-                <h2>คู่มือการเรียนด้วย FINE Model</h2>
-                <p>เลือกหัวข้อเพื่อดูแนวทางใช้งานแต่ละขั้น</p>
-              </header>
-              <div className={styles.manualList}>
-                {manuals.map((item, index) => (
-                  <article
-                    className={`${styles.manualItem} ${expandedManual === index ? styles.expanded : ""}`}
-                    key={item.title}
-                  >
-                    <button
-                      type="button"
-                      className={styles.manualHeader}
-                      onClick={() =>
-                        setExpandedManual(
-                          expandedManual === index ? null : index,
-                        )
-                      }
-                      aria-expanded={expandedManual === index}
-                    >
-                      <span className={styles.iconBox}>
-                        <StudentIcon name={item.icon} />
-                      </span>
-                      <strong>{item.title}</strong>
-                      <span className={styles.chevron}>
-                        <StudentIcon name="chevron" size={17} />
-                      </span>
-                    </button>
-                    {expandedManual === index && (
-                      <div className={styles.manualDetail}>{item.content}</div>
-                    )}
-                  </article>
-                ))}
-              </div>
-            </>
+            <StudentManualView />
           )}
         </section>
 
