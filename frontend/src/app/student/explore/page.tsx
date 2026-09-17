@@ -149,6 +149,8 @@ export default function ExplorePage() {
   }, [])
 
   useEffect(() => {
+    // โหลดความคืบหน้า Mission สัปดาห์ที่ 2 จาก localStorage
+    // week2AssignmentId ใช้ค่า default 'a1111111-...-2201' ซึ่งตรงกับ DB แล้ว
     try {
       const saved = localStorage.getItem('finemodel_week2_f_mission')
       if (saved) {
@@ -157,16 +159,6 @@ export default function ExplorePage() {
     } catch (e) {
       console.warn('Could not load week 2 mission progress', e)
     }
-
-    authenticatedFetch('/api/student/dashboard')
-      .then(res => res.json())
-      .then((data: { tasks?: Array<{ id: string; title: string }> }) => {
-        const found = data.tasks?.find(t => t.title?.includes('สัปดาห์ที่ 2') || t.title?.includes('20 ชนิด') || t.id?.endsWith('2201'))
-        if (found) {
-          setWeek2AssignmentId(found.id)
-        }
-      })
-      .catch(() => {})
   }, [])
 
   useEffect(() => {
