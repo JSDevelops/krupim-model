@@ -552,7 +552,7 @@ export default function ExplorePage() {
         {/* ── Tabs Navigation ── */}
         <div className={styles.tabs} role="tablist" aria-label="โหมดสำรวจ">
           <button type="button" role="tab" aria-selected={activeTab === 'mission'} className={`${styles.tab} ${activeTab === 'mission' ? styles.tabActive : ''}`} onClick={() => changeTab('mission')}>
-            <ExploreIcon name="sparkles" size={17} /> ภารกิจสัปดาห์ที่ 2
+            <ExploreIcon name="sparkles" size={17} /> ภารกิจประจำสัปดาห์
           </button>
           <button type="button" role="tab" aria-selected={activeTab === 'library'} className={`${styles.tab} ${activeTab === 'library' ? styles.tabActive : ''}`} onClick={() => changeTab('library')}>
             <ExploreIcon name="book" size={17} /> คลังคำศัพท์
