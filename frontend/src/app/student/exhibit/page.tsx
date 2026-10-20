@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { authenticatedFetch } from '@/lib/api'
@@ -39,10 +40,19 @@ function formatDate(value: string) {
   return Number.isNaN(date.getTime()) ? value : new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium', timeStyle: 'short' }).format(date)
 }
 
+type QuizTopic = {
+  topicId: string
+  topicTitle: string
+  questions: QuizQuestion[]
+}
+
 export default function ExhibitPage() {
   const [activeTab, setActiveTab] = useState<'history' | 'quiz' | 'score'>('history')
   const [history, setHistory] = useState<HistoryEntry[]>([])
   const [scores, setScores] = useState<Scores>(emptyScores)
+  const [quizTopics, setQuizTopics] = useState<QuizTopic[]>([])
+  const [selectedTopicId, setSelectedTopicId] = useState<string>('all')
+  const [activeQuestions, setActiveQuestions] = useState<QuizQuestion[]>(quizBank)
   const [quizStarted, setQuizStarted] = useState(false)
   const [questionIndex, setQuestionIndex] = useState(0)
   const [selected, setSelected] = useState<number | null>(null)
@@ -63,9 +73,14 @@ export default function ExhibitPage() {
           authenticatedFetch('/api/student/dashboard', { signal: controller.signal }),
         ])
         if (response.ok) {
-          const payload = await response.json() as { history?: HistoryEntry[]; scores?: Scores }
+          const payload = await response.json() as { history?: HistoryEntry[]; scores?: Scores; quizBank?: QuizTopic[] }
           setHistory(payload.history || [])
           setScores(payload.scores || emptyScores)
+          if (payload.quizBank?.length) {
+            setQuizTopics(payload.quizBank)
+            const allQ = payload.quizBank.flatMap(t => t.questions)
+            setActiveQuestions(allQ.length ? allQ : quizBank)
+          }
         }
         if (dashRes.ok) {
           const dashPayload = await dashRes.json() as { tasks?: ExhibitTask[] }
@@ -83,9 +98,21 @@ export default function ExhibitPage() {
     return () => { controller.abort(); if (timerRef.current) clearTimeout(timerRef.current) }
   }, [])
 
+  function switchTopic(topicId: string) {
+    setSelectedTopicId(topicId)
+    if (topicId === 'all') {
+      const allQ = quizTopics.flatMap(t => t.questions)
+      setActiveQuestions(allQ.length ? allQ : quizBank)
+    } else {
+      const found = quizTopics.find(t => t.topicId === topicId)
+      if (found && found.questions.length) setActiveQuestions(found.questions)
+    }
+    resetQuiz()
+  }
+
   const measuredScores = history.map(item => item.score).filter((score): score is number => score !== null)
   const historyAverage = measuredScores.length ? Math.round(measuredScores.reduce((sum, score) => sum + score, 0) / measuredScores.length) : scores.averageScore
-  const quizScore = quizDone ? Math.round((answers.filter(Boolean).length / quizBank.length) * 100) : 0
+  const quizScore = quizDone ? Math.round((answers.filter(Boolean).length / activeQuestions.length) * 100) : 0
   const breakdown = useMemo(() => (['simulation', 'chat', 'live'] as HistoryType[]).map(type => {
     const values = history.filter(item => item.type === type && item.score !== null).map(item => item.score as number)
     return { type, score: values.length ? Math.round(values.reduce((sum, value) => sum + value, 0) / values.length) : 0 }
@@ -94,14 +121,14 @@ export default function ExhibitPage() {
   function chooseAnswer(index: number) {
     if (selected !== null) return
     setSelected(index)
-    const correct = index === quizBank[questionIndex].correct
+    const correct = index === activeQuestions[questionIndex].correct
     timerRef.current = setTimeout(() => {
       const next = [...answers, correct]
       setAnswers(next)
-      if (questionIndex < quizBank.length - 1) { setQuestionIndex(value => value + 1); setSelected(null) }
+      if (questionIndex < activeQuestions.length - 1) { setQuestionIndex(value => value + 1); setSelected(null) }
       else {
         setQuizDone(true)
-        const score = Math.round((next.filter(Boolean).length / quizBank.length) * 100)
+        const score = Math.round((next.filter(Boolean).length / activeQuestions.length) * 100)
         const nowStr = new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date())
         setRecordedAt(nowStr)
 
@@ -175,19 +202,93 @@ export default function ExhibitPage() {
     <nav className={styles.tabs} aria-label="เนื้อหาหน้า Exhibit">{tabs.map(tab => <button type="button" key={tab.id} className={`${styles.tab} ${activeTab === tab.id ? styles.tabActive : ''}`} onClick={() => setActiveTab(tab.id)}><StudentIcon name={tab.icon} size={15} /><span>{tab.label}</span></button>)}</nav>
 
     <section className={styles.content}>
+      {historyAverage >= 70 && (
+        <div style={{
+          background: 'linear-gradient(135deg, #1b4d3e 0%, #296853 100%)',
+          borderRadius: 20,
+          padding: '18px 22px',
+          color: '#fff',
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 16,
+          marginBottom: 20,
+          boxShadow: '0 8px 24px rgba(27, 77, 62, 0.2)',
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+            <span style={{ fontSize: 32 }}>🎓</span>
+            <div>
+              <strong style={{ display: 'block', fontSize: 16, color: '#f5df97' }}>
+                ยินดีด้วย! คุณผ่านเกณฑ์สมรรถนะ FINE Model เรียบร้อยแล้ว
+              </strong>
+              <span style={{ fontSize: 12, opacity: 0.9 }}>
+                คะแนนเฉลี่ยสะสม {historyAverage}% (ผ่านเกณฑ์ 70%) พร้อมตรวจสอบและรับใบประกาศนียบัตรดิจิทัล
+              </span>
+            </div>
+          </div>
+          <Link
+            href="/student/profile"
+            style={{
+              padding: '10px 18px',
+              borderRadius: 12,
+              background: '#f0d681',
+              color: '#1a3c30',
+              fontWeight: 600,
+              fontSize: 12,
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+            }}
+          >
+            เปิดดูใบรับรอง <StudentIcon name="arrowRight" size={14} />
+          </Link>
+        </div>
+      )}
+
       {activeTab === 'history' && <><header className={styles.sectionHeader}><h2>ประวัติการฝึกทั้งหมด</h2><p>เรียงจากกิจกรรมล่าสุดและแสดงผลจากฐานข้อมูลจริง</p></header>
         {history.length ? <div className={styles.historyList}>{history.map(entry => { const detail = historyDetails(entry.type); return <article className={styles.historyCard} key={entry.id}>
           <span className={`${styles.historyIcon} ${detail.className}`}><StudentIcon name={detail.icon} /></span><div className={styles.historyCopy}><strong>{detail.label}</strong><p>{entry.preview}</p><div className={styles.historyMeta}><span><StudentIcon name="calendar" size={13} />{formatDate(entry.occurredAt)}</span><span><StudentIcon name="clock" size={13} />{entry.durationMinutes} นาที</span></div></div>{entry.score !== null && <span className={`${styles.scorePill} ${entry.score < 70 ? styles.low : ''}`}>{entry.score}%</span>}
         </article>})}</div> : <div className={`${styles.card} ${styles.empty}`}><StudentIcon name="history" size={26} /><strong>ยังไม่มีประวัติการฝึก</strong><span>เริ่มฝึกจากหน้า Interact หรือ Navigate แล้วผลจะปรากฏในหน้านี้</span></div>}
       </>}
 
-      {activeTab === 'quiz' && <>{!quizStarted && !quizDone && <div className={`${styles.card} ${styles.quizIntro}`}><span className={styles.largeIcon}><StudentIcon name="exhibit" size={27} /></span><h2>แบบทดสอบ F&amp;B Service</h2><p>ทดสอบคำศัพท์และการเลือกประโยคในสถานการณ์งานบริการ</p><div className={styles.factGrid}><div className={styles.fact}><span>จำนวนคำถาม</span><strong>{quizBank.length} ข้อ</strong></div><div className={styles.fact}><span>คะแนนผ่าน</span><strong>70%</strong></div><div className={styles.fact}><span>ทักษะที่วัด</span><strong>Knowledge + Skills</strong></div><div className={styles.fact}><span>เวลาโดยประมาณ</span><strong>5 นาที</strong></div></div><button type="button" className={`${styles.button} ${styles.full}`} onClick={() => setQuizStarted(true)}>เริ่มทำแบบทดสอบ <StudentIcon name="arrowRight" size={16} /></button></div>}
-        {quizStarted && !quizDone && <div className={styles.card}><div className={styles.progressRow}><div className={styles.progressTrack}><div className={styles.progressBar} style={{ width: `${((questionIndex + 1) / quizBank.length) * 100}%` }} /></div><span>{questionIndex + 1}/{quizBank.length}</span></div><span className={styles.questionLabel}>คำถามที่ {questionIndex + 1}</span><h2 className={styles.question}>{quizBank[questionIndex].question}</h2><div className={styles.options}>{quizBank[questionIndex].options.map((option, index) => { const correct = selected !== null && index === quizBank[questionIndex].correct; const wrong = selected === index && !correct; return <button type="button" disabled={selected !== null} className={`${styles.option} ${correct ? styles.optionCorrect : ''} ${wrong ? styles.optionWrong : ''}`} key={option} onClick={() => chooseAnswer(index)}><span className={styles.optionLetter}>{String.fromCharCode(65 + index)}</span><span>{option}</span>{(correct || wrong) && <StudentIcon name={correct ? 'check' : 'x'} size={16} />}</button>})}</div></div>}
+      {activeTab === 'quiz' && <>{!quizStarted && !quizDone && <div className={`${styles.card} ${styles.quizIntro}`}><span className={styles.largeIcon}><StudentIcon name="exhibit" size={27} /></span><h2>แบบทดสอบ F&amp;B Service</h2><p>ทดสอบคำศัพท์และการเลือกประโยคในสถานการณ์งานบริการ</p>
+        {quizTopics.length > 0 && (
+          <div style={{ margin: '14px 0 20px', width: '100%', maxWidth: 420 }}>
+            <label htmlFor="topic-select" style={{ display: 'block', fontSize: 11, color: '#687770', marginBottom: 6 }}>
+              เลือกหมวดหมู่แบบทดสอบ:
+            </label>
+            <select
+              id="topic-select"
+              value={selectedTopicId}
+              onChange={e => switchTopic(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '9px 12px',
+                borderRadius: 10,
+                border: '1px solid #d5ddd8',
+                fontSize: 12,
+                background: '#fff',
+                color: '#243b31',
+              }}
+            >
+              <option value="all">ทุกหมวดหมู่รวมกัน ({quizTopics.flatMap(t => t.questions).length} ข้อ)</option>
+              {quizTopics.map(t => (
+                <option key={t.topicId} value={t.topicId}>
+                  {t.topicTitle} ({t.questions.length} ข้อ)
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+        <div className={styles.factGrid}><div className={styles.fact}><span>จำนวนคำถาม</span><strong>{activeQuestions.length} ข้อ</strong></div><div className={styles.fact}><span>คะแนนผ่าน</span><strong>70%</strong></div><div className={styles.fact}><span>ทักษะที่วัด</span><strong>Knowledge + Skills</strong></div><div className={styles.fact}><span>เวลาโดยประมาณ</span><strong>5 นาที</strong></div></div><button type="button" className={`${styles.button} ${styles.full}`} onClick={() => setQuizStarted(true)}>เริ่มทำแบบทดสอบ <StudentIcon name="arrowRight" size={16} /></button></div>}
+        {quizStarted && !quizDone && <div className={styles.card}><div className={styles.progressRow}><div className={styles.progressTrack}><div className={styles.progressBar} style={{ width: `${((questionIndex + 1) / activeQuestions.length) * 100}%` }} /></div><span>{questionIndex + 1}/{activeQuestions.length}</span></div><span className={styles.questionLabel}>คำถามที่ {questionIndex + 1}</span><h2 className={styles.question}>{activeQuestions[questionIndex].question}</h2><div className={styles.options}>{activeQuestions[questionIndex].options.map((option, index) => { const correct = selected !== null && index === activeQuestions[questionIndex].correct; const wrong = selected === index && !correct; return <button type="button" disabled={selected !== null} className={`${styles.option} ${correct ? styles.optionCorrect : ''} ${wrong ? styles.optionWrong : ''}`} key={option} onClick={() => chooseAnswer(index)}><span className={styles.optionLetter}>{String.fromCharCode(65 + index)}</span><span>{option}</span>{(correct || wrong) && <StudentIcon name={correct ? 'check' : 'x'} size={16} />}</button>})}</div></div>}
         {quizDone && <div className={`${styles.card} ${styles.quizResult}`}>
           <span className={styles.largeIcon}><StudentIcon name={quizScore >= 70 ? 'award' : 'refresh'} size={28} /></span>
           <span className={styles.questionLabel}>คะแนนของคุณ</span>
           <div className={styles.scoreValue}>{quizScore}%</div>
-          <strong>{answers.filter(Boolean).length} / {quizBank.length} ข้อถูกต้อง</strong>
+          <strong>{answers.filter(Boolean).length} / {activeQuestions.length} ข้อถูกต้อง</strong>
 
           <div className={styles.quizRecordedNotice}>
             <strong>

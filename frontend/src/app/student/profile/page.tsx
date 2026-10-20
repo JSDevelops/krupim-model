@@ -131,6 +131,7 @@ export default function StudentProfilePage() {
   });
   const [submissionFile, setSubmissionFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [form, setForm] = useState<ProfileForm>({
     name: "",
     schoolName: "",
@@ -245,6 +246,31 @@ export default function StudentProfilePage() {
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDownloadPortfolioPdf() {
+    try {
+      setExportingPdf(true);
+      const { generateFinePortfolioPdf } = await import("@/lib/portfolioPdf");
+      await generateFinePortfolioPdf({
+        profile: {
+          name: profile?.name || user?.name || "Student",
+          email: profile?.email || user?.email || "",
+          schoolName: profile?.schoolName,
+          phone: profile?.phone,
+          bio: profile?.bio,
+        },
+        stats,
+        tasks,
+        certificate,
+      });
+      toast.success("ดาวน์โหลดแฟ้มสะสมงานดิจิทัล (FINE E-Portfolio PDF) เรียบร้อยแล้ว");
+    } catch (error) {
+      console.error("Failed to generate portfolio PDF:", error);
+      toast.error("ไม่สามารถสร้าง PDF ได้ กรุณาลองใหม่อีกครั้ง");
+    } finally {
+      setExportingPdf(false);
     }
   }
 
@@ -463,6 +489,16 @@ export default function StudentProfilePage() {
             </div>
           </div>
           <div className={styles.profileActions}>
+            <button
+              type="button"
+              className={styles.heroAction}
+              onClick={() => void handleDownloadPortfolioPdf()}
+              disabled={exportingPdf}
+              title="ดาวน์โหลดแฟ้มสะสมงานดิจิทัล FINE E-Portfolio (PDF)"
+            >
+              <StudentIcon name="download" size={15} />
+              {exportingPdf ? "กำลังสร้าง PDF..." : "ดาวน์โหลด E-Portfolio"}
+            </button>
             <button
               type="button"
               className={styles.heroAction}
@@ -1011,6 +1047,16 @@ export default function StudentProfilePage() {
                 </div>
               </div>
               <div className={styles.certificateActions}>
+                <button
+                  type="button"
+                  className={styles.heroAction}
+                  onClick={() => void handleDownloadPortfolioPdf()}
+                  disabled={exportingPdf}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+                >
+                  <StudentIcon name="download" size={15} />
+                  {exportingPdf ? "กำลังสร้าง..." : "E-Portfolio PDF"}
+                </button>
                 <Link
                   className={styles.outlineButton}
                   href={`/verify/${certificate.certificateCode}`}

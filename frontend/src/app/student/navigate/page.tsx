@@ -35,7 +35,85 @@ type SpeechRecognitionInstance = {
   stop: () => void
 }
 type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance
-type DetailView = 'overview' | 'vocabulary' | 'sentences'
+type DetailView = 'overview' | 'decision' | 'vocabulary' | 'sentences'
+
+type DecisionOption = {
+  text: string
+  isCorrect: boolean
+  feedback: string
+}
+
+type Dilemma = {
+  situation: string
+  prompt: string
+  options: DecisionOption[]
+}
+
+const scenarioDilemmas: Record<string, Dilemma> = {
+  'table-setting': {
+    situation: 'ลูกค้านั่งที่โต๊ะแล้วสังเกตเห็นว่าบนโต๊ะมีส้อม 3 คัน มีด 2 เล่ม และช้อนซุป ลูกค้าถามพนักงานว่า "ฉันควรเริ่มใช้อุปกรณ์คันไหนก่อนสำหรับอาหารจานแรก?"',
+    prompt: 'ในฐานะพนักงานบริการ คุณควรแนะนำลูกค้าอย่างไรให้ถูกต้องตามมาตรฐานสากล?',
+    options: [
+      {
+        text: 'แนะนำด้วยรอยยิ้มอย่างสุภาพว่า "ขออนุญาตแนะนำให้ใช้อุปกรณ์จากคู่ที่อยู่วงนอกสุดก่อนครับ (Outside-In) โดยเริ่มจากช้อนซุปและส้อมสลัดด้านนอกครับ"',
+        isCorrect: true,
+        feedback: 'ถูกต้องยอดเยี่ยม! หลักการ Outside-In เป็นหัวใจของ Table Setting สากล การอธิบายอย่างสุภาพช่วยสร้างความมั่นใจให้ผู้รับบริการ',
+      },
+      {
+        text: 'ตอบลูกค้าว่า "ใช้อันไหนก็ได้ครับตามใจชอบ ไม่ซีเรียส"',
+        isCorrect: false,
+        feedback: 'ยังไม่ถูกต้อง: การบริการระดับมืออาชีพควรให้คำแนะนำที่ถูกต้องตามมารยาทสากล เพื่อรักษามาตรฐานของมื้ออาหาร',
+      },
+      {
+        text: 'เดินไปหยิบอุปกรณ์ที่เหลือออก แล้วบอกว่าเดี๋ยวค่อยเอามาให้ทีละคอร์ส',
+        isCorrect: false,
+        feedback: 'ยังไม่ถูกต้อง: การจัดโต๊ะแบบ Full Course วัตถุประสงค์คือเตรียมความพร้อมล่วงหน้า การหยิบออกทำให้เสียมาตรฐาน',
+      },
+    ],
+  },
+  'guest-welcome': {
+    situation: 'ลูกค้า 2 ท่านเดินเข้ามาในห้องอาหารช่วงเวลา 19:30 น. ซึ่งมีลูกค้าแน่นร้าน ลูกค้าแจ้งว่าไม่ได้จองโต๊ะล่วงหน้าไว้ แต่อยากได้โต๊ะริมหน้าต่าง',
+    prompt: 'ในฐานะ Restaurant Host คุณควรปฏิบัติและสื่อสารอย่างไร?',
+    options: [
+      {
+        text: 'ตรวจสอบตาราง หากโต๊ะริมหน้าต่างมีคิวจอง ให้กล่าวขออภัยอย่างจริงใจ เสนอโต๊ะว่างในโซนที่เงียบสงบแทน พร้อมเสนอเสิร์ฟเครื่องดื่มต้อนรับระหว่างรอจัดโต๊ะ',
+        isCorrect: true,
+        feedback: 'ยอดเยี่ยมมาก! การกล่าวขออภัยอย่างสุภาพ เสนอทางเลือกที่ดีแทน (Alternative Solution) และดูแลลูกค้าต่อเนื่อง เป็นหัวใจของ Service Mind',
+      },
+      {
+        text: 'ตอบปฏิเสธทันทีว่า "โต๊ะริมหน้าต่างเต็มหมดแล้ว สำหรับคนที่จองเท่านั้นครับ"',
+        isCorrect: false,
+        feedback: 'ยังไม่เหมาะสม: การปฏิเสธทันทีโดยไม่เสนอทางเลือกทดแทนทำให้ลูกค้ารู้สึกไม่ได้รับการต้อนรับ',
+      },
+      {
+        text: 'ให้ลูกค้านั่งโต๊ะริมหน้าต่างไปก่อน แล้วค่อยเชิญลุกเมื่อลูกค้าที่จองจริงมาถึง',
+        isCorrect: false,
+        feedback: 'ห้ามปฏิบัติเด็ดขาด: จะสร้างความไม่พอใจอย่างรุนแรงทั้งแก่ลูกค้าที่นั่งอยู่และลูกค้าที่จองล่วงหน้า',
+      },
+    ],
+  },
+  'service-recovery': {
+    situation: 'ลูกค้าสั่งสเต๊กเนื้อแบบ Medium Rare แต่เมื่ออาหารมาเสิร์ฟและลูกค้าหั่นดู พบว่าเนื้อสุกเกินไปเป็น Well Done ลูกค้ามีสีหน้าไม่พอใจและเรียกพนักงาน',
+    prompt: 'ตามหลัก Service Recovery สากล คุณควรทำสิ่งใดเป็นอันดับแรก?',
+    options: [
+      {
+        text: 'สบตาลูกค้า รับฟังอย่างตั้งใจ กล่าวขออภัยอย่างจริงใจโดยไม่โต้แย้ง และรีบนำจานกลับเข้าครัวเพื่อปรุงจานใหม่ตามระดับความสุกที่ถูกต้องทันที',
+        isCorrect: true,
+        feedback: 'ถูกต้องที่สุด! กฎเหล็กของ Service Recovery คือ ฟัง (Listen), ขออภัย (Apologize) และแก้ไขปัญหาทันที (Act Immediately)',
+      },
+      {
+        text: 'อธิบายว่าเนื้อระดับนี้คือ Medium Rare ตามมาตรฐานของเชฟในครัว',
+        isCorrect: false,
+        feedback: 'ไม่ถูกต้อง: การโต้แย้งกับลูกค้าเรื่องความสุกจะทำให้ลูกค้ารู้สึกว่าพนักงานไม่ใส่ใจความต้องการของเขา',
+      },
+      {
+        text: 'ขอให้ลูกค้ารับประทานไปก่อน แล้วเสนอจะลดราคาเครื่องดื่มให้ 10%',
+        isCorrect: false,
+        feedback: 'ไม่ถูกต้อง: เมื่ออาหารหลักไม่ตรงตามที่สั่ง ต้องแก้ไขที่ตัวอาหารก่อนเสมอ ไม่ควรให้ลูกค้ารับประทานสิ่งที่ไม่ต้องการ',
+      },
+    ],
+  },
+}
 
 const defaultScenarios: Scenario[] = [
   {
@@ -156,11 +234,16 @@ export default function NavigatePage() {
     setRecordingId(null)
   }
 
+  const [selectedDecision, setSelectedDecision] = useState<number | null>(null)
+  const [decisionAnswered, setDecisionAnswered] = useState(false)
+
   function openScenario(id: string) {
     stopMedia()
     setActiveScenarioId(id)
     setActiveView('overview')
     setExpandedWord(null)
+    setSelectedDecision(null)
+    setDecisionAnswered(false)
   }
 
   function closeScenario() {
@@ -168,6 +251,8 @@ export default function NavigatePage() {
     setActiveScenarioId(null)
     setActiveView('overview')
     setExpandedWord(null)
+    setSelectedDecision(null)
+    setDecisionAnswered(false)
   }
 
   function selectView(view: DetailView) {
@@ -233,8 +318,31 @@ export default function NavigatePage() {
   }
 
   if (activeScenario) {
+    const dilemma: Dilemma = scenarioDilemmas[activeScenario.id] || {
+      situation: `ลูกค้ากำลังอยู่ในสถานการณ์ "${activeScenario.titleTh}" และต้องการคำแนะนำหรือการบริการที่ถูกต้อง`,
+      prompt: 'ในฐานะพนักงานบริการ คุณควรตัดสินใจเลือกแนวทางใดเพื่อให้ถูกต้องตามมาตรฐานวิชาชีพ?',
+      options: [
+        {
+          text: `ทักทายอย่างสุภาพ สื่อสารด้วยความมั่นใจตามมาตรฐานการบริการ และประยุกต์ใช้ทักษะภาษาอังกฤษเพื่อช่วยเหลือลูกค้าทันที`,
+          isCorrect: true,
+          feedback: 'ถูกต้อง! การปฏิบัติตามมาตรฐานงานบริการด้วยความกระตือรือร้นและสุภาพ เป็นหัวใจสำคัญของพนักงานระดับมืออาชีพ',
+        },
+        {
+          text: 'นิ่งเฉยและรอดูว่าลูกค้าจะพูดอะไรต่อไปโดยไม่เข้าไปสอบถาม',
+          isCorrect: false,
+          feedback: 'ไม่เหมาะสม: พนักงานบริการต้องมีความกระตือรือร้น (Proactive Service) ไม่ควรปล่อยให้ลูกค้ารอคอยโดยไม่ได้รับการดูแล',
+        },
+        {
+          text: 'ตอบสั้นๆ ว่าให้ลูกค้าช่วยตัวเองไปก่อนเนื่องจากกำลังยุ่ง',
+          isCorrect: false,
+          feedback: 'ห้ามปฏิบัติเด็ดขาด: จะทำให้เกิดข้อร้องเรียนและสร้างภาพลักษณ์ที่ไม่ดีต่อห้องอาหาร',
+        },
+      ],
+    }
+
     const tabs: Array<{ id: DetailView; label: string; count?: number }> = [
       { id: 'overview', label: 'ภาพรวม' },
+      { id: 'decision', label: 'ตัดสินใจแก้ปัญหา' },
       { id: 'vocabulary', label: 'คำศัพท์', count: activeScenario.vocabulary.length },
       { id: 'sentences', label: 'ฝึกประโยค', count: activeScenario.sentences.length },
     ]
@@ -260,6 +368,86 @@ export default function NavigatePage() {
           <nav className={styles.tabs} aria-label="เนื้อหาสถานการณ์">
             {tabs.map(tab => <button key={tab.id} type="button" className={`${styles.tab} ${activeView === tab.id ? styles.tabActive : ''}`} onClick={() => selectView(tab.id)}><span>{tab.label}</span>{tab.count !== undefined && <span className={styles.tabCount}>{tab.count}</span>}</button>)}
           </nav>
+
+          {activeView === 'decision' && (
+            <section className={styles.contentSection}>
+              <header className={styles.sectionHeader}>
+                <div>
+                  <span className={styles.sectionEyebrow}>Branching Decision Dilemma</span>
+                  <h2>ความท้าทายและการตัดสินใจเฉพาะหน้า</h2>
+                  <p>วิเคราะห์สถานการณ์ เลือกแนวทางการปฏิบัติที่ดีที่สุดตามหลักมาตรฐานสากล</p>
+                </div>
+              </header>
+
+              <div className={styles.dilemmaCard}>
+                <div className={styles.dilemmaSituation}>
+                  <h3>สถานการณ์จำลอง (Situation):</h3>
+                  <p>{dilemma.situation}</p>
+                </div>
+
+                <p style={{ fontWeight: 500, fontSize: 13, color: '#1f382e', margin: '14px 0 8px' }}>
+                  ❓ {dilemma.prompt}
+                </p>
+
+                <div className={styles.optionsGrid}>
+                  {dilemma.options.map((opt, idx) => {
+                    const isSelected = selectedDecision === idx
+                    let btnClass = styles.optionBtn
+                    if (isSelected) {
+                      btnClass += ` ${styles.optionSelected}`
+                      if (decisionAnswered) {
+                        btnClass += opt.isCorrect ? ` ${styles.optionCorrect}` : ` ${styles.optionIncorrect}`
+                      }
+                    }
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        className={btnClass}
+                        onClick={() => {
+                          setSelectedDecision(idx)
+                          setDecisionAnswered(true)
+                          if (opt.isCorrect) {
+                            toast.success('คำตอบถูกต้อง! +10 คะแนนสมรรถนะ (Competency)')
+                            void authenticatedFetch('/api/student/interact', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ score: 100, sentence: `Decision: ${activeScenario.title}` }),
+                            }).catch(() => undefined)
+                          } else {
+                            toast.warning('ยังไม่ตรงตามมาตรฐานงานบริการ ลองอ่านคำอธิบายเพิ่มเติม')
+                          }
+                        }}
+                      >
+                        <span style={{ fontWeight: 600, color: '#275f4d' }}>{String.fromCharCode(65 + idx)}.</span>
+                        <span>{opt.text}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                {decisionAnswered && selectedDecision !== null && (
+                  <div className={`${styles.optionFeedback} ${dilemma.options[selectedDecision].isCorrect ? styles.optionFeedbackSuccess : styles.optionFeedbackFail}`}>
+                    <strong>
+                      {dilemma.options[selectedDecision].isCorrect ? '✅ คำอธิบายความถูกต้องตามมาตรฐานวิชาชีพ:' : '❌ คำแนะนำเพื่อการพัฒนา:'}
+                    </strong>
+                    <p style={{ margin: '6px 0 0' }}>{dilemma.options[selectedDecision].feedback}</p>
+                    {dilemma.options[selectedDecision].isCorrect && (
+                      <div style={{ marginTop: 12 }}>
+                        <button
+                          type="button"
+                          className={styles.primaryButton}
+                          onClick={() => selectView('sentences')}
+                        >
+                          ไปฝึกพูดประโยคในสถานการณ์นี้ <NavigateIcon name="arrowRight" size={16} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
 
           {activeView === 'overview' && (
             <div className={styles.overviewGrid}>

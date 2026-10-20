@@ -341,9 +341,88 @@
 .correct { color: #245c43; background: #e8f3ed; }
 .incorrect { color: #963e47; background: #faecee; text-decoration: line-through; }
 .transcript { margin: 9px 0 0; color: #7b857f; font-size: 9px; line-height: 1.5; overflow-wrap: anywhere; }
-.emptyState { display: grid; min-height: 180px; place-content: center; justify-items: center; padding: 24px; color: #557068; text-align: center; }
 .emptyState strong { margin-top: 9px; font-size: 12px; font-weight: 500; }
 .emptyState span { margin-top: 3px; color: #849089; font-size: 9.5px; }
+
+/* ── Branching Decision Challenge ── */
+.dilemmaCard {
+  padding: 20px;
+  background: #fff;
+  border: 1px solid #e1e7e3;
+  border-radius: 20px;
+}
+.dilemmaSituation {
+  padding: 16px;
+  border-radius: 14px;
+  background: #f7faf8;
+  border-left: 4px solid #306553;
+  margin-bottom: 16px;
+}
+.dilemmaSituation h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+  color: #1e392f;
+  font-weight: 500;
+}
+.dilemmaSituation p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #4b5a53;
+}
+.optionsGrid {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+.optionBtn {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #dbe2de;
+  border-radius: 14px;
+  background: #fff;
+  text-align: left;
+  cursor: pointer;
+  transition: all .15s ease;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #2b3a32;
+}
+.optionBtn:hover:not(:disabled) {
+  border-color: #2b604e;
+  background: #f8faf8;
+}
+.optionSelected {
+  border-color: #2b604e;
+  background: #f0f7f3;
+}
+.optionCorrect {
+  border-color: #2d8a63;
+  background: #ebf7f1;
+}
+.optionIncorrect {
+  border-color: #c94b58;
+  background: #fdf2f3;
+}
+.optionFeedback {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 11.5px;
+  line-height: 1.6;
+}
+.optionFeedbackSuccess {
+  background: #e6f6ee;
+  color: #195b3d;
+  border: 1px solid #b7e8d0;
+}
+.optionFeedbackFail {
+  background: #faecee;
+  color: #8c2a34;
+  border: 1px solid #f4c2c7;
+}
 
 @keyframes recording { 50% { box-shadow: 0 0 0 6px rgba(167, 70, 80, .12); } }
 @keyframes enter { from { opacity: 0; transform: translateY(5px); } }

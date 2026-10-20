@@ -10,23 +10,47 @@ type LessonSentenceRow = {
 export async function GET(request: NextRequest) {
   try {
     const user = await guardApi(request, { roles: ['student', 'developer'], maxRequests: 120 })
-    const scope = user.role === 'developer' ? '' : `AND (
-      class_id IN (SELECT class_id FROM class_students WHERE student_id=$1::uuid)
-      OR (class_id IS NULL AND target_class IN (
-        SELECT c.name FROM classes c JOIN class_students cs ON cs.class_id=c.id WHERE cs.student_id=$1::uuid
-      ))
-    )`
-    const result = await queryDb<LessonSentenceRow>(`
-      SELECT title, sentences
+    const { searchParams } = new URL(request.url)
+    const planId = searchParams.get('planId')?.trim()
+
+    // Determine if student is enrolled in a specific class
+    const classCheck = await queryDb<{ class_id: string }>(`
+      SELECT class_id FROM class_students WHERE student_id=$1::uuid LIMIT 1
+    `, [user.id])
+    const enrolledClassId = classCheck.rows[0]?.class_id
+
+    const scope = user.role === 'developer' || !enrolledClassId
+      ? ''
+      : `AND (class_id=$1::uuid OR class_id IS NULL)`
+
+    const queryParams: unknown[] = user.role === 'developer' || !enrolledClassId ? [] : [enrolledClassId]
+
+    // Fetch list of available published lesson plans
+    const plansResult = await queryDb<{ id: string; title: string; weeks: string }>(`
+      SELECT id, title, weeks
       FROM fine_lesson_plans
       WHERE publication_status='published' ${scope}
+      ORDER BY updated_at DESC
+      LIMIT 18
+    `, queryParams)
+
+    let filterClause = ''
+    if (planId) {
+      queryParams.push(planId)
+      filterClause = `AND id=$${queryParams.length}`
+    }
+
+    const result = await queryDb<LessonSentenceRow & { id: string; weeks: string }>(`
+      SELECT id, title, weeks, sentences
+      FROM fine_lesson_plans
+      WHERE publication_status='published' ${scope} ${filterClause}
         AND jsonb_typeof(sentences) = 'array'
         AND jsonb_array_length(sentences) > 0
       ORDER BY updated_at DESC
       LIMIT 6
-    `, user.role === 'developer' ? [] : [user.id])
+    `, queryParams)
 
-    const prompts: Array<{ en: string; th: string; context: string }> = []
+    const prompts: Array<{ en: string; th: string; context: string; planId?: string }> = []
     const seen = new Set<string>()
     for (const row of result.rows) {
       if (!Array.isArray(row.sentences)) continue
@@ -36,14 +60,19 @@ export async function GET(request: NextRequest) {
         const key = en.toLocaleLowerCase('en')
         if (!en || seen.has(key)) continue
         seen.add(key)
-        prompts.push({ en, th: 'ประโยคฝึกจากแผนการสอน', context: row.title || 'แผนการสอนของครู' })
+        prompts.push({
+          en,
+          th: 'ประโยคฝึกจากแผนการสอน',
+          context: `${row.weeks ? row.weeks + ': ' : ''}${row.title || 'แผนการสอนของครู'}`,
+          planId: row.id,
+        })
         if (prompts.length >= 30) break
       }
       if (prompts.length >= 30) break
     }
 
     return NextResponse.json(
-      { prompts },
+      { prompts, plans: plansResult.rows },
       { headers: { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=300' } },
     )
   } catch (error) {

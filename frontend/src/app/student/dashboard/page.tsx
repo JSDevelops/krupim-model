@@ -1,19 +1,180 @@
 'use client'
 import Link from 'next/link'
-import { useEffect,useState } from 'react'
+import { useEffect, useState } from 'react'
 import { authenticatedFetch } from '@/lib/api'
 import { useRole } from '@/context/RoleContext'
-import StudentIcon,{type StudentIconName} from '../StudentIcon'
+import StudentIcon, { type StudentIconName } from '../StudentIcon'
+import FineJourneyTracker, { type FineJourneyData } from '@/components/FineJourneyTracker'
 import styles from '../studentPages.module.css'
 
-type Data={profile?:{name:string;schoolName:string};stats?:{knowledgeScore:number;skillsScore:number;attitudeScore:number;competencyScore:number;overallScore:number;lessonsCompleted:number;timeSpentMinutes:number};tasks?:Array<{id:string;title:string;activityType:string;dueDate:string|null;className:string}>;latestLesson?:{title:string;subject:string;weeks:string;concept:string}|null;notifications?:Array<{id:string;title:string;message:string;linkUrl?:string|null}>}
-const features:Array<{href:string;label:string;desc:string;icon:StudentIconName}>= [{href:'/student/learn',label:'บทเรียน',desc:'ดูแผนและเป้าหมายการเรียนรู้',icon:'book'},{href:'/student/explore',label:'สำรวจอุปกรณ์',desc:'คำศัพท์ โมเดล 3 มิติ และ AR',icon:'target'},{href:'/student/interact',label:'ฝึกฟังและพูด',desc:'ประเมินการออกเสียงรายคำ',icon:'message'},{href:'/chat',label:'ผู้ช่วยการเรียนรู้ AI',desc:'ถามคำศัพท์และงานบริการ',icon:'sparkles'},{href:'/live',label:'AI Voice Coach',desc:'โต้ตอบด้วยเสียงแบบทันที',icon:'mic'},{href:'/student/navigate',label:'สถานการณ์',desc:'ฝึกบทบาทงานบริการ',icon:'task'},{href:'/student/exhibit',label:'ทบทวนผล',desc:'แบบทดสอบและคะแนนสะสม',icon:'exhibit'},{href:'/student/profile',label:'แฟ้มสะสมงาน',desc:'งาน สมรรถนะ และใบรับรอง',icon:'profile'}]
-function path(type:string){const v=type.toLowerCase();if(v.includes('interact'))return'/student/interact';if(v.includes('navigate'))return'/student/navigate';if(v.includes('exhibit'))return'/student/exhibit';return'/student/explore'}
-export default function Dashboard(){const{logout}=useRole();const[data,setData]=useState<Data>({});const[logoutOpen,setLogoutOpen]=useState(false);useEffect(()=>{const c=new AbortController();authenticatedFetch('/api/student/dashboard',{signal:c.signal}).then(r=>r.ok?r.json():null).then(v=>v&&setData(v)).catch(()=>{});return()=>c.abort()},[]);const s=data.stats||{knowledgeScore:0,skillsScore:0,attitudeScore:0,competencyScore:0,overallScore:0,lessonsCompleted:0,timeSpentMinutes:0};return <main className={styles.page}><div className={styles.shell}>
-<section className={styles.hero}><div className={styles.heroContent}><div className={styles.eyebrow}><StudentIcon name="sparkles" size={15}/>Student dashboard</div><h1 className={styles.title}>ยินดีต้อนรับกลับมา {data.profile?.name||'นักเรียน'}</h1><p className={styles.subtitle}>{data.profile?.schoolName||'วางแผนการเรียน ฝึกทักษะ และติดตามงานของคุณในที่เดียว'}</p><div className={styles.dashboardHeroActions}><Link className={styles.heroAction} href="/student/profile"><StudentIcon name="user" size={15}/>บัญชีของฉัน</Link><button type="button" className={styles.heroAction} onClick={()=>setLogoutOpen(true)}><StudentIcon name="logout" size={15}/>ออกจากระบบ</button></div></div><div className={styles.heroStats}><div><strong>{s.overallScore}%</strong><span>คะแนนรวม</span></div><div><strong>{s.lessonsCompleted}</strong><span>บทเรียนสำเร็จ</span></div><div><strong>{data.tasks?.length||0}</strong><span>งานคงค้าง</span></div></div></section>
-<section className={styles.content}><header className={styles.sectionHeader}><h2>พื้นที่การเรียนรู้</h2><p>เลือกกิจกรรมตามลำดับ FINE Model หรือกลับไปทำงานที่ได้รับมอบหมาย</p></header><div className={`${styles.grid} ${styles.featureGrid}`}>{features.map(f=><Link className={styles.featureLink} href={f.href} key={f.href}><span className={styles.iconBox}><StudentIcon name={f.icon}/></span><span><strong>{f.label}</strong><small>{f.desc}</small></span><StudentIcon name="arrowRight" size={16}/></Link>)}</div>
+type Data = {
+  profile?: { name: string; schoolName: string }
+  stats?: { knowledgeScore: number; skillsScore: number; attitudeScore: number; competencyScore: number; overallScore: number; lessonsCompleted: number; timeSpentMinutes: number }
+  tasks?: Array<{ id: string; title: string; activityType: string; dueDate: string | null; className: string }>
+  latestLesson?: { title: string; subject: string; weeks: string; concept: string } | null
+  notifications?: Array<{ id: string; title: string; message: string; linkUrl?: string | null }>
+  journey?: FineJourneyData
+}
+const features: Array<{ href: string; label: string; desc: string; icon: StudentIconName }> = [
+  { href: '/student/learn', label: 'บทเรียน', desc: 'ดูแผนและเป้าหมายการเรียนรู้', icon: 'book' },
+  { href: '/student/explore', label: 'สำรวจอุปกรณ์ (F)', desc: 'คำศัพท์ โมเดล 3 มิติ และ AR', icon: 'target' },
+  { href: '/student/interact', label: 'ฝึกฟังและพูด (I)', desc: 'ประเมินการออกเสียงรายคำ', icon: 'message' },
+  { href: '/student/navigate', label: 'สถานการณ์ (N)', desc: 'ฝึกบทบาทงานบริการ', icon: 'task' },
+  { href: '/student/exhibit', label: 'ทบทวนผล (E)', desc: 'แบบทดสอบและคะแนนสะสม', icon: 'exhibit' },
+  { href: '/chat', label: 'ผู้ช่วยการเรียนรู้ AI', desc: 'ถามคำศัพท์และงานบริการ', icon: 'sparkles' },
+  { href: '/live', label: 'AI Voice Coach', desc: 'โต้ตอบด้วยเสียงแบบทันที', icon: 'mic' },
+  { href: '/student/profile', label: 'แฟ้มสะสมงาน', desc: 'งาน สมรรถนะ และใบรับรอง', icon: 'profile' },
+]
+function path(type: string) {
+  const v = type.toLowerCase()
+  if (v.includes('interact')) return '/student/interact'
+  if (v.includes('navigate')) return '/student/navigate'
+  if (v.includes('exhibit')) return '/student/exhibit'
+  return '/student/explore'
+}
+export default function Dashboard() {
+  const { logout } = useRole()
+  const [data, setData] = useState<Data>({})
+  const [logoutOpen, setLogoutOpen] = useState(false)
+  useEffect(() => {
+    const c = new AbortController()
+    authenticatedFetch('/api/student/dashboard', { signal: c.signal })
+      .then(r => (r.ok ? r.json() : null))
+      .then(v => v && setData(v))
+      .catch(() => {})
+    return () => c.abort()
+  }, [])
+  const s = data.stats || {
+    knowledgeScore: 0,
+    skillsScore: 0,
+    attitudeScore: 0,
+    competencyScore: 0,
+    overallScore: 0,
+    lessonsCompleted: 0,
+    timeSpentMinutes: 0,
+  }
+  return (
+    <main className={styles.page}>
+      <div className={styles.shell}>
+        <section className={styles.hero}>
+          <div className={styles.heroContent}>
+            <div className={styles.eyebrow}>
+              <StudentIcon name="sparkles" size={15} />
+              Student dashboard
+            </div>
+            <h1 className={styles.title}>ยินดีต้อนรับกลับมา {data.profile?.name || 'นักเรียน'}</h1>
+            <p className={styles.subtitle}>{data.profile?.schoolName || 'วางแผนการเรียน ฝึกทักษะ และติดตามงานของคุณในที่เดียว'}</p>
+            <div className={styles.dashboardHeroActions}>
+              <Link className={styles.heroAction} href="/student/profile">
+                <StudentIcon name="user" size={15} />
+                บัญชีของฉัน
+              </Link>
+              <button type="button" className={styles.heroAction} onClick={() => setLogoutOpen(true)}>
+                <StudentIcon name="logout" size={15} />
+                ออกจากระบบ
+              </button>
+            </div>
+          </div>
+          <div className={styles.heroStats}>
+            <div>
+              <strong>{s.overallScore}%</strong>
+              <span>คะแนนรวม</span>
+            </div>
+            <div>
+              <strong>{s.lessonsCompleted}</strong>
+              <span>บทเรียนสำเร็จ</span>
+            </div>
+            <div>
+              <strong>{data.tasks?.length || 0}</strong>
+              <span>งานคงค้าง</span>
+            </div>
+          </div>
+        </section>
+
+        <section className={styles.content}>
+          <FineJourneyTracker journey={data.journey} />
+
+          <header className={styles.sectionHeader}>
+            <h2>พื้นที่การเรียนรู้</h2>
+            <p>เลือกกิจกรรมตามลำดับ FINE Model หรือกลับไปทำงานที่ได้รับมอบหมาย</p>
+          </header>
+          <div className={`${styles.grid} ${styles.featureGrid}`}>
+            {features.map(f => (
+              <Link className={styles.featureLink} href={f.href} key={f.href}>
+                <span className={styles.iconBox}>
+                  <StudentIcon name={f.icon} />
+                </span>
+                <span>
+                  <strong>{f.label}</strong>
+                  <small>{f.desc}</small>
+                </span>
+                <StudentIcon name="arrowRight" size={16} />
+              </Link>
+            ))}
+          </div>
 <div className={`${styles.grid} ${styles.two}`} style={{marginTop:12}}><section className={styles.card}><div className={styles.cardTitle}><span className={styles.iconBox}><StudentIcon name="task"/></span><div><h2>งานที่ต้องทำ</h2><p>เรียงตามกำหนดส่ง</p></div></div>{data.tasks?.length?<div className={styles.compactList}>{data.tasks.slice(0,4).map(t=><Link href={path(t.activityType)} key={t.id}><span><strong>{t.title}</strong><small>{t.className}</small></span><StudentIcon name="arrowRight" size={15}/></Link>)}</div>:<div className={styles.empty}><StudentIcon name="check" size={24}/><strong>ไม่มีงานคงค้าง</strong></div>}</section>
 <section className={styles.card}><div className={styles.cardTitle}><span className={`${styles.iconBox} ${styles.goldIcon}`}><StudentIcon name="book"/></span><div><h2>เรียนต่อจากล่าสุด</h2><p>{data.latestLesson?.weeks||'แผนการสอนล่าสุด'}</p></div></div>{data.latestLesson?<><h3 className={styles.lessonTitle}>{data.latestLesson.title}</h3><p className={styles.lessonDesc}>{data.latestLesson.concept||data.latestLesson.subject}</p><Link className={`${styles.button} ${styles.full}`} href="/student/learn">เปิดบทเรียน <StudentIcon name="arrowRight" size={15}/></Link></>:<div className={styles.empty}><StudentIcon name="book" size={24}/><strong>ยังไม่มีบทเรียน</strong></div>}</section></div>
 {data.notifications?.length?<section className={styles.card} style={{marginTop:12}}><div className={styles.cardTitle}><span className={`${styles.iconBox} ${styles.goldIcon}`}><StudentIcon name="info"/></span><div><h2>การแจ้งเตือนล่าสุด</h2><p>{data.notifications.length} รายการที่ยังไม่ได้อ่าน</p></div><button type="button" className={styles.outlineButton} onClick={()=>void authenticatedFetch('/api/student/notifications',{method:'PATCH'}).then(response=>{if(response.ok)setData(current=>({...current,notifications:[]}))})}>อ่านทั้งหมดแล้ว</button></div><div className={styles.compactList}>{data.notifications.map(item=><Link href={item.linkUrl||'/student/dashboard'} key={item.id}><span><strong>{item.title}</strong><small>{item.message}</small></span><StudentIcon name="arrowRight" size={15}/></Link>)}</div></section>:null}
 <section className={styles.card} style={{marginTop:12}}><div className={styles.cardTitle}><span className={`${styles.iconBox} ${styles.blueIcon}`}><StudentIcon name="chart"/></span><div><h2>สมรรถนะ KSA-C</h2><p>คะแนนจากฐานข้อมูลล่าสุด</p></div></div><div className={styles.breakdown}>{[['K — ความรู้',s.knowledgeScore,'#39745d'],['S — ทักษะ',s.skillsScore,'#4d7896'],['A — เจตคติ',s.attitudeScore,'#c19a42'],['C — สมรรถนะ',s.competencyScore,'#915363']].map(([l,v,c])=><div key={String(l)}><div className={styles.metricTop}><span>{l}</span><strong>{v}%</strong></div><div className={styles.metricTrack}><div className={styles.metricBar} style={{width:`${v}%`,background:String(c)}}/></div></div>)}</div></section>
-</section>{logoutOpen&&<div className={styles.modalBackdrop} onMouseDown={event=>event.target===event.currentTarget&&setLogoutOpen(false)}><section className={`${styles.modal} ${styles.logoutModal}`} role="dialog" aria-modal="true" aria-labelledby="logout-title"><header className={styles.modalHeader}><span className={styles.logoutIcon}><StudentIcon name="logout" size={20}/></span><div><h2 id="logout-title">ออกจากระบบ</h2><p>ต้องการสิ้นสุดการใช้งานบัญชีนี้หรือไม่</p></div><button type="button" className={styles.modalClose} onClick={()=>setLogoutOpen(false)} aria-label="ปิด"><StudentIcon name="x" size={17}/></button></header><div className={styles.logoutCopy}>ระบบจะนำคุณกลับไปยังหน้าเลือกบทบาท ข้อมูลการเรียนและงานที่ส่งไว้จะไม่สูญหาย</div><footer className={styles.modalFooter}><button type="button" className={styles.outlineButton} onClick={()=>setLogoutOpen(false)}>ใช้งานต่อ</button><button type="button" className={styles.dangerButton} onClick={()=>{setLogoutOpen(false);logout()}}><StudentIcon name="logout" size={15}/>ยืนยันออกจากระบบ</button></footer></section></div>}</div></main>}
+        </section>
+
+        {logoutOpen && (
+          <div
+            className={styles.modalBackdrop}
+            onMouseDown={(event) =>
+              event.target === event.currentTarget && setLogoutOpen(false)
+            }
+          >
+            <section
+              className={`${styles.modal} ${styles.logoutModal}`}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="logout-title"
+            >
+              <header className={styles.modalHeader}>
+                <span className={styles.logoutIcon}>
+                  <StudentIcon name="logout" size={20} />
+                </span>
+                <div>
+                  <h2 id="logout-title">ออกจากระบบ</h2>
+                  <p>ต้องการสิ้นสุดการใช้งานบัญชีนี้หรือไม่</p>
+                </div>
+                <button
+                  type="button"
+                  className={styles.modalClose}
+                  onClick={() => setLogoutOpen(false)}
+                  aria-label="ปิด"
+                >
+                  <StudentIcon name="x" size={17} />
+                </button>
+              </header>
+              <div className={styles.logoutCopy}>
+                ระบบจะนำคุณกลับไปยังหน้าเลือกบทบาท ข้อมูลการเรียนและงานที่ส่งไว้จะไม่สูญหาย
+              </div>
+              <footer className={styles.modalFooter}>
+                <button
+                  type="button"
+                  className={styles.outlineButton}
+                  onClick={() => setLogoutOpen(false)}
+                >
+                  ใช้งานต่อ
+                </button>
+                <button
+                  type="button"
+                  className={styles.dangerButton}
+                  onClick={() => {
+                    setLogoutOpen(false);
+                    logout();
+                  }}
+                >
+                  <StudentIcon name="logout" size={15} />
+                  ยืนยันออกจากระบบ
+                </button>
+              </footer>
+            </section>
+          </div>
+        )}
+      </div>
+    </main>
+  );
+}

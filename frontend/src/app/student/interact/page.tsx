@@ -59,8 +59,12 @@ function evaluateWords(target: string, spoken: string) {
   }
 }
 
+type LessonPlanOption = { id: string; title: string; weeks: string }
+
 export default function InteractPage() {
   const [prompts, setPrompts] = useState<Prompt[]>(defaultPrompts)
+  const [plans, setPlans] = useState<LessonPlanOption[]>([])
+  const [selectedPlanId, setSelectedPlanId] = useState<string>('all')
   const [currentIndex, setCurrentIndex] = useState(0)
   const [speaking, setSpeaking] = useState(false)
   const [recording, setRecording] = useState(false)
@@ -75,12 +79,18 @@ export default function InteractPage() {
     const controller = new AbortController()
     async function loadPrompts() {
       try {
-        const response = await authenticatedFetch('/api/student/interact', { signal: controller.signal })
+        const url = selectedPlanId && selectedPlanId !== 'all'
+          ? `/api/student/interact?planId=${encodeURIComponent(selectedPlanId)}`
+          : '/api/student/interact'
+        const response = await authenticatedFetch(url, { signal: controller.signal })
         if (!response.ok) return
-        const payload = await response.json() as { prompts?: Prompt[] }
+        const payload = await response.json() as { prompts?: Prompt[]; plans?: LessonPlanOption[] }
         if (payload.prompts?.length) {
           setPrompts(payload.prompts)
           setCurrentIndex(0)
+        }
+        if (payload.plans?.length) {
+          setPlans(payload.plans)
         }
       } catch (error) {
         if (!controller.signal.aborted) console.warn('Unable to load lesson prompts:', error)
@@ -88,7 +98,7 @@ export default function InteractPage() {
     }
     void loadPrompts()
     return () => controller.abort()
-  }, [])
+  }, [selectedPlanId])
 
   useEffect(() => {
     return () => {
@@ -117,6 +127,18 @@ export default function InteractPage() {
   function selectPrompt(index: number) {
     resetEvaluation()
     setCurrentIndex(Math.max(0, Math.min(index, total - 1)))
+  }
+
+  function speakWord(word: string) {
+    if (!window.speechSynthesis) return
+    window.speechSynthesis.cancel()
+    const clean = word.replace(/[^a-zA-Z']/g, '')
+    if (!clean) return
+    const utterance = new SpeechSynthesisUtterance(clean)
+    utterance.lang = 'en-US'
+    utterance.rate = 0.76
+    window.speechSynthesis.speak(utterance)
+    toast.info(`ฝึกออกเสียงคำ: "${clean}"`, { duration: 1500 })
   }
 
   function speak() {
@@ -255,8 +277,22 @@ export default function InteractPage() {
                     <span className={styles.scoreValue}>{score}%</span>
                   </div>
                   <div className={styles.words}>
-                    {wordStatus.map((word, index) => <span className={`${styles.word} ${word.correct ? styles.correct : styles.incorrect}`} key={`${word.word}-${index}`}>{word.word}</span>)}
+                    {wordStatus.map((word, index) => (
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        className={`${styles.word} ${word.correct ? styles.correct : styles.incorrect}`}
+                        key={`${word.word}-${index}`}
+                        onClick={() => speakWord(word.word)}
+                        onKeyDown={e => e.key === 'Enter' && speakWord(word.word)}
+                        title="คลิกเพื่อฟังเสียงคำนี้โดยเฉพาะ"
+                      >
+                        {word.word}
+                        <InteractIcon name="volume" size={11} />
+                      </span>
+                    ))}
                   </div>
+                  <small className={styles.drillHint}>💡 เคล็ดลับ: คลิกที่ตัวคำ (โดยเฉพาะคำสีแดง) เพื่อฟังการออกเสียงเฉพาะคำนั้นซ้ำได้</small>
                   {transcript && <p className={styles.transcript}>ระบบได้ยิน: “{transcript}”</p>}
                 </section>
               )}
@@ -277,6 +313,27 @@ export default function InteractPage() {
               <span className={styles.sideIcon}><InteractIcon name="headphones" size={20} /></span>
               <div><h2>รายการประโยคฝึก</h2><p>เลือกสถานการณ์ที่ต้องการฝึกได้ทันที</p></div>
             </header>
+
+            {plans.length > 0 && (
+              <div className={styles.planSelectWrap}>
+                <label htmlFor="plan-select" style={{ display: 'block', fontSize: 10, color: '#66746d', marginBottom: 4 }}>
+                  เลือกแผนการสอนประจำสัปดาห์:
+                </label>
+                <select
+                  id="plan-select"
+                  className={styles.planSelect}
+                  value={selectedPlanId}
+                  onChange={e => setSelectedPlanId(e.target.value)}
+                >
+                  <option value="all">ทุกแผนการสอน ({plans.length} สัปดาห์)</option>
+                  {plans.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.weeks ? `${p.weeks} — ` : ''}{p.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className={styles.list}>
               {visiblePrompts.map((prompt, index) => (
                 <button type="button" className={`${styles.listButton} ${index === currentIndex ? styles.listActive : ''}`} key={`${prompt.en}-${index}`} onClick={() => selectPrompt(index)}>
