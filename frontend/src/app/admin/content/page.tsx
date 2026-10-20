@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import AdminIcon, { type AdminIconName } from '@/components/admin/AdminIcon'
 import { authenticatedFetch } from '@/lib/api'
@@ -17,6 +17,11 @@ interface ContentItem {
   nameEn: string
   unit: string
   status: ContentStatus
+  creatorName: string
+  creatorEmail: string | null
+  creatorSchool: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 interface ContentRecord {
@@ -26,37 +31,26 @@ interface ContentRecord {
   name_en: string
   unit_label: string
   status: ContentStatus
-}
-
-interface ContentForm {
-  name: string
-  nameEn: string
-  type: ContentType
-  unit: string
-  status: ContentStatus
-}
-
-const emptyForm: ContentForm = {
-  name: '',
-  nameEn: '',
-  type: 'AR Object',
-  unit: 'Unit 1',
-  status: 'draft',
+  creator_name: string | null
+  creator_email: string | null
+  creator_school: string | null
+  created_at: string
+  updated_at: string
 }
 
 const typeConfig: Record<ContentType, { label: string; icon: AdminIconName; tone: string }> = {
-  'AR Object': { label: 'โมเดล AR', icon: 'cube', tone: 'blue' },
+  'AR Object': { label: 'โมเดล AR 3D', icon: 'cube', tone: 'blue' },
   'AI Scan': { label: 'AI Scan', icon: 'scan', tone: 'purple' },
   Simulation: { label: 'สถานการณ์จำลอง', icon: 'activity', tone: 'orange' },
-  Lesson: { label: 'บทเรียน', icon: 'course', tone: 'green' },
+  Lesson: { label: 'บทเรียน FINE', icon: 'course', tone: 'green' },
 }
 
 const tabs: Array<{ key: ContentTab; label: string }> = [
   { key: 'all', label: 'ทั้งหมด' },
-  { key: 'AR Object', label: 'โมเดล AR' },
+  { key: 'AR Object', label: 'โมเดล AR 3D' },
   { key: 'AI Scan', label: 'AI Scan' },
   { key: 'Simulation', label: 'สถานการณ์จำลอง' },
-  { key: 'Lesson', label: 'บทเรียน' },
+  { key: 'Lesson', label: 'บทเรียน FINE' },
 ]
 
 function mapContent(record: ContentRecord): ContentItem {
@@ -67,7 +61,19 @@ function mapContent(record: ContentRecord): ContentItem {
     nameEn: record.name_en,
     unit: record.unit_label,
     status: record.status,
+    creatorName: record.creator_name || 'ครูผู้สอนส่วนกลาง',
+    creatorEmail: record.creator_email,
+    creatorSchool: record.creator_school,
+    createdAt: record.created_at,
+    updatedAt: record.updated_at,
   }
+}
+
+function formatDate(isoString?: string) {
+  if (!isoString) return '-'
+  const d = new Date(isoString)
+  if (Number.isNaN(d.getTime())) return isoString
+  return new Intl.DateTimeFormat('th-TH', { dateStyle: 'short', timeStyle: 'short' }).format(d)
 }
 
 async function getResponseError(response: Response) {
@@ -75,21 +81,20 @@ async function getResponseError(response: Response) {
     const payload = await response.json() as { error?: string }
     if (payload.error) return payload.error
   } catch {
-    // Fall back to the message below when an upstream response is not JSON.
+    // Fall back to default error
   }
   return 'ไม่สามารถดำเนินการได้ กรุณาลองใหม่อีกครั้ง'
 }
 
-export default function AdminContentPage() {
+export default function AdminContentAuditPage() {
   const [items, setItems] = useState<ContentItem[]>([])
   const [activeTab, setActiveTab] = useState<ContentTab>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'draft'>('all')
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [busyAction, setBusyAction] = useState<string | null>(null)
   const [error, setError] = useState('')
-  const [formOpen, setFormOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [form, setForm] = useState<ContentForm>(emptyForm)
+  const [inspectTarget, setInspectTarget] = useState<ContentItem | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<ContentItem | null>(null)
 
   const loadContent = useCallback(async (signal?: AbortSignal) => {
@@ -113,7 +118,7 @@ export default function AdminContentPage() {
   useEffect(() => {
     function handleEscape(event: KeyboardEvent) {
       if (event.key !== 'Escape' || busyAction) return
-      setFormOpen(false)
+      setInspectTarget(null)
       setDeleteTarget(null)
     }
     window.addEventListener('keydown', handleEscape)
@@ -134,63 +139,55 @@ export default function AdminContentPage() {
     const keyword = search.trim().toLocaleLowerCase('th-TH')
     return items.filter(item => {
       const matchesTab = activeTab === 'all' || item.type === activeTab
+      const matchesStatus = statusFilter === 'all' || item.status === statusFilter
       const matchesSearch = !keyword
         || item.name.toLocaleLowerCase('th-TH').includes(keyword)
         || item.nameEn.toLocaleLowerCase('en-US').includes(keyword)
         || item.unit.toLocaleLowerCase('en-US').includes(keyword)
-      return matchesTab && matchesSearch
+        || item.creatorName.toLocaleLowerCase('th-TH').includes(keyword)
+      return matchesTab && matchesStatus && matchesSearch
     })
-  }, [activeTab, items, search])
+  }, [items, activeTab, statusFilter, search])
+
+  const uniqueTeachers = useMemo(() => {
+    const names = new Set(items.map(i => i.creatorName).filter(Boolean))
+    return names.size
+  }, [items])
 
   const metrics = [
-    { key: 'all', label: 'เนื้อหาทั้งหมด', value: counts.all, detail: 'ทุกประเภทในระบบ', icon: 'content' as const, tone: 'blue' },
-    { key: 'ar', label: 'โมเดล AR', value: counts['AR Object'], detail: 'วัตถุสามมิติสำหรับเรียนรู้', icon: 'cube' as const, tone: 'purple' },
-    { key: 'published', label: 'เผยแพร่แล้ว', value: counts.published, detail: 'พร้อมให้ผู้เรียนใช้งาน', icon: 'check' as const, tone: 'green' },
-    { key: 'draft', label: 'ฉบับร่าง', value: counts.draft, detail: 'รอตรวจสอบก่อนเผยแพร่', icon: 'edit' as const, tone: 'gold' },
+    {
+      key: 'all',
+      label: 'เนื้อหาในระบบทั้งหมด',
+      value: counts.all,
+      detail: 'ครอบคลุมทุกหมวดหมู่การเรียนรู้',
+      icon: 'content' as AdminIconName,
+      tone: 'blue',
+    },
+    {
+      key: 'ar',
+      label: 'สื่อสามมิติ AR 3D',
+      value: counts['AR Object'],
+      detail: 'สื่อเสมือนจริงสำหรับการจัดโต๊ะอาหาร',
+      icon: 'cube' as AdminIconName,
+      tone: 'purple',
+    },
+    {
+      key: 'published',
+      label: 'เผยแพร่และตรวจสอบแล้ว',
+      value: counts.published,
+      detail: 'เปิดให้นักเรียนเข้าเรียนและทำกิจกรรม',
+      icon: 'check' as AdminIconName,
+      tone: 'green',
+    },
+    {
+      key: 'teachers',
+      label: 'ครูผู้จัดทำเนื้อหา',
+      value: uniqueTeachers,
+      detail: 'จำนวนผู้สอนที่ร่วมพัฒนาสื่อ',
+      icon: 'teacher' as AdminIconName,
+      tone: 'gold',
+    },
   ]
-
-  function openCreate() {
-    setEditingId(null)
-    setForm(emptyForm)
-    setFormOpen(true)
-  }
-
-  function openEdit(item: ContentItem) {
-    setEditingId(item.id)
-    setForm({ name: item.name, nameEn: item.nameEn, type: item.type, unit: item.unit, status: item.status })
-    setFormOpen(true)
-  }
-
-  async function handleSave(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    const cleanForm = { ...form, name: form.name.trim(), nameEn: form.nameEn.trim(), unit: form.unit.trim() }
-    if (!cleanForm.name || !cleanForm.nameEn || !cleanForm.unit) return
-
-    const actionKey = editingId ? `update:${editingId}` : 'create'
-    setBusyAction(actionKey)
-    try {
-      const response = await authenticatedFetch('/api/admin/content', {
-        method: editingId ? 'PATCH' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(editingId ? { id: editingId, action: 'update', ...cleanForm } : cleanForm),
-      })
-      if (!response.ok) throw new Error(await getResponseError(response))
-      const payload = await response.json() as { item: ContentRecord }
-      const savedItem = mapContent(payload.item)
-      setItems(current => editingId
-        ? current.map(item => item.id === editingId ? savedItem : item)
-        : [savedItem, ...current])
-      setActiveTab('all')
-      setFormOpen(false)
-      setEditingId(null)
-      setForm(emptyForm)
-      toast.success(editingId ? 'บันทึกการแก้ไขเนื้อหาแล้ว' : 'สร้างเนื้อหาใหม่แล้ว')
-    } catch (saveError) {
-      toast.error(saveError instanceof Error ? saveError.message : 'ไม่สามารถบันทึกเนื้อหาได้')
-    } finally {
-      setBusyAction(null)
-    }
-  }
 
   async function toggleStatus(item: ContentItem) {
     setBusyAction(`toggle:${item.id}`)
@@ -203,8 +200,11 @@ export default function AdminContentPage() {
       if (!response.ok) throw new Error(await getResponseError(response))
       const payload = await response.json() as { item: ContentRecord }
       const updatedItem = mapContent(payload.item)
-      setItems(current => current.map(currentItem => currentItem.id === item.id ? updatedItem : currentItem))
-      toast.success(updatedItem.status === 'published' ? `เผยแพร่ ${item.name} แล้ว` : `ย้าย ${item.name} กลับเป็นฉบับร่างแล้ว`)
+      setItems(current => current.map(currentItem => currentItem.id === item.id ? { ...currentItem, status: updatedItem.status, updatedAt: updatedItem.updatedAt } : currentItem))
+      if (inspectTarget?.id === item.id) {
+        setInspectTarget(current => current ? { ...current, status: updatedItem.status } : null)
+      }
+      toast.success(updatedItem.status === 'published' ? `อนุมัติเผยแพร่ “${item.name}” เรียบร้อยแล้ว` : `ระงับการเผยแพร่ “${item.name}” เป็นฉบับร่างแล้ว`)
     } catch (statusError) {
       toast.error(statusError instanceof Error ? statusError.message : 'ไม่สามารถเปลี่ยนสถานะได้')
     } finally {
@@ -219,8 +219,9 @@ export default function AdminContentPage() {
       const response = await authenticatedFetch(`/api/admin/content?id=${encodeURIComponent(deleteTarget.id)}`, { method: 'DELETE' })
       if (!response.ok) throw new Error(await getResponseError(response))
       setItems(current => current.filter(item => item.id !== deleteTarget.id))
-      toast.success(`ลบ ${deleteTarget.name} ออกจากคลังแล้ว`)
+      toast.success(`ลบรายการ “${deleteTarget.name}” ออกจากระบบแล้ว`)
       setDeleteTarget(null)
+      if (inspectTarget?.id === deleteTarget.id) setInspectTarget(null)
     } catch (deleteError) {
       toast.error(deleteError instanceof Error ? deleteError.message : 'ไม่สามารถลบเนื้อหาได้')
     } finally {
@@ -232,20 +233,85 @@ export default function AdminContentPage() {
     <main className={styles.adminPage}>
       <header className={styles.pageHeader}>
         <div>
-          <p>CONTENT LIBRARY</p>
-          <h1>จัดการเนื้อหาการเรียนรู้</h1>
-          <span>ดูแลโมเดล AR, AI Scan, สถานการณ์จำลอง และบทเรียนจากจุดเดียว</span>
+          <p>CONTENT AUDIT & GOVERNANCE</p>
+          <h1>ตรวจสอบและกำกับดูแลเนื้อหาการเรียนรู้</h1>
+          <span>ตรวจสอบความสมบูรณ์ คุณภาพสื่อ AR 3D และสถานะการเผยแพร่ของครูผู้สอนทั่วทั้งระบบ</span>
         </div>
-        <button className={styles.primaryButton} type="button" onClick={openCreate} disabled={Boolean(busyAction)}>
-          <AdminIcon name="plus" size={16} />
-          <span>สร้างเนื้อหา</span>
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 14px',
+              borderRadius: 8,
+              background: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              color: '#166534',
+              fontSize: 12,
+              fontWeight: 600,
+            }}
+          >
+            <AdminIcon name="shield" size={16} />
+            <span>โหมดผู้ดูแลระบบ: ตรวจสอบและกำกับดูแล</span>
+          </div>
+          <button
+            className={styles.outlineButton}
+            type="button"
+            onClick={() => {
+              setLoading(true)
+              void loadContent().finally(() => setLoading(false))
+            }}
+            disabled={loading}
+          >
+            <AdminIcon name="refresh" size={15} />
+            <span>รีเฟรชข้อมูล</span>
+          </button>
+        </div>
       </header>
+
+      {/* Role separation policy notice */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 12,
+          padding: '12px 18px',
+          borderRadius: 10,
+          background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+          border: '1px solid #e2e8f0',
+          marginBottom: 16,
+          fontSize: 13,
+          color: '#334155',
+          lineHeight: 1.5,
+        }}
+      >
+        <span style={{ color: '#0284c7', marginTop: 2 }}>
+          <AdminIcon name="shield" size={18} />
+        </span>
+        <div>
+          <strong style={{ color: '#0f172a' }}>การแบ่งแยกบทบาทตามมาตรฐานระบบการศึกษา (Role-Based Governance):</strong>
+          <span style={{ display: 'block', marginTop: 2 }}>
+            ครูผู้สอนเป็นผู้ออกแบบและจัดทำแผนการสอน FINE Model, คำศัพท์, และสื่อ AR 3D ผ่านหน้า <em>Teacher Console</em> โดยผู้ดูแลระบบ (Admin) มีหน้าที่กำกับดูแลความถูกต้อง ตรวจสอบคุณภาพสื่อ และอนุมัติหรือระงับการเผยแพร่เพื่อความปลอดภัยของสถาบัน
+          </span>
+        </div>
+      </div>
 
       {error && (
         <div className={styles.error} role="alert">
           <span>{error}</span>
-          <button type="button" onClick={() => { setError(''); setLoading(true); void loadContent().catch(retryError => setError(retryError instanceof Error ? retryError.message : 'โหลดข้อมูลไม่สำเร็จ')).finally(() => setLoading(false)) }}>ลองใหม่</button>
+          <button
+            type="button"
+            onClick={() => {
+              setError('')
+              setLoading(true)
+              void loadContent()
+                .catch(retryError => setError(retryError instanceof Error ? retryError.message : 'โหลดข้อมูลไม่สำเร็จ'))
+                .finally(() => setLoading(false))
+            }}
+          >
+            ลองใหม่
+          </button>
         </div>
       )}
 
@@ -272,22 +338,63 @@ export default function AdminContentPage() {
         </div>
 
         <div className={styles.panelToolbar}>
-          <div><h2>{tabs.find(tab => tab.key === activeTab)?.label}</h2><p>{visibleItems.length.toLocaleString('th-TH')} รายการที่แสดง</p></div>
-          <label className={styles.searchBox}>
-            <AdminIcon name="search" size={17} />
-            <span className={styles.srOnly}>ค้นหาเนื้อหา</span>
-            <input type="search" value={search} onChange={event => setSearch(event.target.value)} placeholder="ค้นหาชื่อหรือหน่วยเรียน" />
-          </label>
+          <div>
+            <h2>{tabs.find(tab => tab.key === activeTab)?.label}</h2>
+            <p>{visibleItems.length.toLocaleString('th-TH')} รายการที่แสดง</p>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+              <span style={{ color: '#64748b' }}>สถานะ:</span>
+              <select
+                value={statusFilter}
+                onChange={e => setStatusFilter(e.target.value as 'all' | 'published' | 'draft')}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  fontSize: 12,
+                }}
+              >
+                <option value="all">ทั้งหมด ({counts.all})</option>
+                <option value="published">เผยแพร่แล้ว ({counts.published})</option>
+                <option value="draft">ฉบับร่าง / รอตรวจ ({counts.draft})</option>
+              </select>
+            </div>
+            <label className={styles.searchBox}>
+              <AdminIcon name="search" size={17} />
+              <span className={styles.srOnly}>ค้นหาเนื้อหาหรือครูผู้จัดทำ</span>
+              <input
+                type="search"
+                value={search}
+                onChange={event => setSearch(event.target.value)}
+                placeholder="ค้นหาชื่อ, หน่วยเรียน, หรือครูผู้สอน..."
+              />
+            </label>
+          </div>
         </div>
 
         <div className={styles.dataList} aria-busy={loading}>
           <div className={`${styles.listHeader} ${styles.contentGrid}`} aria-hidden="true">
-            <span>เนื้อหา</span><span>ประเภท</span><span>หน่วยเรียน</span><span>สถานะ</span><span>จัดการ</span>
+            <span>เนื้อหา / สื่อการเรียนรู้</span>
+            <span>ประเภท</span>
+            <span>ผู้จัดทำ & หน่วยเรียน</span>
+            <span>สถานะเผยแพร่</span>
+            <span>ตรวจสอบ</span>
           </div>
+
           {loading ? (
-            <div className={styles.emptyState}><span><AdminIcon name="refresh" size={24} /></span><h3>กำลังโหลดคลังเนื้อหา</h3><p>ระบบกำลังอ่านข้อมูลจาก PostgreSQL</p></div>
+            <div className={styles.emptyState}>
+              <span><AdminIcon name="refresh" size={24} /></span>
+              <h3>กำลังโหลดข้อมูลการตรวจสอบ</h3>
+              <p>ระบบกำลังอ่านข้อมูลจาก PostgreSQL</p>
+            </div>
           ) : visibleItems.length === 0 ? (
-            <div className={styles.emptyState}><span><AdminIcon name="search" size={24} /></span><h3>ไม่พบเนื้อหาที่ตรงกับเงื่อนไข</h3><p>ลองเปลี่ยนประเภทหรือคำค้นหา</p></div>
+            <div className={styles.emptyState}>
+              <span><AdminIcon name="search" size={24} /></span>
+              <h3>ไม่พบเนื้อหาที่ตรงกับเงื่อนไขการตรวจสอบ</h3>
+              <p>ลองปรับตัวกรองประเภท สถานะ หรือคำค้นหา</p>
+            </div>
           ) : visibleItems.map(item => {
             const config = typeConfig[item.type]
             const isBusy = busyAction?.endsWith(item.id) ?? false
@@ -295,16 +402,58 @@ export default function AdminContentPage() {
               <article className={`${styles.dataRow} ${styles.contentGrid}`} data-tone={config.tone} key={item.id}>
                 <div className={styles.itemIdentity}>
                   <span className={styles.itemIcon}><AdminIcon name={config.icon} size={18} /></span>
-                  <span><strong>{item.name}</strong><small>{item.nameEn}</small></span>
+                  <span>
+                    <strong>{item.name}</strong>
+                    <small>{item.nameEn}</small>
+                  </span>
                 </div>
+
                 <span className={styles.typeBadge} data-tone={config.tone}>{config.label}</span>
-                <span className={styles.unitLabel}>{item.unit}</span>
-                <button className={styles.statusButton} data-status={item.status} type="button" onClick={() => void toggleStatus(item)} disabled={isBusy}>
-                  {item.status === 'published' ? 'เผยแพร่แล้ว' : 'ฉบับร่าง'}
-                </button>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#1e293b' }}>
+                    {item.creatorName}
+                  </span>
+                  <small style={{ color: '#64748b', fontSize: 11 }}>
+                    {item.unit} • {formatDate(item.updatedAt)}
+                  </small>
+                </div>
+
+                <div>
+                  <button
+                    className={styles.statusButton}
+                    data-status={item.status}
+                    type="button"
+                    onClick={() => void toggleStatus(item)}
+                    disabled={isBusy}
+                    title={item.status === 'published' ? 'คลิกเพื่อระงับการเผยแพร่' : 'คลิกเพื่ออนุมัติเผยแพร่'}
+                  >
+                    {item.status === 'published' ? 'เผยแพร่แล้ว' : 'ฉบับร่าง/ระงับ'}
+                  </button>
+                </div>
+
                 <div className={styles.rowActions}>
-                  <button className={styles.iconButton} type="button" title="แก้ไข" aria-label={`แก้ไข ${item.name}`} onClick={() => openEdit(item)} disabled={isBusy}><AdminIcon name="edit" size={15} /></button>
-                  <button className={styles.iconButtonDanger} type="button" title="ลบ" aria-label={`ลบ ${item.name}`} onClick={() => setDeleteTarget(item)} disabled={isBusy}><AdminIcon name="trash" size={15} /></button>
+                  <button
+                    className={styles.iconButton}
+                    type="button"
+                    title="ตรวจสอบรายละเอียดสื่อ"
+                    aria-label={`ตรวจสอบ ${item.name}`}
+                    onClick={() => setInspectTarget(item)}
+                    disabled={isBusy}
+                    style={{ background: '#f1f5f9', color: '#0f172a' }}
+                  >
+                    <AdminIcon name="eye" size={16} />
+                  </button>
+                  <button
+                    className={styles.iconButtonDanger}
+                    type="button"
+                    title="ลบกรณีผิดระเบียบ"
+                    aria-label={`ลบ ${item.name}`}
+                    onClick={() => setDeleteTarget(item)}
+                    disabled={isBusy}
+                  >
+                    <AdminIcon name="trash" size={15} />
+                  </button>
                 </div>
               </article>
             )
@@ -312,42 +461,127 @@ export default function AdminContentPage() {
         </div>
       </section>
 
-      {formOpen && (
-        <div className={`${styles.modalOverlay} ${styles.compactOverlay}`} onMouseDown={event => { if (event.target === event.currentTarget && !busyAction) setFormOpen(false) }}>
-          <section className={`${styles.modal} ${styles.compactModal}`} role="dialog" aria-modal="true" aria-labelledby="content-form-title">
+      {/* Audit Inspection Modal */}
+      {inspectTarget && (
+        <div
+          className={`${styles.modalOverlay} ${styles.compactOverlay}`}
+          onMouseDown={event => { if (event.target === event.currentTarget && !busyAction) setInspectTarget(null) }}
+        >
+          <section className={`${styles.modal} ${styles.compactModal}`} role="dialog" aria-modal="true" aria-labelledby="audit-modal-title">
             <div className={styles.modalHeader}>
-              <span><AdminIcon name={editingId ? 'edit' : 'plus'} size={20} /></span>
-              <div><h2 id="content-form-title">{editingId ? 'แก้ไขเนื้อหา' : 'สร้างเนื้อหาใหม่'}</h2><p>กำหนดรายละเอียด หมวดหมู่ และสถานะการเผยแพร่</p></div>
-              <button type="button" aria-label="ปิดหน้าต่าง" onClick={() => setFormOpen(false)} disabled={Boolean(busyAction)}><AdminIcon name="close" size={18} /></button>
+              <span><AdminIcon name="shield" size={20} /></span>
+              <div>
+                <h2 id="audit-modal-title">ตรวจสอบรายละเอียดเนื้อหา (Content Audit)</h2>
+                <p>ตรวจสอบความสมบูรณ์และมาตรฐานวิชาการของสื่อการเรียนรู้</p>
+              </div>
+              <button type="button" aria-label="ปิดหน้าต่าง" onClick={() => setInspectTarget(null)} disabled={Boolean(busyAction)}>
+                <AdminIcon name="close" size={18} />
+              </button>
             </div>
-            <form className={`${styles.modalForm} ${styles.compactForm}`} onSubmit={handleSave}>
-              <div className={styles.formGrid}>
-                <label><span>ชื่อเนื้อหาภาษาไทย</span><input autoFocus required maxLength={200} value={form.name} onChange={event => setForm(current => ({ ...current, name: event.target.value }))} placeholder="เช่น แก้วเชมเปญ" /></label>
-                <label><span>ชื่อภาษาอังกฤษ</span><input required maxLength={200} value={form.nameEn} onChange={event => setForm(current => ({ ...current, nameEn: event.target.value }))} placeholder="Champagne Flute Glass" /></label>
+
+            <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div style={{ padding: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <small style={{ color: '#64748b', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>ชื่อเนื้อหา (TH)</small>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', marginTop: 4 }}>{inspectTarget.name}</div>
+                </div>
+                <div style={{ padding: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <small style={{ color: '#64748b', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>ชื่อภาษาอังกฤษ (EN)</small>
+                  <div style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', marginTop: 4 }}>{inspectTarget.nameEn}</div>
+                </div>
               </div>
-              <div className={`${styles.formGrid} ${styles.formGridThree}`}>
-                <label><span>ประเภท</span><select value={form.type} onChange={event => setForm(current => ({ ...current, type: event.target.value as ContentType }))}>{Object.keys(typeConfig).map(type => <option value={type} key={type}>{typeConfig[type as ContentType].label}</option>)}</select></label>
-                <label><span>หน่วยเรียน</span><select value={form.unit} onChange={event => setForm(current => ({ ...current, unit: event.target.value }))}>{['Unit 1', 'Unit 2', 'Unit 3', 'Unit 4'].map(unit => <option value={unit} key={unit}>{unit}</option>)}</select></label>
-                <label><span>สถานะ</span><select value={form.status} onChange={event => setForm(current => ({ ...current, status: event.target.value as ContentStatus }))}><option value="draft">ฉบับร่าง</option><option value="published">เผยแพร่</option></select></label>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+                <div style={{ padding: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <small style={{ color: '#64748b', fontSize: 11, fontWeight: 700 }}>ประเภทสื่อ</small>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginTop: 4 }}>
+                    {typeConfig[inspectTarget.type]?.label || inspectTarget.type}
+                  </div>
+                </div>
+                <div style={{ padding: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <small style={{ color: '#64748b', fontSize: 11, fontWeight: 700 }}>หน่วยการเรียนรู้</small>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', marginTop: 4 }}>{inspectTarget.unit}</div>
+                </div>
+                <div style={{ padding: 12, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                  <small style={{ color: '#64748b', fontSize: 11, fontWeight: 700 }}>สถานะปัจจุบัน</small>
+                  <div style={{ marginTop: 4 }}>
+                    <span
+                      style={{
+                        display: 'inline-block',
+                        padding: '3px 8px',
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 700,
+                        background: inspectTarget.status === 'published' ? '#dcfce7' : '#fef3c7',
+                        color: inspectTarget.status === 'published' ? '#15803d' : '#b45309',
+                      }}
+                    >
+                      {inspectTarget.status === 'published' ? 'เผยแพร่ใช้งานแล้ว' : 'ฉบับร่าง / พักการเผยแพร่'}
+                    </span>
+                  </div>
+                </div>
               </div>
+
+              <div style={{ padding: 14, background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                <small style={{ color: '#64748b', fontSize: 11, fontWeight: 700, textTransform: 'uppercase' }}>ข้อมูลครูผู้จัดทำ (Author Metadata)</small>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                  <AdminIcon name="teacher" size={16} />
+                  <span style={{ fontSize: 14, fontWeight: 600, color: '#1e293b' }}>{inspectTarget.creatorName}</span>
+                  {inspectTarget.creatorSchool && (
+                    <span style={{ fontSize: 12, color: '#64748b' }}>({inspectTarget.creatorSchool})</span>
+                  )}
+                </div>
+                {inspectTarget.creatorEmail && (
+                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 4, marginLeft: 24 }}>
+                    อีเมลติดต่อ: {inspectTarget.creatorEmail}
+                  </div>
+                )}
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 6, marginLeft: 24 }}>
+                  สร้างเมื่อ: {formatDate(inspectTarget.createdAt)} | ปรับปรุงล่าสุด: {formatDate(inspectTarget.updatedAt)}
+                </div>
+              </div>
+
+              <div style={{ padding: 12, background: '#f0fdf4', borderRadius: 8, border: '1px solid #bbf7d0', fontSize: 12, color: '#166534' }}>
+                <strong>แนวทางการกำกับดูแลสำหรับแอดมิน:</strong>
+                <p style={{ marginTop: 4, lineHeight: 1.4 }}>
+                  หากเนื้อหามีความถูกต้องตามมาตรฐานวิชาการการโรงแรมและการจัดโต๊ะอาหาร FINE Model สามารถเปิดสถานะเป็น &quot;เผยแพร่แล้ว&quot; เพื่อให้นักเรียนเข้าถึงได้ทันที หรือหากต้องการให้ครูปรับปรุงเนื้อหา สามารถคลิก &quot;สลับเป็นฉบับร่าง&quot; ได้
+                </p>
+              </div>
+
               <div className={styles.modalActions}>
-                <button type="button" onClick={() => setFormOpen(false)} disabled={Boolean(busyAction)}>ยกเลิก</button>
-                <button className={styles.primaryButton} type="submit" disabled={Boolean(busyAction)}><AdminIcon name={busyAction ? 'clock' : 'check'} size={15} />{busyAction ? 'กำลังบันทึก' : editingId ? 'บันทึกการแก้ไข' : 'สร้างเนื้อหา'}</button>
+                <button type="button" onClick={() => setInspectTarget(null)} disabled={Boolean(busyAction)}>
+                  ปิดหน้าต่าง
+                </button>
+                <button
+                  className={inspectTarget.status === 'published' ? styles.outlineButton : styles.primaryButton}
+                  type="button"
+                  onClick={() => void toggleStatus(inspectTarget)}
+                  disabled={Boolean(busyAction)}
+                >
+                  <AdminIcon name={inspectTarget.status === 'published' ? 'eyeOff' : 'check'} size={15} />
+                  <span>{inspectTarget.status === 'published' ? 'ระงับเป็นฉบับร่าง' : 'อนุมัติเผยแพร่'}</span>
+                </button>
               </div>
-            </form>
+            </div>
           </section>
         </div>
       )}
 
+      {/* Delete Confirmation Modal */}
       {deleteTarget && (
-        <div className={styles.modalOverlay} onMouseDown={event => { if (event.target === event.currentTarget && !busyAction) setDeleteTarget(null) }}>
+        <div
+          className={styles.modalOverlay}
+          onMouseDown={event => { if (event.target === event.currentTarget && !busyAction) setDeleteTarget(null) }}
+        >
           <section className={`${styles.modal} ${styles.confirmModal}`} role="alertdialog" aria-modal="true" aria-labelledby="delete-content-title">
             <div className={styles.confirmIcon}><AdminIcon name="trash" size={22} /></div>
-            <h2 id="delete-content-title">ยืนยันการลบเนื้อหา</h2>
-            <p>รายการ “{deleteTarget.name}” จะถูกนำออกจากคลังเนื้อหาอย่างถาวร</p>
+            <h2 id="delete-content-title">ยืนยันการลบเนื้อหาที่ไม่เหมาะสม</h2>
+            <p>รายการ “{deleteTarget.name}” จะถูกนำออกจากระบบอย่างถาวรตามนโยบายกำกับดูแล</p>
             <div className={styles.modalActions}>
               <button type="button" onClick={() => setDeleteTarget(null)} disabled={Boolean(busyAction)}>ยกเลิก</button>
-              <button className={styles.dangerButton} type="button" onClick={() => void handleDelete()} disabled={Boolean(busyAction)}>{busyAction ? 'กำลังลบ' : 'ลบเนื้อหา'}</button>
+              <button className={styles.dangerButton} type="button" onClick={() => void handleDelete()} disabled={Boolean(busyAction)}>
+                {busyAction ? 'กำลังลบ...' : 'ยืนยันลบเนื้อหา'}
+              </button>
             </div>
           </section>
         </div>

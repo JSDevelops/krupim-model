@@ -56,10 +56,22 @@ function contentErrorResponse(error: unknown) {
 export async function GET(request: NextRequest) {
   try {
     await guardApi(request, { roles: developerOnly, maxRequests: 40 })
-    const result = await queryDb<ContentRow>(`
-      SELECT id, content_type, name_th, name_en, unit_label, status, created_at, updated_at
-      FROM content_library
-      ORDER BY updated_at DESC, created_at DESC
+    const result = await queryDb<ContentRow & { creator_name: string | null; creator_email: string | null; creator_school: string | null }>(`
+      SELECT 
+        cl.id, 
+        cl.content_type, 
+        cl.name_th, 
+        cl.name_en, 
+        cl.unit_label, 
+        cl.status, 
+        cl.created_at, 
+        cl.updated_at,
+        COALESCE(p.name, 'ครูผู้สอนส่วนกลาง') AS creator_name,
+        p.email AS creator_email,
+        p.school_name AS creator_school
+      FROM content_library cl
+      LEFT JOIN profiles p ON cl.created_by = p.id
+      ORDER BY cl.updated_at DESC, cl.created_at DESC
     `)
     return NextResponse.json({ items: result.rows })
   } catch (error) {

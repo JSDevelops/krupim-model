@@ -57,10 +57,10 @@ const adminNavigation: Array<{ label: string; items: NavigationItem[] }> = [
     ],
   },
   {
-    label: 'ระบบและเนื้อหา',
+    label: 'การกำกับดูแลและระบบ',
     items: [
       { href: '/admin/users', label: 'ครูและนักเรียน', description: 'บัญชี บทบาท และสิทธิ์เข้าถึง', icon: 'users' },
-      { href: '/admin/content', label: 'เนื้อหาการเรียนรู้', description: 'บทเรียนและสื่อ AR', icon: 'content' },
+      { href: '/admin/content', label: 'ตรวจสอบสื่อการเรียนรู้', description: 'กำกับดูแลและตรวจสอบสื่อของครู', icon: 'content' },
       { href: '/admin/blog', label: 'ข่าวและประกาศ', description: 'สื่อสารกับผู้ใช้งาน', icon: 'announcement' },
       { href: '/admin/audit-logs', label: 'ประวัติกิจกรรม', description: 'ตรวจสอบการเปลี่ยนแปลงในระบบ', icon: 'activity' },
       { href: '/admin/settings', label: 'ตั้งค่าระบบ', description: 'บริการและการเชื่อมต่อ', icon: 'settings' },
