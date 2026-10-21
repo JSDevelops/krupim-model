@@ -361,6 +361,35 @@ export default function AdminUsersPage() {
     }
   }
 
+  async function handleImpersonateTeacher(user: UserItem) {
+    const confirmed = await confirmPopup({
+      title: `เข้าสู่ระบบในฐานะครู?`,
+      description: `คุณต้องการเข้าสู่ระบบในฐานะ "${user.name}" (${user.email}) เพื่อดูมุมมองและจัดการชั้นเรียนของครูท่านนี้หรือไม่?`,
+      confirmText: 'เข้าสู่ระบบครู',
+      cancelText: 'ยกเลิก',
+      tone: 'default',
+    })
+    if (!confirmed) return
+
+    clearFeedback()
+    setBusyAction(`impersonate:${user.id}`)
+    try {
+      const response = await authenticatedFetch('/api/admin/impersonate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id }),
+      })
+      if (!response.ok) throw new Error(await getResponseError(response))
+      const data = await response.json()
+      toast.success(data.message || `เข้าสู่ระบบในฐานะ ${user.name} สำเร็จ`)
+      window.location.href = data.redirectTo || '/teacher/dashboard'
+    } catch (impersonateError) {
+      toast.error(impersonateError instanceof Error ? impersonateError.message : 'ไม่สามารถเข้าสู่ระบบในฐานะครูได้')
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
   const tabDescription = activeTab === 'pending'
     ? 'ตรวจสอบและอนุมัติคำขอเปลี่ยนบทบาทเป็นครูผู้สอน'
     : `จัดการบัญชี${tabLabels[activeTab]}และสถานะการเข้าใช้งาน`
@@ -538,6 +567,18 @@ export default function AdminUsersPage() {
                     </>
                   ) : (
                     <>
+                      {user.role === 'teacher' && user.status === 'active' && (
+                        <button
+                          type="button"
+                          className={styles.iconButtonPrimary}
+                          aria-label={`เข้าสู่ระบบในฐานะ ${user.name}`}
+                          title="เข้าสู่ระบบในฐานะครู (สวมบทบาท)"
+                          onClick={() => void handleImpersonateTeacher(user)}
+                          disabled={isBusy}
+                        >
+                          <AdminIcon name="key" size={15} />
+                        </button>
+                      )}
                       <button
                         type="button"
                         className={styles.iconButton}
