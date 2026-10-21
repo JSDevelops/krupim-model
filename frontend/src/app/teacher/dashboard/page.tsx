@@ -217,7 +217,7 @@ export default function TeacherDashboard() {
           <h1 id="teacher-dashboard-title">สวัสดี {user?.name || 'คุณครูผู้สอน'}</h1>
           <span>จัดการชั้นเรียน ติดตามงานประเมิน และดูพัฒนาการของนักเรียนได้ครบในหน้าเดียว</span>
           <div className={styles.heroActions}>
-            <Link href="/teacher/assignments"><AdminIcon name="plus" size={16} /> สร้างงานใหม่</Link>
+            <Link href="/teacher/assignments"><AdminIcon name="plus" size={16} /> สร้างการเรียนรู้</Link>
             <Link href="/teacher/students"><AdminIcon name="student" size={16} /> จัดการนักเรียน</Link>
           </div>
           <dl className={styles.heroFacts}>

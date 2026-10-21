@@ -1015,7 +1015,7 @@ function TeacherAssignmentsContent() {
       <header className={styles.pageHeader}>
         <div>
           <p>ASSIGNMENT MANAGEMENT</p>
-          <h1>งานและกิจกรรมการเรียนรู้</h1>
+          <h1>บทเรียนประจำสัปดาห์</h1>
           <span>
             มอบหมายงาน ติดตามการส่ง และประเมินผลผู้เรียนตามกระบวนการ FINE Model
           </span>
@@ -1036,7 +1036,7 @@ function TeacherAssignmentsContent() {
             onClick={openCreate}
           >
             <AdminIcon name="plus" size={16} />
-            สร้างงานใหม่
+            สร้างการเรียนรู้
           </button>
         </div>
       </header>

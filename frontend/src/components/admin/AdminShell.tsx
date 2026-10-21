@@ -50,7 +50,7 @@ const adminNavigation: Array<{ label: string; items: NavigationItem[] }> = [
       { href: '/admin/classes', label: 'ห้องเรียนทั้งหมด', description: 'ห้องเรียน สมาชิก และลิงก์เชิญ', icon: 'school' },
       { href: '/admin/students', label: 'ทะเบียนนักเรียน', description: 'สมาชิกและผลการเรียนรายห้อง', icon: 'student' },
       { href: '/admin/lessons', label: 'แผนการสอน', description: 'แผน FINE และการเผยแพร่', icon: 'content' },
-      { href: '/admin/assignments', label: 'งานและการประเมิน', description: 'งาน การส่ง และคะแนน KSA-C', icon: 'score' },
+      { href: '/admin/assignments', label: 'บทเรียนประจำสัปดาห์', description: 'งาน การส่ง และคะแนน KSA-C', icon: 'score' },
       { href: '/admin/certificates', label: 'ใบรับรองสมรรถนะ', description: 'ออกใหม่ ควบคุมสถานะ และดูประวัติ', icon: 'archive' },
       { href: '/admin/vocabulary', label: 'คลังคำศัพท์', description: 'คำศัพท์ส่วนกลางและของครู', icon: 'course' },
       { href: '/admin/ar-models', label: 'โมเดล AR 3D', description: 'สร้างด้วย AI และจัดการสื่อสามมิติ', icon: 'cube' },
@@ -88,7 +88,7 @@ const teacherNavigation: Array<{ label: string; items: NavigationItem[] }> = [
     items: [
       { href: '/teacher/classes', label: 'ห้องเรียน', description: 'รายวิชาและสมาชิกในชั้น', icon: 'school' },
       { href: '/teacher/students', label: 'นักเรียน', description: 'ทะเบียน สิทธิ์ และผลการเรียน', icon: 'student' },
-      { href: '/teacher/assignments', label: 'งานและการประเมิน', description: 'มอบหมาย ตรวจ และให้คะแนน', icon: 'score' },
+      { href: '/teacher/assignments', label: 'บทเรียนประจำสัปดาห์', description: 'มอบหมาย ตรวจ และให้คะแนน', icon: 'score' },
     ],
   },
   {
@@ -106,7 +106,7 @@ const pageTitles: Record<string, string> = {
   '/admin/classes': 'ห้องเรียนทั้งหมด',
   '/admin/students': 'ทะเบียนนักเรียน',
   '/admin/lessons': 'แผนการสอนทั้งหมด',
-  '/admin/assignments': 'งานและการประเมิน',
+  '/admin/assignments': 'บทเรียนประจำสัปดาห์',
   '/admin/certificates': 'ใบรับรองสมรรถนะ',
   '/admin/vocabulary': 'คลังคำศัพท์',
   '/admin/ar-models': 'โมเดล AR 3D',
@@ -121,7 +121,7 @@ const pageTitles: Record<string, string> = {
   '/teacher/vocab': 'คลังคำศัพท์',
   '/teacher/classes': 'จัดการห้องเรียน',
   '/teacher/students': 'จัดการนักเรียน',
-  '/teacher/assignments': 'งานและการประเมิน',
+  '/teacher/assignments': 'บทเรียนประจำสัปดาห์',
   '/teacher/manual': 'คู่มือการใช้งาน',
   '/teacher/profile': 'ข้อมูลส่วนตัว',
 }
