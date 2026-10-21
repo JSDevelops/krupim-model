@@ -557,7 +557,7 @@ function TeacherAssignmentsContent() {
       setEditorOpen(false);
       await loadAssignments();
       toast.success(
-        editingId ? "บันทึกการแก้ไขแล้ว" : "สร้างและมอบหมายงานแล้ว",
+        editingId ? "บันทึกการแก้ไขแล้ว" : "สร้างการเรียนรู้แล้ว",
         { description: form.title },
       );
     } catch (saveError) {
@@ -1322,15 +1322,15 @@ function TeacherAssignmentsContent() {
               </span>
               <h3>
                 {assignments.length
-                  ? "ไม่พบงานตามตัวกรอง"
-                  : "ยังไม่มีงานมอบหมาย"}
+                  ? "ไม่พบบทเรียนตามตัวกรอง"
+                  : "ยังไม่มีบทเรียน"}
               </h3>
               <p>
                 {assignments.length
                   ? "ลองเปลี่ยนคำค้นหา ห้องเรียน หรือสถานะ"
                   : classrooms.length
-                    ? "สร้างงานแรกและมอบหมายให้ผู้เรียนในห้องของคุณ"
-                    : "สร้างห้องเรียนก่อนเริ่มมอบหมายงาน"}
+                    ? "สร้างการเรียนรู้แรกให้กับผู้เรียนในห้องของคุณ"
+                    : "สร้างห้องเรียนก่อนเริ่มจัดการเรียนรู้"}
               </p>
               <button
                 type="button"
@@ -1341,7 +1341,7 @@ function TeacherAssignmentsContent() {
                 }
               >
                 <AdminIcon name="plus" size={16} />
-                {classrooms.length ? "สร้างงานแรก" : "สร้างห้องเรียน"}
+                {classrooms.length ? "สร้างการเรียนรู้แรก" : "สร้างห้องเรียน"}
               </button>
             </div>
           )}
@@ -1369,7 +1369,7 @@ function TeacherAssignmentsContent() {
               </span>
               <div>
                 <h2 id="assignment-editor-title">
-                  {editingId ? "แก้ไขงานมอบหมาย" : "สร้างงานมอบหมายใหม่"}
+                  {editingId ? "แก้ไขการเรียนรู้" : "สร้างการเรียนรู้"}
                 </h2>
                 <p>กำหนดกิจกรรม ห้องเรียน คะแนน และวันส่งงาน</p>
               </div>
@@ -1652,7 +1652,7 @@ function TeacherAssignmentsContent() {
                       name={busy === "save" ? "clock" : "check"}
                       size={16}
                     />
-                    {editingId ? "บันทึกการแก้ไข" : "สร้างและมอบหมาย"}
+                    {editingId ? "บันทึกการแก้ไข" : "สร้างการเรียนรู้"}
                   </button>
                 </footer>
               </form>
