@@ -44,10 +44,10 @@ type PendingGradingItem = {
 }
 
 const scoreDefinitions = [
-  { key: 'K', label: 'Knowledge', detail: 'ความรู้และคำศัพท์', color: '#347553' },
-  { key: 'S', label: 'Skills', detail: 'ทักษะการสื่อสาร', color: '#35688c' },
-  { key: 'A', label: 'Attribute', detail: 'บุคลิกภาพและจิตบริการ', color: '#947420' },
-  { key: 'C', label: 'Competency', detail: 'สมรรถนะการปฏิบัติงาน', color: '#70558b' },
+  { key: 'K', label: 'Knowledge (30%)', detail: 'ความรู้และคำศัพท์ (30 คะแนน)', color: '#347553' },
+  { key: 'S', label: 'Skills (50%)', detail: 'ทักษะปฏิบัติและการสื่อสาร (50 คะแนน)', color: '#35688c' },
+  { key: 'A', label: 'Attribute (20%)', detail: 'บุคลิกภาพและจิตบริการ (20 คะแนน)', color: '#947420' },
+  { key: 'C', label: 'Competency (100%)', detail: 'สมรรถนะรวม C = K+S+A (100 คะแนน)', color: '#70558b' },
 ] as const
 
 function initials(name: string) {
@@ -55,7 +55,7 @@ function initials(name: string) {
 }
 
 function weightedScore(student: StudentRecord) {
-  return Math.round(student.ksa.K * 0.2 + student.ksa.S * 0.3 + student.ksa.A * 0.1 + student.ksa.C * 0.4)
+  return Math.round(student.ksa.K * 0.3 + student.ksa.S * 0.5 + student.ksa.A * 0.2)
 }
 
 function formatActivityDate(value?: string | null) {
@@ -180,7 +180,7 @@ export default function TeacherDashboard() {
     if (!selectedGrading) return
     setSaving(true)
     try {
-      const overallPercent = Math.round(scores.K * 0.2 + scores.S * 0.3 + scores.A * 0.1 + scores.C * 0.4)
+      const overallPercent = Math.round(scores.K * 0.3 + scores.S * 0.5 + scores.A * 0.2)
       const response = await authenticatedFetch('/api/teacher/assignments', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -193,7 +193,7 @@ export default function TeacherDashboard() {
           knowledge: scores.K,
           skills: scores.S,
           attitude: scores.A,
-          competency: scores.C,
+          competency: overallPercent,
         }),
       })
       const payload = await response.json() as { error?: string }

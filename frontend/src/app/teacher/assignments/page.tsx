@@ -670,11 +670,14 @@ function TeacherAssignmentsContent() {
     setKsaScores((prev) => {
       const updated = { ...prev, [key]: clamped };
       if (reportAssignment && reportAssignment.maxScore > 0) {
-        const overallPct =
-          updated.knowledge * 0.2 +
-          updated.skills * 0.3 +
-          updated.attitude * 0.1 +
-          updated.competency * 0.4;
+        const overallPct = Math.round(
+          updated.knowledge * 0.3 +
+          updated.skills * 0.5 +
+          updated.attitude * 0.2
+        );
+        if (key !== 'competency') {
+          updated.competency = overallPct;
+        }
         const calculatedScore = Math.round(
           (overallPct / 100) * reportAssignment.maxScore,
         );
@@ -1891,12 +1894,11 @@ function TeacherAssignmentsContent() {
                       <AdminIcon name="analytics" size={15} /> เกณฑ์ประเมินสมรรถนะ KSA-C (คำนวณคะแนนรวมอัตโนมัติ)
                     </h4>
                     <span>
-                      สมรรถนะรวม:{" "}
+                      สมรรถนะรวม (C = K+S+A):{" "}
                       {Math.round(
-                        ksaScores.knowledge * 0.2 +
-                          ksaScores.skills * 0.3 +
-                          ksaScores.attitude * 0.1 +
-                          ksaScores.competency * 0.4,
+                        ksaScores.knowledge * 0.3 +
+                          ksaScores.skills * 0.5 +
+                          ksaScores.attitude * 0.2,
                       )}
                       %
                     </span>
@@ -1905,7 +1907,7 @@ function TeacherAssignmentsContent() {
                     <div className={styles.ksaItem}>
                       <div className={styles.ksaItemTop}>
                         <span>
-                          <b style={{ background: "#2563eb" }}>K</b> ความรู้ความเข้าใจ (Knowledge 20%)
+                          <b style={{ background: "#2563eb" }}>K</b> ความรู้ความเข้าใจ (Knowledge 30%)
                         </span>
                         <strong>{ksaScores.knowledge}/100</strong>
                       </div>
@@ -1943,7 +1945,7 @@ function TeacherAssignmentsContent() {
                     <div className={styles.ksaItem}>
                       <div className={styles.ksaItemTop}>
                         <span>
-                          <b style={{ background: "#059669" }}>S</b> ทักษะปฏิบัติ 3D (Skills 30%)
+                          <b style={{ background: "#059669" }}>S</b> ทักษะปฏิบัติ & สื่อสาร (Skills 50%)
                         </span>
                         <strong>{ksaScores.skills}/100</strong>
                       </div>
@@ -1981,7 +1983,7 @@ function TeacherAssignmentsContent() {
                     <div className={styles.ksaItem}>
                       <div className={styles.ksaItemTop}>
                         <span>
-                          <b style={{ background: "#d97706" }}>A</b> วินัยและความรับผิดชอบ (Attitude 10%)
+                          <b style={{ background: "#d97706" }}>A</b> เจตคติ & คุณลักษณะ (Attitude 20%)
                         </span>
                         <strong>{ksaScores.attitude}/100</strong>
                       </div>
@@ -2019,7 +2021,7 @@ function TeacherAssignmentsContent() {
                     <div className={styles.ksaItem}>
                       <div className={styles.ksaItemTop}>
                         <span>
-                          <b style={{ background: "#7c3aed" }}>C</b> สมรรถนะสำคัญ (Competency 40%)
+                          <b style={{ background: "#7c3aed" }}>C</b> สมรรถนะรวม (Competency: C = K+S+A 100%)
                         </span>
                         <strong>{ksaScores.competency}/100</strong>
                       </div>

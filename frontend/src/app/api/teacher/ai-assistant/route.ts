@@ -24,8 +24,8 @@ function generateFallbackFeedback({
   const k = ksaScores.knowledge
   const s = ksaScores.skills
   const a = ksaScores.attitude
-  const c = ksaScores.competency
-  const avg = Math.round(k * 0.2 + s * 0.3 + a * 0.1 + c * 0.4)
+  const c = ksaScores.competency ?? Math.round(k * 0.3 + s * 0.5 + a * 0.2)
+  const avg = Math.round(k * 0.3 + s * 0.5 + a * 0.2)
 
   const attachNote = attachmentName ? `ผลงาน 3D "${attachmentName}" ` : ''
 
@@ -286,11 +286,11 @@ export async function POST(request: NextRequest) {
 ขั้นตอน FINE Model: ${activityType}
 คะแนนเต็ม: ${maxScore} คะแนน | คะแนนเฉลี่ยชั้นเรียน: ${averageScore} คะแนน (${Math.round((averageScore / maxScore) * 100)}%)
 จำนวนนักเรียนที่ส่งงาน: ${submissionsCount} คน | ตรวจแล้ว: ${gradedCount} คน | ส่งกลับแก้ไข: ${returnedCount} คน
-คะแนนเฉลี่ยสมรรถนะ KSA-C:
-- ความรู้ (Knowledge 20%): ${avgKsa.knowledge}%
-- ทักษะ (Skills 30%): ${avgKsa.skills}%
-- เจตคติ (Attitude 10%): ${avgKsa.attitude}%
-- สมรรถนะ (Competency 40%): ${avgKsa.competency}%
+คะแนนเฉลี่ยสมรรถนะ KSA (C = K + S + A):
+- ความรู้ (Knowledge 30% / 30 คะแนน): ${avgKsa.knowledge}%
+- ทักษะ (Skills 50% / 50 คะแนน): ${avgKsa.skills}%
+- เจตคติ (Attitude 20% / 20 คะแนน): ${avgKsa.attitude}%
+- สมรรถนะรวม (Competency 100% / 100 คะแนนเต็ม): ${Math.round(avgKsa.knowledge * 0.3 + avgKsa.skills * 0.5 + avgKsa.attitude * 0.2)}%
 
 ให้สรุปเนื้อหาเป็น 3 หัวข้ออย่างชัดเจนและเป็นทางการ:
 1. จุดเด่นของชั้นเรียน (Class Strengths)

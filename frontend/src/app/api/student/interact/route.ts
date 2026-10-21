@@ -103,14 +103,14 @@ export async function POST(request: NextRequest) {
         await client.query(`
           UPDATE learning_analytics
           SET skills_score=ROUND((skills_score+$1)/2),
-              overall_score=ROUND((knowledge_score*0.2)+(ROUND((skills_score+$1)/2)*0.3)+(attitude_score*0.1)+(competency_score*0.4)),
+              overall_score=ROUND((knowledge_score*0.3)+(ROUND((skills_score+$1)/2)*0.5)+(attitude_score*0.2)),
               time_spent_minutes=time_spent_minutes+1
           WHERE id=$2::uuid
         `, [score, existing.rows[0].id])
       } else {
         await client.query(`
           INSERT INTO learning_analytics (student_id,course_id,date,skills_score,overall_score,time_spent_minutes)
-          VALUES ($1::uuid,NULL,CURRENT_DATE,$2,ROUND($2*0.3),1)
+          VALUES ($1::uuid,NULL,CURRENT_DATE,$2,ROUND($2*0.5),1)
         `, [user.id, score])
       }
     })

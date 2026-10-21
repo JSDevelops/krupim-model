@@ -167,10 +167,10 @@ export async function generateFinePortfolioPdf(options: GeneratePortfolioOptions
   doc.text('KSA-C COMPETENCY PERFORMANCE EVALUATION', 14, currentY);
 
   const ksaRows = [
-    ['Knowledge (K)', 'Culinary & F&B Tableware Terminology, Standards, Equipment', `${Math.round(stats.knowledgeScore)}%`, stats.knowledgeScore >= 70 ? 'Advanced' : 'Proficient'],
-    ['Skills (S)', 'AI Pronunciation Precision, Spoken English Fluency, Speech Drills', `${Math.round(stats.skillsScore)}%`, stats.skillsScore >= 70 ? 'Advanced' : 'Proficient'],
-    ['Attitude (A)', 'Hospitality Etiquette, Professional Engagement, Problem Solving', `${Math.round(stats.attitudeScore)}%`, stats.attitudeScore >= 70 ? 'Advanced' : 'Proficient'],
-    ['Competency (C)', 'Integrated Service Recovery, Branching Dilemma Analysis, Overall Mastery', `${Math.round(stats.competencyScore)}%`, stats.competencyScore >= 70 ? 'Advanced' : 'Proficient'],
+    ['Knowledge (K 30%)', 'Culinary & F&B Tableware Terminology, Standards, Equipment (Weight: 30%)', `${Math.round(stats.knowledgeScore)}%`, stats.knowledgeScore >= 70 ? 'Advanced' : 'Proficient'],
+    ['Skills (S 50%)', 'AI Pronunciation Precision, Spoken English Fluency, Speech Drills, AR 3D (Weight: 50%)', `${Math.round(stats.skillsScore)}%`, stats.skillsScore >= 70 ? 'Advanced' : 'Proficient'],
+    ['Attitude (A 20%)', 'Hospitality Etiquette, Professional Engagement, Problem Solving (Weight: 20%)', `${Math.round(stats.attitudeScore)}%`, stats.attitudeScore >= 70 ? 'Advanced' : 'Proficient'],
+    ['Competency (C 100%)', 'Holistic Competency Mastery: C = K(30) + S(50) + A(20)', `${Math.round(stats.competencyScore)}%`, stats.competencyScore >= 70 ? 'Advanced' : 'Proficient'],
   ];
 
   autoTable(doc, {

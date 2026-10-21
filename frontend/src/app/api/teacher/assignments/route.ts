@@ -204,10 +204,9 @@ export async function PATCH(request: NextRequest) {
         c: optionalRubric(body.rubricLevelC),
       }
       const overall = Math.round(
-        competencyScores.knowledge * 0.2
-        + competencyScores.skills * 0.3
-        + competencyScores.attitude * 0.1
-        + competencyScores.competency * 0.4,
+        competencyScores.knowledge * 0.3
+        + competencyScores.skills * 0.5
+        + competencyScores.attitude * 0.2,
       )
 
       const submission = await withTransaction(async client => {
@@ -225,7 +224,7 @@ export async function PATCH(request: NextRequest) {
           ) VALUES ($1::uuid,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::uuid)
         `, [
           studentId, overall, competencyScores.knowledge, competencyScores.skills,
-          competencyScores.attitude, competencyScores.competency, feedback || null,
+          competencyScores.attitude, overall, feedback || null,
           rubricLevels.k, rubricLevels.s, rubricLevels.a, rubricLevels.c, user.id,
         ])
 
@@ -243,13 +242,13 @@ export async function PATCH(request: NextRequest) {
           const knowledge = Math.round((Number(previous.knowledge_score) + competencyScores.knowledge) / 2)
           const skills = Math.round((Number(previous.skills_score) + competencyScores.skills) / 2)
           const attitude = Math.round((Number(previous.attitude_score) + competencyScores.attitude) / 2)
-          const competency = Math.round((Number(previous.competency_score) + competencyScores.competency) / 2)
+          const competency = Math.round(knowledge * 0.3 + skills * 0.5 + attitude * 0.2)
           await client.query(`
             UPDATE learning_analytics
             SET knowledge_score=$1, skills_score=$2, attitude_score=$3, competency_score=$4,
                 overall_score=$5
             WHERE id=$6::uuid
-          `, [knowledge, skills, attitude, competency, Math.round(knowledge * 0.2 + skills * 0.3 + attitude * 0.1 + competency * 0.4), previous.id])
+          `, [knowledge, skills, attitude, competency, competency, previous.id])
         } else {
           await client.query(`
             INSERT INTO learning_analytics (

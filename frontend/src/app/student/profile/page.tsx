@@ -203,10 +203,9 @@ export default function StudentProfilePage() {
   const overall =
     stats.overallScore ||
     Math.round(
-      stats.knowledgeScore * 0.2 +
-        stats.skillsScore * 0.3 +
-        stats.attitudeScore * 0.1 +
-        stats.competencyScore * 0.4,
+      stats.knowledgeScore * 0.3 +
+        stats.skillsScore * 0.5 +
+        stats.attitudeScore * 0.2,
     );
   const certified =
     overall >= 70 &&

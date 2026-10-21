@@ -160,13 +160,13 @@ export async function POST(request: NextRequest) {
       await queryDb(`
         UPDATE learning_analytics
         SET knowledge_score=ROUND((knowledge_score+$1)/2),
-            overall_score=ROUND((ROUND((knowledge_score+$1)/2)*0.2)+(skills_score*0.3)+(attitude_score*0.1)+(competency_score*0.4))
+            overall_score=ROUND((ROUND((knowledge_score+$1)/2)*0.3)+(skills_score*0.5)+(attitude_score*0.2))
         WHERE id=$2::uuid
       `, [score, existing.rows[0].id])
     } else {
       await queryDb(`
         INSERT INTO learning_analytics(student_id,course_id,date,knowledge_score,skills_score,attitude_score,competency_score,overall_score)
-        VALUES($1::uuid,NULL,CURRENT_DATE,$2,$2,85,$2,ROUND($2*0.2))
+        VALUES($1::uuid,NULL,CURRENT_DATE,$2,$2,85,$2,ROUND($2*0.3))
       `, [user.id, score])
     }
     return NextResponse.json({ ok: true })

@@ -59,10 +59,9 @@ export async function POST(request: NextRequest) {
       if (!score) throw new ApiError('ไม่พบบัญชีนักเรียนที่พร้อมออกใบรับรอง', 404, 'NOT_FOUND')
 
       const weighted = Math.round(
-        score.knowledge_score * 0.2
-        + score.skills_score * 0.3
-        + score.attitude_score * 0.1
-        + score.competency_score * 0.4,
+        score.knowledge_score * 0.3
+        + score.skills_score * 0.5
+        + score.attitude_score * 0.2,
       )
       const overall = score.overall_score || weighted
       const dimensions = [score.knowledge_score, score.skills_score, score.attitude_score, score.competency_score]

@@ -84,7 +84,7 @@ ${chatContent}
       attitude: boundedScore(parsed.attitude, fallback),
       competency: boundedScore(parsed.competency, fallback),
     }
-    const overall = Math.round(scores.knowledge * 0.2 + scores.skills * 0.3 + scores.attitude * 0.1 + scores.competency * 0.4)
+    const overall = Math.round(scores.knowledge * 0.3 + scores.skills * 0.5 + scores.attitude * 0.2)
     const duration = Math.max(1, Math.ceil(validMessages.length / 2))
 
     if (authUser.role === 'student' && typeof scenario_id === 'string' && scenario_id.length <= 120) {
@@ -126,7 +126,7 @@ ${chatContent}
             const skills = Math.round((Number(previous.skills_score) + scores.skills) / 2)
             const attitude = Math.round((Number(previous.attitude_score) + scores.attitude) / 2)
             const competency = Math.round((Number(previous.competency_score) + scores.competency) / 2)
-            const mergedOverall = Math.round(knowledge * 0.2 + skills * 0.3 + attitude * 0.1 + competency * 0.4)
+            const mergedOverall = Math.round(knowledge * 0.3 + skills * 0.5 + attitude * 0.2)
             await client.query(`
               UPDATE learning_analytics SET knowledge_score=$1,skills_score=$2,attitude_score=$3,
                 competency_score=$4,overall_score=$5,time_spent_minutes=time_spent_minutes+$6
