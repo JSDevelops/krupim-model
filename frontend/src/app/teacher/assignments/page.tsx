@@ -50,6 +50,8 @@ type Assignment = {
   lessonPlanTitle?: string | null;
   dueDate: string;
   maxScore: number;
+  isPublished: boolean;
+  availableFrom?: string | null;
   studentCount: number;
   submittedCount: number;
   gradedCount: number;
@@ -84,6 +86,8 @@ type AssignmentForm = {
   dueDate: string;
   maxScore: string;
   lessonPlanId?: string;
+  isPublished: boolean;
+  availableFrom: string;
 };
 const emptyForm: AssignmentForm = {
   title: "",
@@ -93,6 +97,8 @@ const emptyForm: AssignmentForm = {
   dueDate: "",
   maxScore: "100",
   lessonPlanId: "",
+  isPublished: true,
+  availableFrom: "",
 };
 const activityMeta: Record<
   ActivityType,
@@ -305,18 +311,42 @@ function TeacherAssignmentsContent() {
 
   const visibleAssignments = useMemo(() => {
     const keyword = deferredSearch.trim().toLocaleLowerCase("th-TH");
-    return assignments.filter((item) => {
-      const matchesKeyword =
-        !keyword ||
-        `${item.title} ${item.description} ${item.className} ${item.activityType}`
-          .toLocaleLowerCase("th-TH")
-          .includes(keyword);
-      return (
-        matchesKeyword &&
-        (classFilter === "all" || item.classId === classFilter) &&
-        (statusFilter === "all" || assignmentState(item) === statusFilter)
-      );
-    });
+    return assignments
+      .filter((item) => {
+        const matchesKeyword =
+          !keyword ||
+          `${item.title} ${item.description} ${item.className} ${item.activityType}`
+            .toLocaleLowerCase("th-TH")
+            .includes(keyword);
+        return (
+          matchesKeyword &&
+          (classFilter === "all" || item.classId === classFilter) &&
+          (statusFilter === "all" || assignmentState(item) === statusFilter)
+        );
+      })
+      .sort((a, b) => {
+        // 1. เรียงตามสัปดาห์จากชื่อ (สัปดาห์ที่ 1, 2, 3...)
+        const weekA = a.title.match(/สัปดาห์ที่\s*(\d+)/)?.[1];
+        const weekB = b.title.match(/สัปดาห์ที่\s*(\d+)/)?.[1];
+        if (weekA && weekB) {
+          const diff = parseInt(weekA, 10) - parseInt(weekB, 10);
+          if (diff !== 0) return diff;
+          // ในสัปดาห์เดียวกัน เรียง [F] ใบงาน -> [I] สนทนา -> [N] จำลอง -> [E] สรุป/แบบทดสอบ
+          const orderMap: Record<string, number> = { worksheet: 1, speak: 2, simulate: 3, quiz: 4, exhibit: 5 };
+          const orderDiff = (orderMap[a.activityType] || 99) - (orderMap[b.activityType] || 99);
+          if (orderDiff !== 0) return orderDiff;
+          return a.title.localeCompare(b.title, "th-TH");
+        }
+        if (weekA && !weekB) return -1;
+        if (!weekA && weekB) return 1;
+
+        // 2. ถ้าไม่มีหมายเลขสัปดาห์ ให้เรียงตามวันเวลาที่เริ่มสอน หรือกำหนดส่ง
+        const dateA = a.availableFrom ? new Date(a.availableFrom).getTime() : (a.dueDate ? new Date(a.dueDate).getTime() : 0);
+        const dateB = b.availableFrom ? new Date(b.availableFrom).getTime() : (b.dueDate ? new Date(b.dueDate).getTime() : 0);
+        if (dateA !== dateB) return dateA - dateB;
+
+        return a.title.localeCompare(b.title, "th-TH");
+      });
   }, [assignments, classFilter, deferredSearch, statusFilter]);
 
   const totalStudents = classrooms.reduce(
@@ -481,6 +511,8 @@ function TeacherAssignmentsContent() {
       dueDate: localDateTime(item.dueDate),
       maxScore: String(item.maxScore),
       lessonPlanId: item.lessonPlanId || "",
+      isPublished: item.isPublished !== false,
+      availableFrom: item.availableFrom ? localDateTime(item.availableFrom) : "",
     });
     setEditorOpen(true);
   }
@@ -517,6 +549,8 @@ function TeacherAssignmentsContent() {
         body: JSON.stringify({
           ...(editingId ? { id: editingId } : {}),
           ...form,
+          isPublished: form.isPublished,
+          availableFrom: form.availableFrom || null,
         }),
       });
       if (!response.ok) throw new Error(await responseError(response));
@@ -557,6 +591,36 @@ function TeacherAssignmentsContent() {
       toast.error(
         deleteError instanceof Error ? deleteError.message : "ลบงานไม่สำเร็จ",
       );
+    } finally {
+      setBusy(null);
+    }
+  }
+  async function togglePublish(item: Assignment) {
+    const nextPublished = !item.isPublished;
+    setBusy(`publish:${item.id}`);
+    try {
+      const response = await authenticatedFetch("/api/teacher/assignments", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "toggle_publish",
+          id: item.id,
+          isPublished: nextPublished,
+          availableFrom: item.availableFrom || null,
+        }),
+      });
+      if (!response.ok) throw new Error(await responseError(response));
+      setAssignments((current) =>
+        current.map((a) =>
+          a.id === item.id ? { ...a, isPublished: nextPublished } : a,
+        ),
+      );
+      toast.success(
+        nextPublished ? "เปิดให้นักเรียนมองเห็นแล้ว 🟢" : "ซ่อนบทเรียนนี้แล้ว 🔴",
+        { description: item.title },
+      );
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "เปลี่ยนสถานะไม่สำเร็จ");
     } finally {
       setBusy(null);
     }
@@ -1162,6 +1226,19 @@ function TeacherAssignmentsContent() {
                           📘 แผน: {item.lessonPlanTitle}
                         </span>
                       )}
+                      {item.isPublished === false ? (
+                        <span className={styles.assignmentOverdue} title="ซ่อน - นักเรียนมองไม่เห็น">
+                          🔴 ซ่อน
+                        </span>
+                      ) : item.availableFrom && new Date(item.availableFrom) > new Date() ? (
+                        <span className={styles.neutralBadge} title={`เปิดให้เรียน: ${formatDate(item.availableFrom, true)}`}>
+                          🕐 กำหนดเปิด {formatDate(item.availableFrom)}
+                        </span>
+                      ) : (
+                        <span className={styles.readyBadge} title="เปิดให้นักเรียนมองเห็น">
+                          🟢 เปิดแล้ว
+                        </span>
+                      )}
                     </div>
                     <h3>{item.title}</h3>
                     <p>{item.description || meta.detail}</p>
@@ -1195,6 +1272,28 @@ function TeacherAssignmentsContent() {
                     <button type="button" onClick={() => void openReport(item)}>
                       <AdminIcon name="analytics" size={15} />
                       รายงาน
+                    </button>
+                    <button
+                      type="button"
+                      title={item.isPublished ? "ซ่อนจากนักเรียน" : "เปิดให้นักเรียน"}
+                      onClick={() => void togglePublish(item)}
+                      disabled={busy === `publish:${item.id}`}
+                      style={{
+                        background: item.isPublished ? "#e8f5e9" : "#fce4ec",
+                        color: item.isPublished ? "#2e7d32" : "#c62828",
+                        border: `1px solid ${item.isPublished ? "#a5d6a7" : "#ef9a9a"}`,
+                        borderRadius: "8px",
+                        padding: "6px 10px",
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                      }}
+                    >
+                      <AdminIcon name={item.isPublished ? "eye" : "eyeOff"} size={14} />
+                      {item.isPublished ? "เปิดอยู่" : "ซ่อน"}
                     </button>
                     <button
                       type="button"
@@ -1493,6 +1592,52 @@ function TeacherAssignmentsContent() {
                       }
                     />
                   </label>
+                  {/* Publish Controls */}
+                  <div
+                    className={styles.fullField}
+                    style={{
+                      background: form.isPublished ? "#e8f5e9" : "#fff3e0",
+                      border: `1px solid ${form.isPublished ? "#a5d6a7" : "#ffcc80"}`,
+                      borderRadius: "12px",
+                      padding: "12px 14px",
+                      display: "grid",
+                      gap: "10px",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "8px" }}>
+                      <span style={{ fontWeight: 800, fontSize: "11px", color: form.isPublished ? "#2e7d32" : "#e65100", display: "flex", alignItems: "center", gap: "6px" }}>
+                        <AdminIcon name={form.isPublished ? "eye" : "eyeOff"} size={14} />
+                        {form.isPublished ? "🟢 เปิดให้นักเรียนเห็น" : "🔴 ซ่อนบทเรียนนี้"}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => updateField("isPublished", !form.isPublished)}
+                        style={{
+                          padding: "5px 14px",
+                          fontSize: "11px",
+                          fontWeight: 700,
+                          borderRadius: "8px",
+                          border: "1px solid currentColor",
+                          background: form.isPublished ? "#c8e6c9" : "#ffe0b2",
+                          color: form.isPublished ? "#1b5e20" : "#bf360c",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {form.isPublished ? "ซ่อนบทเรียน" : "เปิดให้เห็น"}
+                      </button>
+                    </div>
+                    <label style={{ display: "grid", gap: "4px" }}>
+                      <span style={{ fontSize: "10px", fontWeight: 700, color: "#5a5a5a" }}>
+                        📅 วันเริ่มเปิดให้เรียน (ตั้งเวลาล่วงหน้า — เว้นว่างเพื่อเปิดทันที)
+                      </span>
+                      <input
+                        type="datetime-local"
+                        value={form.availableFrom}
+                        onChange={(event) => updateField("availableFrom", event.target.value)}
+                        style={{ fontSize: "12px" }}
+                      />
+                    </label>
+                  </div>
                 </div>
                 <footer className={styles.modalFooter}>
                   <button type="button" onClick={() => setEditorOpen(false)}>

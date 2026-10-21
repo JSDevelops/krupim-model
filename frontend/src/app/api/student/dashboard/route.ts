@@ -36,7 +36,10 @@ export async function GET(request: NextRequest) {
         JOIN class_students cs ON cs.class_id=c.id AND cs.student_id=$1::uuid
         LEFT JOIN fine_lesson_plans lp ON lp.id=a.lesson_plan_id
         LEFT JOIN assignment_submissions s ON s.assignment_id=a.id AND s.student_id=$1::uuid
-        WHERE s.id IS NULL ORDER BY a.due_date ASC NULLS LAST, a.created_at DESC LIMIT 50
+        WHERE s.id IS NULL
+          AND a.is_published = TRUE
+          AND (a.available_from IS NULL OR a.available_from <= NOW())
+        ORDER BY COALESCE(a.available_from, a.due_date) ASC NULLS LAST, a.due_date ASC NULLS LAST, a.title ASC LIMIT 50
       `, [user.id]),
       queryDb(`
         SELECT id,title,subject,level,weeks,concept FROM fine_lesson_plans

@@ -44,6 +44,8 @@ export async function POST(request: NextRequest) {
         JOIN profiles sp ON sp.id=cs.student_id
         LEFT JOIN profiles tp ON tp.id=a.teacher_id
         WHERE a.id=$1::uuid AND cs.student_id=$2::uuid
+          AND a.is_published = TRUE
+          AND (a.available_from IS NULL OR a.available_from <= NOW())
         LIMIT 1
       `, [assignmentId, user.id])
       if (!allowed.rows[0]) throw new ApiError('ไม่พบงานหรือคุณไม่มีสิทธิ์ส่งงาน', 404, 'NOT_FOUND')

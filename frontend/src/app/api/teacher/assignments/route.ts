@@ -13,6 +13,8 @@ type AssignmentInput = {
   rubricLevelK?: unknown; rubricLevelS?: unknown; rubricLevelA?: unknown; rubricLevelC?: unknown
   returnReason?: unknown
   lessonPlanId?: unknown
+  isPublished?: unknown
+  availableFrom?: unknown
 }
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -43,6 +45,14 @@ function activity(value: unknown): ActivityType {
   if (typeof value !== 'string' || !activityTypes.includes(value as ActivityType)) throw new ApiError('ประเภทกิจกรรมไม่ถูกต้อง', 400, 'VALIDATION_ERROR')
   return value as ActivityType
 }
+function optionalDate(value: unknown): string | null {
+  if (value === undefined || value === null || value === '') return null
+  const input = typeof value === 'string' ? value.trim() : ''
+  if (!input) return null
+  const result = new Date(input)
+  if (Number.isNaN(result.getTime())) return null
+  return result.toISOString()
+}
 function normalize(body: AssignmentInput) {
   return {
     title: text(body.title, 'ชื่อกิจกรรม', 240, true),
@@ -52,6 +62,8 @@ function normalize(body: AssignmentInput) {
     dueDate: date(body.dueDate),
     maxScore: integer(body.maxScore, 'คะแนนเต็ม', 1, 1_000),
     lessonPlanId: typeof body.lessonPlanId === 'string' && body.lessonPlanId.trim() ? body.lessonPlanId.trim().slice(0, 100) : null,
+    isPublished: body.isPublished === false ? false : true,
+    availableFrom: optionalDate(body.availableFrom),
   }
 }
 async function requestBody(request: NextRequest) {
@@ -89,6 +101,7 @@ export async function GET(request: NextRequest) {
           SELECT a.id, a.title, a.description, a.activity_type AS "activityType",
                  a.due_date AS "dueDate", a.max_score AS "maxScore", a.lesson_plan_id AS "lessonPlanId",
                  flp.title AS "lessonPlanTitle",
+                 a.is_published AS "isPublished", a.available_from AS "availableFrom",
                  a.created_at AS "createdAt", a.updated_at AS "updatedAt", c.id AS "classId", c.name AS "className"
           FROM assignments a
           JOIN classes c ON c.id=a.class_id
@@ -124,6 +137,7 @@ export async function GET(request: NextRequest) {
         SELECT a.id, a.title, a.description, a.activity_type AS "activityType",
                a.due_date AS "dueDate", a.max_score AS "maxScore", a.lesson_plan_id AS "lessonPlanId",
                flp.title AS "lessonPlanTitle",
+               a.is_published AS "isPublished", a.available_from AS "availableFrom",
                a.created_at AS "createdAt", a.updated_at AS "updatedAt", c.id AS "classId", c.name AS "className",
                COUNT(DISTINCT cs.student_id)::int AS "studentCount",
                COUNT(DISTINCT s.student_id)::int AS "submittedCount",
@@ -136,7 +150,7 @@ export async function GET(request: NextRequest) {
         LEFT JOIN assignment_submissions s ON s.assignment_id=a.id AND s.student_id=cs.student_id
         ${where}
         GROUP BY a.id, c.id, flp.title
-        ORDER BY a.due_date ASC NULLS LAST, a.created_at DESC
+        ORDER BY COALESCE(a.available_from, a.due_date) ASC NULLS LAST, a.due_date ASC NULLS LAST, a.title ASC
         LIMIT 500
       `, values),
       queryDb(`
@@ -156,11 +170,13 @@ export async function POST(request: NextRequest) {
     await requireClass(user, item.classId)
     const assignment = await withTransaction(async client => {
       const result = await client.query(`
-        INSERT INTO assignments (class_id, teacher_id, title, description, activity_type, due_date, max_score, lesson_plan_id)
-        VALUES ($1::uuid,$2::uuid,$3,$4,$5,$6,$7,$8)
+        INSERT INTO assignments (class_id, teacher_id, title, description, activity_type, due_date, max_score, lesson_plan_id, is_published, available_from)
+        VALUES ($1::uuid,$2::uuid,$3,$4,$5,$6,$7,$8,$9,$10)
         RETURNING id, title, description, activity_type AS "activityType", due_date AS "dueDate",
-                  max_score AS "maxScore", lesson_plan_id AS "lessonPlanId", created_at AS "createdAt", updated_at AS "updatedAt"
-      `, [item.classId, user.id, item.title, item.description, item.activityType, item.dueDate, item.maxScore, item.lessonPlanId])
+                  max_score AS "maxScore", lesson_plan_id AS "lessonPlanId",
+                  is_published AS "isPublished", available_from AS "availableFrom",
+                  created_at AS "createdAt", updated_at AS "updatedAt"
+      `, [item.classId, user.id, item.title, item.description, item.activityType, item.dueDate, item.maxScore, item.lessonPlanId, item.isPublished, item.availableFrom])
       await client.query(`
         INSERT INTO notifications (user_id, title, message, type, link_url)
         SELECT cs.student_id, 'มีงานใหม่จากครูผู้สอน', $2, 'assignment', '/student/dashboard'
@@ -272,6 +288,25 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ submission, competencyScores: { ...competencyScores, overall }, rubricLevels })
     }
 
+    if (action === 'toggle_publish') {
+      const id = uuid(body.id, 'งาน')
+      await requireAssignment(user, id)
+      const isPublished = body.isPublished === false ? false : true
+      const availableFrom = optionalDate(body.availableFrom)
+      const values: unknown[] = [isPublished, availableFrom, id]
+      if (user.role !== 'developer') values.push(user.id)
+      const result = await queryDb(`
+        UPDATE assignments SET is_published=$1, available_from=$2, updated_at=NOW()
+        WHERE id=$3::uuid${teacherScope(user, 'assignments', 4)}
+        RETURNING id, is_published AS "isPublished", available_from AS "availableFrom"
+      `, values)
+      if (!result.rows[0]) throw new ApiError('ไม่พบงานหรือคุณไม่มีสิทธิ์แก้ไข', 404, 'NOT_FOUND')
+      await queryDb(`INSERT INTO audit_logs (actor_id,action,entity_type,entity_id,details_json)
+        VALUES ($1::uuid,'toggle_publish','assignment',$2,$3::jsonb)
+      `, [user.id, id, JSON.stringify({ isPublished, availableFrom })])
+      return NextResponse.json({ assignment: result.rows[0] })
+    }
+
     if (action === 'return_submission') {
       const assignmentId = uuid(body.assignmentId, 'งาน')
       const studentId = uuid(body.studentId, 'นักเรียน')
@@ -304,14 +339,16 @@ export async function PATCH(request: NextRequest) {
     await requireAssignment(user, id)
     const item = normalize(body)
     await requireClass(user, item.classId)
-    const values: unknown[] = [item.classId, item.title, item.description, item.activityType, item.dueDate, item.maxScore, item.lessonPlanId, id]
+    const values: unknown[] = [item.classId, item.title, item.description, item.activityType, item.dueDate, item.maxScore, item.lessonPlanId, item.isPublished, item.availableFrom, id]
     if (user.role !== 'developer') values.push(user.id)
     const result = await queryDb(`
       UPDATE assignments a SET class_id=$1::uuid, title=$2, description=$3, activity_type=$4,
-             due_date=$5, max_score=$6, lesson_plan_id=$7, updated_at=NOW()
-      WHERE a.id=$8::uuid${teacherScope(user, 'a', 9)}
+             due_date=$5, max_score=$6, lesson_plan_id=$7, is_published=$8, available_from=$9, updated_at=NOW()
+      WHERE a.id=$10::uuid${teacherScope(user, 'a', 11)}
       RETURNING id, title, description, activity_type AS "activityType", due_date AS "dueDate",
-                max_score AS "maxScore", lesson_plan_id AS "lessonPlanId", created_at AS "createdAt", updated_at AS "updatedAt"
+                max_score AS "maxScore", lesson_plan_id AS "lessonPlanId",
+                is_published AS "isPublished", available_from AS "availableFrom",
+                created_at AS "createdAt", updated_at AS "updatedAt"
     `, values)
     if (!result.rows[0]) throw new ApiError('ไม่พบงานหรือคุณไม่มีสิทธิ์แก้ไข', 404, 'NOT_FOUND')
     return NextResponse.json({ assignment: { ...result.rows[0], classId: item.classId } })
