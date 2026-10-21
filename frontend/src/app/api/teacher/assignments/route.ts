@@ -15,7 +15,7 @@ type AssignmentInput = {
   lessonPlanId?: unknown
 }
 
-const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 function text(value: unknown, label: string, max: number, required = false) {
   const result = typeof value === 'string' ? value.trim() : ''

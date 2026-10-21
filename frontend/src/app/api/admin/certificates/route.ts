@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { queryDb, withTransaction } from '@/lib/db'
 import { ApiError, apiErrorResponse, guardApi } from '../../_lib/auth'
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 type ScoreRow = {
   id: string; name: string; email: string; school_name: string | null
