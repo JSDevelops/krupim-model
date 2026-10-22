@@ -25,12 +25,12 @@ export async function GET(request: NextRequest) {
 
     const queryParams: unknown[] = user.role === 'developer' || !enrolledClassId ? [] : [enrolledClassId]
 
-    // Fetch list of available published lesson plans
+    // Fetch list of available published lesson plans ordered by week number
     const plansResult = await queryDb<{ id: string; title: string; weeks: string }>(`
       SELECT id, title, weeks
       FROM fine_lesson_plans
       WHERE publication_status='published' ${scope}
-      ORDER BY updated_at DESC
+      ORDER BY COALESCE(NULLIF(regexp_replace(weeks, '[^0-9]', '', 'g'), '')::int, 999) ASC, updated_at DESC
       LIMIT 18
     `, queryParams)
 
@@ -71,8 +71,21 @@ export async function GET(request: NextRequest) {
       if (prompts.length >= 30) break
     }
 
+    let assignment: { id: string; title: string; maxScore: number } | null = null
+    if (planId) {
+      const assignRes = await queryDb<{ id: string; title: string; maxScore: number }>(`
+        SELECT a.id, a.title, a.max_score AS "maxScore"
+        FROM assignments a
+        JOIN classes c ON c.id=a.class_id
+        JOIN class_students cs ON cs.class_id=c.id AND cs.student_id=$1::uuid
+        WHERE a.lesson_plan_id=$2 AND a.activity_type='Interact' AND a.is_published=TRUE
+        LIMIT 1
+      `, [user.id, planId])
+      assignment = assignRes.rows[0] || null
+    }
+
     return NextResponse.json(
-      { prompts, plans: plansResult.rows },
+      { prompts, plans: plansResult.rows, assignment },
       { headers: { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=300' } },
     )
   } catch (error) {

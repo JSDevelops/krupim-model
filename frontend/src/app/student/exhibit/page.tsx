@@ -78,15 +78,33 @@ export default function ExhibitPage() {
           setScores(payload.scores || emptyScores)
           if (payload.quizBank?.length) {
             setQuizTopics(payload.quizBank)
-            const allQ = payload.quizBank.flatMap(t => t.questions)
-            setActiveQuestions(allQ.length ? allQ : quizBank)
+            const p = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('planId') : null
+            if (p) {
+              setActiveTab('quiz')
+              setSelectedTopicId(p)
+              const found = payload.quizBank.find(t => t.topicId === p)
+              if (found && found.questions.length) {
+                setActiveQuestions(found.questions)
+              } else {
+                const allQ = payload.quizBank.flatMap(t => t.questions)
+                setActiveQuestions(allQ.length ? allQ : quizBank)
+              }
+            } else {
+              const allQ = payload.quizBank.flatMap(t => t.questions)
+              setActiveQuestions(allQ.length ? allQ : quizBank)
+            }
           }
         }
         if (dashRes.ok) {
           const dashPayload = await dashRes.json() as { tasks?: ExhibitTask[] }
+          const targetPlan = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('planId') : null
           const exhibitTask = (dashPayload.tasks || []).find(t => {
             const act = (t.activityType || '').toLowerCase()
-            return act.includes('exhibit') || act.startsWith('e')
+            const isMatch = act.includes('exhibit') || act.startsWith('e') || act.includes('quiz')
+            if (targetPlan && (t as unknown as { lessonPlanId?: string }).lessonPlanId) {
+              return isMatch && (t as unknown as { lessonPlanId?: string }).lessonPlanId === targetPlan
+            }
+            return isMatch
           })
           if (exhibitTask) setPendingExhibitTask(exhibitTask)
         }

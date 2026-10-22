@@ -73,17 +73,17 @@ function isCurrentPath(pathname: string, tab: NavItem) {
 
 function taskPath(type?: string) {
   const value = (type || '').toLowerCase()
-  if (value.includes('interact') || value.startsWith('i')) return '/student/interact'
-  if (value.includes('navigate') || value.startsWith('n')) return '/student/navigate'
-  if (value.includes('exhibit') || value.startsWith('e')) return '/student/exhibit'
+  if (value.includes('interact') || value.includes('speak') || value.startsWith('i')) return '/student/interact'
+  if (value.includes('navigate') || value.includes('simulat') || value.startsWith('n')) return '/student/simulation'
+  if (value.includes('exhibit') || value.includes('quiz') || value.startsWith('e')) return '/student/exhibit'
   return '/student/explore'
 }
 
 function getStageBadge(type?: string) {
   const value = (type || '').toUpperCase()
-  if (value.includes('INTERACT') || value.startsWith('I')) return { letter: 'I', label: 'Interact · Speak', chipClass: styles.stageChipI }
-  if (value.includes('NAVIGATE') || value.startsWith('N')) return { letter: 'N', label: 'Navigate · Scenario', chipClass: styles.stageChipN }
-  if (value.includes('EXHIBIT') || value.startsWith('E')) return { letter: 'E', label: 'Exhibit · Review', chipClass: styles.stageChipE }
+  if (value.includes('INTERACT') || value.includes('SPEAK') || value.startsWith('I')) return { letter: 'I', label: 'Interact · Speak', chipClass: styles.stageChipI }
+  if (value.includes('NAVIGATE') || value.includes('SIMULAT') || value.startsWith('N')) return { letter: 'N', label: 'Navigate · Scenario', chipClass: styles.stageChipN }
+  if (value.includes('EXHIBIT') || value.includes('QUIZ') || value.startsWith('E')) return { letter: 'E', label: 'Exhibit · Review', chipClass: styles.stageChipE }
   return { letter: 'F', label: 'Familiarize · Explore', chipClass: styles.stageChipF }
 }
 

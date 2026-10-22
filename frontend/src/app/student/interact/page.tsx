@@ -64,7 +64,15 @@ type LessonPlanOption = { id: string; title: string; weeks: string }
 export default function InteractPage() {
   const [prompts, setPrompts] = useState<Prompt[]>(defaultPrompts)
   const [plans, setPlans] = useState<LessonPlanOption[]>([])
-  const [selectedPlanId, setSelectedPlanId] = useState<string>('all')
+  const [selectedPlanId, setSelectedPlanId] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return new URLSearchParams(window.location.search).get('planId') || 'all'
+    }
+    return 'all'
+  })
+  const [assignment, setAssignment] = useState<{ id: string; title: string; maxScore: number } | null>(null)
+  const [submittingAssignment, setSubmittingAssignment] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [speaking, setSpeaking] = useState(false)
   const [recording, setRecording] = useState(false)
@@ -84,7 +92,11 @@ export default function InteractPage() {
           : '/api/student/interact'
         const response = await authenticatedFetch(url, { signal: controller.signal })
         if (!response.ok) return
-        const payload = await response.json() as { prompts?: Prompt[]; plans?: LessonPlanOption[] }
+        const payload = await response.json() as {
+          prompts?: Prompt[]
+          plans?: LessonPlanOption[]
+          assignment?: { id: string; title: string; maxScore: number } | null
+        }
         if (payload.prompts?.length) {
           setPrompts(payload.prompts)
           setCurrentIndex(0)
@@ -92,6 +104,8 @@ export default function InteractPage() {
         if (payload.plans?.length) {
           setPlans(payload.plans)
         }
+        setAssignment(payload.assignment || null)
+        setSubmitted(false)
       } catch (error) {
         if (!controller.signal.aborted) console.warn('Unable to load lesson prompts:', error)
       }
@@ -99,6 +113,33 @@ export default function InteractPage() {
     void loadPrompts()
     return () => controller.abort()
   }, [selectedPlanId])
+
+  async function submitSpeakingTask() {
+    if (!assignment?.id || score === null) return
+    setSubmittingAssignment(true)
+    try {
+      const response = await authenticatedFetch('/api/student/assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          assignmentId: assignment.id,
+          attachmentName: `ผลการประเมินการออกเสียง AI (${score}%): "${current.en}"`,
+        }),
+      })
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({})) as { error?: string }
+        throw new Error(errorData.error || 'ส่งงานไม่สำเร็จ')
+      }
+      setSubmitted(true)
+      toast.success('ส่งผลคะแนนให้คุณครูเรียบร้อยแล้ว!', {
+        description: `${assignment.title} (คะแนน: ${score}%)`,
+      })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'ส่งงานไม่สำเร็จ')
+    } finally {
+      setSubmittingAssignment(false)
+    }
+  }
 
   useEffect(() => {
     return () => {
@@ -294,6 +335,30 @@ export default function InteractPage() {
                   </div>
                   <small className={styles.drillHint}>💡 เคล็ดลับ: คลิกที่ตัวคำ (โดยเฉพาะคำสีแดง) เพื่อฟังการออกเสียงเฉพาะคำนั้นซ้ำได้</small>
                   {transcript && <p className={styles.transcript}>ระบบได้ยิน: “{transcript}”</p>}
+
+                  {assignment && (
+                    <div style={{ marginTop: '12px', padding: '12px', background: '#eaf4ee', borderRadius: '12px', border: '1px solid #bce2ca', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                      <div>
+                        <strong style={{ fontSize: '11.5px', color: '#134e32', display: 'block' }}>งานที่ครูมอบหมาย: {assignment.title}</strong>
+                        <small style={{ color: '#4a6b5a' }}>คะแนนรอบนี้: {score}% {score >= 70 ? '🟢 ผ่านเกณฑ์' : '🟡 ฝึกซ้ำเพื่อคะแนนที่สูงขึ้นได้'}</small>
+                      </div>
+                      {submitted ? (
+                        <span style={{ fontSize: '11px', fontWeight: 600, color: '#175336', background: '#d4ede1', padding: '5px 12px', borderRadius: '8px' }}>
+                          ✓ ส่งงานแล้ว
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={submitSpeakingTask}
+                          disabled={submittingAssignment}
+                          className={styles.button}
+                          style={{ minHeight: '34px', padding: '6px 14px', fontSize: '11px' }}
+                        >
+                          {submittingAssignment ? 'กำลังส่ง...' : `📤 ส่งผลคะแนน ${score}% ให้ครู`}
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </section>
               )}
             </div>

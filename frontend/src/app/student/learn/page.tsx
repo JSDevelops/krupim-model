@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { authenticatedFetch } from '@/lib/api'
@@ -13,13 +14,38 @@ type Lesson = {
   activitiesF: string; activitiesI: string; activitiesN: string; activitiesE: string
 }
 
+type PlanAssignment = {
+  id: string
+  lessonPlanId: string
+  title: string
+  description: string | null
+  activityType: string
+  dueDate: string | null
+  maxScore: number
+  isSubmitted: boolean
+  status: string | null
+  score: number | null
+  feedback: string | null
+  returnReason: string | null
+  availableFrom: string | null
+}
+
 function getWeekNumber(lesson: Lesson, fallbackIndex: number): number {
   const match = lesson.weeks?.match(/\d+/) || lesson.id?.match(/week-(\d+)/) || lesson.title?.match(/สัปดาห์ที่\s*(\d+)/)
   return match ? parseInt(match[1] || match[0], 10) : fallbackIndex + 1
 }
 
+function getActivityRoute(type: string, planId: string, weekNum: number) {
+  const t = (type || '').toLowerCase()
+  if (t.includes('interact') || t.includes('speak')) return `/student/interact?planId=${encodeURIComponent(planId)}`
+  if (t.includes('navigate') || t.includes('simulat')) return `/student/simulation?planId=${encodeURIComponent(planId)}`
+  if (t.includes('exhibit') || t.includes('quiz')) return `/student/exhibit?planId=${encodeURIComponent(planId)}`
+  return `/student/explore?planId=${encodeURIComponent(planId)}&week=${weekNum}`
+}
+
 export default function LearnPage() {
   const [lessons, setLessons] = useState<Lesson[]>([])
+  const [assignmentsByPlan, setAssignmentsByPlan] = useState<Record<string, PlanAssignment[]>>({})
   const [open, setOpen] = useState<string | null>(null)
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
@@ -38,6 +64,7 @@ export default function LearnPage() {
           completedIds?: string[]
           testedIds?: string[]
           stageProgress?: Record<string, Record<string, boolean>>
+          assignmentsByPlan?: Record<string, PlanAssignment[]>
           error?: string
         }
         if (!response.ok) throw new Error(payload.error || 'โหลดบทเรียนไม่สำเร็จ')
@@ -45,6 +72,7 @@ export default function LearnPage() {
         setCompleted(new Set(payload.completedIds || []))
         setTested(new Set(payload.testedIds || []))
         setStageProgress(payload.stageProgress || {})
+        setAssignmentsByPlan(payload.assignmentsByPlan || {})
       })
       .catch(loadError => {
         if (loadError instanceof Error && loadError.name !== 'AbortError') setError(loadError.message)
@@ -226,6 +254,121 @@ export default function LearnPage() {
                           </p>
                         ))}
                       </div>
+
+                      {/* 4 Activities of FINE Model for this week */}
+                      <div className={styles.fineActivitiesSection}>
+                        <b>ขั้นตอนการเรียนรู้ FINE Model ประจำสัปดาห์นี้</b>
+                        <div className={styles.fineActivitiesGrid}>
+                          <Link href={`/student/explore?planId=${encodeURIComponent(lesson.id)}&week=${getWeekNumber(lesson, index)}`} className={styles.fineActivityCard}>
+                            <div>
+                              <div className={styles.fineCardTop}>
+                                <span className={styles.fineBadgeF}>[F] Familiarize</span>
+                                {stages['F'] ? <span className={styles.statusPillSubmitted}>✓ ทำแล้ว</span> : <span className={styles.statusPillPending}>ยังไม่ทำ</span>}
+                              </div>
+                              <div className={styles.fineCardContent}>
+                                <strong>สำรวจอุปกรณ์ & AR 3D</strong>
+                                <p>{lesson.activitiesF || 'สแกนวัตถุและเรียนรู้คำศัพท์ประจำสัปดาห์'}</p>
+                              </div>
+                            </div>
+                            <span className={styles.fineCardAction}>ไปสำรวจอุปกรณ์ →</span>
+                          </Link>
+
+                          <Link href={`/student/interact?planId=${encodeURIComponent(lesson.id)}`} className={styles.fineActivityCard}>
+                            <div>
+                              <div className={styles.fineCardTop}>
+                                <span className={styles.fineBadgeI}>[I] Interact</span>
+                                {stages['I'] ? <span className={styles.statusPillSubmitted}>✓ ทำแล้ว</span> : <span className={styles.statusPillPending}>ยังไม่ทำ</span>}
+                              </div>
+                              <div className={styles.fineCardContent}>
+                                <strong>ฝึกสนทนา AI Voice</strong>
+                                <p>{lesson.activitiesI || 'ฝึกออกเสียงและแต่งประโยคกับ AI'}</p>
+                              </div>
+                            </div>
+                            <span className={styles.fineCardAction}>ไปฝึกพูด AI →</span>
+                          </Link>
+
+                          <Link href={`/student/simulation?planId=${encodeURIComponent(lesson.id)}`} className={styles.fineActivityCard}>
+                            <div>
+                              <div className={styles.fineCardTop}>
+                                <span className={styles.fineBadgeN}>[N] Navigate</span>
+                                {stages['N'] ? <span className={styles.statusPillSubmitted}>✓ ทำแล้ว</span> : <span className={styles.statusPillPending}>ยังไม่ทำ</span>}
+                              </div>
+                              <div className={styles.fineCardContent}>
+                                <strong>สถานการณ์จำลอง Restaurant Simulation</strong>
+                                <p>{lesson.activitiesN || 'จำลองบทบาทการบริการในร้านอาหาร'}</p>
+                              </div>
+                            </div>
+                            <span className={styles.fineCardAction}>เข้าสู่ห้องจำลอง →</span>
+                          </Link>
+
+                          <Link href={`/student/exhibit?planId=${encodeURIComponent(lesson.id)}`} className={styles.fineActivityCard}>
+                            <div>
+                              <div className={styles.fineCardTop}>
+                                <span className={styles.fineBadgeE}>[E] Exhibit</span>
+                                {stages['E'] ? <span className={styles.statusPillSubmitted}>✓ ทำแล้ว</span> : <span className={styles.statusPillPending}>ยังไม่ทำ</span>}
+                              </div>
+                              <div className={styles.fineCardContent}>
+                                <strong>แบบทดสอบ Quiz & สรุปผลงาน</strong>
+                                <p>{lesson.activitiesE || 'วัดความรู้และประเมินผลการเรียนรู้'}</p>
+                              </div>
+                            </div>
+                            <span className={styles.fineCardAction}>ทำแบบทดสอบ →</span>
+                          </Link>
+                        </div>
+                      </div>
+
+                      {/* Specific Assignments from Teacher */}
+                      {assignmentsByPlan[lesson.id] && assignmentsByPlan[lesson.id].length > 0 && (
+                        <div className={styles.fineActivitiesSection}>
+                          <b>งานที่คุณครูมอบหมายในสัปดาห์นี้ ({assignmentsByPlan[lesson.id].length} งาน)</b>
+                          <div className={styles.planAssignmentsList}>
+                            {assignmentsByPlan[lesson.id].map(assignment => {
+                              const route = getActivityRoute(assignment.activityType, lesson.id, getWeekNumber(lesson, index))
+                              return (
+                                <div key={assignment.id} className={styles.planAssignmentItem}>
+                                  <div>
+                                    <div className={styles.planAssignmentTitle}>
+                                      <span>{assignment.title}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '4px', flexWrap: 'wrap' }}>
+                                      <small style={{ color: '#7a857e' }}>
+                                        คะแนนเต็ม {assignment.maxScore} คะแนน
+                                        {assignment.dueDate && ` · กำหนดส่ง: ${new Date(assignment.dueDate).toLocaleDateString('th-TH')}`}
+                                      </small>
+                                      {assignment.status === 'returned' ? (
+                                        <span className={styles.statusPillReturned}>⚠️ ครูส่งกลับให้แก้ไข</span>
+                                      ) : assignment.status === 'graded' ? (
+                                        <span className={styles.statusPillGraded}>🟢 ตรวจแล้ว ({assignment.score}/{assignment.maxScore} คะแนน)</span>
+                                      ) : assignment.isSubmitted ? (
+                                        <span className={styles.statusPillSubmitted}>✓ ส่งงานแล้ว (รอตรวจ)</span>
+                                      ) : (
+                                        <span className={styles.statusPillPending}>ยังไม่ได้ส่ง</span>
+                                      )}
+                                    </div>
+                                    {assignment.returnReason && (
+                                      <div className={styles.returnedReasonBox} style={{ marginTop: '6px' }}>
+                                        ⚠️ <strong>เหตุผลที่ส่งกลับ:</strong> {assignment.returnReason}
+                                      </div>
+                                    )}
+                                    {assignment.feedback && (
+                                      <p className={styles.feedbackQuote} style={{ marginTop: '4px' }}>
+                                        💬 &ldquo;{assignment.feedback}&rdquo;
+                                      </p>
+                                    )}
+                                  </div>
+                                  <Link
+                                    href={route}
+                                    className={styles.button}
+                                    style={{ flexShrink: 0, padding: '6px 12px', minHeight: '32px', fontSize: '10px' }}
+                                  >
+                                    {assignment.isSubmitted ? 'ดูงาน/ทำซ้ำ' : 'เริ่มทำกิจกรรม'}
+                                  </Link>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </div>
+                      )}
 
                       {isDone ? (
                         <div className={styles.completedNoticeBox}>

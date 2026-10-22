@@ -152,3 +152,237 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* FINE Activities Workflow inside Learn Page */
+.fineActivitiesSection {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #e2e8e4;
+}
+
+.fineActivitiesSection > b {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  color: #1e3a2f;
+  margin-bottom: 10px;
+}
+
+.fineActivitiesGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+@media (min-width: 600px) {
+  .fineActivitiesGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.fineActivityCard {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fbfdfc;
+  border: 1px solid #dce5e0;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+}
+
+.fineActivityCard:hover {
+  border-color: #317258;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(23,71,53,0.08);
+}
+
+.fineCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.fineBadgeF {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #e6f4ea;
+  color: #137333;
+}
+
+.fineBadgeI {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
+.fineBadgeN {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #f3e8fd;
+  color: #7b1fa2;
+}
+
+.fineBadgeE {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #fef7e0;
+  color: #b06000;
+}
+
+.fineCardContent strong {
+  display: block;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #1d2b24;
+  margin-bottom: 2px;
+}
+
+.fineCardContent p {
+  margin: 0;
+  font-size: 10px;
+  color: #637269;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.fineCardAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #245b48;
+}
+
+/* Plan Assignments List */
+.planAssignmentsList {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.planAssignmentItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #e3e8e5;
+  font-size: 11px;
+}
+
+.planAssignmentTitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: #2b3931;
+}
+
+.planAssignmentMeta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.statusPillPending {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #fdf3e5;
+  color: #a05c08;
+}
+
+.statusPillSubmitted {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #e8f4ed;
+  color: #175336;
+}
+
+.statusPillGraded {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #e6f4ea;
+  color: #137333;
+}
+
+.statusPillReturned {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #fde8e8;
+  color: #9b1c1c;
+}
+
+/* Returned alert card in dashboard */
+.returnedAlertCard {
+  margin-top: 12px;
+  padding: 16px;
+  border-radius: 18px;
+  background: #fff8f8;
+  border: 1.5px solid #f8c2c7;
+}
+
+.returnedReasonBox {
+  margin-top: 6px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #ffebee;
+  color: #b71c1c;
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* Feedback card in dashboard */
+.feedbackItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f5fcf8;
+  border: 1px solid #d4ede1;
+}
+
+.feedbackHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.feedbackQuote {
+  font-size: 11px;
+  color: #28543e;
+  font-style: italic;
+  margin: 0;
+}

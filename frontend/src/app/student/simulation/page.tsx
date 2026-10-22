@@ -94,7 +94,7 @@ function SimulationContent() {
 
   // Derive scenarioId from URL — no setState needed
   const scenarioId = useMemo(
-    () => searchParams.get('scenario')?.trim() || DEFAULT_SCENARIO_ID,
+    () => searchParams.get('scenario')?.trim() || searchParams.get('planId')?.trim() || DEFAULT_SCENARIO_ID,
     [searchParams],
   )
 

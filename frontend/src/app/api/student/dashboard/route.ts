@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
         SELECT c.name FROM classes c JOIN class_students cs ON cs.class_id=c.id WHERE cs.student_id=$1::uuid
       ))
     )`
-    const [profile, stats, tasks, lesson, notifications, fEvents, iSessions, nSimulations, eSubmissions, certRow] = await Promise.all([
+    const [profile, stats, tasks, recentGraded, lesson, notifications, fEvents, iSessions, nSimulations, eSubmissions, certRow] = await Promise.all([
       queryDb(`
         SELECT name,email,avatar_url AS "avatarUrl",school_name AS "schoolName"
         FROM profiles WHERE id=$1::uuid LIMIT 1
@@ -30,16 +30,29 @@ export async function GET(request: NextRequest) {
         SELECT a.id, a.title, a.description, a.activity_type AS "activityType",
                a.due_date AS "dueDate", a.max_score AS "maxScore",
                c.name AS "className",
-               lp.title AS "lessonTitle", lp.weeks AS "weekName"
+               lp.title AS "lessonTitle", lp.weeks AS "weekName",
+               COALESCE(s.status, 'pending') AS "submissionStatus",
+               s.return_reason AS "returnReason"
         FROM assignments a
         JOIN classes c ON c.id=a.class_id
         JOIN class_students cs ON cs.class_id=c.id AND cs.student_id=$1::uuid
         LEFT JOIN fine_lesson_plans lp ON lp.id=a.lesson_plan_id
         LEFT JOIN assignment_submissions s ON s.assignment_id=a.id AND s.student_id=$1::uuid
-        WHERE s.id IS NULL
+        WHERE (s.id IS NULL OR s.status = 'returned')
           AND a.is_published = TRUE
           AND (a.available_from IS NULL OR a.available_from <= NOW())
-        ORDER BY COALESCE(a.available_from, a.due_date) ASC NULLS LAST, a.due_date ASC NULLS LAST, a.title ASC LIMIT 50
+        ORDER BY (s.status = 'returned') DESC, COALESCE(a.available_from, a.due_date) ASC NULLS LAST, a.due_date ASC NULLS LAST, a.title ASC LIMIT 50
+      `, [user.id]),
+      queryDb(`
+        SELECT a.id, a.title, a.activity_type AS "activityType",
+               a.max_score AS "maxScore",
+               c.name AS "className",
+               s.score, s.feedback, s.graded_at AS "gradedAt"
+        FROM assignment_submissions s
+        JOIN assignments a ON a.id=s.assignment_id
+        JOIN classes c ON c.id=a.class_id
+        WHERE s.student_id=$1::uuid AND s.status='graded' AND s.score IS NOT NULL
+        ORDER BY s.graded_at DESC LIMIT 5
       `, [user.id]),
       queryDb(`
         SELECT id,title,subject,level,weeks,concept FROM fine_lesson_plans
@@ -100,6 +113,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(
       {
         profile: profile.rows[0], stats: stats.rows[0], tasks: tasks.rows,
+        recentGraded: recentGraded.rows,
         taskCounts: counts, latestLesson: lesson.rows[0] || null, notifications: notifications.rows,
         journey,
       },

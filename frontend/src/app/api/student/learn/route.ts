@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
         SELECT c.name FROM classes c JOIN class_students cs ON cs.class_id=c.id WHERE cs.student_id=$1::uuid
       ))
     )`
-    const [result, completionResult, testedResult, stageProgressResult] = await Promise.all([
+    const [result, completionResult, testedResult, stageProgressResult, assignmentsResult] = await Promise.all([
       queryDb(`
         SELECT id,title,subject,level,term,duration,target_class AS "targetClass",weeks,concept,
                objectives_k AS "objectivesK",objectives_s AS "objectivesS",objectives_a AS "objectivesA",
@@ -54,6 +54,60 @@ export async function GET(request: NextRequest) {
             GROUP BY a.lesson_plan_id, "stage"
           `, [user.id])
         : Promise.resolve({ rows: [] as Array<{ lessonId: string; stage: string }> }),
+      user.role === 'student'
+        ? queryDb<{
+            id: string
+            lessonPlanId: string
+            title: string
+            description: string | null
+            activityType: string
+            dueDate: string | null
+            maxScore: number
+            isSubmitted: boolean
+            status: string | null
+            score: number | null
+            feedback: string | null
+            returnReason: string | null
+            availableFrom: string | null
+          }>(`
+            SELECT a.id, a.lesson_plan_id AS "lessonPlanId", a.title, a.description,
+                   a.activity_type AS "activityType", a.due_date AS "dueDate", a.max_score AS "maxScore",
+                   a.available_from AS "availableFrom",
+                   (s.id IS NOT NULL) AS "isSubmitted",
+                   s.status, s.score, s.feedback, s.return_reason AS "returnReason"
+            FROM assignments a
+            JOIN classes c ON c.id=a.class_id
+            JOIN class_students cs ON cs.class_id=c.id AND cs.student_id=$1::uuid
+            LEFT JOIN assignment_submissions s ON s.assignment_id=a.id AND s.student_id=$1::uuid
+            WHERE a.is_published = TRUE
+              AND a.lesson_plan_id IS NOT NULL
+            ORDER BY COALESCE(a.available_from, a.due_date) ASC NULLS LAST, a.due_date ASC NULLS LAST, a.title ASC
+          `, [user.id])
+        : queryDb<{
+            id: string
+            lessonPlanId: string
+            title: string
+            description: string | null
+            activityType: string
+            dueDate: string | null
+            maxScore: number
+            isSubmitted: boolean
+            status: string | null
+            score: number | null
+            feedback: string | null
+            returnReason: string | null
+            availableFrom: string | null
+          }>(`
+            SELECT a.id, a.lesson_plan_id AS "lessonPlanId", a.title, a.description,
+                   a.activity_type AS "activityType", a.due_date AS "dueDate", a.max_score AS "maxScore",
+                   a.available_from AS "availableFrom",
+                   FALSE AS "isSubmitted",
+                   NULL AS status, NULL::int AS score, NULL AS feedback, NULL AS "returnReason"
+            FROM assignments a
+            WHERE a.is_published = TRUE
+              AND a.lesson_plan_id IS NOT NULL
+            ORDER BY COALESCE(a.available_from, a.due_date) ASC NULLS LAST, a.due_date ASC NULLS LAST, a.title ASC
+          `),
     ])
 
     const stageMap: Record<string, Record<string, boolean>> = {}
@@ -62,12 +116,19 @@ export async function GET(request: NextRequest) {
       stageMap[row.lessonId][row.stage] = true
     }
 
+    const assignmentsByPlan: Record<string, typeof assignmentsResult.rows> = {}
+    for (const a of assignmentsResult.rows) {
+      if (!assignmentsByPlan[a.lessonPlanId]) assignmentsByPlan[a.lessonPlanId] = []
+      assignmentsByPlan[a.lessonPlanId].push(a)
+    }
+
     return NextResponse.json(
       {
         lessons: result.rows,
         completedIds: Array.from(new Set(completionResult.rows.map(item => item.reference_id))),
         testedIds: Array.from(new Set(testedResult.rows.map(item => item.reference_id))),
         stageProgress: stageMap,
+        assignmentsByPlan,
       },
       { headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=120' } },
     )

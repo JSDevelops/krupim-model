@@ -7,10 +7,32 @@ import StudentIcon, { type StudentIconName } from '../StudentIcon'
 import FineJourneyTracker, { type FineJourneyData } from '@/components/FineJourneyTracker'
 import styles from '../studentPages.module.css'
 
+type Task = {
+  id: string
+  title: string
+  activityType: string
+  dueDate: string | null
+  className: string
+  submissionStatus?: 'pending' | 'submitted' | 'returned' | 'graded'
+  returnReason?: string | null
+}
+
+type RecentGraded = {
+  id: string
+  title: string
+  activityType: string
+  maxScore: number
+  className: string
+  score: number
+  feedback: string | null
+  gradedAt: string | null
+}
+
 type Data = {
   profile?: { name: string; schoolName: string }
   stats?: { knowledgeScore: number; skillsScore: number; attitudeScore: number; competencyScore: number; overallScore: number; lessonsCompleted: number; timeSpentMinutes: number }
-  tasks?: Array<{ id: string; title: string; activityType: string; dueDate: string | null; className: string }>
+  tasks?: Task[]
+  recentGraded?: RecentGraded[]
   latestLesson?: { title: string; subject: string; weeks: string; concept: string } | null
   notifications?: Array<{ id: string; title: string; message: string; linkUrl?: string | null }>
   journey?: FineJourneyData
@@ -19,7 +41,7 @@ const features: Array<{ href: string; label: string; desc: string; icon: Student
   { href: '/student/learn', label: 'บทเรียน', desc: 'ดูแผนและเป้าหมายการเรียนรู้', icon: 'book' },
   { href: '/student/explore', label: 'สำรวจอุปกรณ์ (F)', desc: 'คำศัพท์ โมเดล 3 มิติ และ AR', icon: 'target' },
   { href: '/student/interact', label: 'ฝึกฟังและพูด (I)', desc: 'ประเมินการออกเสียงรายคำ', icon: 'message' },
-  { href: '/student/navigate', label: 'สถานการณ์ (N)', desc: 'ฝึกบทบาทงานบริการ', icon: 'task' },
+  { href: '/student/simulation', label: 'สถานการณ์จำลอง (N)', desc: 'ฝึกบทบาทงานบริการ 3 มิติ', icon: 'task' },
   { href: '/student/exhibit', label: 'ทบทวนผล (E)', desc: 'แบบทดสอบและคะแนนสะสม', icon: 'exhibit' },
   { href: '/chat', label: 'ผู้ช่วยการเรียนรู้ AI', desc: 'ถามคำศัพท์และงานบริการ', icon: 'sparkles' },
   { href: '/live', label: 'AI Voice Coach', desc: 'โต้ตอบด้วยเสียงแบบทันที', icon: 'mic' },
@@ -27,9 +49,9 @@ const features: Array<{ href: string; label: string; desc: string; icon: Student
 ]
 function path(type: string) {
   const v = type.toLowerCase()
-  if (v.includes('interact')) return '/student/interact'
-  if (v.includes('navigate')) return '/student/navigate'
-  if (v.includes('exhibit')) return '/student/exhibit'
+  if (v.includes('interact') || v.includes('speak')) return '/student/interact'
+  if (v.includes('navigate') || v.includes('simulat')) return '/student/simulation'
+  if (v.includes('exhibit') || v.includes('quiz')) return '/student/exhibit'
   return '/student/explore'
 }
 export default function Dashboard() {
@@ -112,8 +134,122 @@ export default function Dashboard() {
               </Link>
             ))}
           </div>
-<div className={`${styles.grid} ${styles.two}`} style={{marginTop:12}}><section className={styles.card}><div className={styles.cardTitle}><span className={styles.iconBox}><StudentIcon name="task"/></span><div><h2>งานที่ต้องทำ</h2><p>เรียงตามกำหนดส่ง</p></div></div>{data.tasks?.length?<div className={styles.compactList}>{data.tasks.slice(0,4).map(t=><Link href={path(t.activityType)} key={t.id}><span><strong>{t.title}</strong><small>{t.className}</small></span><StudentIcon name="arrowRight" size={15}/></Link>)}</div>:<div className={styles.empty}><StudentIcon name="check" size={24}/><strong>ไม่มีงานคงค้าง</strong></div>}</section>
-<section className={styles.card}><div className={styles.cardTitle}><span className={`${styles.iconBox} ${styles.goldIcon}`}><StudentIcon name="book"/></span><div><h2>เรียนต่อจากล่าสุด</h2><p>{data.latestLesson?.weeks||'แผนการสอนล่าสุด'}</p></div></div>{data.latestLesson?<><h3 className={styles.lessonTitle}>{data.latestLesson.title}</h3><p className={styles.lessonDesc}>{data.latestLesson.concept||data.latestLesson.subject}</p><Link className={`${styles.button} ${styles.full}`} href="/student/learn">เปิดบทเรียน <StudentIcon name="arrowRight" size={15}/></Link></>:<div className={styles.empty}><StudentIcon name="book" size={24}/><strong>ยังไม่มีบทเรียน</strong></div>}</section></div>
+          {/* Returned Tasks Alert (if any) */}
+          {data.tasks && data.tasks.some(t => t.submissionStatus === 'returned') && (
+            <section className={styles.returnedAlertCard}>
+              <div className={styles.cardTitle}>
+                <span className={styles.iconBox} style={{ color: '#c5221f', background: '#fce8e6' }}>
+                  <StudentIcon name="info" />
+                </span>
+                <div>
+                  <h2 style={{ color: '#c5221f' }}>งานที่ครูส่งกลับให้แก้ไข ({data.tasks.filter(t => t.submissionStatus === 'returned').length} งาน)</h2>
+                  <p>โปรดตรวจสอบเหตุผลและแก้ไขส่งงานใหม่อีกครั้ง</p>
+                </div>
+              </div>
+              <div className={styles.compactList}>
+                {data.tasks.filter(t => t.submissionStatus === 'returned').map(t => (
+                  <Link href={path(t.activityType)} key={t.id} style={{ borderColor: '#f8c2c7', background: '#fff' }}>
+                    <span>
+                      <strong style={{ color: '#b71c1c' }}>{t.title}</strong>
+                      <small>{t.className} · คลิกเพื่อไปแก้ไขและส่งใหม่</small>
+                      {t.returnReason && (
+                        <div className={styles.returnedReasonBox}>
+                          ⚠️ <strong>เหตุผลจากครู:</strong> {t.returnReason}
+                        </div>
+                      )}
+                    </span>
+                    <StudentIcon name="arrowRight" size={15} />
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <div className={`${styles.grid} ${styles.two}`} style={{ marginTop: 12 }}>
+            <section className={styles.card}>
+              <div className={styles.cardTitle}>
+                <span className={styles.iconBox}><StudentIcon name="task"/></span>
+                <div>
+                  <h2>งานที่ต้องทำ</h2>
+                  <p>เรียงตามกำหนดส่ง</p>
+                </div>
+              </div>
+              {data.tasks?.filter(t => t.submissionStatus !== 'returned').length ? (
+                <div className={styles.compactList}>
+                  {data.tasks.filter(t => t.submissionStatus !== 'returned').slice(0, 4).map(t => (
+                    <Link href={path(t.activityType)} key={t.id}>
+                      <span>
+                        <strong>{t.title}</strong>
+                        <small>{t.className}</small>
+                      </span>
+                      <StudentIcon name="arrowRight" size={15}/>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className={styles.empty}>
+                  <StudentIcon name="check" size={24}/>
+                  <strong>ไม่มีงานคงค้าง</strong>
+                </div>
+              )}
+            </section>
+
+            <section className={styles.card}>
+              <div className={styles.cardTitle}>
+                <span className={`${styles.iconBox} ${styles.goldIcon}`}><StudentIcon name="book"/></span>
+                <div>
+                  <h2>เรียนต่อจากล่าสุด</h2>
+                  <p>{data.latestLesson?.weeks || 'แผนการสอนล่าสุด'}</p>
+                </div>
+              </div>
+              {data.latestLesson ? (
+                <>
+                  <h3 className={styles.lessonTitle}>{data.latestLesson.title}</h3>
+                  <p className={styles.lessonDesc}>{data.latestLesson.concept || data.latestLesson.subject}</p>
+                  <Link className={`${styles.button} ${styles.full}`} href="/student/learn">
+                    เปิดบทเรียน <StudentIcon name="arrowRight" size={15}/>
+                  </Link>
+                </>
+              ) : (
+                <div className={styles.empty}>
+                  <StudentIcon name="book" size={24}/>
+                  <strong>ยังไม่มีบทเรียน</strong>
+                </div>
+              )}
+            </section>
+          </div>
+
+          {/* Recent Graded and Teacher Feedback */}
+          {data.recentGraded && data.recentGraded.length > 0 && (
+            <section className={styles.card} style={{ marginTop: 12 }}>
+              <div className={styles.cardTitle}>
+                <span className={`${styles.iconBox}`} style={{ color: '#137333', background: '#e6f4ea' }}>
+                  <StudentIcon name="check" />
+                </span>
+                <div>
+                  <h2>ผลการประเมินและข้อเสนอแนะล่าสุดจากครู</h2>
+                  <p>ตรวจแล้ว {data.recentGraded.length} รายการ</p>
+                </div>
+              </div>
+              <div className={styles.compactList}>
+                {data.recentGraded.map(item => (
+                  <div key={item.id} className={styles.feedbackItem}>
+                    <div className={styles.feedbackHeader}>
+                      <strong>{item.title}</strong>
+                      <span className={styles.statusPillGraded}>
+                        คะแนน: {item.score} / {item.maxScore}
+                      </span>
+                    </div>
+                    {item.feedback ? (
+                      <p className={styles.feedbackQuote}>💬 &ldquo;{item.feedback}&rdquo;</p>
+                    ) : (
+                      <small style={{ color: '#7a857e' }}>คุณครูบันทึกคะแนนเรียบร้อยแล้ว</small>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
 {data.notifications?.length?<section className={styles.card} style={{marginTop:12}}><div className={styles.cardTitle}><span className={`${styles.iconBox} ${styles.goldIcon}`}><StudentIcon name="info"/></span><div><h2>การแจ้งเตือนล่าสุด</h2><p>{data.notifications.length} รายการที่ยังไม่ได้อ่าน</p></div><button type="button" className={styles.outlineButton} onClick={()=>void authenticatedFetch('/api/student/notifications',{method:'PATCH'}).then(response=>{if(response.ok)setData(current=>({...current,notifications:[]}))})}>อ่านทั้งหมดแล้ว</button></div><div className={styles.compactList}>{data.notifications.map(item=><Link href={item.linkUrl||'/student/dashboard'} key={item.id}><span><strong>{item.title}</strong><small>{item.message}</small></span><StudentIcon name="arrowRight" size={15}/></Link>)}</div></section>:null}
 <section className={styles.card} style={{marginTop:12}}><div className={styles.cardTitle}><span className={`${styles.iconBox} ${styles.blueIcon}`}><StudentIcon name="chart"/></span><div><h2>สมรรถนะ KSA-C</h2><p>คะแนนจากฐานข้อมูลล่าสุด</p></div></div><div className={styles.breakdown}>{[['K — ความรู้',s.knowledgeScore,'#39745d'],['S — ทักษะ',s.skillsScore,'#4d7896'],['A — เจตคติ',s.attitudeScore,'#c19a42'],['C — สมรรถนะ',s.competencyScore,'#915363']].map(([l,v,c])=><div key={String(l)}><div className={styles.metricTop}><span>{l}</span><strong>{v}%</strong></div><div className={styles.metricTrack}><div className={styles.metricBar} style={{width:`${v}%`,background:String(c)}}/></div></div>)}</div></section>
         </section>
