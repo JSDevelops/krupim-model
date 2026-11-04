@@ -113,6 +113,98 @@ const scenarioDilemmas: Record<string, Dilemma> = {
       },
     ],
   },
+  'order-taking': {
+    situation: 'ลูกค้าสอบถามว่า "เมนูสเต๊กปลากะพงขาวนี้มีส่วนผสมของถั่วหรือผลิตภัณฑ์จากนมหรือไม่ พอดีฉันมีอาการแพ้อาหารรุนแรง"',
+    prompt: 'ในฐานะพนักงานรับออร์เดอร์ คุณควรปฏิบัติตนอย่างไรเพื่อความปลอดภัยสูงสุดของลูกค้า?',
+    options: [
+      {
+        text: 'จดบันทึกอาการแพ้อย่างชัดเจน แจ้งลูกค้าอย่างสุภาพว่าจะขอตรวจสอบสูตรและกระบวนการปรุงกับหัวหน้าเชฟในครัวทันทีเพื่อความปลอดภัย 100%',
+        isCorrect: true,
+        feedback: 'ถูกต้องที่สุด! เรื่องการแพ้อาหาร (Food Allergies) คือความเป็นความตาย ห้ามคาดเดาเองเด็ดขาด ต้องตรวจสอบกับครัวเสมอ',
+      },
+      {
+        text: 'ตอบตามความรู้สึกว่า "น่าจะไม่มีครับ ทานได้แน่นอน"',
+        isCorrect: false,
+        feedback: 'อันตรายร้ายแรง! หากลูกค้าแพ้อาหารรุนแรง (Anaphylaxis) อาจเป็นอันตรายถึงชีวิตและห้องอาหารต้องรับผิดชอบทางกฎหมาย',
+      },
+      {
+        text: 'แนะนำให้ลูกค้าเปลี่ยนไปสั่งน้ำเปล่าแทนเพื่อตัดปัญหา',
+        isCorrect: false,
+        feedback: 'ไม่เหมาะสม: เป็นการบริการที่ไม่ใส่ใจและทำให้ลูกค้ารู้สึกไม่ได้รับการต้อนรับ',
+      },
+    ],
+  },
+  'payment-farewell': {
+    situation: 'ลูกค้าเรียกเก็บเงินและต้องการแยกจ่ายบิล (Split Bill) เป็น 3 ท่านโดยแต่ละท่านสั่งรายการอาหารไม่เท่ากัน',
+    prompt: 'ในฐานะพนักงานบริการ คุณควรจัดการและสื่อสารกับลูกค้าอย่างไร?',
+    options: [
+      {
+        text: 'ยิ้มแย้มและตอบรับอย่างสุภาพ "ยินดีครับ ขออนุญาตตรวจสอบรายการของแต่ละท่านสักครู่เพื่อพิมพ์บิลแยกให้ถูกต้องครับ"',
+        isCorrect: true,
+        feedback: 'ถูกต้องยอดเยี่ยม! การบริการที่ยืดหยุ่นและรอบคอบในการคิดเงินสร้างความประทับใจสุดท้าย (Last Impression) ที่น่าจดจำ',
+      },
+      {
+        text: 'บอกลูกค้าว่าร้านไม่มีนโยบายแยกบิล ให้ลูกค้าไปโอนเงินหารกันเอง',
+        isCorrect: false,
+        feedback: 'ไม่เหมาะสม: การปฏิเสธความช่วยเหลือในขั้นตอนสุดท้ายทำลายความประทับใจที่ดีของมื้ออาหารทั้งหมด',
+      },
+      {
+        text: 'หยิบบิลรวมไปให้แล้วคิดเงินมั่วๆ หาร 3 คนเท่ากันโดยไม่ดูรายการ',
+        isCorrect: false,
+        feedback: 'ไม่ถูกต้อง: การคิดเงินไม่ตรงตามที่ลูกค้าบริโภคจริงจะนำไปสู่ข้อร้องเรียนเรื่องความไม่โปร่งใส',
+      },
+    ],
+  },
+}
+
+function resolveScenarioDilemma(scenario: Scenario): Dilemma {
+  // 1. Direct ID match
+  if (scenarioDilemmas[scenario.id]) {
+    return scenarioDilemmas[scenario.id]
+  }
+
+  // 2. Keyword matching on title, titleTh, description, activity
+  const combined = `${scenario.id} ${scenario.title} ${scenario.titleTh} ${scenario.description} ${scenario.activity}`.toLowerCase()
+
+  if (combined.includes('order') || combined.includes('menu') || combined.includes('สั่ง') || combined.includes('แนะนำ')) {
+    return scenarioDilemmas['order-taking']
+  }
+  if (combined.includes('recover') || combined.includes('complain') || combined.includes('ร้องเรียน') || combined.includes('ช้า') || combined.includes('ผิด')) {
+    return scenarioDilemmas['service-recovery']
+  }
+  if (combined.includes('bill') || combined.includes('pay') || combined.includes('จ่าย') || combined.includes('เช็คบิล') || combined.includes('อำลา')) {
+    return scenarioDilemmas['payment-farewell']
+  }
+  if (combined.includes('welcome') || combined.includes('greet') || combined.includes('reserv') || combined.includes('ต้อนรับ') || combined.includes('จอง')) {
+    return scenarioDilemmas['guest-welcome']
+  }
+  if (combined.includes('table') || combined.includes('setting') || combined.includes('fork') || combined.includes('spoon') || combined.includes('โต๊ะ') || combined.includes('มีด') || combined.includes('ส้อม')) {
+    return scenarioDilemmas['table-setting']
+  }
+
+  // 3. Dynamic smart fallback customized to the actual scenario lesson
+  const mainVocab = scenario.vocabulary.length > 0 ? scenario.vocabulary[0].word : 'Service'
+  return {
+    situation: `ในการปฏิบัติงานตามสถานการณ์ "${scenario.titleTh || scenario.title}" ลูกค้าชาวต่างชาติสอบถามและต้องการบริการเกี่ยวกับ "${scenario.title}"`,
+    prompt: `ในฐานะพนักงานบริการระดับมืออาชีพ คุณควรตัดสินใจเลือกแนวทางการสื่อสารและการปฏิบัติข้อใด? (เน้นทักษะ: ${mainVocab})`,
+    options: [
+      {
+        text: `ทักทายด้วยรอยยิ้มอย่างสุภาพ สื่อสารด้วยภาษาอังกฤษที่ชัดเจนและมั่นใจ และให้คำแนะนำหรือบริการตามขั้นตอนมาตรฐานสากลทันที`,
+        isCorrect: true,
+        feedback: 'ถูกต้องยอดเยี่ยม! การสื่อสารด้วยความสุภาพ มั่นใจ และมี Service Mind คือหัวใจสำคัญของมาตรฐานงานบริการสากล',
+      },
+      {
+        text: 'ยืนนิ่ง ไม่สบตาลูกค้า และพยายามเดินเลี่ยงไปทางอื่นเพราะไม่มั่นใจในการสื่อสารภาษาอังกฤษ',
+        isCorrect: false,
+        feedback: 'ไม่ถูกต้อง: การหลีกเลี่ยงการบริการจะทำให้ลูกค้ารู้สึกขาดการดูแล หากไม่มั่นใจควรใช้ประโยคพื้นฐานหรือขอให้ผู้จัดการช่วยเหลือ',
+      },
+      {
+        text: 'ตอบลูกค้าเป็นคำสั้นๆ แบบห้วนๆ และแสดงสีหน้าตึงเครียด',
+        isCorrect: false,
+        feedback: 'ไม่เหมาะสม: มารยาทและภาษากาย (Body Language) เป็นส่วนสำคัญอย่างยิ่งในการสร้างความประทับใจให้ผู้รับบริการ',
+      },
+    ],
+  }
 }
 
 const defaultScenarios: Scenario[] = [
@@ -318,27 +410,7 @@ export default function NavigatePage() {
   }
 
   if (activeScenario) {
-    const dilemma: Dilemma = scenarioDilemmas[activeScenario.id] || {
-      situation: `ลูกค้ากำลังอยู่ในสถานการณ์ "${activeScenario.titleTh}" และต้องการคำแนะนำหรือการบริการที่ถูกต้อง`,
-      prompt: 'ในฐานะพนักงานบริการ คุณควรตัดสินใจเลือกแนวทางใดเพื่อให้ถูกต้องตามมาตรฐานวิชาชีพ?',
-      options: [
-        {
-          text: `ทักทายอย่างสุภาพ สื่อสารด้วยความมั่นใจตามมาตรฐานการบริการ และประยุกต์ใช้ทักษะภาษาอังกฤษเพื่อช่วยเหลือลูกค้าทันที`,
-          isCorrect: true,
-          feedback: 'ถูกต้อง! การปฏิบัติตามมาตรฐานงานบริการด้วยความกระตือรือร้นและสุภาพ เป็นหัวใจสำคัญของพนักงานระดับมืออาชีพ',
-        },
-        {
-          text: 'นิ่งเฉยและรอดูว่าลูกค้าจะพูดอะไรต่อไปโดยไม่เข้าไปสอบถาม',
-          isCorrect: false,
-          feedback: 'ไม่เหมาะสม: พนักงานบริการต้องมีความกระตือรือร้น (Proactive Service) ไม่ควรปล่อยให้ลูกค้ารอคอยโดยไม่ได้รับการดูแล',
-        },
-        {
-          text: 'ตอบสั้นๆ ว่าให้ลูกค้าช่วยตัวเองไปก่อนเนื่องจากกำลังยุ่ง',
-          isCorrect: false,
-          feedback: 'ห้ามปฏิบัติเด็ดขาด: จะทำให้เกิดข้อร้องเรียนและสร้างภาพลักษณ์ที่ไม่ดีต่อห้องอาหาร',
-        },
-      ],
-    }
+    const dilemma: Dilemma = resolveScenarioDilemma(activeScenario)
 
     const tabs: Array<{ id: DetailView; label: string; count?: number }> = [
       { id: 'overview', label: 'ภาพรวม' },

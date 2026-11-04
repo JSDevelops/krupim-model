@@ -1032,6 +1032,24 @@ function TeacherAssignmentsContent() {
         : 0;
       const returnedCount = submissions.filter((s) => s.status === "returned").length;
 
+      // คำนวณคะแนนเฉลี่ยสมรรถนะ K-S-A จริงจากรูบริกที่ครูตรวจ (แปลง Level 1-4 เป็น 25%-100%)
+      const gradedK = graded.filter((s) => s.rubricLevelK != null && s.rubricLevelK > 0);
+      const avgK = gradedK.length
+        ? Math.round(gradedK.reduce((acc, s) => acc + (s.rubricLevelK! * 25), 0) / gradedK.length)
+        : (avgScore > 0 ? avgScore : 75);
+
+      const gradedS = graded.filter((s) => s.rubricLevelS != null && s.rubricLevelS > 0);
+      const avgS = gradedS.length
+        ? Math.round(gradedS.reduce((acc, s) => acc + (s.rubricLevelS! * 25), 0) / gradedS.length)
+        : (avgScore > 0 ? avgScore : 75);
+
+      const gradedA = graded.filter((s) => s.rubricLevelA != null && s.rubricLevelA > 0);
+      const avgA = gradedA.length
+        ? Math.round(gradedA.reduce((acc, s) => acc + (s.rubricLevelA! * 25), 0) / gradedA.length)
+        : (avgScore > 0 ? avgScore : 80);
+
+      const avgC = Math.round(avgK * 0.3 + avgS * 0.5 + avgA * 0.2);
+
       const response = await authenticatedFetch("/api/teacher/ai-assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -1046,10 +1064,10 @@ function TeacherAssignmentsContent() {
           averageScore: avgScore,
           returnedCount,
           avgKsa: {
-            knowledge: 80,
-            skills: 78,
-            attitude: 85,
-            competency: 74,
+            knowledge: avgK,
+            skills: avgS,
+            attitude: avgA,
+            competency: avgC,
           },
         }),
       });

@@ -150,6 +150,10 @@ export default function TeacherArModelsPage() {
   const [generationForm, setGenerationForm] = useState<GenerationForm>(emptyGenerationForm)
   const [busy, setBusy] = useState<string | null>(null)
   const [uploadingField, setUploadingField] = useState<'imageUrl' | 'glbUrl' | 'usdzUrl' | null>(null)
+  const [blenderOpen, setBlenderOpen] = useState(false)
+  const [blenderTopic, setBlenderTopic] = useState('')
+  const [blenderCode, setBlenderCode] = useState('')
+  const [blenderLoading, setBlenderLoading] = useState(false)
 
   const loadModels = useCallback(async (signal?: AbortSignal) => {
     const response = await authenticatedFetch('/api/teacher/ar-models', { cache: 'no-store', signal })
@@ -385,6 +389,48 @@ export default function TeacherArModelsPage() {
     }
   }
 
+  async function generateBlenderScript(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!blenderTopic.trim()) {
+      toast.error('กรุณาระบุชื่อวัตถุหรืออุปกรณ์')
+      return
+    }
+    setBlenderLoading(true)
+    try {
+      const response = await authenticatedFetch('/api/blender/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: blenderTopic.trim() }),
+      })
+      if (!response.ok) throw new Error(await responseError(response))
+      const payload = (await response.json()) as { success: boolean; code: string }
+      setBlenderCode(payload.code)
+      toast.success('สร้างสคริปต์ Blender Python สำเร็จ!')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'สร้างสคริปต์ไม่สำเร็จ')
+    } finally {
+      setBlenderLoading(false)
+    }
+  }
+
+  function copyBlenderCode() {
+    if (!blenderCode) return
+    navigator.clipboard.writeText(blenderCode)
+    toast.success('คัดลอกโค้ดสคริปต์แล้ว')
+  }
+
+  function downloadBlenderScript() {
+    if (!blenderCode) return
+    const blob = new Blob([blenderCode], { type: 'text/x-python' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${blenderTopic.toLowerCase().replace(/[^a-z0-9]/g, '_') || 'model'}_generate.py`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('ดาวน์โหลดไฟล์ .py แล้ว')
+  }
+
   async function remove(model: ArModel) {
     const confirmed = await confirmAction({
       title: 'ลบโมเดลนี้?',
@@ -420,6 +466,18 @@ export default function TeacherArModelsPage() {
           <button className={styles.secondaryButton} type="button" onClick={() => void refresh()} disabled={refreshing}>
             <AdminIcon name="refresh" size={16} />
             {refreshing ? 'กำลังอัปเดต' : 'อัปเดตข้อมูล'}
+          </button>
+          <button
+            className={styles.secondaryButton}
+            type="button"
+            onClick={() => {
+              setBlenderTopic('')
+              setBlenderCode('')
+              setBlenderOpen(true)
+            }}
+          >
+            <AdminIcon name="monitor" size={16} />
+            สคริปต์ Blender AI
           </button>
           <button className={styles.aiButton} type="button" onClick={openGenerator}>
             <AdminIcon name="sparkles" size={16} />
@@ -835,6 +893,94 @@ export default function TeacherArModelsPage() {
                 <button className={styles.primaryButton} type="submit" disabled={busy === 'save' || uploadingField !== null}>
                   <AdminIcon name={busy === 'save' ? 'clock' : 'check'} size={16} />
                   {busy === 'save' ? 'กำลังบันทึก' : 'บันทึกโมเดล'}
+                </button>
+              </footer>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {/* Blender Python Script Generator Modal */}
+      {blenderOpen && (
+        <div className={styles.modalOverlay}>
+          <section className={styles.modalCard} role="dialog" aria-modal="true">
+            <header className={styles.modalHeader}>
+              <div>
+                <p>BLENDER PYTHON AUTOMATION</p>
+                <h2>สร้างสคริปต์ 3D สำหรับ Blender</h2>
+              </div>
+              <button type="button" onClick={() => setBlenderOpen(false)} aria-label="ปิด">
+                <AdminIcon name="close" size={18} />
+              </button>
+            </header>
+
+            <form onSubmit={generateBlenderScript} className={styles.modalForm}>
+              <div className={styles.modalBody}>
+                <label className={styles.field}>
+                  <span>ชื่อวัตถุหรืออุปกรณ์ (ภาษาอังกฤษหรือไทย) *</span>
+                  <input
+                    type="text"
+                    value={blenderTopic}
+                    onChange={e => setBlenderTopic(e.target.value)}
+                    placeholder="เช่น Wine Glass, Soup Spoon, Teapot, Coffee Cup"
+                    required
+                    disabled={blenderLoading}
+                  />
+                  <small style={{ color: '#687770', fontSize: 12 }}>
+                    AI จะสร้างสคริปต์ Python (`bpy`) สำหรับเปิดรันใน Scripting workspace ของ Blender เพื่อสร้างโมเดล 3D และ Materials ทันที
+                  </small>
+                </label>
+
+                {blenderCode && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: '#1f4333' }}>
+                        🐍 Python Script (Blender bpy):
+                      </span>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button
+                          type="button"
+                          onClick={copyBlenderCode}
+                          className={styles.secondaryButton}
+                          style={{ padding: '4px 10px', fontSize: 12 }}
+                        >
+                          <AdminIcon name="link" size={14} /> คัดลอก
+                        </button>
+                        <button
+                          type="button"
+                          onClick={downloadBlenderScript}
+                          className={styles.secondaryButton}
+                          style={{ padding: '4px 10px', fontSize: 12 }}
+                        >
+                          <AdminIcon name="download" size={14} /> ดาวน์โหลด .py
+                        </button>
+                      </div>
+                    </div>
+                    <pre
+                      style={{
+                        background: '#13281f',
+                        color: '#bde4ce',
+                        padding: '12px 16px',
+                        borderRadius: 10,
+                        fontSize: 12,
+                        maxHeight: 260,
+                        overflowY: 'auto',
+                        fontFamily: 'monospace',
+                        whiteSpace: 'pre-wrap',
+                        lineHeight: 1.5,
+                      }}
+                    >
+                      {blenderCode}
+                    </pre>
+                  </div>
+                )}
+              </div>
+
+              <footer className={styles.modalFooter}>
+                <button type="button" onClick={() => setBlenderOpen(false)}>ปิด</button>
+                <button className={styles.aiButton} type="submit" disabled={blenderLoading}>
+                  <AdminIcon name={blenderLoading ? 'clock' : 'sparkles'} size={16} />
+                  {blenderLoading ? 'AI กำลังเขียนสคริปต์...' : 'สร้างสคริปต์ Blender'}
                 </button>
               </footer>
             </form>
