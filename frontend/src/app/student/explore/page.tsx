@@ -115,11 +115,19 @@ export default function ExplorePage() {
   const [isRecording, setIsRecording] = useState(false)
 
   // ── Week 2 Mission State ──
-  const [missionProgress, setMissionProgress] = useState<Record<string, { scanned: boolean; score?: number; timestamp?: string }>>({})
+  const [missionProgress, setMissionProgress] = useState<Record<string, { scanned: boolean; score?: number; timestamp?: string }>>(() => {
+    if (typeof window === 'undefined') return {}
+    try {
+      const saved = localStorage.getItem('finemodel_week2_f_mission')
+      return saved ? JSON.parse(saved) : {}
+    } catch {
+      return {}
+    }
+  })
   const [selectedMissionCategory, setSelectedMissionCategory] = useState<'ALL' | MissionCategory>('ALL')
   const [isSubmittingMission, setIsSubmittingMission] = useState(false)
   const [missionSubmitted, setMissionSubmitted] = useState(false)
-  const [week2AssignmentId, setWeek2AssignmentId] = useState<string>('a1111111-1111-4111-8111-222222222201')
+  const week2AssignmentId = 'a1111111-1111-4111-8111-222222222201'
   const [activeSpeechMissionId, setActiveSpeechMissionId] = useState<string | null>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -145,19 +153,6 @@ export default function ExplorePage() {
     if (new URLSearchParams(window.location.search).get('mode') === 'scan') {
       const timer = window.setTimeout(() => setActiveTab('scan'), 0)
       return () => window.clearTimeout(timer)
-    }
-  }, [])
-
-  useEffect(() => {
-    // โหลดความคืบหน้า Mission สัปดาห์ที่ 2 จาก localStorage
-    // week2AssignmentId ใช้ค่า default 'a1111111-...-2201' ซึ่งตรงกับ DB แล้ว
-    try {
-      const saved = localStorage.getItem('finemodel_week2_f_mission')
-      if (saved) {
-        setMissionProgress(JSON.parse(saved))
-      }
-    } catch (e) {
-      console.warn('Could not load week 2 mission progress', e)
     }
   }, [])
 

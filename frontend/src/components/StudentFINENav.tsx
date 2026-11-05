@@ -127,7 +127,9 @@ export default function StudentFINENav() {
       if (document.visibilityState === 'visible') void fetchTasks(controller.signal)
     }
 
-    void fetchTasks(controller.signal)
+    const initialTimer = window.setTimeout(() => {
+      void fetchTasks(controller.signal)
+    }, 0)
     const interval = window.setInterval(() => {
       if (document.visibilityState === 'visible') void fetchTasks(controller.signal)
     }, 60_000)
@@ -135,6 +137,7 @@ export default function StudentFINENav() {
     window.addEventListener('storage', () => void fetchTasks())
     document.addEventListener('visibilitychange', handleVisibility)
     return () => {
+      window.clearTimeout(initialTimer)
       window.clearInterval(interval)
       window.removeEventListener('focus', () => void fetchTasks())
       window.removeEventListener('storage', () => void fetchTasks())
