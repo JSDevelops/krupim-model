@@ -7,8 +7,8 @@ import { toast } from 'sonner'
 import { authenticatedFetch } from '@/lib/api'
 import styles from './StudentFINENav.module.css'
 
-type FineLetter = 'F' | 'I' | 'N' | 'E' | 'P'
-type NavIcon = 'explore' | 'interact' | 'navigate' | 'exhibit' | 'profile'
+type FineLetter = 'H' | 'F' | 'I' | 'N' | 'E' | 'P'
+type NavIcon = 'home' | 'explore' | 'interact' | 'navigate' | 'exhibit' | 'profile'
 type TaskCounts = Record<FineLetter, number>
 
 type NavItem = {
@@ -32,9 +32,10 @@ type DashboardTask = {
   weekName?: string
 }
 
-const EMPTY_COUNTS: TaskCounts = { F: 0, I: 0, N: 0, E: 0, P: 0 }
+const EMPTY_COUNTS: TaskCounts = { H: 0, F: 0, I: 0, N: 0, E: 0, P: 0 }
 
 const TABS: NavItem[] = [
+  { href: '/student/dashboard', letter: 'H', label: 'หน้าหลัก', fineLabel: 'Home', icon: 'home' },
   { href: '/student/explore', letter: 'F', label: 'Familiarize', fineLabel: 'Explore', icon: 'explore' },
   { href: '/student/interact', letter: 'I', label: 'Interact', fineLabel: 'Speak', icon: 'interact', aliases: ['/chat', '/live'] },
   { href: '/student/navigate', letter: 'N', label: 'Navigate', fineLabel: 'Scenario', icon: 'navigate', aliases: ['/simulation', '/student/simulation'] },
@@ -44,8 +45,8 @@ const TABS: NavItem[] = [
 
 function FineNavIcon({ name }: { name: NavIcon }) {
   const common = {
-    width: 21,
-    height: 21,
+    width: 20,
+    height: 20,
     viewBox: '0 0 24 24',
     fill: 'none',
     stroke: 'currentColor',
@@ -55,6 +56,7 @@ function FineNavIcon({ name }: { name: NavIcon }) {
     'aria-hidden': true,
   }
 
+  if (name === 'home') return <svg {...common}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
   if (name === 'explore') return <svg {...common}><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><circle cx="12" cy="12" r="3"/><path d="M12 7v2M12 15v2M7 12h2M15 12h2"/></svg>
   if (name === 'interact') return <svg {...common}><path d="M21 14a3 3 0 0 1-3 3H9l-5 4v-4a3 3 0 0 1-2-3V6a3 3 0 0 1 3-3h13a3 3 0 0 1 3 3Z"/><path d="M7 8h10M7 12h6"/></svg>
   if (name === 'navigate') return <svg {...common}><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Z"/><path d="m4 7.5 8 4.5 8-4.5M12 12v9"/><path d="m9.5 6.2 5 2.7"/></svg>
@@ -63,7 +65,7 @@ function FineNavIcon({ name }: { name: NavIcon }) {
 }
 
 function countsMatch(left: TaskCounts, right: TaskCounts) {
-  return left.F === right.F && left.I === right.I && left.N === right.N && left.E === right.E && left.P === right.P
+  return left.H === right.H && left.F === right.F && left.I === right.I && left.N === right.N && left.E === right.E && left.P === right.P
 }
 
 function isCurrentPath(pathname: string, tab: NavItem) {
@@ -196,7 +198,7 @@ export default function StudentFINENav() {
       const updatedTasks = tasks.filter(t => t.id !== submitTask.id)
       setTasks(updatedTasks)
 
-      const nextCounts: TaskCounts = { F: 0, I: 0, N: 0, E: 0, P: updatedTasks.length }
+      const nextCounts: TaskCounts = { H: 0, F: 0, I: 0, N: 0, E: 0, P: updatedTasks.length }
       for (const t of updatedTasks) {
         const k = t.activityType?.[0]?.toUpperCase()
         if (k === 'F' || k === 'I' || k === 'N' || k === 'E') nextCounts[k] += 1

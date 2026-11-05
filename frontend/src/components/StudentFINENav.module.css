@@ -12,13 +12,14 @@
 .dock {
   position: relative;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   width: 100%;
-  min-height: 68px;
-  padding: 6px 4px;
+  max-width: 540px;
+  min-height: 64px;
+  padding: 5px 3px;
   border: 1px solid rgba(255, 255, 255, .8);
-  border-radius: 21px;
-  background: rgba(250, 252, 249, .92);
+  border-radius: 22px;
+  background: rgba(250, 252, 249, .94);
   box-shadow:
     0 14px 38px rgba(10, 35, 23, .18),
     0 2px 7px rgba(10, 35, 23, .07),
