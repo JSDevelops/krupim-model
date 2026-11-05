@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { apiErrorResponse, getErrorMessage, guardApi, getDatabase } from '../_lib/auth'
 import { getActiveProvider, getConfiguredModel, getGemini, getOpenAI, getAnthropic } from '../_lib/ai'
+import { generateFallbackScan } from './fallback'
 
 const SCAN_SYSTEM_PROMPT = `คุณเป็น AI ผู้เชี่ยวชาญการวิเคราะห์และระบุวัตถุจากภาพถ่ายตามความเป็นจริง (Object Identification AI)
 วิเคราะห์ภาพวัตถุที่เห็นในภาพนี้ตามจริงที่ปรากฏ 100% (ตัวอย่างเช่น หากเห็นเป็นขวดน้ำพลาสติก ขวดกาแฟ แก้วพลาสติก ของเล่น โทรศัพท์มือถือ หรือสิ่งของทั่วไป ให้ระบุชื่อที่เป็นสิ่งนั้นจริงๆ โดยตรงตามความจริงที่กล้องจับภาพได้)
@@ -28,26 +29,62 @@ export async function POST(req: NextRequest) {
   // ── Auth (optional/best-effort for scan learning) ───────────────────────────
   let authUser
   try {
-    authUser = await guardApi(req, { maxRequests: 6 })
+    authUser = await guardApi(req, { maxRequests: 60 })
   } catch (error) {
     return apiErrorResponse(error)
   }
 
+  let body: Record<string, unknown> = {}
   try {
-    const body = await req.json()
-    const { imageBase64, mimeType = 'image/jpeg' } = body
+    body = await req.json()
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON request body' }, { status: 400 })
+  }
 
-    if (typeof imageBase64 !== 'string' || !imageBase64) {
-      return NextResponse.json({ error: 'imageBase64 is required' }, { status: 400 })
-    }
-    if (imageBase64.length > 10_000_000) {
-      return NextResponse.json({ error: 'Image too large. Maximum size is 6MB.' }, { status: 400 })
-    }
-    if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(mimeType)) {
-      return NextResponse.json({ error: 'Unsupported image type' }, { status: 400 })
-    }
-    const resolvedMimeType = mimeType as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif'
+  const {
+    imageBase64,
+    mimeType = 'image/jpeg',
+    forceFallback,
+    fallbackItemEn,
+    fallbackItemId
+  } = body as {
+    imageBase64?: string
+    mimeType?: string
+    forceFallback?: boolean
+    fallbackItemEn?: string
+    fallbackItemId?: string
+  }
 
+  const itemHint = (typeof fallbackItemEn === 'string' && fallbackItemEn)
+    ? fallbackItemEn
+    : (typeof fallbackItemId === 'string' && fallbackItemId)
+      ? fallbackItemId
+      : undefined
+
+  // 1. Direct Fallback if requested explicitly or if imageBase64 is omitted with a fallback request
+  if (forceFallback || (!imageBase64 && itemHint)) {
+    try {
+      const fallbackResult = await generateFallbackScan(itemHint)
+      return NextResponse.json(fallbackResult)
+    } catch (fallbackErr) {
+      console.error('Fallback generation failed:', fallbackErr)
+      return NextResponse.json({ error: 'Fallback generator failed' }, { status: 500 })
+    }
+  }
+
+  if (typeof imageBase64 !== 'string' || !imageBase64) {
+    return NextResponse.json({ error: 'imageBase64 is required' }, { status: 400 })
+  }
+  if (imageBase64.length > 10_000_000) {
+    return NextResponse.json({ error: 'Image too large. Maximum size is 6MB.' }, { status: 400 })
+  }
+  if (!['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(mimeType)) {
+    return NextResponse.json({ error: 'Unsupported image type' }, { status: 400 })
+  }
+  const resolvedMimeType = mimeType as 'image/jpeg' | 'image/png' | 'image/webp' | 'image/gif'
+
+  // 2. Attempt AI Analysis (Gemini / OpenAI / Claude)
+  try {
     const provider = await getActiveProvider(req)
     const configuredModel = await getConfiguredModel(provider)
     let text = ''
@@ -101,7 +138,7 @@ export async function POST(req: NextRequest) {
     const parsedData = JSON.parse(jsonMatch[0])
 
     // Only trusted content managers may promote scan output into the shared knowledge base.
-    if (authUser.role === 'teacher' || authUser.role === 'developer') try {
+    if (authUser?.role === 'teacher' || authUser?.role === 'developer') try {
       const localData = getDatabase()
       await localData.from('ai_scan_items').upsert({
         name_th: parsedData.name_th,
@@ -120,12 +157,20 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(parsedData)
 
-  } catch (err: unknown) {
-    const message = getErrorMessage(err)
-    console.error('Scan API Error:', message)
-    return NextResponse.json({
-      error: message || 'AI scan service temporarily unavailable. Please try again.',
-      code: 'SCAN_AI_ERROR'
-    }, { status: 500 })
+  } catch (aiErr: unknown) {
+    const message = getErrorMessage(aiErr)
+    console.warn('[ScanAPI] AI provider error, switching to Fallback Engine:', message)
+
+    // Graceful Fallback: instead of returning 500 error, return high-yield curriculum FINE analysis
+    try {
+      const fallbackResult = await generateFallbackScan(itemHint)
+      return NextResponse.json(fallbackResult)
+    } catch (fallbackErr) {
+      console.error('[ScanAPI] Fallback also failed:', fallbackErr)
+      return NextResponse.json({
+        error: message || 'AI scan service temporarily unavailable. Please try again.',
+        code: 'SCAN_AI_ERROR'
+      }, { status: 500 })
+    }
   }
 }

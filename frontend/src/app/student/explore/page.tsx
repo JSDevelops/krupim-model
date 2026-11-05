@@ -40,6 +40,7 @@ type ScanResult = {
   name_en?: string
   name_th?: string
   category?: string
+  subcategory?: string
   description?: string
   use?: string
   location?: string
@@ -49,6 +50,8 @@ type ScanResult = {
   pronounce?: string
   confidence?: number
   english_phrases?: string[]
+  is_fallback?: boolean
+  fallback_reason?: string
   fine_analysis?: FineAnalysis
 }
 
@@ -129,6 +132,12 @@ export default function ExplorePage() {
   const [missionSubmitted, setMissionSubmitted] = useState(false)
   const week2AssignmentId = 'a1111111-1111-4111-8111-222222222201'
   const [activeSpeechMissionId, setActiveSpeechMissionId] = useState<string | null>(null)
+
+  // ── Fallback Scan Mode State ──
+  const [showFallbackModal, setShowFallbackModal] = useState(false)
+  const [fallbackSearch, setFallbackSearch] = useState('')
+  const [fallbackFilter, setFallbackFilter] = useState<'ALL' | 'WEEK2' | 'TABLEWARE'>('ALL')
+  const [currentScanHint, setCurrentScanHint] = useState<string | null>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -267,20 +276,44 @@ export default function ExplorePage() {
     }
   }, [stopCamera])
 
-  async function analyzeImage(base64: string, mimeType: string, image?: string) {
+  async function triggerFallbackScan(item: { nameEn: string; nameTh?: string; name?: string; categoryTh?: string }) {
+    setScanAnim(true)
+    setScanError('')
+    setShowFallbackModal(false)
+    try {
+      const result = await analyzeImageAPI('', 'image/jpeg', {
+        forceFallback: true,
+        fallbackItemEn: item.nameEn,
+      }) as ScanResult
+      if (!result) throw new Error('ระบบไม่ส่งผลการจำลองกลับมา')
+      applyScanResult(result)
+      toast.success(`🎯 โหมดสำรอง: เปิดข้อมูล "${item.nameEn}"`, {
+        description: 'ระบบดึงเนื้อหาจากคลังบทเรียน FINE Model สำหรับเมนูนี้เรียบร้อยแล้ว',
+      })
+    } catch (error) {
+      console.error('Trigger fallback scan failed:', error)
+      toast.error('ไม่สามารถจำลองสแกนได้ กรุณาลองใหม่อีกครั้ง')
+    } finally {
+      setScanAnim(false)
+    }
+  }
+
+  async function analyzeImage(base64: string, mimeType: string, image?: string, hint?: string) {
     setScanAnim(true)
     setScanError('')
     try {
-      const result = await analyzeImageAPI(base64, mimeType) as ScanResult
+      const result = await analyzeImageAPI(base64, mimeType, {
+        fallbackItemEn: hint || currentScanHint || undefined
+      }) as ScanResult
       if (!result) throw new Error('ระบบ AI ไม่ส่งผลการวิเคราะห์กลับมา')
       applyScanResult(result, image)
     } catch (error) {
       const message = error instanceof Error ? error.message : 'ไม่สามารถวิเคราะห์รูปภาพได้'
       const normalized = message.toLowerCase()
       if (normalized.includes('429') || normalized.includes('quota') || normalized.includes('rate limit')) {
-        setScanError('ระบบ AI มีคำขอจำนวนมาก กรุณารอประมาณ 1 นาทีแล้วลองใหม่')
+        setScanError('ระบบ AI มีคำขอหนาแน่นชั่วคราว (โควต้าเต็ม) คุณสามารถใช้ "โหมดเลือกวัตถุจำลอง (Fallback Scan)" เพื่อทำภารกิจต่อได้ทันที')
       } else if (normalized.includes('api key') || normalized.includes('unauthorized') || normalized.includes('403')) {
-        setScanError('การตั้งค่าผู้ให้บริการ AI ไม่สมบูรณ์ กรุณาแจ้งผู้ดูแลระบบ')
+        setScanError('การตั้งค่าผู้ให้บริการ AI ไม่สมบูรณ์ กรุณาใช้โหมดเลือกวัตถุจำลอง')
       } else {
         setScanError(message)
       }
@@ -303,14 +336,16 @@ export default function ExplorePage() {
     const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
     requestPendingRef.current = true
     try {
-      const result = await analyzeImageAPI(dataUrl.slice(dataUrl.indexOf(',') + 1), 'image/jpeg') as ScanResult
+      const result = await analyzeImageAPI(dataUrl.slice(dataUrl.indexOf(',') + 1), 'image/jpeg', {
+        fallbackItemEn: currentScanHint || undefined
+      }) as ScanResult
       if ((result.confidence || 0) >= 60) applyScanResult(result, dataUrl)
     } catch (error) {
       console.warn('Auto scan frame failed:', error)
     } finally {
       requestPendingRef.current = false
     }
-  }, [activeTab, applyScanResult, scanAnim, scanResult])
+  }, [activeTab, applyScanResult, currentScanHint, scanAnim, scanResult])
 
   useEffect(() => {
     if (isCameraActive && autoScan && activeTab === 'scan' && !scanResult) {
@@ -336,7 +371,7 @@ export default function ExplorePage() {
     context.drawImage(video, 0, 0, canvas.width, canvas.height)
     const dataUrl = canvas.toDataURL('image/jpeg', 0.76)
     setAutoScan(false)
-    await analyzeImage(dataUrl.slice(dataUrl.indexOf(',') + 1), 'image/jpeg', dataUrl)
+    await analyzeImage(dataUrl.slice(dataUrl.indexOf(',') + 1), 'image/jpeg', dataUrl, currentScanHint || undefined)
   }
 
   async function handleFileChange(event: React.ChangeEvent<HTMLInputElement>) {
@@ -344,7 +379,7 @@ export default function ExplorePage() {
     if (!file) return
     try {
       const prepared = await prepareImageForScan(file)
-      await analyzeImage(prepared.base64, prepared.mimeType, prepared.dataUrl)
+      await analyzeImage(prepared.base64, prepared.mimeType, prepared.dataUrl, currentScanHint || undefined)
     } catch (error) {
       setScanError(error instanceof Error ? error.message : 'ไม่สามารถอ่านรูปภาพได้')
     } finally {
@@ -360,6 +395,7 @@ export default function ExplorePage() {
     setQuizAnswered(false)
     setSpeechScore(null)
     setScanError('')
+    setCurrentScanHint(null)
   }
 
   function changeTab(tab: 'mission' | 'library' | 'scan') {
@@ -510,6 +546,58 @@ export default function ExplorePage() {
 
   const featuredItems = useMemo(() => equipment.slice(0, 6), [equipment])
   const visibleVocabulary = useMemo(() => equipment.slice(0, visibleCount), [equipment, visibleCount])
+
+  const fallbackAllCandidates = useMemo(() => {
+    const list: Array<{ nameEn: string; nameTh: string; name?: string; emoji?: string; categoryTh?: string; isMission?: boolean }> = []
+    const seen = new Set<string>()
+
+    // 1. Week 2 Mission Items
+    for (const m of WEEK2_MISSION_ITEMS) {
+      const key = m.nameEn.toLowerCase()
+      if (!seen.has(key)) {
+        seen.add(key)
+        list.push({
+          nameEn: m.nameEn,
+          nameTh: m.nameTh,
+          name: m.nameTh,
+          emoji: m.emoji,
+          categoryTh: `สัปดาห์ที่ 2 • ${m.categoryTh}`,
+          isMission: true,
+        })
+      }
+    }
+
+    // 2. Equipment items
+    for (const eq of equipment) {
+      const key = eq.nameEn.toLowerCase()
+      if (!seen.has(key)) {
+        seen.add(key)
+        list.push({
+          nameEn: eq.nameEn,
+          nameTh: eq.name,
+          name: eq.name,
+          emoji: eq.emoji && !isImageSource(eq.emoji) ? eq.emoji : '🍽️',
+          categoryTh: eq.categoryTh || 'อุปกรณ์บนโต๊ะอาหาร',
+          isMission: false,
+        })
+      }
+    }
+    return list
+  }, [equipment])
+
+  const filteredFallbackItems = useMemo(() => {
+    const search = fallbackSearch.trim().toLowerCase()
+    return fallbackAllCandidates.filter(item => {
+      if (fallbackFilter === 'WEEK2' && !item.isMission) return false
+      if (fallbackFilter === 'TABLEWARE' && item.isMission) return false
+      if (!search) return true
+      return (
+        item.nameEn.toLowerCase().includes(search) ||
+        item.nameTh.toLowerCase().includes(search) ||
+        (item.categoryTh && item.categoryTh.toLowerCase().includes(search))
+      )
+    })
+  }, [fallbackAllCandidates, fallbackFilter, fallbackSearch])
   const resultName = scanResult?.name_en || scanResult?.name || 'Unknown object'
   const resultThai = scanResult?.name_th || scanResult?.nameTh || 'ไม่พบชื่อภาษาไทย'
   const phrases = scanResult?.fine_analysis?.interact?.english_phrases || scanResult?.english_phrases || []
@@ -676,12 +764,25 @@ export default function ExplorePage() {
                           type="button"
                           className={styles.missionActionBtn}
                           onClick={() => {
+                            setCurrentScanHint(item.nameEn)
                             changeTab('scan')
                             void startCamera()
+                            toast.info(`📷 เตรียมสแกน: "${item.nameEn}"`, {
+                              description: 'เล็งกล้องไปที่วัตถุ (หาก AI ขัดข้อง ระบบสำรองจะวิเคราะห์รายการนี้ให้ทันที)',
+                            })
                           }}
                           title="เปิดกล้อง AI Scan เมนูนี้"
                         >
                           📷 สแกน
+                        </button>
+                        <button
+                          type="button"
+                          className={styles.missionActionBtn}
+                          onClick={() => void triggerFallbackScan(item)}
+                          title="จำลองผลการสแกนด้วยระบบสำรอง (Curriculum Fallback)"
+                          style={{ background: '#fcf6e8', borderColor: '#e4d3a8', color: '#7a5a16' }}
+                        >
+                          ⚡ จำลอง
                         </button>
                       </div>
                     </div>
@@ -811,10 +912,11 @@ export default function ExplorePage() {
                   <div className={styles.cameraEmpty}>
                     <span className={styles.cameraEmptyIcon}><ExploreIcon name="camera" size={34} /></span>
                     <h3>กล้องจะเปิดเมื่อคุณอนุญาต</h3>
-                    <p>ระบบไม่เปิดกล้องอัตโนมัติ ช่วยประหยัดแบตเตอรี่และรักษาความเป็นส่วนตัว คุณสามารถเลือกอัปโหลดรูปแทนได้</p>
+                    <p>ระบบไม่เปิดกล้องอัตโนมัติ ช่วยประหยัดแบตเตอรี่และรักษาความเป็นส่วนตัว คุณสามารถเลือกอัปโหลดรูป หรือใช้โหมดจำลองแทนได้</p>
                     <div className={styles.cameraActions}>
                       <button type="button" className={styles.primaryButton} onClick={() => void startCamera()}><ExploreIcon name="camera" size={17} /> เปิดกล้อง</button>
                       <button type="button" className={styles.secondaryButton} onClick={() => fileInputRef.current?.click()}><ExploreIcon name="upload" size={17} /> เลือกรูปภาพ</button>
+                      <button type="button" className={styles.fallbackPickerBtn} onClick={() => setShowFallbackModal(true)}><ExploreIcon name="layers" size={16} /> 🎯 โหมดเลือกวัตถุจำลอง (Fallback Scan)</button>
                     </div>
                   </div>
                 )}
@@ -823,9 +925,20 @@ export default function ExplorePage() {
                   <>
                     <div className={styles.cameraTop}>
                       <span className={styles.statusBadge}><span className={styles.statusDot} /> กล้องพร้อมใช้งาน</span>
-                      <button type="button" className={`${styles.autoButton} ${autoScan ? styles.autoActive : ''}`} onClick={() => setAutoScan(value => !value)}>
-                        <ExploreIcon name="scan" size={14} /> สแกนอัตโนมัติ {autoScan ? 'เปิด' : 'ปิด'}
-                      </button>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          type="button"
+                          className={styles.fallbackPickerBtn}
+                          style={{ padding: '4px 10px', fontSize: '11px' }}
+                          onClick={() => setShowFallbackModal(true)}
+                          title="เลือกวัตถุหรือเมนูเพื่อจำลองผลการสแกนทันที"
+                        >
+                          🎯 เลือกจำลอง
+                        </button>
+                        <button type="button" className={`${styles.autoButton} ${autoScan ? styles.autoActive : ''}`} onClick={() => setAutoScan(value => !value)}>
+                          <ExploreIcon name="scan" size={14} /> สแกนอัตโนมัติ {autoScan ? 'เปิด' : 'ปิด'}
+                        </button>
+                      </div>
                     </div>
                     <div className={styles.scanCorners} />
                     {scanAnim && <div className={styles.scanLine} />}
@@ -837,7 +950,20 @@ export default function ExplorePage() {
                   </>
                 )}
 
-                {scanError && <div className={styles.errorBanner}><ExploreIcon name="alert" size={17} /> <span>{scanError}</span></div>}
+                {scanError && (
+                  <div className={styles.errorBanner}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <ExploreIcon name="alert" size={17} /> <span>{scanError}</span>
+                    </div>
+                    <button
+                      type="button"
+                      className={styles.errorFallbackAction}
+                      onClick={() => setShowFallbackModal(true)}
+                    >
+                      ⚡ คลิกเปิดโหมดจำลอง (เลือกวัตถุเพื่อทำภารกิจต่อ)
+                    </button>
+                  </div>
+                )}
               </div>
               <input ref={fileInputRef} type="file" accept="image/*" hidden onChange={event => void handleFileChange(event)} />
             </section>
@@ -847,16 +973,35 @@ export default function ExplorePage() {
                 <div className={styles.resultEmpty}>
                   <span className={styles.resultEmptyIcon}><ExploreIcon name="sparkles" size={30} /></span>
                   <h3>ผลวิเคราะห์จะแสดงที่นี่</h3>
-                  <p>จัดวัตถุให้อยู่กลางภาพ มีแสงเพียงพอ และหลีกเลี่ยงฉากหลังที่มีรายละเอียดมากเกินไป</p>
+                  <p>จัดวัตถุให้อยู่กลางภาพ มีแสงเพียงพอ หรือใช้โหมดเลือกวัตถุจำลอง (Fallback Scan) เพื่อเรียนรู้ได้ทันที</p>
                 </div>
               ) : (
                 <div className={styles.resultContent}>
                   <header className={styles.resultHeader}>
                     <span className={styles.headingIcon}><ExploreIcon name="cube" /></span>
-                    <div className={styles.resultHeaderText}><h2 className={styles.resultName}>{resultName}</h2><p className={styles.resultThai}>{resultThai}</p></div>
+                    <div className={styles.resultHeaderText}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                        <h2 className={styles.resultName}>{resultName}</h2>
+                        {scanResult.is_fallback && (
+                          <span className={styles.fallbackBadge} title={scanResult.fallback_reason || 'ระบบสำรองบทเรียน FINE Model'}>
+                            💡 ระบบสำรอง (Curriculum Fallback)
+                          </span>
+                        )}
+                      </div>
+                      <p className={styles.resultThai}>{resultThai}</p>
+                    </div>
                     {scanResult.confidence != null && <span className={styles.confidence}>{Math.round(scanResult.confidence)}% มั่นใจ</span>}
                     <button type="button" className={styles.iconButton} aria-label="ฟังชื่อภาษาอังกฤษ" onClick={() => speak(resultName, 'result-name')}><ExploreIcon name="volume" size={17} /></button>
                   </header>
+
+                  {scanResult.is_fallback && (
+                    <div className={styles.fallbackNotice}>
+                      <ExploreIcon name="sparkles" size={16} />
+                      <div>
+                        <strong>ระบบสำรองบทเรียน FINE Model กำลังทำงาน:</strong> ตรวจพบโควต้า AI มีคำขอหนาแน่นชั่วคราว ระบบดึงข้อมูลจากคลังหลักสูตรมาตรฐาน เพื่อให้นักเรียนสามารถฝึกพูด ฟังเสียง ทบทวน และส่งงานสัปดาห์ที่ 2 ได้อย่างราบรื่น
+                      </div>
+                    </div>
+                  )}
 
                   <div className={styles.fineTabs}>
                     {FINE_TABS.map(tab => (
@@ -967,6 +1112,101 @@ export default function ExplorePage() {
                   </Link>
                 )}
               </div>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {showFallbackModal && (
+        <div className={styles.modalBackdrop} role="presentation" onMouseDown={() => setShowFallbackModal(false)}>
+          <section
+            className={styles.modal}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="fallback-modal-title"
+            onMouseDown={event => event.stopPropagation()}
+            style={{ maxWidth: 680 }}
+          >
+            <header className={styles.modalHeader}>
+              <div>
+                <h3 id="fallback-modal-title">🎯 โหมดสแกนจำลอง (Fallback Simulator)</h3>
+                <p>เลือกวัตถุหรือเมนูอาหารเพื่อจำลองการสแกนและทำภารกิจสัปดาห์ที่ 2 ต่อได้ทันที</p>
+              </div>
+              <button type="button" className={styles.iconButton} aria-label="ปิด" onClick={() => setShowFallbackModal(false)}>
+                <ExploreIcon name="close" size={17} />
+              </button>
+            </header>
+
+            {/* Filter Tabs & Search */}
+            <div style={{ padding: '14px 18px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <input
+                type="search"
+                placeholder="ค้นหาชื่อภาษาอังกฤษ หรือภาษาไทย (เช่น Caesar Salad, Ribeye, ซุป...)"
+                value={fallbackSearch}
+                onChange={e => setFallbackSearch(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  border: '1px solid #c9d5ce',
+                  fontSize: 13,
+                  outline: 'none',
+                }}
+              />
+
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {[
+                  { id: 'ALL', label: 'ทั้งหมด' },
+                  { id: 'WEEK2', label: '🥗 เมนูสัปดาห์ที่ 2 (20 เมนู)' },
+                  { id: 'TABLEWARE', label: '🍽️ อุปกรณ์บนโต๊ะอาหาร' },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setFallbackFilter(tab.id as 'ALL' | 'WEEK2' | 'TABLEWARE')}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: 99,
+                      border: '1px solid',
+                      borderColor: fallbackFilter === tab.id ? '#174b37' : '#d2ded7',
+                      background: fallbackFilter === tab.id ? '#174b37' : '#ffffff',
+                      color: fallbackFilter === tab.id ? '#ffffff' : '#415247',
+                      fontSize: 11.5,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.fallbackModalGrid} style={{ margin: '8px 18px 18px' }}>
+              {filteredFallbackItems.map(item => (
+                <div
+                  key={item.nameEn}
+                  className={styles.fallbackItemCard}
+                  onClick={() => void triggerFallbackScan(item)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') void triggerFallbackScan(item)
+                  }}
+                >
+                  <span className={styles.fallbackItemEmoji}>{item.emoji || '🍽️'}</span>
+                  <div className={styles.fallbackItemInfo}>
+                    <h5 className={styles.fallbackItemNameEn}>{item.nameEn}</h5>
+                    <p className={styles.fallbackItemNameTh}>{item.nameTh || item.name}</p>
+                    <span className={styles.fallbackItemBadge}>{item.categoryTh || 'บทเรียน FINE'}</span>
+                  </div>
+                </div>
+              ))}
+              {filteredFallbackItems.length === 0 && (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '30px 0', color: '#7a857e', fontSize: 13 }}>
+                  ไม่พบรายการที่ตรงกับ &quot;{fallbackSearch}&quot;
+                </div>
+              )}
             </div>
           </section>
         </div>

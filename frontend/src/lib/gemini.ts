@@ -62,15 +62,21 @@ export async function chatWithGemini(
   return data
 }
 
-// AI Scan - analyze image (Next.js full-stack API)
-export async function analyzeImage(imageBase64: string, mimeType: string = 'image/jpeg') {
+// AI Scan - analyze image (Next.js full-stack API with smart curriculum fallback)
+export async function analyzeImage(
+  imageBase64: string,
+  mimeType: string = 'image/jpeg',
+  options?: { forceFallback?: boolean; fallbackItemEn?: string }
+) {
   const headers = await getAIHeaders()
   const response = await fetch(`${API_BASE_PATH}/scan`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
       imageBase64,
-      mimeType
+      mimeType,
+      forceFallback: options?.forceFallback,
+      fallbackItemEn: options?.fallbackItemEn
     })
   })
 
