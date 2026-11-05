@@ -176,11 +176,43 @@ export async function guardApi(
   return authorizeAccount(sessionUser, account, options.roles)
 }
 
+function isDatabaseUnavailable(error: unknown): boolean {
+  if (!error) return false
+  const msg = error instanceof Error ? error.message : String(error)
+  const code = (error as { code?: string })?.code || ''
+  return (
+    msg.includes('tenant') ||
+    msg.includes('DATABASE_URL is not configured') ||
+    msg.includes('Connection terminated') ||
+    msg.includes('connection timeout') ||
+    msg.includes('timeout exceeded') ||
+    msg.includes('connect ECONNREFUSED') ||
+    msg.includes('getaddrinfo ENOTFOUND') ||
+    code === 'ECONNREFUSED' ||
+    code === 'ENOTFOUND' ||
+    code === 'ETIMEDOUT' ||
+    code === 'XX000' ||
+    code === '28P01' ||
+    code === '53300'
+  )
+}
+
 export function apiErrorResponse(error: unknown) {
   if (error instanceof ApiError) {
     return NextResponse.json(
       { error: error.message, code: error.code },
       { status: error.status, headers: error.headers },
+    )
+  }
+
+  if (isDatabaseUnavailable(error)) {
+    console.error('Database connection unavailable:', error)
+    return NextResponse.json(
+      {
+        error: 'ระบบฐานข้อมูลอยู่ในระหว่างหยุดพักชั่วคราว (Database Paused) กรุณากด Restore/Unpause โปรเจกต์ใน Supabase หรือติดต่อผู้ดูแลระบบ',
+        code: 'DATABASE_UNAVAILABLE',
+      },
+      { status: 503 },
     )
   }
 
