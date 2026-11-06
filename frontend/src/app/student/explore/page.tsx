@@ -98,7 +98,8 @@ function EquipmentVisual({ item, size = 22 }: { item: Equipment; size?: number }
 }
 
 export default function ExplorePage() {
-  const [activeTab, setActiveTab] = useState<'week1' | 'week2' | 'scan'>('week1')
+  const [activeTab, setActiveTab] = useState<'mission' | 'vocabulary' | 'scan'>('mission')
+  const [selectedMissionWeek, setSelectedMissionWeek] = useState<1 | 2>(1)
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [viewItem, setViewItem] = useState<Equipment | null>(null)
   const [showVocabulary, setShowVocabulary] = useState(false)
@@ -406,13 +407,32 @@ export default function ExplorePage() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search)
       const week = params.get('week')
-      if (week === '2') setActiveTab('week2')
-      else if (week === '1') setActiveTab('week1')
+      if (week === '2') {
+        setActiveTab('mission')
+        setSelectedMissionWeek(2)
+      } else if (week === '1') {
+        setActiveTab('mission')
+        setSelectedMissionWeek(1)
+      }
     }
   }, [])
 
-  function changeTab(tab: 'week1' | 'week2' | 'scan' | 'library' | 'mission') {
-    const target = tab === 'library' ? 'week1' : tab === 'mission' ? 'week2' : tab
+  function changeTab(tab: 'mission' | 'vocabulary' | 'scan' | 'library' | 'week1' | 'week2') {
+    let target: 'mission' | 'vocabulary' | 'scan' = 'mission'
+    if (tab === 'vocabulary' || tab === 'library') {
+      target = 'vocabulary'
+    } else if (tab === 'scan') {
+      target = 'scan'
+    } else if (tab === 'week1') {
+      target = 'mission'
+      setSelectedMissionWeek(1)
+    } else if (tab === 'week2') {
+      target = 'mission'
+      setSelectedMissionWeek(2)
+    } else {
+      target = 'mission'
+    }
+
     if (target !== 'scan') {
       setAutoScan(false)
       stopCamera()
@@ -654,25 +674,25 @@ export default function ExplorePage() {
           </div>
         </section>
 
-        {/* ── Tabs Navigation: สัปดาห์ที่ 1 อยู่ซ้ายสุด/บนสุด ── */}
+        {/* ── Tabs Navigation: 3 ปุ่มตามที่ผู้ใช้กำหนด ── */}
         <div className={styles.tabs} role="tablist" aria-label="โหมดการเรียนรู้">
           <button
             type="button"
             role="tab"
-            aria-selected={activeTab === 'week1'}
-            className={`${styles.tab} ${activeTab === 'week1' ? styles.tabActive : ''}`}
-            onClick={() => changeTab('week1')}
+            aria-selected={activeTab === 'mission'}
+            className={`${styles.tab} ${activeTab === 'mission' ? styles.tabActive : ''}`}
+            onClick={() => changeTab('mission')}
           >
-            <ExploreIcon name="book" size={16} /> สัปดาห์ที่ 1: อุปกรณ์บนโต๊ะอาหาร (51)
+            <ExploreIcon name="sparkles" size={16} /> ภารกิจประจำสัปดาห์
           </button>
           <button
             type="button"
             role="tab"
-            aria-selected={activeTab === 'week2'}
-            className={`${styles.tab} ${activeTab === 'week2' ? styles.tabActive : ''}`}
-            onClick={() => changeTab('week2')}
+            aria-selected={activeTab === 'vocabulary'}
+            className={`${styles.tab} ${activeTab === 'vocabulary' ? styles.tabActive : ''}`}
+            onClick={() => changeTab('vocabulary')}
           >
-            <ExploreIcon name="sparkles" size={16} /> สัปดาห์ที่ 2: เมนูอาหาร 20 ชนิด
+            <ExploreIcon name="book" size={16} /> คำศัพท์
           </button>
           <button
             type="button"
@@ -681,27 +701,336 @@ export default function ExplorePage() {
             className={`${styles.tab} ${activeTab === 'scan' ? styles.tabActive : ''}`}
             onClick={() => changeTab('scan')}
           >
-            <ExploreIcon name="camera" size={16} /> AI Scan กล้อง & AR
+            <ExploreIcon name="camera" size={16} /> AR+AI Scan
           </button>
         </div>
 
-        {/* ── TAB 1: สัปดาห์ที่ 1 • อุปกรณ์บนโต๊ะอาหาร 51 รายการ (แสดงเป็นค่าเริ่มต้น) ── */}
-        {activeTab === 'week1' && (
+        {/* ── TAB 1: ภารกิจประจำสัปดาห์ (สัปดาห์ที่ 1 อยู่บนสุด) ── */}
+        {activeTab === 'mission' && (
           <section className={styles.missionSection}>
             <div className={styles.missionCard}>
               <div className={styles.missionHeader}>
                 <div>
                   <span className={styles.missionBadge}>
-                    <ExploreIcon name="book" size={14} /> สัปดาห์ที่ 1 [F]: Familiarize
+                    <ExploreIcon name="sparkles" size={14} /> ภารกิจประจำสัปดาห์ [F]: Familiarize
                   </span>
-                  <h2 className={styles.missionTitle}>คลังคำศัพท์และอุปกรณ์บนโต๊ะอาหาร (51 รายการ)</h2>
+                  <h2 className={styles.missionTitle}>
+                    {selectedMissionWeek === 1
+                      ? 'สัปดาห์ที่ 1: อุปกรณ์บนโต๊ะอาหาร (51 รายการ)'
+                      : 'สัปดาห์ที่ 2: ภารกิจ AI Scan 20 เมนูอาหารและเครื่องดื่ม'}
+                  </h2>
                   <p className={styles.missionSubtitle}>
-                    เรียนรู้คำศัพท์อุปกรณ์บนโต๊ะอาหารมาตรฐานสากล พร้อมโมเดล 3 มิติ การออกเสียงภาษาอังกฤษ และประโยคใช้งานจริง
+                    {selectedMissionWeek === 1
+                      ? 'สำรวจอุปกรณ์บนโต๊ะอาหาร ช้อน ส้อม มีด แก้ว จาน และชาม พร้อมโมเดล 3 มิติ และการฝึกออกเสียง'
+                      : 'ใช้ AI Scan สแกนภาพ/โมเดลจริง หรือกดฟังเสียงและฝึกออกเสียงคำศัพท์ 4 หมวดหมู่ (20 รายการ) เพื่อบันทึกผลการเรียนรู้และส่งงาน'}
                   </p>
                 </div>
               </div>
 
-              {/* Filter Pills and Search for Week 1 */}
+              {/* Week Toggle Pills (สัปดาห์ที่ 1 อยู่ซ้ายสุด/บนสุด) */}
+              <div style={{ display: 'flex', gap: 8, margin: '14px 0 16px', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className={`${styles.missionFilterBtn} ${selectedMissionWeek === 1 ? styles.missionFilterBtnActive : ''}`}
+                  onClick={() => setSelectedMissionWeek(1)}
+                  style={{ fontWeight: 600 }}
+                >
+                  <ExploreIcon name="book" size={14} /> สัปดาห์ที่ 1: อุปกรณ์บนโต๊ะอาหาร (51 รายการ)
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.missionFilterBtn} ${selectedMissionWeek === 2 ? styles.missionFilterBtnActive : ''}`}
+                  onClick={() => setSelectedMissionWeek(2)}
+                  style={{ fontWeight: 600 }}
+                >
+                  <ExploreIcon name="sparkles" size={14} /> สัปดาห์ที่ 2: เมนูอาหาร 20 ชนิด
+                </button>
+              </div>
+
+              {/* ── Sub-content for Week 1 Mission ── */}
+              {selectedMissionWeek === 1 && (
+                <div>
+                  {/* Filter Pills and Search for Week 1 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
+                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                      <input
+                        type="search"
+                        value={week1Search}
+                        onChange={e => setWeek1Search(e.target.value)}
+                        placeholder="ค้นหาชื่ออุปกรณ์ (เช่น Fork, Knife, Glass, Plate, ช้อน, ส้อม, จาน)..."
+                        style={{
+                          flex: '1 1 240px',
+                          padding: '9px 14px',
+                          borderRadius: 12,
+                          border: '1px solid #c9d5ce',
+                          fontSize: 13,
+                          outline: 'none',
+                        }}
+                      />
+                      {week1Search && (
+                        <button
+                          type="button"
+                          onClick={() => setWeek1Search('')}
+                          style={{
+                            padding: '8px 14px',
+                            borderRadius: 10,
+                            border: '1px solid #d0ded6',
+                            background: '#ffffff',
+                            fontSize: 12,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          ล้างการค้นหา
+                        </button>
+                      )}
+                    </div>
+
+                    <div className={styles.missionCategoryFilters} style={{ margin: 0 }}>
+                      {[
+                        { id: 'ALL', label: `ทั้งหมด (${equipment.length})` },
+                        { id: 'cutlery', label: `ช้อน ส้อม มีด (${equipment.filter(e => (e.category || '').toLowerCase() === 'cutlery').length})` },
+                        { id: 'glass', label: `แก้วเครื่องดื่ม (${equipment.filter(e => (e.category || '').toLowerCase() === 'glass').length})` },
+                        { id: 'tableware', label: `จานและชาม (${equipment.filter(e => (e.category || '').toLowerCase() === 'tableware').length})` },
+                      ].map(tab => (
+                        <button
+                          key={tab.id}
+                          type="button"
+                          className={`${styles.missionFilterBtn} ${week1Category === tab.id ? styles.missionFilterBtnActive : ''}`}
+                          onClick={() => setWeek1Category(tab.id as 'ALL' | 'cutlery' | 'glass' | 'tableware')}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Week 1 Equipment Grid */}
+                  <div className={styles.vocabGrid} style={{ padding: '4px 0' }}>
+                    {filteredWeek1Equipment.map(item => (
+                      <button
+                        type="button"
+                        className={styles.vocabCard}
+                        key={item.nameEn}
+                        onClick={() => setViewItem(item)}
+                      >
+                        <span className={styles.itemVisual}>
+                          <EquipmentVisual item={item} />
+                        </span>
+                        <span className={styles.itemText}>
+                          <span className={styles.itemEn}>{item.nameEn}</span>
+                          <span className={styles.itemTh}>{item.name}</span>
+                          <span style={{ fontSize: '10px', color: '#174b37', fontWeight: 600, marginTop: 2 }}>
+                            {item.categoryTh || item.category || 'อุปกรณ์บนโต๊ะอาหาร'}
+                            {(item.glbUrl || item.usdzUrl) ? ' • มีโมเดล 3 มิติ' : ''}
+                          </span>
+                        </span>
+                        <span className={styles.cardArrow}>
+                          <ExploreIcon name="arrow" size={16} />
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {filteredWeek1Equipment.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '30px 10px', color: '#68776f', fontSize: 13 }}>
+                      ไม่พบคำศัพท์ที่ตรงกับ "{week1Search}" ในหมวดหมู่นี้
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── Sub-content for Week 2 Mission ── */}
+              {selectedMissionWeek === 2 && (
+                <div>
+                  {/* Progress Bar */}
+                  {(() => {
+                    const completedCount = WEEK2_MISSION_ITEMS.filter(i => missionProgress[i.id]?.scanned).length
+                    const percent = Math.round((completedCount / WEEK2_MISSION_ITEMS.length) * 100)
+                    return (
+                      <div className={styles.missionProgressWrap}>
+                        <div className={styles.missionProgressHeader}>
+                          <span>ความคืบหน้าการสแกนและการฝึกฝน</span>
+                          <strong>
+                            {completedCount} / {WEEK2_MISSION_ITEMS.length} เมนู ({percent}%)
+                          </strong>
+                        </div>
+                        <div className={styles.missionProgressBar}>
+                          <div className={styles.missionProgressFill} style={{ width: `${percent}%` }} />
+                        </div>
+                      </div>
+                    )
+                  })()}
+
+                  {/* Category Filter Pills (Cleaned, no emojis) */}
+                  <div className={styles.missionCategoryFilters}>
+                    {(['ALL', 'Appetizers', 'Main Courses', 'Desserts', 'Beverages'] as const).map(cat => {
+                      const label = cat === 'ALL' ? 'ทั้งหมด (20)' :
+                        cat === 'Appetizers' ? 'Appetizers (4)' :
+                        cat === 'Main Courses' ? 'Main Courses (4)' :
+                        cat === 'Desserts' ? 'Desserts (4)' : 'Beverages (8)'
+                      return (
+                        <button
+                          key={cat}
+                          type="button"
+                          className={`${styles.missionFilterBtn} ${selectedMissionCategory === cat ? styles.missionFilterBtnActive : ''}`}
+                          onClick={() => setSelectedMissionCategory(cat)}
+                        >
+                          {label}
+                        </button>
+                      )
+                    })}
+                  </div>
+
+                  {/* Slider Controls */}
+                  <div className={styles.missionSliderControls}>
+                    <div style={{ flex: 1 }} />
+                    <div className={styles.missionSliderArrows}>
+                      <button
+                        type="button"
+                        onClick={() => scrollMissionSlider('left')}
+                        className={styles.missionSliderArrowBtn}
+                        aria-label="เลื่อนซ้าย"
+                      >
+                        ‹
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => scrollMissionSlider('right')}
+                        className={styles.missionSliderArrowBtn}
+                        aria-label="เลื่อนขวา"
+                      >
+                        ›
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 20 Mission Items Single-Row Slider */}
+                  <div ref={missionSliderRef} className={styles.missionGrid}>
+                    {WEEK2_MISSION_ITEMS.filter(item => selectedMissionCategory === 'ALL' || item.category === selectedMissionCategory).map(item => {
+                      const prog = missionProgress[item.id]
+                      const isDone = Boolean(prog?.scanned)
+                      return (
+                        <div
+                          key={item.id}
+                          className={`${styles.missionItemCard} ${isDone ? styles.missionItemCompleted : ''}`}
+                        >
+                          <div className={styles.missionItemTop}>
+                            <span className={styles.missionItemCategoryBadge}>{item.category}</span>
+                            <button
+                              type="button"
+                              className={`${styles.missionCheckBadge} ${isDone ? styles.missionCheckDone : styles.missionCheckPending}`}
+                              onClick={() => toggleMissionItem(item.id)}
+                              title="คลิกเพื่อสลับสถานะ"
+                              style={{ border: 'none', cursor: 'pointer', font: 'inherit' }}
+                            >
+                              {isDone ? `✓ สแกนแล้ว ${prog?.score ? `(${prog.score}%)` : ''}` : 'รอสแกน'}
+                            </button>
+                          </div>
+                          <h4 className={styles.missionItemEn}>{item.nameEn}</h4>
+                          <p className={styles.missionItemTh}>{item.nameTh} • <span style={{ color: '#174b37', fontWeight: 600 }}>{item.categoryTh}</span></p>
+                          <p className={styles.missionItemPronounce}>{item.pronounce}</p>
+
+                          <div className={styles.missionItemActions}>
+                            <button
+                              type="button"
+                              className={styles.missionActionBtn}
+                              onClick={() => speak(item.nameEn, item.id)}
+                              title="ฟังการออกเสียง"
+                            >
+                              <ExploreIcon name="volume" size={13} />
+                              <span>{speaking === item.id ? 'อ่าน...' : 'ฟังเสียง'}</span>
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.missionActionBtn}
+                              onClick={() => startMissionSpeechPractice(item)}
+                              title="ฝึกพูดออกเสียงด้วยไมโครโฟน"
+                            >
+                              <ExploreIcon name="mic" size={13} />
+                              <span>{isRecording && activeSpeechMissionId === item.id ? 'ฟัง...' : 'ฝึกพูด'}</span>
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.missionActionBtn}
+                              onClick={() => {
+                                setCurrentScanHint(item.nameEn)
+                                changeTab('scan')
+                                void startCamera()
+                                toast.info(`เตรียมสแกน: "${item.nameEn}"`, {
+                                  description: 'เล็งกล้องไปที่วัตถุ (หาก AI ขัดข้อง ระบบสำรองจะวิเคราะห์รายการนี้ให้ทันที)',
+                                })
+                              }}
+                              title="เปิดกล้อง AI Scan เมนูนี้"
+                            >
+                              <ExploreIcon name="camera" size={13} />
+                              <span>สแกน</span>
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.missionActionBtn}
+                              onClick={() => void triggerFallbackScan(item)}
+                              title="จำลองผลการสแกนด้วยระบบสำรอง (Curriculum Fallback)"
+                              style={{ background: '#fcf6e8', borderColor: '#e4d3a8', color: '#7a5a16' }}
+                            >
+                              <ExploreIcon name="layers" size={13} />
+                              <span>จำลอง</span>
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* 1-Click Submit Banner */}
+                  {(() => {
+                    const completedCount = WEEK2_MISSION_ITEMS.filter(i => missionProgress[i.id]?.scanned).length
+                    return (
+                      <div className={styles.missionSubmitBanner}>
+                        <div className={styles.missionSubmitText}>
+                          <h4>
+                            {missionSubmitted ? 'ส่งงานสัปดาห์ที่ 2 [F] เรียบร้อยแล้ว' : 'พร้อมประเมินและส่งงานสัปดาห์ที่ 2'}
+                          </h4>
+                          <p>
+                            {missionSubmitted
+                              ? `บันทึกรายการสำเร็จ ${completedCount}/20 เมนู ส่งเข้าสู่ระบบคุณครูเรียบร้อยแล้ว (สามารถส่งซ้ำเพื่ออัปเดตคะแนนได้)`
+                              : `สแกนครบแล้ว ${completedCount}/20 รายการ กดปุ่มนี้เพื่อส่งงานตรงเข้าสู่ระบบคุณครูทันที`}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          className={styles.missionSubmitBtn}
+                          onClick={submitWeek2Mission}
+                          disabled={isSubmittingMission || completedCount === 0}
+                        >
+                          <ExploreIcon name="check" size={16} />
+                          <span>{isSubmittingMission ? 'กำลังส่งงาน...' : missionSubmitted ? 'ส่งงานเรียบร้อย (กดส่งซ้ำได้)' : 'บันทึกผลและส่งงานสัปดาห์ที่ 2 [F]'}</span>
+                        </button>
+                      </div>
+                    )
+                  })()}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ── TAB 2: คำศัพท์ (Vocabulary Library) ── */}
+        {activeTab === 'vocabulary' && (
+          <section className={styles.missionSection}>
+            <div className={styles.missionCard}>
+              <div className={styles.missionHeader}>
+                <div>
+                  <span className={styles.missionBadge}>
+                    <ExploreIcon name="book" size={14} /> คลังคำศัพท์วิชาชีพ
+                  </span>
+                  <h2 className={styles.missionTitle}>คลังคำศัพท์งานบริการอาหารและเครื่องดื่ม (51 รายการ)</h2>
+                  <p className={styles.missionSubtitle}>
+                    ค้นหาและศึกษาคำศัพท์อุปกรณ์บนโต๊ะอาหารมาตรฐานสากล พร้อมโมเดล 3 มิติ การออกเสียงภาษาอังกฤษ และประโยคใช้งานจริง
+                  </p>
+                </div>
+              </div>
+
+              {/* Filter Pills and Search */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '14px 0 16px' }}>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
                   <input
@@ -755,7 +1084,7 @@ export default function ExplorePage() {
                 </div>
               </div>
 
-              {/* Week 1 Equipment Grid */}
+              {/* Equipment Grid */}
               <div className={styles.vocabGrid} style={{ padding: '4px 0' }}>
                 {filteredWeek1Equipment.map(item => (
                   <button
@@ -791,193 +1120,7 @@ export default function ExplorePage() {
           </section>
         )}
 
-        {/* ── TAB 2: สัปดาห์ที่ 2 • ภารกิจ AI Scan 20 เมนูอาหาร ── */}
-        {activeTab === 'week2' && (
-          <section className={styles.missionSection}>
-            <div className={styles.missionCard}>
-              <div className={styles.missionHeader}>
-                <div>
-                  <span className={styles.missionBadge}>
-                    <ExploreIcon name="sparkles" size={14} /> สัปดาห์ที่ 2 [F]: Familiarize
-                  </span>
-                  <h2 className={styles.missionTitle}>ภารกิจ AI Scan & Worksheet 20 เมนูอาหารและเครื่องดื่ม</h2>
-                  <p className={styles.missionSubtitle}>
-                    ใช้ AI Scan สแกนภาพ/โมเดลจริง หรือกดฟังเสียงและฝึกออกเสียงคำศัพท์ 4 หมวดหมู่ (20 รายการ) เพื่อบันทึกผลการเรียนรู้และส่งงาน
-                  </p>
-                </div>
-              </div>
-
-              {/* Progress Bar */}
-              {(() => {
-                const completedCount = WEEK2_MISSION_ITEMS.filter(i => missionProgress[i.id]?.scanned).length
-                const percent = Math.round((completedCount / WEEK2_MISSION_ITEMS.length) * 100)
-                return (
-                  <div className={styles.missionProgressWrap}>
-                    <div className={styles.missionProgressHeader}>
-                      <span>ความคืบหน้าการสแกนและการฝึกฝน</span>
-                      <strong>
-                        {completedCount} / {WEEK2_MISSION_ITEMS.length} เมนู ({percent}%)
-                      </strong>
-                    </div>
-                    <div className={styles.missionProgressBar}>
-                      <div className={styles.missionProgressFill} style={{ width: `${percent}%` }} />
-                    </div>
-                  </div>
-                )
-              })()}
-
-              {/* Category Filter Pills (Cleaned, no emojis) */}
-              <div className={styles.missionCategoryFilters}>
-                {(['ALL', 'Appetizers', 'Main Courses', 'Desserts', 'Beverages'] as const).map(cat => {
-                  const label = cat === 'ALL' ? 'ทั้งหมด (20)' :
-                    cat === 'Appetizers' ? 'Appetizers (4)' :
-                    cat === 'Main Courses' ? 'Main Courses (4)' :
-                    cat === 'Desserts' ? 'Desserts (4)' : 'Beverages (8)'
-                  return (
-                    <button
-                      key={cat}
-                      type="button"
-                      className={`${styles.missionFilterBtn} ${selectedMissionCategory === cat ? styles.missionFilterBtnActive : ''}`}
-                      onClick={() => setSelectedMissionCategory(cat)}
-                    >
-                      {label}
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* Slider Controls */}
-              <div className={styles.missionSliderControls}>
-                <div style={{ flex: 1 }} />
-                <div className={styles.missionSliderArrows}>
-                  <button
-                    type="button"
-                    onClick={() => scrollMissionSlider('left')}
-                    className={styles.missionSliderArrowBtn}
-                    aria-label="เลื่อนซ้าย"
-                  >
-                    ‹
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => scrollMissionSlider('right')}
-                    className={styles.missionSliderArrowBtn}
-                    aria-label="เลื่อนขวา"
-                  >
-                    ›
-                  </button>
-                </div>
-              </div>
-
-              {/* 20 Mission Items Single-Row Slider */}
-              <div ref={missionSliderRef} className={styles.missionGrid}>
-                {WEEK2_MISSION_ITEMS.filter(item => selectedMissionCategory === 'ALL' || item.category === selectedMissionCategory).map(item => {
-                  const prog = missionProgress[item.id]
-                  const isDone = Boolean(prog?.scanned)
-                  return (
-                    <div
-                      key={item.id}
-                      className={`${styles.missionItemCard} ${isDone ? styles.missionItemCompleted : ''}`}
-                    >
-                      <div className={styles.missionItemTop}>
-                        <span className={styles.missionItemCategoryBadge}>{item.category}</span>
-                        <button
-                          type="button"
-                          className={`${styles.missionCheckBadge} ${isDone ? styles.missionCheckDone : styles.missionCheckPending}`}
-                          onClick={() => toggleMissionItem(item.id)}
-                          title="คลิกเพื่อสลับสถานะ"
-                          style={{ border: 'none', cursor: 'pointer', font: 'inherit' }}
-                        >
-                          {isDone ? `✓ สแกนแล้ว ${prog?.score ? `(${prog.score}%)` : ''}` : 'รอสแกน'}
-                        </button>
-                      </div>
-                      <h4 className={styles.missionItemEn}>{item.nameEn}</h4>
-                      <p className={styles.missionItemTh}>{item.nameTh} • <span style={{ color: '#174b37', fontWeight: 600 }}>{item.categoryTh}</span></p>
-                      <p className={styles.missionItemPronounce}>{item.pronounce}</p>
-
-                      <div className={styles.missionItemActions}>
-                        <button
-                          type="button"
-                          className={styles.missionActionBtn}
-                          onClick={() => speak(item.nameEn, item.id)}
-                          title="ฟังการออกเสียง"
-                        >
-                          <ExploreIcon name="volume" size={13} />
-                          <span>{speaking === item.id ? 'อ่าน...' : 'ฟังเสียง'}</span>
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.missionActionBtn}
-                          onClick={() => startMissionSpeechPractice(item)}
-                          title="ฝึกพูดออกเสียงด้วยไมโครโฟน"
-                        >
-                          <ExploreIcon name="mic" size={13} />
-                          <span>{isRecording && activeSpeechMissionId === item.id ? 'ฟัง...' : 'ฝึกพูด'}</span>
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.missionActionBtn}
-                          onClick={() => {
-                            setCurrentScanHint(item.nameEn)
-                            changeTab('scan')
-                            void startCamera()
-                            toast.info(`เตรียมสแกน: "${item.nameEn}"`, {
-                              description: 'เล็งกล้องไปที่วัตถุ (หาก AI ขัดข้อง ระบบสำรองจะวิเคราะห์รายการนี้ให้ทันที)',
-                            })
-                          }}
-                          title="เปิดกล้อง AI Scan เมนูนี้"
-                        >
-                          <ExploreIcon name="camera" size={13} />
-                          <span>สแกน</span>
-                        </button>
-                        <button
-                          type="button"
-                          className={styles.missionActionBtn}
-                          onClick={() => void triggerFallbackScan(item)}
-                          title="จำลองผลการสแกนด้วยระบบสำรอง (Curriculum Fallback)"
-                          style={{ background: '#fcf6e8', borderColor: '#e4d3a8', color: '#7a5a16' }}
-                        >
-                          <ExploreIcon name="layers" size={13} />
-                          <span>จำลอง</span>
-                        </button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              {/* 1-Click Submit Banner */}
-              {(() => {
-                const completedCount = WEEK2_MISSION_ITEMS.filter(i => missionProgress[i.id]?.scanned).length
-                return (
-                  <div className={styles.missionSubmitBanner}>
-                    <div className={styles.missionSubmitText}>
-                      <h4>
-                        {missionSubmitted ? 'ส่งงานสัปดาห์ที่ 2 [F] เรียบร้อยแล้ว' : 'พร้อมประเมินและส่งงานสัปดาห์ที่ 2'}
-                      </h4>
-                      <p>
-                        {missionSubmitted
-                          ? `บันทึกรายการสำเร็จ ${completedCount}/20 เมนู ส่งเข้าสู่ระบบคุณครูเรียบร้อยแล้ว (สามารถส่งซ้ำเพื่ออัปเดตคะแนนได้)`
-                          : `สแกนครบแล้ว ${completedCount}/20 รายการ กดปุ่มนี้เพื่อส่งงานตรงเข้าสู่ระบบคุณครูทันที`}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      className={styles.missionSubmitBtn}
-                      onClick={submitWeek2Mission}
-                      disabled={isSubmittingMission || completedCount === 0}
-                    >
-                      <ExploreIcon name="check" size={16} />
-                      <span>{isSubmittingMission ? 'กำลังส่งงาน...' : missionSubmitted ? 'ส่งงานเรียบร้อย (กดส่งซ้ำได้)' : 'บันทึกผลและส่งงานสัปดาห์ที่ 2 [F]'}</span>
-                    </button>
-                  </div>
-                )
-              })()}
-            </div>
-          </section>
-        )}
-
-        {/* ── TAB 3: AI Scan (กล้องและวิเคราะห์ภาพ) ── */}
+        {/* ── TAB 3: AR+AI Scan (กล้องและวิเคราะห์ภาพ) ── */}
         {activeTab === 'scan' && (
           <div className={styles.cameraLayout}>
             <div style={{
