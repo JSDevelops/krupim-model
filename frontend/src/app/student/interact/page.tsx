@@ -102,7 +102,14 @@ export default function InteractPage() {
           setCurrentIndex(0)
         }
         if (payload.plans?.length) {
-          setPlans(payload.plans)
+          const sortedPlans = [...payload.plans].sort((a, b) => {
+            const getWeek = (p: LessonPlanOption) => {
+              const m = p.weeks?.match(/\d+/) || p.id?.match(/week-(\d+)/) || p.title?.match(/สัปดาห์ที่\s*(\d+)/)
+              return m ? parseInt(m[1] || m[0], 10) : 999
+            }
+            return getWeek(a) - getWeek(b)
+          })
+          setPlans(sortedPlans)
         }
         setAssignment(payload.assignment || null)
         setSubmitted(false)

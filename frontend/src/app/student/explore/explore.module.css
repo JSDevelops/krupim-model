@@ -410,6 +410,18 @@
   font-size: 24px;
   line-height: 1;
 }
+.missionItemCategoryBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 8px;
+  background: #edf5f0;
+  border: 1px solid #d4e7dc;
+  color: #174b37;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
 .missionCheckBadge {
   display: inline-flex;
   align-items: center;

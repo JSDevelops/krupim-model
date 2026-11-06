@@ -98,7 +98,7 @@ function EquipmentVisual({ item, size = 22 }: { item: Equipment; size?: number }
 }
 
 export default function ExplorePage() {
-  const [activeTab, setActiveTab] = useState<'mission' | 'library' | 'scan'>('mission')
+  const [activeTab, setActiveTab] = useState<'week1' | 'week2' | 'scan'>('week1')
   const [equipment, setEquipment] = useState<Equipment[]>([])
   const [viewItem, setViewItem] = useState<Equipment | null>(null)
   const [showVocabulary, setShowVocabulary] = useState(false)
@@ -116,6 +116,10 @@ export default function ExplorePage() {
   const [quizAnswered, setQuizAnswered] = useState(false)
   const [speechScore, setSpeechScore] = useState<number | null>(null)
   const [isRecording, setIsRecording] = useState(false)
+
+  // ── Week 1 Tableware State ──
+  const [week1Category, setWeek1Category] = useState<'ALL' | 'cutlery' | 'glass' | 'tableware'>('ALL')
+  const [week1Search, setWeek1Search] = useState('')
 
   // ── Week 2 Mission State ──
   const [missionProgress, setMissionProgress] = useState<Record<string, { scanned: boolean; score?: number; timestamp?: string }>>(() => {
@@ -136,7 +140,7 @@ export default function ExplorePage() {
   // ── Fallback Scan Mode State ──
   const [showFallbackModal, setShowFallbackModal] = useState(false)
   const [fallbackSearch, setFallbackSearch] = useState('')
-  const [fallbackFilter, setFallbackFilter] = useState<'ALL' | 'WEEK2' | 'TABLEWARE'>('ALL')
+  const [fallbackFilter, setFallbackFilter] = useState<'ALL' | 'WEEK1' | 'WEEK2'>('ALL')
   const [currentScanHint, setCurrentScanHint] = useState<string | null>(null)
 
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -398,12 +402,22 @@ export default function ExplorePage() {
     setCurrentScanHint(null)
   }
 
-  function changeTab(tab: 'mission' | 'library' | 'scan') {
-    if (tab !== 'scan') {
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      const week = params.get('week')
+      if (week === '2') setActiveTab('week2')
+      else if (week === '1') setActiveTab('week1')
+    }
+  }, [])
+
+  function changeTab(tab: 'week1' | 'week2' | 'scan' | 'library' | 'mission') {
+    const target = tab === 'library' ? 'week1' : tab === 'mission' ? 'week2' : tab
+    if (target !== 'scan') {
       setAutoScan(false)
       stopCamera()
     }
-    setActiveTab(tab)
+    setActiveTab(target)
   }
 
   function speak(text: string, id: string) {
@@ -547,11 +561,42 @@ export default function ExplorePage() {
   const featuredItems = useMemo(() => equipment.slice(0, 6), [equipment])
   const visibleVocabulary = useMemo(() => equipment.slice(0, visibleCount), [equipment, visibleCount])
 
+  const filteredWeek1Equipment = useMemo(() => {
+    const q = week1Search.trim().toLowerCase()
+    return equipment.filter(item => {
+      const cat = (item.category || '').toLowerCase()
+      const matchCat = week1Category === 'ALL' || cat === week1Category.toLowerCase()
+      if (!matchCat) return false
+      if (!q) return true
+      return (
+        item.nameEn.toLowerCase().includes(q) ||
+        item.name.toLowerCase().includes(q) ||
+        (item.use && item.use.toLowerCase().includes(q))
+      )
+    })
+  }, [equipment, week1Category, week1Search])
+
   const fallbackAllCandidates = useMemo(() => {
     const list: Array<{ nameEn: string; nameTh: string; name?: string; emoji?: string; categoryTh?: string; isMission?: boolean }> = []
     const seen = new Set<string>()
 
-    // 1. Week 2 Mission Items
+    // 1. สัปดาห์ที่ 1: Equipment items (เรียงไว้บนสุด)
+    for (const eq of equipment) {
+      const key = eq.nameEn.toLowerCase()
+      if (!seen.has(key)) {
+        seen.add(key)
+        list.push({
+          nameEn: eq.nameEn,
+          nameTh: eq.name,
+          name: eq.name,
+          emoji: eq.emoji && !isImageSource(eq.emoji) ? eq.emoji : '',
+          categoryTh: `สัปดาห์ที่ 1 • ${eq.categoryTh || 'อุปกรณ์บนโต๊ะอาหาร'}`,
+          isMission: false,
+        })
+      }
+    }
+
+    // 2. สัปดาห์ที่ 2: Week 2 Mission Items
     for (const m of WEEK2_MISSION_ITEMS) {
       const key = m.nameEn.toLowerCase()
       if (!seen.has(key)) {
@@ -567,29 +612,14 @@ export default function ExplorePage() {
       }
     }
 
-    // 2. Equipment items
-    for (const eq of equipment) {
-      const key = eq.nameEn.toLowerCase()
-      if (!seen.has(key)) {
-        seen.add(key)
-        list.push({
-          nameEn: eq.nameEn,
-          nameTh: eq.name,
-          name: eq.name,
-          emoji: eq.emoji && !isImageSource(eq.emoji) ? eq.emoji : '🍽️',
-          categoryTh: eq.categoryTh || 'อุปกรณ์บนโต๊ะอาหาร',
-          isMission: false,
-        })
-      }
-    }
     return list
   }, [equipment])
 
   const filteredFallbackItems = useMemo(() => {
     const search = fallbackSearch.trim().toLowerCase()
     return fallbackAllCandidates.filter(item => {
+      if (fallbackFilter === 'WEEK1' && item.isMission) return false
       if (fallbackFilter === 'WEEK2' && !item.isMission) return false
-      if (fallbackFilter === 'TABLEWARE' && item.isMission) return false
       if (!search) return true
       return (
         item.nameEn.toLowerCase().includes(search) ||
@@ -624,21 +654,145 @@ export default function ExplorePage() {
           </div>
         </section>
 
-        {/* ── Tabs Navigation ── */}
-        <div className={styles.tabs} role="tablist" aria-label="โหมดสำรวจ">
-          <button type="button" role="tab" aria-selected={activeTab === 'mission'} className={`${styles.tab} ${activeTab === 'mission' ? styles.tabActive : ''}`} onClick={() => changeTab('mission')}>
-            <ExploreIcon name="sparkles" size={17} /> ภารกิจประจำสัปดาห์
+        {/* ── Tabs Navigation: สัปดาห์ที่ 1 อยู่ซ้ายสุด/บนสุด ── */}
+        <div className={styles.tabs} role="tablist" aria-label="โหมดการเรียนรู้">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'week1'}
+            className={`${styles.tab} ${activeTab === 'week1' ? styles.tabActive : ''}`}
+            onClick={() => changeTab('week1')}
+          >
+            <ExploreIcon name="book" size={16} /> สัปดาห์ที่ 1: อุปกรณ์บนโต๊ะอาหาร (51)
           </button>
-          <button type="button" role="tab" aria-selected={activeTab === 'library'} className={`${styles.tab} ${activeTab === 'library' ? styles.tabActive : ''}`} onClick={() => changeTab('library')}>
-            <ExploreIcon name="book" size={17} /> คลังคำศัพท์
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'week2'}
+            className={`${styles.tab} ${activeTab === 'week2' ? styles.tabActive : ''}`}
+            onClick={() => changeTab('week2')}
+          >
+            <ExploreIcon name="sparkles" size={16} /> สัปดาห์ที่ 2: เมนูอาหาร 20 ชนิด
           </button>
-          <button type="button" role="tab" aria-selected={activeTab === 'scan'} className={`${styles.tab} ${activeTab === 'scan' ? styles.tabActive : ''}`} onClick={() => changeTab('scan')}>
-            <ExploreIcon name="camera" size={17} /> AI Scan
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === 'scan'}
+            className={`${styles.tab} ${activeTab === 'scan' ? styles.tabActive : ''}`}
+            onClick={() => changeTab('scan')}
+          >
+            <ExploreIcon name="camera" size={16} /> AI Scan กล้อง & AR
           </button>
         </div>
 
-        {/* ── TAB 1: Week 2 Mission Tracker ── */}
-        {activeTab === 'mission' && (
+        {/* ── TAB 1: สัปดาห์ที่ 1 • อุปกรณ์บนโต๊ะอาหาร 51 รายการ (แสดงเป็นค่าเริ่มต้น) ── */}
+        {activeTab === 'week1' && (
+          <section className={styles.missionSection}>
+            <div className={styles.missionCard}>
+              <div className={styles.missionHeader}>
+                <div>
+                  <span className={styles.missionBadge}>
+                    <ExploreIcon name="book" size={14} /> สัปดาห์ที่ 1 [F]: Familiarize
+                  </span>
+                  <h2 className={styles.missionTitle}>คลังคำศัพท์และอุปกรณ์บนโต๊ะอาหาร (51 รายการ)</h2>
+                  <p className={styles.missionSubtitle}>
+                    เรียนรู้คำศัพท์อุปกรณ์บนโต๊ะอาหารมาตรฐานสากล พร้อมโมเดล 3 มิติ การออกเสียงภาษาอังกฤษ และประโยคใช้งานจริง
+                  </p>
+                </div>
+              </div>
+
+              {/* Filter Pills and Search for Week 1 */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '14px 0 16px' }}>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <input
+                    type="search"
+                    value={week1Search}
+                    onChange={e => setWeek1Search(e.target.value)}
+                    placeholder="ค้นหาชื่ออุปกรณ์ (เช่น Fork, Knife, Glass, Plate, ช้อน, ส้อม, จาน)..."
+                    style={{
+                      flex: '1 1 240px',
+                      padding: '9px 14px',
+                      borderRadius: 12,
+                      border: '1px solid #c9d5ce',
+                      fontSize: 13,
+                      outline: 'none',
+                    }}
+                  />
+                  {week1Search && (
+                    <button
+                      type="button"
+                      onClick={() => setWeek1Search('')}
+                      style={{
+                        padding: '8px 14px',
+                        borderRadius: 10,
+                        border: '1px solid #d0ded6',
+                        background: '#ffffff',
+                        fontSize: 12,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      ล้างการค้นหา
+                    </button>
+                  )}
+                </div>
+
+                <div className={styles.missionCategoryFilters} style={{ margin: 0 }}>
+                  {[
+                    { id: 'ALL', label: `ทั้งหมด (${equipment.length})` },
+                    { id: 'cutlery', label: `ช้อน ส้อม มีด (${equipment.filter(e => (e.category || '').toLowerCase() === 'cutlery').length})` },
+                    { id: 'glass', label: `แก้วเครื่องดื่ม (${equipment.filter(e => (e.category || '').toLowerCase() === 'glass').length})` },
+                    { id: 'tableware', label: `จานและชาม (${equipment.filter(e => (e.category || '').toLowerCase() === 'tableware').length})` },
+                  ].map(tab => (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      className={`${styles.missionFilterBtn} ${week1Category === tab.id ? styles.missionFilterBtnActive : ''}`}
+                      onClick={() => setWeek1Category(tab.id as 'ALL' | 'cutlery' | 'glass' | 'tableware')}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Week 1 Equipment Grid */}
+              <div className={styles.vocabGrid} style={{ padding: '4px 0' }}>
+                {filteredWeek1Equipment.map(item => (
+                  <button
+                    type="button"
+                    className={styles.vocabCard}
+                    key={item.nameEn}
+                    onClick={() => setViewItem(item)}
+                  >
+                    <span className={styles.itemVisual}>
+                      <EquipmentVisual item={item} />
+                    </span>
+                    <span className={styles.itemText}>
+                      <span className={styles.itemEn}>{item.nameEn}</span>
+                      <span className={styles.itemTh}>{item.name}</span>
+                      <span style={{ fontSize: '10px', color: '#174b37', fontWeight: 600, marginTop: 2 }}>
+                        {item.categoryTh || item.category || 'อุปกรณ์บนโต๊ะอาหาร'}
+                        {(item.glbUrl || item.usdzUrl) ? ' • มีโมเดล 3 มิติ' : ''}
+                      </span>
+                    </span>
+                    <span className={styles.cardArrow}>
+                      <ExploreIcon name="arrow" size={16} />
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {filteredWeek1Equipment.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '30px 10px', color: '#68776f', fontSize: 13 }}>
+                  ไม่พบคำศัพท์ที่ตรงกับ "{week1Search}" ในหมวดหมู่นี้
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* ── TAB 2: สัปดาห์ที่ 2 • ภารกิจ AI Scan 20 เมนูอาหาร ── */}
+        {activeTab === 'week2' && (
           <section className={styles.missionSection}>
             <div className={styles.missionCard}>
               <div className={styles.missionHeader}>
@@ -672,13 +826,13 @@ export default function ExplorePage() {
                 )
               })()}
 
-              {/* Category Filter Pills */}
+              {/* Category Filter Pills (Cleaned, no emojis) */}
               <div className={styles.missionCategoryFilters}>
                 {(['ALL', 'Appetizers', 'Main Courses', 'Desserts', 'Beverages'] as const).map(cat => {
                   const label = cat === 'ALL' ? 'ทั้งหมด (20)' :
-                    cat === 'Appetizers' ? '🥗 Appetizers (4)' :
-                    cat === 'Main Courses' ? '🥩 Main Courses (4)' :
-                    cat === 'Desserts' ? '🍰 Desserts (4)' : '🍹 Beverages (8)'
+                    cat === 'Appetizers' ? 'Appetizers (4)' :
+                    cat === 'Main Courses' ? 'Main Courses (4)' :
+                    cat === 'Desserts' ? 'Desserts (4)' : 'Beverages (8)'
                   return (
                     <button
                       key={cat}
@@ -692,11 +846,9 @@ export default function ExplorePage() {
                 })}
               </div>
 
-              {/* Slider Controls & Touch Hint */}
+              {/* Slider Controls */}
               <div className={styles.missionSliderControls}>
-                <span className={styles.missionSlideHint}>
-                  👉 เลื่อนสไลด์ซ้าย-ขวาเพื่อดูเมนู (แถวเดียว 20 รายการ)
-                </span>
+                <div style={{ flex: 1 }} />
                 <div className={styles.missionSliderArrows}>
                   <button
                     type="button"
@@ -728,7 +880,7 @@ export default function ExplorePage() {
                       className={`${styles.missionItemCard} ${isDone ? styles.missionItemCompleted : ''}`}
                     >
                       <div className={styles.missionItemTop}>
-                        <span className={styles.missionItemEmoji}>{item.emoji}</span>
+                        <span className={styles.missionItemCategoryBadge}>{item.category}</span>
                         <button
                           type="button"
                           className={`${styles.missionCheckBadge} ${isDone ? styles.missionCheckDone : styles.missionCheckPending}`}
@@ -736,7 +888,7 @@ export default function ExplorePage() {
                           title="คลิกเพื่อสลับสถานะ"
                           style={{ border: 'none', cursor: 'pointer', font: 'inherit' }}
                         >
-                          {isDone ? `✓ สแกนแล้ว ${prog?.score ? `(${prog.score}%)` : ''}` : '○ รอสแกน'}
+                          {isDone ? `✓ สแกนแล้ว ${prog?.score ? `(${prog.score}%)` : ''}` : 'รอสแกน'}
                         </button>
                       </div>
                       <h4 className={styles.missionItemEn}>{item.nameEn}</h4>
@@ -750,7 +902,8 @@ export default function ExplorePage() {
                           onClick={() => speak(item.nameEn, item.id)}
                           title="ฟังการออกเสียง"
                         >
-                          {speaking === item.id ? '🔊 อ่าน...' : '🔊 ฟัง'}
+                          <ExploreIcon name="volume" size={13} />
+                          <span>{speaking === item.id ? 'อ่าน...' : 'ฟังเสียง'}</span>
                         </button>
                         <button
                           type="button"
@@ -758,7 +911,8 @@ export default function ExplorePage() {
                           onClick={() => startMissionSpeechPractice(item)}
                           title="ฝึกพูดออกเสียงด้วยไมโครโฟน"
                         >
-                          {isRecording && activeSpeechMissionId === item.id ? '🎙️ ฟัง...' : '🎙️ ซ้อม'}
+                          <ExploreIcon name="mic" size={13} />
+                          <span>{isRecording && activeSpeechMissionId === item.id ? 'ฟัง...' : 'ฝึกพูด'}</span>
                         </button>
                         <button
                           type="button"
@@ -767,13 +921,14 @@ export default function ExplorePage() {
                             setCurrentScanHint(item.nameEn)
                             changeTab('scan')
                             void startCamera()
-                            toast.info(`📷 เตรียมสแกน: "${item.nameEn}"`, {
+                            toast.info(`เตรียมสแกน: "${item.nameEn}"`, {
                               description: 'เล็งกล้องไปที่วัตถุ (หาก AI ขัดข้อง ระบบสำรองจะวิเคราะห์รายการนี้ให้ทันที)',
                             })
                           }}
                           title="เปิดกล้อง AI Scan เมนูนี้"
                         >
-                          📷 สแกน
+                          <ExploreIcon name="camera" size={13} />
+                          <span>สแกน</span>
                         </button>
                         <button
                           type="button"
@@ -782,7 +937,8 @@ export default function ExplorePage() {
                           title="จำลองผลการสแกนด้วยระบบสำรอง (Curriculum Fallback)"
                           style={{ background: '#fcf6e8', borderColor: '#e4d3a8', color: '#7a5a16' }}
                         >
-                          ⚡ จำลอง
+                          <ExploreIcon name="layers" size={13} />
+                          <span>จำลอง</span>
                         </button>
                       </div>
                     </div>
@@ -797,7 +953,7 @@ export default function ExplorePage() {
                   <div className={styles.missionSubmitBanner}>
                     <div className={styles.missionSubmitText}>
                       <h4>
-                        {missionSubmitted ? '✓ ส่งงานสัปดาห์ที่ 2 [F] เรียบร้อยแล้ว' : 'พร้อมประเมินและส่งงานสัปดาห์ที่ 2 หรือยัง?'}
+                        {missionSubmitted ? 'ส่งงานสัปดาห์ที่ 2 [F] เรียบร้อยแล้ว' : 'พร้อมประเมินและส่งงานสัปดาห์ที่ 2'}
                       </h4>
                       <p>
                         {missionSubmitted
@@ -811,7 +967,8 @@ export default function ExplorePage() {
                       onClick={submitWeek2Mission}
                       disabled={isSubmittingMission || completedCount === 0}
                     >
-                      {isSubmittingMission ? 'กำลังส่งงาน...' : missionSubmitted ? '✓ ส่งงานเรียบร้อย (กดส่งซ้ำได้)' : '🎉 บันทึกผล & ส่งงานสัปดาห์ที่ 2 [F]'}
+                      <ExploreIcon name="check" size={16} />
+                      <span>{isSubmittingMission ? 'กำลังส่งงาน...' : missionSubmitted ? 'ส่งงานเรียบร้อย (กดส่งซ้ำได้)' : 'บันทึกผลและส่งงานสัปดาห์ที่ 2 [F]'}</span>
                     </button>
                   </div>
                 )
@@ -820,46 +977,8 @@ export default function ExplorePage() {
           </section>
         )}
 
-        {activeTab === 'library' ? (
-          <div className={styles.contentGrid}>
-            <section className={styles.panel}>
-              <header className={styles.panelHeader}>
-                <div className={styles.headingGroup}>
-                  <span className={styles.headingIcon}><ExploreIcon name="layers" /></span>
-                  <div><h2 className={styles.panelTitle}>คำศัพท์แนะนำ</h2><p className={styles.panelDesc}>เลือกคำศัพท์เพื่อดูวิธีใช้และประโยคตัวอย่าง</p></div>
-                </div>
-                <button type="button" className={styles.textButton} onClick={() => { setVisibleCount(40); setShowVocabulary(true) }}>
-                  ดูทั้งหมด <ExploreIcon name="arrow" size={14} />
-                </button>
-              </header>
-              <div className={styles.vocabGrid}>
-                {featuredItems.map(item => (
-                  <button type="button" className={styles.vocabCard} key={item.nameEn} onClick={() => setViewItem(item)}>
-                    <span className={styles.itemVisual}><EquipmentVisual item={item} /></span>
-                    <span className={styles.itemText}><span className={styles.itemEn}>{item.nameEn}</span><span className={styles.itemTh}>{item.name}</span></span>
-                    <span className={styles.cardArrow}><ExploreIcon name="arrow" size={16} /></span>
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <aside className={`${styles.panel} ${styles.guide}`}>
-              <div className={styles.headingGroup}>
-                <span className={styles.headingIcon}><ExploreIcon name="lightbulb" /></span>
-                <div><h2 className={styles.panelTitle}>เริ่มเรียนรู้อย่างไร</h2><p className={styles.panelDesc}>ใช้เวลาไม่กี่นาทีต่อหนึ่งคำศัพท์</p></div>
-              </div>
-              <div className={styles.steps}>
-                {[
-                  ['01', 'เลือกอุปกรณ์', 'เปิดดูชื่อภาษาอังกฤษและความหมายภาษาไทย'],
-                  ['02', 'ฟังการออกเสียง', 'กดฟังชื่อหรือประโยคตัวอย่างได้ทันที'],
-                  ['03', 'นำไปใช้จริง', 'ศึกษาวิธีใช้และฝึกพูดในบริบทงานบริการ'],
-                ].map(([number, title, detail]) => (
-                  <div className={styles.step} key={number}><span className={styles.stepNumber}>{number}</span><div><strong>{title}</strong><p>{detail}</p></div></div>
-                ))}
-              </div>
-            </aside>
-          </div>
-        ) : (
+        {/* ── TAB 3: AI Scan (กล้องและวิเคราะห์ภาพ) ── */}
+        {activeTab === 'scan' && (
           <div className={styles.cameraLayout}>
             <div style={{
               gridColumn: '1 / -1',
@@ -878,13 +997,13 @@ export default function ExplorePage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <ExploreIcon name="sparkles" size={16} />
                 <span>
-                  <strong>🎯 สแกนอาหาร 20 ชนิด สัปดาห์ที่ 2:</strong> สำเร็จแล้ว{' '}
+                  <strong>ภารกิจสัปดาห์ที่ 2:</strong> สแกนสำเร็จแล้ว{' '}
                   {WEEK2_MISSION_ITEMS.filter(i => missionProgress[i.id]?.scanned).length}/20 เมนู
                 </span>
               </div>
               <button
                 type="button"
-                onClick={() => changeTab('mission')}
+                onClick={() => changeTab('week2')}
                 style={{
                   border: 'none',
                   borderRadius: 10,
@@ -1129,8 +1248,8 @@ export default function ExplorePage() {
           >
             <header className={styles.modalHeader}>
               <div>
-                <h3 id="fallback-modal-title">🎯 โหมดสแกนจำลอง (Fallback Simulator)</h3>
-                <p>เลือกวัตถุหรือเมนูอาหารเพื่อจำลองการสแกนและทำภารกิจสัปดาห์ที่ 2 ต่อได้ทันที</p>
+                <h3 id="fallback-modal-title">โหมดสแกนจำลอง (Fallback Simulator)</h3>
+                <p>เลือกอุปกรณ์หรือเมนูอาหารเพื่อจำลองการสแกนและบันทึกผลการเรียนรู้ได้ทันที</p>
               </div>
               <button type="button" className={styles.iconButton} aria-label="ปิด" onClick={() => setShowFallbackModal(false)}>
                 <ExploreIcon name="close" size={17} />
@@ -1141,7 +1260,7 @@ export default function ExplorePage() {
             <div style={{ padding: '14px 18px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
               <input
                 type="search"
-                placeholder="ค้นหาชื่อภาษาอังกฤษ หรือภาษาไทย (เช่น Caesar Salad, Ribeye, ซุป...)"
+                placeholder="ค้นหาชื่ออุปกรณ์หรือเมนูอาหาร (เช่น Fork, Caesar Salad, Ribeye, ซุป)..."
                 value={fallbackSearch}
                 onChange={e => setFallbackSearch(e.target.value)}
                 style={{
@@ -1157,15 +1276,15 @@ export default function ExplorePage() {
               <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                 {[
                   { id: 'ALL', label: 'ทั้งหมด' },
-                  { id: 'WEEK2', label: '🥗 เมนูสัปดาห์ที่ 2 (20 เมนู)' },
-                  { id: 'TABLEWARE', label: '🍽️ อุปกรณ์บนโต๊ะอาหาร' },
+                  { id: 'WEEK1', label: 'สัปดาห์ที่ 1: อุปกรณ์บนโต๊ะอาหาร (51)' },
+                  { id: 'WEEK2', label: 'สัปดาห์ที่ 2: เมนูอาหารและเครื่องดื่ม (20)' },
                 ].map(tab => (
                   <button
                     key={tab.id}
                     type="button"
-                    onClick={() => setFallbackFilter(tab.id as 'ALL' | 'WEEK2' | 'TABLEWARE')}
+                    onClick={() => setFallbackFilter(tab.id as 'ALL' | 'WEEK1' | 'WEEK2')}
                     style={{
-                      padding: '6px 12px',
+                      padding: '6px 14px',
                       borderRadius: 99,
                       border: '1px solid',
                       borderColor: fallbackFilter === tab.id ? '#174b37' : '#d2ded7',
