@@ -144,6 +144,16 @@ export default function ExplorePage() {
   const [fallbackFilter, setFallbackFilter] = useState<'ALL' | 'WEEK1' | 'WEEK2'>('ALL')
   const [currentScanHint, setCurrentScanHint] = useState<string | null>(null)
 
+  // ── Real-time Live Scan State ──
+  const [liveDetected, setLiveDetected] = useState<{
+    nameEn: string
+    nameTh: string
+    confidence: number
+    result: ScanResult
+    image?: string
+  } | null>(null)
+  const [isLiveScanning, setIsLiveScanning] = useState(false)
+
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -218,6 +228,7 @@ export default function ExplorePage() {
   async function startCamera() {
     if (streamRef.current?.active) return
     setScanError('')
+    setLiveDetected(null)
     if (!navigator.mediaDevices?.getUserMedia) {
       setScanError('อุปกรณ์หรือเบราว์เซอร์นี้ไม่รองรับกล้อง กรุณาอัปโหลดรูปภาพแทน')
       return
@@ -237,6 +248,7 @@ export default function ExplorePage() {
         await videoRef.current.play()
       }
       setIsCameraActive(true)
+      setAutoScan(true)
     } catch (error) {
       console.error('Camera unavailable:', error)
       setScanError('เปิดกล้องไม่ได้ กรุณาตรวจสอบสิทธิ์กล้องหรืออัปโหลดรูปภาพแทน')
@@ -333,28 +345,60 @@ export default function ExplorePage() {
     if (!video || !canvas || requestPendingRef.current || scanAnim || scanResult || activeTab !== 'scan' || document.visibilityState !== 'visible') return
     if (!video.videoWidth || !video.videoHeight) return
 
-    canvas.width = video.videoWidth
-    canvas.height = video.videoHeight
+    // Scale frame down to 440px wide for rapid real-time AI analysis (~20-25KB)
+    const scale = Math.min(1, 440 / video.videoWidth)
+    canvas.width = Math.round(video.videoWidth * scale)
+    canvas.height = Math.round(video.videoHeight * scale)
     const context = canvas.getContext('2d')
     if (!context) return
     context.drawImage(video, 0, 0, canvas.width, canvas.height)
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.65)
     requestPendingRef.current = true
+    setIsLiveScanning(true)
     try {
       const result = await analyzeImageAPI(dataUrl.slice(dataUrl.indexOf(',') + 1), 'image/jpeg', {
         fallbackItemEn: currentScanHint || undefined
       }) as ScanResult
-      if ((result.confidence || 0) >= 60) applyScanResult(result, dataUrl)
+      if (result && (result.confidence || 0) >= 55) {
+        setLiveDetected({
+          nameEn: result.name_en || result.name || 'Equipment',
+          nameTh: result.name_th || '',
+          confidence: result.confidence || 85,
+          result,
+          image: dataUrl,
+        })
+
+        // Auto-Check Week 2 Mission Item continuously on the fly
+        const searchTarget = `${result.name_en || ''} ${result.name || ''} ${result.name_th || ''}`
+        const missionMatch = matchMissionItem(searchTarget)
+        if (missionMatch) {
+          setMissionProgress(prev => {
+            const next = {
+              ...prev,
+              [missionMatch.id]: {
+                scanned: true,
+                score: prev[missionMatch.id]?.score || 100,
+                timestamp: new Date().toISOString(),
+              },
+            }
+            try {
+              localStorage.setItem('finemodel_week2_f_mission', JSON.stringify(next))
+            } catch {}
+            return next
+          })
+        }
+      }
     } catch (error) {
-      console.warn('Auto scan frame failed:', error)
+      console.warn('Realtime scan frame failed:', error)
     } finally {
       requestPendingRef.current = false
+      setIsLiveScanning(false)
     }
-  }, [activeTab, applyScanResult, currentScanHint, scanAnim, scanResult])
+  }, [activeTab, currentScanHint, scanAnim, scanResult])
 
   useEffect(() => {
     if (isCameraActive && autoScan && activeTab === 'scan' && !scanResult) {
-      autoScanTimerRef.current = setInterval(() => void captureAutoFrame(), 8000)
+      autoScanTimerRef.current = setInterval(() => void captureAutoFrame(), 2600)
     }
     return () => {
       if (autoScanTimerRef.current) clearInterval(autoScanTimerRef.current)
@@ -1186,7 +1230,10 @@ export default function ExplorePage() {
                 {isCameraActive && !scanResult && (
                   <>
                     <div className={styles.cameraTop}>
-                      <span className={styles.statusBadge}><span className={styles.statusDot} /> กล้องพร้อมใช้งาน</span>
+                      <span className={styles.statusBadge}>
+                        <span className={isLiveScanning ? styles.statusDotActive : styles.statusDot} />
+                        {isLiveScanning ? 'กำลังสแกนสดเรียลไทม์...' : 'กล้องสแกนสดเรียลไทม์'}
+                      </span>
                       <div style={{ display: 'flex', gap: 6 }}>
                         <button
                           type="button"
@@ -1198,15 +1245,49 @@ export default function ExplorePage() {
                           🎯 เลือกจำลอง
                         </button>
                         <button type="button" className={`${styles.autoButton} ${autoScan ? styles.autoActive : ''}`} onClick={() => setAutoScan(value => !value)}>
-                          <ExploreIcon name="scan" size={14} /> สแกนอัตโนมัติ {autoScan ? 'เปิด' : 'ปิด'}
+                          <ExploreIcon name="scan" size={14} /> สแกนสดเรียลไทม์ {autoScan ? 'เปิด' : 'พัก'}
                         </button>
                       </div>
                     </div>
                     <div className={styles.scanCorners} />
+                    <div className={styles.liveRadarRing} />
+                    <div className={styles.liveRadarPulse} />
                     {scanAnim && <div className={styles.scanLine} />}
+
+                    {/* Floating Detected Card during Real-time Live Scan */}
+                    {liveDetected && (
+                      <div className={styles.liveDetectedCard}>
+                        <div className={styles.liveDetectedInfo}>
+                          <span className={styles.liveDetectedBadge}>
+                            ✨ ตรวจพบวัตถุ ({Math.round(liveDetected.confidence)}%)
+                          </span>
+                          <strong className={styles.liveDetectedTitle}>{liveDetected.nameEn}</strong>
+                          <span className={styles.liveDetectedThai}>{liveDetected.nameTh}</span>
+                        </div>
+                        <div className={styles.liveDetectedActions}>
+                          <button
+                            type="button"
+                            className={styles.liveAudioBtn}
+                            onClick={() => speak(liveDetected.nameEn, 'live-obj')}
+                            title="ฟังเสียงคำศัพท์"
+                          >
+                            🔊
+                          </button>
+                          <button
+                            type="button"
+                            className={styles.liveLockBtn}
+                            onClick={() => applyScanResult(liveDetected.result, liveDetected.image)}
+                            title="เปิดดูบทเรียน FINE เต็มรูปแบบ"
+                          >
+                            เปิดบทเรียน F–I–N–E →
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <div className={styles.cameraBottom}>
                       <button type="button" className={`${styles.primaryButton} ${styles.analyzeButton} ${scanAnim ? styles.buttonDisabled : ''}`} disabled={scanAnim} onClick={() => void captureFrame()}>
-                        <ExploreIcon name={scanAnim ? 'refresh' : 'scan'} size={18} /> {scanAnim ? 'กำลังวิเคราะห์...' : 'ถ่ายภาพและวิเคราะห์'}
+                        <ExploreIcon name={scanAnim ? 'refresh' : 'scan'} size={18} /> {scanAnim ? 'กำลังวิเคราะห์...' : 'ถ่ายภาพและวิเคราะห์ทันที'}
                       </button>
                     </div>
                   </>
@@ -1239,6 +1320,33 @@ export default function ExplorePage() {
                 </div>
               ) : (
                 <div className={styles.resultContent}>
+                  {/* Action Bar: Return to Real-time Live Camera Scan */}
+                  <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScanResult(null)
+                        setLiveDetected(null)
+                        void startCamera()
+                      }}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        padding: '8px 14px',
+                        borderRadius: 10,
+                        background: '#184735',
+                        color: '#ffffff',
+                        border: '1px solid #13392a',
+                        fontSize: '11.5px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <ExploreIcon name="camera" size={15} /> 🔄 สแกนวัตถุชิ้นอื่นต่อไป (กลับสู่กล้องสดเรียลไทม์)
+                    </button>
+                  </div>
+
                   <header className={styles.resultHeader}>
                     <span className={styles.headingIcon}><ExploreIcon name="cube" /></span>
                     <div className={styles.resultHeaderText}>

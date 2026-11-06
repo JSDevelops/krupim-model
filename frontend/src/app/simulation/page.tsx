@@ -630,14 +630,6 @@ export default function SimulationPage() {
               </button>
             </form>
           </section>
-
-          <button
-            type="button"
-            className={styles.finishButton}
-            onClick={() => void finishSimulation()}
-          >
-            จบและประเมินผล
-          </button>
         </div>
       </main>
       <StudentFINENav />
