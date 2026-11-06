@@ -97,3 +97,4 @@ export function generateChatFallback(userMessage: string): string {
 
 ผู้เรียนสามารถฝึกพูดคำศัพท์ในหน้า **"สำรวจอุปกรณ์ (Explore)"** หรือสอบถามเรื่องการจัดโต๊ะอาหารและแก้วน้ำเพิ่มเติมได้ตลอดเวลาครับ!`
 }
+
