@@ -9,22 +9,59 @@ import { authenticatedFetch } from '@/lib/api'
 import { toast } from 'sonner'
 import styles from './simulation.module.css'
 
-type Message = { role: 'user' | 'ai'; text: string }
-type Feedback = { text: string; score: number }
+type Message = {
+  role: 'user' | 'ai'
+  text: string
+  translation?: string
+  showTranslation?: boolean
+}
+
+type Feedback = {
+  text: string
+  score: number
+  suggestions?: string[]
+  knowledge?: number
+  skills?: number
+  attitude?: number
+  competency?: number
+}
+
 type RecognitionEvent = { results: ArrayLike<{ 0: { transcript: string } }> }
-type Recognition = { lang: string; interimResults: boolean; maxAlternatives: number; onresult: ((event: RecognitionEvent) => void) | null; onerror: (() => void) | null; onend: (() => void) | null; start: () => void; stop: () => void }
+type Recognition = {
+  lang: string
+  interimResults: boolean
+  maxAlternatives: number
+  onresult: ((event: RecognitionEvent) => void) | null
+  onerror: (() => void) | null
+  onend: (() => void) | null
+  start: () => void
+  stop: () => void
+}
 type RecognitionConstructor = new () => Recognition
 
 const DEFAULT_SCENARIO_ID = '44444444-4444-4444-4444-444444444441'
 const TIME_LIMIT = 600
-const defaultScripts = [
-  'Good evening! We have a reservation for two under Smith.',
-  'Could we have a table by the window, please?',
-  'What would you recommend for tonight?',
-  "I'll have the grilled salmon and a glass of white wine, please.",
-  'Thank you. The service was excellent.',
+
+const INITIAL_CUSTOMER_MESSAGE: Message = {
+  role: 'ai',
+  text: 'Good evening! I have a reservation for two under the name Smith. Is our table ready?',
+  translation: 'สวัสดีตอนเย็นครับ! ผมจองโต๊ะสำหรับ 2 ท่านไว้ในชื่อ สมิธ โต๊ะพร้อมแล้วหรือยังครับ?',
+  showTranslation: false,
+}
+
+const INITIAL_SUGGESTIONS = [
+  'Good evening, Mr. Smith! Welcome to our restaurant. Yes, your table is ready. Right this way, please.',
+  'Good evening, sir! Please follow me to your table by the window. Here are your menus.',
 ]
-type LearningScenario = { id: string; title: string; titleTh: string; description: string; sentences: string[] }
+
+type LearningScenario = {
+  id: string
+  title: string
+  titleTh: string
+  description: string
+  sentences?: string[]
+}
+
 const criteria: Array<{ label: string; score: number; icon: StudentIconName; tone: string }> = [
   { label: 'การทักทายและการพูดจา', score: 20, icon: 'message', tone: '#39745d' },
   { label: 'ความถูกต้องของภาษา', score: 30, icon: 'book', tone: '#4d7896' },
@@ -40,10 +77,12 @@ export default function SimulationPage() {
   const { user } = useRole()
   const [started, setStarted] = useState(false)
   const [finished, setFinished] = useState(false)
-  const [scriptIndex, setScriptIndex] = useState(0)
+  const [turnCount, setTurnCount] = useState(0)
+  const [stage, setStage] = useState('Greeting & Seating')
+  const [suggestedResponses, setSuggestedResponses] = useState<string[]>(INITIAL_SUGGESTIONS)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
-  const [score, setScore] = useState(0)
+  const [score, setScore] = useState(20)
   const [timeLeft, setTimeLeft] = useState(TIME_LIMIT)
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [evaluating, setEvaluating] = useState(false)
@@ -51,15 +90,20 @@ export default function SimulationPage() {
   const [listening, setListening] = useState(false)
   const [scenarioId, setScenarioId] = useState(DEFAULT_SCENARIO_ID)
   const [scenario, setScenario] = useState<LearningScenario | null>(null)
+
   const messageRef = useRef<Message[]>([])
-  const scoreRef = useRef(0)
+  const turnCountRef = useRef(0)
+  const scoreRef = useRef(20)
   const recognitionRef = useRef<Recognition | null>(null)
   const chatEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => { messageRef.current = messages }, [messages])
+  useEffect(() => { turnCountRef.current = turnCount }, [turnCount])
   useEffect(() => { scoreRef.current = score }, [score])
   useEffect(() => { chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) }, [messages, typing])
   useEffect(() => () => { recognitionRef.current?.stop(); window.speechSynthesis?.cancel() }, [])
+
+  // Load scenario from query parameter if present
   useEffect(() => {
     const selectedId = new URLSearchParams(window.location.search).get('scenario')?.trim()
     if (!selectedId) return
@@ -67,79 +111,528 @@ export default function SimulationPage() {
     const timer = window.setTimeout(() => {
       setScenarioId(selectedId)
       void authenticatedFetch('/api/student/navigate', { signal: controller.signal })
-        .then(async response => response.ok ? response.json() as Promise<{ scenarios?: LearningScenario[] }> : null)
+        .then(async response => (response.ok ? (response.json() as Promise<{ scenarios?: LearningScenario[] }>) : null))
         .then(payload => setScenario(payload?.scenarios?.find(item => item.id === selectedId) || null))
         .catch(() => setScenario(null))
     }, 0)
     return () => { window.clearTimeout(timer); controller.abort() }
   }, [])
 
-  const scripts = scenario?.sentences?.length ? scenario.sentences : defaultScripts
-
   const speak = useCallback((text: string) => {
     if (!window.speechSynthesis) return
     window.speechSynthesis.cancel()
-    const utterance = new SpeechSynthesisUtterance(text); utterance.lang = 'en-US'; utterance.rate = .9
-    const voices = window.speechSynthesis.getVoices(); utterance.voice = voices.find(voice => voice.lang.startsWith('en') && /Google|Natural/.test(voice.name)) || voices.find(voice => voice.lang.startsWith('en')) || null
+    const utterance = new SpeechSynthesisUtterance(text)
+    utterance.lang = 'en-US'
+    utterance.rate = 0.88
+    const voices = window.speechSynthesis.getVoices()
+    utterance.voice =
+      voices.find(voice => voice.lang.startsWith('en') && /Google|Natural|Male|David/i.test(voice.name)) ||
+      voices.find(voice => voice.lang.startsWith('en')) ||
+      null
     window.speechSynthesis.speak(utterance)
   }, [])
 
   const finishSimulation = useCallback(async () => {
     if (finished) return
-    setFinished(true); setEvaluating(true); recognitionRef.current?.stop()
+    setFinished(true)
+    setEvaluating(true)
+    recognitionRef.current?.stop()
+    window.speechSynthesis?.cancel()
+
     try {
-      const response = await authenticatedFetch('/api/simulation', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages: messageRef.current, scenario_id: scenarioId }) })
+      const response = await authenticatedFetch('/api/simulation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: messageRef.current.map(m => ({ role: m.role, text: m.text })),
+          scenario_id: scenarioId,
+        }),
+      })
       const payload = await response.json()
       if (!response.ok) throw new Error(payload.error || 'ประเมินผลไม่สำเร็จ')
-      setFeedback({ text: String(payload.feedback || 'ฝึกซ้อมได้ดี ควรทบทวนประโยคบริการอย่างสม่ำเสมอ'), score: Number(payload.score ?? scoreRef.current) })
+      setFeedback({
+        text: String(payload.feedback || 'ฝึกซ้อมได้ดี ควรทบทวนประโยคบริการอย่างสม่ำเสมอ'),
+        score: Number(payload.score ?? scoreRef.current),
+        suggestions: Array.isArray(payload.suggestions) ? payload.suggestions : [],
+        knowledge: Number(payload.knowledge ?? 0),
+        skills: Number(payload.skills ?? 0),
+        attitude: Number(payload.attitude ?? 0),
+        competency: Number(payload.competency ?? 0),
+      })
     } catch (error) {
-      setFeedback({ text: error instanceof Error ? error.message : 'ระบบบันทึกผลแล้ว แต่ไม่สามารถสร้างคำแนะนำเพิ่มเติมได้', score: scoreRef.current })
-    } finally { setEvaluating(false) }
+      setFeedback({
+        text: error instanceof Error ? error.message : 'ระบบบันทึกผลแล้ว แต่ไม่สามารถสร้างคำแนะนำเพิ่มเติมได้',
+        score: scoreRef.current,
+      })
+    } finally {
+      setEvaluating(false)
+    }
   }, [finished, scenarioId])
 
+  // Timer countdown
   useEffect(() => {
     if (!started || finished) return
-    const timer = window.setInterval(() => setTimeLeft(value => { if (value <= 1) { window.clearInterval(timer); void finishSimulation(); return 0 } return value - 1 }), 1000)
+    const timer = window.setInterval(() => {
+      setTimeLeft(value => {
+        if (value <= 1) {
+          window.clearInterval(timer)
+          void finishSimulation()
+          return 0
+        }
+        return value - 1
+      })
+    }, 1000)
     return () => window.clearInterval(timer)
   }, [started, finished, finishSimulation])
 
   function startSimulation() {
-    setStarted(true); setTyping(true)
-    window.setTimeout(() => { const first = scripts[0]; setMessages([{ role: 'ai', text: first }]); setScriptIndex(1); setTyping(false); speak(first) }, 650)
+    setStarted(true)
+    setTyping(true)
+    setTurnCount(0)
+    setScore(20)
+    setStage('Greeting & Seating')
+    setSuggestedResponses(INITIAL_SUGGESTIONS)
+    window.setTimeout(() => {
+      setMessages([INITIAL_CUSTOMER_MESSAGE])
+      setTyping(false)
+      speak(INITIAL_CUSTOMER_MESSAGE.text)
+    }, 600)
   }
 
-  function sendMessage(value = input) {
+  async function sendMessage(value = input) {
     const text = value.trim()
     if (!text || finished || typing) return
-    setMessages(items => [...items, { role: 'user', text }]); setInput('')
-    if (scriptIndex >= scripts.length) { window.setTimeout(() => void finishSimulation(), 400); return }
+
+    // 1. Append waiter message
+    const updatedMessages: Message[] = [...messages, { role: 'user', text }]
+    setMessages(updatedMessages)
+    setInput('')
     setTyping(true)
-    window.setTimeout(() => {
-      const reply = scripts[scriptIndex]
-      setMessages(items => [...items, { role: 'ai', text: reply }]); setScriptIndex(index => index + 1)
-      setScore(value => Math.min(100, value + 18)); setTyping(false); speak(reply)
-    }, 750)
+
+    try {
+      // 2. Call AI Customer Simulation API
+      const response = await authenticatedFetch('/api/simulation/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: updatedMessages.map(m => ({ role: m.role, text: m.text })),
+          userMessage: text,
+          turnCount: turnCountRef.current + 1,
+          scenarioTitle: scenario?.title || 'Fine Dining Restaurant',
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('ไม่สามารถเชื่อมต่อลูกค้า AI ได้')
+      }
+
+      const data = await response.json() as {
+        reply: string
+        translationTh?: string
+        stage?: string
+        suggestedResponses?: string[]
+        isFinished?: boolean
+      }
+
+      const nextCustomerMessage: Message = {
+        role: 'ai',
+        text: data.reply,
+        translation: data.translationTh || '',
+        showTranslation: false,
+      }
+
+      setMessages(prev => [...prev, nextCustomerMessage])
+      setTurnCount(count => count + 1)
+      if (data.stage) setStage(data.stage)
+      if (data.suggestedResponses?.length) setSuggestedResponses(data.suggestedResponses)
+      setScore(s => Math.min(100, s + 16))
+      speak(data.reply)
+
+      if (data.isFinished) {
+        toast.success('การบริการครบทุกขั้นตอนแล้ว!', {
+          description: 'คุณสามารถกดปุ่ม "จบและประเมินผล" เพื่อดูสรุปคะแนนทักษะได้เลยครับ',
+        })
+      }
+    } catch (err) {
+      console.warn('AI Chat error, continuing session:', err)
+      toast.error('มีปัญหาในการเชื่อมต่อ AI ลูกค้าชั่วคราว กำลังใช้การตอบกลับสำรอง')
+      const fallbackReply: Message = {
+        role: 'ai',
+        text: 'Thank you very much. Could we please have the bill whenever you are ready?',
+        translation: 'ขอบคุณมากครับ ขอเช็คบิลได้เลยครับเมื่อท่านพร้อม',
+        showTranslation: false,
+      }
+      setMessages(prev => [...prev, fallbackReply])
+      speak(fallbackReply.text)
+    } finally {
+      setTyping(false)
+    }
+  }
+
+  function toggleMessageTranslation(index: number) {
+    setMessages(prev =>
+      prev.map((msg, i) => (i === index ? { ...msg, showTranslation: !msg.showTranslation } : msg)),
+    )
+  }
+
+  function useSuggestion(phrase: string) {
+    setInput(phrase)
+    toast.info('ใส่ประโยคแนะนำในช่องตอบแล้ว สามารถกดส่งหรือฝึกออกเสียงได้ทันที')
   }
 
   function toggleSpeech() {
-    if (listening) { recognitionRef.current?.stop(); return }
-    const speechWindow = window as typeof window & { SpeechRecognition?: RecognitionConstructor; webkitSpeechRecognition?: RecognitionConstructor }
+    if (listening) {
+      recognitionRef.current?.stop()
+      return
+    }
+    const speechWindow = window as typeof window & {
+      SpeechRecognition?: RecognitionConstructor
+      webkitSpeechRecognition?: RecognitionConstructor
+    }
     const Constructor = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition
     if (!Constructor) return toast.warning('อุปกรณ์นี้ไม่รองรับการพิมพ์ด้วยเสียง กรุณาพิมพ์คำตอบแทน')
-    const recognition = new Constructor(); recognition.lang = 'en-US'; recognition.interimResults = false; recognition.maxAlternatives = 1
-    recognition.onresult = event => { const transcript = event.results[0]?.[0]?.transcript || ''; setInput(transcript); if (transcript) sendMessage(transcript) }
-    recognition.onerror = () => { setListening(false); toast.error('ไม่สามารถรับเสียงได้ กรุณาตรวจสอบสิทธิ์ไมโครโฟน') }
-    recognition.onend = () => setListening(false); recognitionRef.current = recognition; setListening(true); recognition.start()
+    const recognition = new Constructor()
+    recognition.lang = 'en-US'
+    recognition.interimResults = false
+    recognition.maxAlternatives = 1
+    recognition.onresult = event => {
+      const transcript = event.results[0]?.[0]?.transcript || ''
+      setInput(transcript)
+      if (transcript) void sendMessage(transcript)
+    }
+    recognition.onerror = () => {
+      setListening(false)
+      toast.error('ไม่สามารถรับเสียงได้ กรุณาตรวจสอบสิทธิ์ไมโครโฟน')
+    }
+    recognition.onend = () => setListening(false)
+    recognitionRef.current = recognition
+    setListening(true)
+    recognition.start()
   }
 
   function resetSimulation() {
-    setStarted(false); setFinished(false); setScriptIndex(0); setMessages([]); setInput(''); setScore(0); setTimeLeft(TIME_LIMIT); setFeedback(null); setTyping(false)
+    setStarted(false)
+    setFinished(false)
+    setTurnCount(0)
+    setMessages([])
+    setInput('')
+    setScore(20)
+    setTimeLeft(TIME_LIMIT)
+    setFeedback(null)
+    setTyping(false)
   }
 
-  if (!started) return <><main className={styles.introPage}><div className={styles.introShell}><section className={styles.hero}><div className={styles.heroCopy}><span className={styles.eyebrow}><StudentIcon name="cube" size={15} />Navigate simulation</span><h1>{scenario?.title || 'ฝึกสถานการณ์ร้านอาหารระดับ 5 ดาว'}</h1><p>{scenario?.description || 'รับบทพนักงานบริการ ฝึกทักทาย จัดที่นั่ง แนะนำเมนู และรับรายการเป็นภาษาอังกฤษ'}</p><div className={styles.heroMeta}><span>ระดับเริ่มต้น</span><span>10 นาที</span><span>100 คะแนน</span></div></div><div className={styles.restaurantVisual}><span>{scenario?.titleTh || 'Fine dining room'}</span></div></section><section className={styles.introGrid}><article className={styles.card}><div className={styles.cardTitle}><span className={styles.iconBox}><StudentIcon name="target" /></span><div><h2>เป้าหมายของสถานการณ์</h2><p>{scenario?.titleTh || 'Greeting and seating'}</p></div></div><p className={styles.cardText}>{scenario?.description || 'สื่อสารกับลูกค้าอย่างสุภาพ เลือกประโยคให้เหมาะกับบริบท และดำเนินบทสนทนาจนครบทุกช่วงบริการ'}</p><button type="button" className={styles.startButton} onClick={startSimulation}>เริ่มฝึกสถานการณ์ <StudentIcon name="arrowRight" size={17} /></button></article><article className={styles.card}><div className={styles.cardTitle}><span className={`${styles.iconBox} ${styles.goldIcon}`}><StudentIcon name="chart" /></span><div><h2>เกณฑ์ประเมิน</h2><p>บันทึกผลลงแฟ้มสะสมงาน</p></div></div><div className={styles.criteria}>{criteria.map(item => <div key={item.label}><span className={styles.criterionIcon} style={{ color: item.tone }}><StudentIcon name={item.icon} size={16} /></span><span>{item.label}</span><strong>{item.score}</strong></div>)}</div></article></section><Link href="/student/navigate" className={styles.backLink}><StudentIcon name="arrowLeft" size={16} />กลับไปเลือกสถานการณ์</Link></div></main><StudentFINENav /></>
+  // ─── 1. INTRO PAGE ───────────────────────────────────────────
+  if (!started) {
+    return (
+      <>
+        <main className={styles.introPage}>
+          <div className={styles.introShell}>
+            <section className={styles.hero}>
+              <div className={styles.heroCopy}>
+                <span className={styles.eyebrow}>
+                  <StudentIcon name="cube" size={15} />
+                  Navigate · AI Customer Simulation
+                </span>
+                <h1>{scenario?.title || 'ฝึกสนทนากับลูกค้าจำลอง AI'}</h1>
+                <p>
+                  {scenario?.description ||
+                    'สวมบทบาทเป็นพนักงานบริการ (Waiter/Waitress) ฝึกต้อนรับ แนะนำเมนู รับออร์เดอร์อาหาร และส่งลูกค้า โดยมี AI สวมบทบาทเป็น Mr. Smith ลูกค้าต่างชาติ'}
+                </p>
+                <div className={styles.heroMeta}>
+                  <span>ระดับเริ่มต้น - ปานกลาง</span>
+                  <span>10 นาที</span>
+                  <span>100 คะแนนเต็ม</span>
+                  <span>AI Interactive Roleplay</span>
+                </div>
+              </div>
+              <div className={styles.restaurantVisual}>
+                <span>{scenario?.titleTh || '5-Star Hotel Dining Room'}</span>
+              </div>
+            </section>
 
-  if (finished) return <><main className={styles.resultPage}><section className={styles.resultCard}><span className={styles.resultIcon}><StudentIcon name="award" size={28} /></span><span className={styles.eyebrow}>Session completed</span><h1>จบสถานการณ์จำลองแล้ว</h1>{evaluating ? <div className={styles.evaluating}><StudentIcon name="refresh" size={22} /><span>กำลังประเมินและบันทึกผล</span></div> : <><div className={styles.resultScore}>{feedback?.score ?? score}<small>/ 100 คะแนน</small></div><div className={styles.feedback}><StudentIcon name="message" size={18} /><p>{feedback?.text}</p></div><div className={styles.resultActions}><button type="button" className={styles.startButton} onClick={resetSimulation}><StudentIcon name="refresh" size={16} />ฝึกอีกครั้ง</button><Link className={styles.secondaryButton} href="/student/exhibit">ดูผลการเรียน</Link></div></>}</section></main><StudentFINENav /></>
+            <section className={styles.introGrid}>
+              <article className={styles.card}>
+                <div className={styles.cardTitle}>
+                  <span className={styles.iconBox}>
+                    <StudentIcon name="target" />
+                  </span>
+                  <div>
+                    <h2>เป้าหมายสถานการณ์จริง</h2>
+                    <p>จำลองการบริการอาหารและเครื่องดื่มครบ 5 ขั้นตอน</p>
+                  </div>
+                </div>
+                <p className={styles.cardText}>
+                  ฝึกสื่อสารภาษาอังกฤษอย่างสุภาพ โต้ตอบกับลูกค้า AI (Mr. Smith) ตามขั้นตอนมาตรฐานงานบริการโรงแรม:
+                  ต้อนรับและตรวจสอบการจอง, เสิร์ฟน้ำและมอบเมนู, รับออร์เดอร์อาหาร, สอบถามความพึงพอใจ และการเช็คบิลส่งลูกค้า
+                </p>
+                <button type="button" className={styles.startButton} onClick={startSimulation}>
+                  เริ่มฝึกสถานการณ์จำลองกับลูกค้า AI <StudentIcon name="arrowRight" size={17} />
+                </button>
+              </article>
 
-  const progress = Math.round((scriptIndex / scripts.length) * 100)
-  return <><main className={styles.sessionPage}><div className={styles.sessionShell}><header className={styles.sessionHeader}><div><span className={styles.eyebrow}>Greeting and seating</span><h1>Restaurant Simulation</h1></div><div className={styles.sessionStats}><span><StudentIcon name="clock" size={15} />{formatTime(timeLeft)}</span><span>{progress}%</span></div></header><div className={styles.progressTrack}><span style={{ width: `${progress}%` }} /></div><section className={styles.chatPanel}><div className={styles.customer}><div className={styles.customerAvatar}><StudentIcon name="user" size={22} /></div><div><strong>Mr. Smith</strong><span>ลูกค้าจำลอง</span></div><button type="button" onClick={() => messages.at(-1)?.role === 'ai' && speak(messages.at(-1)?.text || '')} aria-label="ฟังประโยคล่าสุด"><StudentIcon name="volume" size={18} /></button></div><div className={styles.messages} aria-live="polite">{messages.map((message, index) => <div key={`${message.role}-${index}`} className={`${styles.message} ${message.role === 'user' ? styles.userMessage : styles.aiMessage}`}><span>{message.role === 'user' ? user?.name || 'นักเรียน' : 'Customer'}</span><p>{message.text}</p></div>)}{typing && <div className={`${styles.message} ${styles.aiMessage}`}><span>Customer</span><p className={styles.typing}>กำลังตอบกลับ</p></div>}<div ref={chatEndRef} /></div><form className={styles.composer} onSubmit={event => { event.preventDefault(); sendMessage() }}><button type="button" className={`${styles.micButton} ${listening ? styles.listening : ''}`} onClick={toggleSpeech} aria-label={listening ? 'หยุดรับเสียง' : 'ตอบด้วยเสียง'}><StudentIcon name="mic" size={18} /></button><input value={input} onChange={event => setInput(event.target.value)} placeholder="พิมพ์คำตอบภาษาอังกฤษ..." maxLength={1000} disabled={typing} /><button type="submit" className={styles.sendButton} disabled={!input.trim() || typing} aria-label="ส่งคำตอบ"><StudentIcon name="arrowRight" size={18} /></button></form></section><button type="button" className={styles.finishButton} onClick={() => void finishSimulation()}>จบและประเมินผล</button></div></main><StudentFINENav /></>
+              <article className={styles.card}>
+                <div className={styles.cardTitle}>
+                  <span className={`${styles.iconBox} ${styles.goldIcon}`}>
+                    <StudentIcon name="chart" />
+                  </span>
+                  <div>
+                    <h2>เกณฑ์การประเมิน 4 ด้าน</h2>
+                    <p>ระบบ AI จะวิเคราะห์เมื่อจบการฝึก</p>
+                  </div>
+                </div>
+                <div className={styles.criteria}>
+                  {criteria.map(item => (
+                    <div key={item.label}>
+                      <span className={styles.criterionIcon} style={{ color: item.tone }}>
+                        <StudentIcon name={item.icon} size={16} />
+                      </span>
+                      <span>{item.label}</span>
+                      <strong>{item.score}</strong>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            </section>
+
+            <Link href="/student/navigate" className={styles.backLink}>
+              <StudentIcon name="arrowLeft" size={16} />
+              กลับไปหน้าเลือกสถานการณ์
+            </Link>
+          </div>
+        </main>
+        <StudentFINENav />
+      </>
+    )
+  }
+
+  // ─── 2. RESULT PAGE ──────────────────────────────────────────
+  if (finished) {
+    return (
+      <>
+        <main className={styles.resultPage}>
+          <section className={styles.resultCard}>
+            <span className={styles.resultIcon}>
+              <StudentIcon name="award" size={28} />
+            </span>
+            <span className={styles.eyebrow}>Simulation Completed</span>
+            <h1>จบสถานการณ์จำลองแล้ว</h1>
+
+            {evaluating ? (
+              <div className={styles.evaluating}>
+                <StudentIcon name="refresh" size={22} />
+                <span>AI กำลังวิเคราะห์และบันทึกคะแนน...</span>
+              </div>
+            ) : (
+              <>
+                <div className={styles.resultScore}>
+                  {feedback?.score ?? score}
+                  <small>/ 100 คะแนน</small>
+                </div>
+
+                <div className={styles.feedback}>
+                  <StudentIcon name="message" size={18} />
+                  <div>
+                    <strong>ผลการประเมินจากผู้เชี่ยวชาญ AI:</strong>
+                    <p>{feedback?.text}</p>
+                    {feedback?.suggestions && feedback.suggestions.length > 0 && (
+                      <ul style={{ margin: '8px 0 0', paddingLeft: '18px', fontSize: '9.5px' }}>
+                        {feedback.suggestions.map((s, idx) => (
+                          <li key={idx}>{s}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+
+                <div className={styles.resultActions}>
+                  <button type="button" className={styles.startButton} onClick={resetSimulation}>
+                    <StudentIcon name="refresh" size={16} />
+                    ฝึกอีกครั้ง
+                  </button>
+                  <Link className={styles.secondaryButton} href="/student/exhibit">
+                    ดูแฟ้มสะสมผลงาน (E)
+                  </Link>
+                </div>
+              </>
+            )}
+          </section>
+        </main>
+        <StudentFINENav />
+      </>
+    )
+  }
+
+  // ─── 3. ACTIVE SIMULATION CHAT ───────────────────────────────
+  const progressPercent = Math.min(100, Math.max(20, turnCount * 20))
+
+  return (
+    <>
+      <main className={styles.sessionPage}>
+        <div className={styles.sessionShell}>
+          <header className={styles.sessionHeader}>
+            <div>
+              <span className={styles.eyebrow}>
+                {stage || 'Greeting and seating'}
+              </span>
+              <h1>Restaurant Simulation</h1>
+            </div>
+            <div className={styles.sessionStats}>
+              <span>
+                <StudentIcon name="clock" size={15} />
+                {formatTime(timeLeft)}
+              </span>
+              <span>{progressPercent}%</span>
+            </div>
+          </header>
+
+          <div className={styles.progressTrack}>
+            <span style={{ width: `${progressPercent}%` }} />
+          </div>
+
+          <section className={styles.chatPanel}>
+            {/* Customer Header */}
+            <div className={styles.customer}>
+              <div className={styles.customerAvatar}>
+                <StudentIcon name="user" size={22} />
+              </div>
+              <div>
+                <strong>Mr. Robert Smith</strong>
+                <span>ลูกค้าจำลองชาวต่างชาติ (5-Star Hotel Guest)</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const lastAi = [...messages].reverse().find(m => m.role === 'ai')
+                  if (lastAi) speak(lastAi.text)
+                }}
+                aria-label="ฟังเสียงลูกค้าประโยคล่าสุด"
+                title="ฟังเสียงลูกค้าประโยคล่าสุด"
+              >
+                <StudentIcon name="volume" size={18} />
+              </button>
+            </div>
+
+            {/* Messages Container */}
+            <div className={styles.messages} aria-live="polite">
+              {messages.map((message, index) => (
+                <div
+                  key={`${message.role}-${index}`}
+                  className={`${styles.message} ${message.role === 'user' ? styles.userMessage : styles.aiMessage}`}
+                >
+                  <span>
+                    {message.role === 'user' ? (user?.name ? `${user.name} (บริกร)` : 'พนักงานบริการ (บริกร)') : 'Customer (Mr. Smith)'}
+                  </span>
+                  <p>{message.text}</p>
+
+                  {/* Customer Translation toggle */}
+                  {message.role === 'ai' && message.translation && (
+                    <div className={styles.messageMetaRow}>
+                      <button
+                        type="button"
+                        className={styles.translationToggle}
+                        onClick={() => toggleMessageTranslation(index)}
+                      >
+                        {message.showTranslation ? 'ซ่อนคำแปลไทย' : '🌐 ดูคำแปลไทย'}
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.translationToggle}
+                        onClick={() => speak(message.text)}
+                        title="ฟังเสียงประโยคนี้"
+                      >
+                        🔊 ฟังเสียง
+                      </button>
+                    </div>
+                  )}
+
+                  {message.role === 'ai' && message.showTranslation && message.translation && (
+                    <div className={styles.translationBox}>
+                      {message.translation}
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {typing && (
+                <div className={`${styles.message} ${styles.aiMessage}`}>
+                  <span>Customer (Mr. Smith)</span>
+                  <p className={styles.typing}>Mr. Smith กำลังตอบกลับ...</p>
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+
+            {/* Suggested Phrases Scaffolding */}
+            {suggestedResponses.length > 0 && !typing && (
+              <div className={styles.suggestionsWrap}>
+                <div className={styles.suggestionsHeader}>
+                  <span>💡 ประโยคแนะนำสำหรับบริกร (กดเพื่อนำไปตอบ):</span>
+                  <span className={styles.stageBadge}>{stage}</span>
+                </div>
+                <div className={styles.suggestionsList}>
+                  {suggestedResponses.map((phrase, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className={styles.suggestionChip}
+                      onClick={() => useSuggestion(phrase)}
+                      title="กดเพื่อนำประโยคนี้ไปใส่ในช่องตอบ"
+                    >
+                      <span className={styles.suggestionIcon}>💬</span>
+                      <span>{phrase}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Input Composer */}
+            <form
+              className={styles.composer}
+              onSubmit={event => {
+                event.preventDefault()
+                void sendMessage()
+              }}
+            >
+              <button
+                type="button"
+                className={`${styles.micButton} ${listening ? styles.listening : ''}`}
+                onClick={toggleSpeech}
+                aria-label={listening ? 'หยุดรับเสียง' : 'ตอบด้วยเสียงภาษาอังกฤษ'}
+                title={listening ? 'กำลังรับเสียง...' : 'กดเพื่อตอบด้วยเสียงภาษาอังกฤษ'}
+              >
+                <StudentIcon name="mic" size={18} />
+              </button>
+              <input
+                value={input}
+                onChange={event => setInput(event.target.value)}
+                placeholder={listening ? 'กำลังฟังเสียงของคุณ...' : 'พิมพ์หรือเลือกคำตอบภาษาอังกฤษ...'}
+                maxLength={1000}
+                disabled={typing}
+              />
+              <button
+                type="submit"
+                className={styles.sendButton}
+                disabled={!input.trim() || typing}
+                aria-label="ส่งคำตอบ"
+                title="ส่งคำตอบ"
+              >
+                <StudentIcon name="arrowRight" size={18} />
+              </button>
+            </form>
+          </section>
+
+          <button
+            type="button"
+            className={styles.finishButton}
+            onClick={() => void finishSimulation()}
+          >
+            จบและประเมินผล
+          </button>
+        </div>
+      </main>
+      <StudentFINENav />
+    </>
+  )
 }

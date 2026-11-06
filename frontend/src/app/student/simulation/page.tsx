@@ -230,31 +230,48 @@ function SimulationContent() {
     setPhase('session')
     setTyping(true)
     window.setTimeout(() => {
-      const first = scenario.sentences[0] || 'Good evening! How may I help you?'
+      const first = 'Good evening! I have a reservation for two under the name Smith. Is our table ready?'
       setMessages([{ role: 'ai', text: first }])
-      setScriptIndex(1)
       setTyping(false)
       speak(first)
     }, 600)
   }
 
-  function sendMessage(value = input) {
+  async function sendMessage(value = input) {
     const text = value.trim()
     if (!text || phase !== 'session' || typing) return
-    setMessages(prev => [...prev, { role: 'user', text }])
+    const updated = [...messages, { role: 'user' as const, text }]
+    setMessages(updated)
     setInput('')
-    if (scriptIndex >= scenario.sentences.length) {
-      window.setTimeout(() => void finishSimulation(), 400)
-      return
-    }
     setTyping(true)
-    window.setTimeout(() => {
-      const reply = scenario.sentences[scriptIndex]
+
+    try {
+      const response = await authenticatedFetch('/api/simulation/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: updated,
+          userMessage: text,
+          turnCount: updated.filter(m => m.role === 'user').length,
+          scenarioTitle: scenario?.title || 'Fine Dining Restaurant',
+        }),
+      })
+
+      if (!response.ok) throw new Error('Customer AI unavailable')
+      const data = await response.json() as { reply: string; translationTh?: string; isFinished?: boolean }
+      const reply = data.reply || 'Thank you very much. Could we please have the bill?'
       setMessages(prev => [...prev, { role: 'ai', text: reply }])
-      setScriptIndex(i => i + 1)
-      setTyping(false)
       speak(reply)
-    }, 750)
+      if (data.isFinished) {
+        toast.success('การบริการครบทุกขั้นตอนแล้ว! สามารถกดจบและประเมินผลได้เลยครับ')
+      }
+    } catch {
+      const fallbackReply = 'Thank you for your service. Could we please have the check?'
+      setMessages(prev => [...prev, { role: 'ai', text: fallbackReply }])
+      speak(fallbackReply)
+    } finally {
+      setTyping(false)
+    }
   }
 
   function toggleSpeech() {
