@@ -483,6 +483,14 @@ export default function SimulationPage() {
                 {formatTime(timeLeft)}
               </span>
               <span>{progressPercent}%</span>
+              <button
+                type="button"
+                className={styles.finishHeaderBtn}
+                onClick={() => void finishSimulation()}
+                title="จบและประเมินผลการสนทนา"
+              >
+                จบประเมินผล
+              </button>
             </div>
           </header>
 
