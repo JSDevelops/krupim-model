@@ -248,7 +248,7 @@ export default function ExplorePage() {
         await videoRef.current.play()
       }
       setIsCameraActive(true)
-      setAutoScan(true)
+      setAutoScan(false)
     } catch (error) {
       console.error('Camera unavailable:', error)
       setScanError('เปิดกล้องไม่ได้ กรุณาตรวจสอบสิทธิ์กล้องหรืออัปโหลดรูปภาพแทน')
@@ -390,6 +390,11 @@ export default function ExplorePage() {
       }
     } catch (error) {
       console.warn('Realtime scan frame failed:', error)
+      const msg = error instanceof Error ? error.message : ''
+      if (msg.includes('โควต้า') || msg.includes('429') || msg.includes('quota') || msg.includes('rate')) {
+        setAutoScan(false)
+        setScanError('โควต้า AI รายวันของระบบเต็มชั่วคราว (Google Gemini Free Tier) กรุณากดปุ่ม "🎯 เลือกจำลอง" ด้านบน เพื่อเลือกวัตถุที่คุณกำลังสแกนอยู่ หรือให้อาจารย์อัปเดต API Key')
+      }
     } finally {
       requestPendingRef.current = false
       setIsLiveScanning(false)

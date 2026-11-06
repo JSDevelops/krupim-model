@@ -159,18 +159,27 @@ export async function POST(req: NextRequest) {
 
   } catch (aiErr: unknown) {
     const message = getErrorMessage(aiErr)
-    console.warn('[ScanAPI] AI provider error, switching to Fallback Engine:', message)
+    console.warn('[ScanAPI] AI provider error:', message)
 
-    // Graceful Fallback: instead of returning 500 error, return high-yield curriculum FINE analysis
-    try {
-      const fallbackResult = await generateFallbackScan(itemHint)
-      return NextResponse.json(fallbackResult)
-    } catch (fallbackErr) {
-      console.error('[ScanAPI] Fallback also failed:', fallbackErr)
-      return NextResponse.json({
-        error: message || 'AI scan service temporarily unavailable. Please try again.',
-        code: 'SCAN_AI_ERROR'
-      }, { status: 500 })
+    // If an explicit itemHint was requested, return that curriculum item
+    if (itemHint) {
+      try {
+        const fallbackResult = await generateFallbackScan(itemHint)
+        return NextResponse.json(fallbackResult)
+      } catch (fallbackErr) {
+        console.error('[ScanAPI] Fallback generation failed:', fallbackErr)
+      }
     }
+
+    // Do NOT return a random wrong object if AI Vision failed.
+    // Return a clear 429 error so the student can select the correct object from the curriculum picker.
+    const isQuotaError = message.includes('429') || message.includes('quota') || message.includes('rate-limit') || message.includes('exceeded')
+    return NextResponse.json({
+      error: isQuotaError
+        ? 'โควต้า AI รายวันของระบบเต็มชั่วคราว (Google Gemini Free Tier Quota Exceeded) กรุณาใช้ปุ่ม "เลือกวัตถุจำลอง" เพื่อเลือกอุปกรณ์ที่คุณกำลังสแกนอยู่ หรือให้อาจารย์/แอดมินอัปเดต API Key ในระบบ Admin'
+        : (message || 'AI Vision ไม่สามารถวิเคราะห์รูปภาพได้ในขณะนี้'),
+      code: isQuotaError ? 'AI_QUOTA_EXCEEDED' : 'SCAN_AI_ERROR',
+      isQuotaError: true,
+    }, { status: 429 })
   }
 }
