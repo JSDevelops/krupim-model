@@ -1,6 +1,6 @@
 .page {
   min-height: 100vh;
-  padding: 12px 10px 112px;
+  padding: 12px 10px 180px;
   color: #1d2923;
   background:
     radial-gradient(circle at 8% 4%, rgba(70, 105, 145, .12), transparent 28%),
@@ -73,7 +73,7 @@
   color: #68736d;
 }
 .planSelectWrap {
-  margin-bottom: 12px;
+  margin-bottom: 10px;
   padding: 0 16px;
 }
 .planSelect {
@@ -84,6 +84,55 @@
   font-size: 11px;
   background: #fff;
   color: #293d35;
+}
+.planSummaryBox {
+  margin: 0 16px 12px;
+  padding: 12px 14px;
+  background: #f0f6f3;
+  border: 1px solid #c9ded3;
+  border-radius: 14px;
+  animation: enter .2s ease;
+}
+.planSummaryTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.planSummaryBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  background: #173b2d;
+  color: #f7df8b;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .02em;
+}
+.planSummaryCount {
+  font-size: 10px;
+  color: #3b5f4c;
+  font-weight: 500;
+}
+.planSummaryTitle {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #172d23;
+  line-height: 1.4;
+  margin-bottom: 4px;
+}
+.planSummaryDesc {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.5;
+  color: #4b6155;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 .transcript { margin: 11px 0 0; color: #727b75; font-size: 10.5px; line-height: 1.6; overflow-wrap: anywhere; }
 .pager { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; padding: 0 16px 16px; }
@@ -118,14 +167,14 @@
   .actions { grid-template-columns: repeat(2,minmax(0,1fr)); }
 }
 @media (min-width: 640px) {
-  .page { padding: 18px 14px 116px; }
+  .page { padding: 18px 14px 180px; }
   .hero { padding: 28px; border-radius: 26px; }
   .practiceBody { padding: 20px; }
   .progressRow, .contextBar { padding-inline: 20px; }
   .pager { padding: 0 20px 20px; }
 }
 @media (min-width: 900px) {
-  .page { padding: 24px 18px 122px; }
+  .page { padding: 24px 18px 180px; }
   .layout { grid-template-columns: minmax(0,1.25fr) minmax(300px,.75fr); gap: 18px; margin-top: 18px; }
   .card { border-radius: 24px; }
   .sideCard { position: sticky; top: 18px; }

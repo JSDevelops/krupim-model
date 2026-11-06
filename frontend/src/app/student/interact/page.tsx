@@ -10,6 +10,8 @@ interface Prompt {
   en: string
   th: string
   context: string
+  planId?: string
+  weekNum?: number
 }
 
 interface WordCheck {
@@ -32,6 +34,11 @@ type SpeechRecognitionInstance = {
 type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance
 
 const defaultPrompts: Prompt[] = [
+  { en: 'This is a Dinner Knife. It is used for the main course.', th: 'นี่คือมีดรับประทานอาหารค่ำ ใช้สำหรับรับประทานอาหารจานหลัก', context: 'สัปดาห์ที่ 1: Cutlery and Glassware Vocabulary', planId: 'lesson-plan-week-1', weekNum: 1 },
+  { en: 'A Soup Spoon is used for soup.', th: 'ช้อนซุปใช้สำหรับรับประทานซุป', context: 'สัปดาห์ที่ 1: Cutlery and Glassware Vocabulary', planId: 'lesson-plan-week-1', weekNum: 1 },
+  { en: 'This is a Water Goblet.', th: 'นี่คือแก้วน้ำมีก้าน (Water Goblet)', context: 'สัปดาห์ที่ 1: Cutlery and Glassware Vocabulary', planId: 'lesson-plan-week-1', weekNum: 1 },
+  { en: 'We use Water Goblet for water.', th: 'เราใช้แก้วน้ำมีก้านสำหรับเสิร์ฟน้ำดื่ม', context: 'สัปดาห์ที่ 1: Cutlery and Glassware Vocabulary', planId: 'lesson-plan-week-1', weekNum: 1 },
+  { en: 'What is this equipment? - This is a water goblet.', th: 'อุปกรณ์ชิ้นนี้คืออะไร? - นี่คือแก้วน้ำมีก้าน', context: 'สัปดาห์ที่ 1: Cutlery and Glassware Vocabulary', planId: 'lesson-plan-week-1', weekNum: 1 },
   { en: 'Good evening! Welcome to our restaurant. Do you have a reservation?', th: 'ยินดีต้อนรับสู่ร้านอาหารของเรา คุณมีการจองโต๊ะไหมครับ?', context: 'การต้อนรับลูกค้าที่โต๊ะ' },
   { en: 'May I show you to your table, please?', th: 'ขออนุญาตพาท่านไปที่โต๊ะได้ไหมครับ?', context: 'การนำลูกค้าไปยังโต๊ะ' },
   { en: 'Here is the menu. Can I get you something to drink to start?', th: 'นี่คือเมนูครับ ขอนำเครื่องดื่มมาให้ก่อนได้ไหมครับ?', context: 'การมอบเมนูและรับออร์เดอร์' },
@@ -59,7 +66,7 @@ function evaluateWords(target: string, spoken: string) {
   }
 }
 
-type LessonPlanOption = { id: string; title: string; weeks: string }
+type LessonPlanOption = { id: string; title: string; weeks: string; concept?: string }
 
 export default function InteractPage() {
   const [prompts, setPrompts] = useState<Prompt[]>(defaultPrompts)
@@ -83,6 +90,11 @@ export default function InteractPage() {
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
 
+  const selectedPlan = useMemo(() => {
+    if (!selectedPlanId || selectedPlanId === 'all') return null
+    return plans.find(p => p.id === selectedPlanId) || null
+  }, [plans, selectedPlanId])
+
   useEffect(() => {
     const controller = new AbortController()
     async function loadPrompts() {
@@ -99,7 +111,6 @@ export default function InteractPage() {
         }
         if (payload.prompts?.length) {
           setPrompts(payload.prompts)
-          setCurrentIndex(0)
         }
         if (payload.plans?.length) {
           const sortedPlans = [...payload.plans].sort((a, b) => {
@@ -156,10 +167,23 @@ export default function InteractPage() {
     }
   }, [])
 
-  const current = prompts[currentIndex] || defaultPrompts[0]
-  const total = prompts.length
+  const filteredPrompts = useMemo(() => {
+    if (!selectedPlanId || selectedPlanId === 'all') return prompts
+    const filtered = prompts.filter(p => p.planId === selectedPlanId)
+    return filtered.length > 0 ? filtered : prompts
+  }, [prompts, selectedPlanId])
+
+  const total = filteredPrompts.length
+  const current = filteredPrompts[currentIndex] || filteredPrompts[0] || defaultPrompts[0]
   const progress = total ? ((currentIndex + 1) / total) * 100 : 0
-  const visiblePrompts = useMemo(() => prompts.slice(0, listLimit), [listLimit, prompts])
+  const visiblePrompts = useMemo(() => filteredPrompts.slice(0, listLimit), [listLimit, filteredPrompts])
+
+  function handleSelectPlan(planId: string) {
+    setSelectedPlanId(planId)
+    setCurrentIndex(0)
+    setListLimit(8)
+    resetEvaluation()
+  }
 
   function resetEvaluation() {
     recognitionRef.current?.stop()
@@ -395,15 +419,38 @@ export default function InteractPage() {
                   id="plan-select"
                   className={styles.planSelect}
                   value={selectedPlanId}
-                  onChange={e => setSelectedPlanId(e.target.value)}
+                  onChange={e => handleSelectPlan(e.target.value)}
                 >
-                  <option value="all">ทุกแผนการสอน ({plans.length} สัปดาห์)</option>
+                  <option value="all">ทุกแผนการสอน (สัปดาห์ที่ 1 - 18)</option>
                   {plans.map(p => (
                     <option key={p.id} value={p.id}>
                       {p.weeks ? `${p.weeks} — ` : ''}{p.title}
                     </option>
                   ))}
                 </select>
+              </div>
+            )}
+
+            {/* รายละเอียดด้านล่างเมื่อเลือกแผนการสอน (Week Summary Card) */}
+            {selectedPlan ? (
+              <div className={styles.planSummaryBox}>
+                <div className={styles.planSummaryTop}>
+                  <span className={styles.planSummaryBadge}>{selectedPlan.weeks || 'แผนการสอน'}</span>
+                  <span className={styles.planSummaryCount}>{filteredPrompts.length} ประโยคฝึก</span>
+                </div>
+                <div className={styles.planSummaryTitle}>{selectedPlan.title}</div>
+                {selectedPlan.concept && (
+                  <p className={styles.planSummaryDesc}>{selectedPlan.concept}</p>
+                )}
+              </div>
+            ) : (
+              <div className={styles.planSummaryBox}>
+                <div className={styles.planSummaryTop}>
+                  <span className={styles.planSummaryBadge}>สัปดาห์ที่ 1 - 18</span>
+                  <span className={styles.planSummaryCount}>{prompts.length} ประโยคฝึกทั้งหมด</span>
+                </div>
+                <div className={styles.planSummaryTitle}>รวมประโยคฝึกงานบริการอาหารและเครื่องดื่ม</div>
+                <p className={styles.planSummaryDesc}>เรียงลำดับจากสัปดาห์ที่ 1 ถึง 18 สามารถเลือกเจาะจงเฉพาะสัปดาห์ได้จากเมนูด้านบน</p>
               </div>
             )}
             <div className={styles.list}>

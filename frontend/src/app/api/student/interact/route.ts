@@ -7,6 +7,37 @@ type LessonSentenceRow = {
   sentences: unknown
 }
 
+const SENTENCE_TRANSLATIONS: Record<string, string> = {
+  // Week 1: Cutlery & Glassware
+  'this is a dinner knife. it is used for the main course.': 'นี่คือมีดรับประทานอาหารค่ำ ใช้สำหรับรับประทานอาหารจานหลัก',
+  'a soup spoon is used for soup.': 'ช้อนซุปใช้สำหรับรับประทานซุป',
+  'this is a water goblet.': 'นี่คือแก้วน้ำมีก้าน (Water Goblet)',
+  'we use water goblet for water.': 'เราใช้แก้วน้ำมีก้านสำหรับเสิร์ฟน้ำดื่ม',
+  'what is this equipment? - this is a water goblet.': 'อุปกรณ์ชิ้นนี้คืออะไร? - นี่คือแก้วน้ำมีก้าน',
+
+  // Week 2: Food & Beverage Menu
+  'spaghetti carbonara is categorized as a main course.': 'สปาเกตตี คาร์โบนารา จัดอยู่ในหมวดหมู่อาหารจานหลัก',
+  'virgin mojito belongs to non-alcoholic beverages.': 'เวอร์จิน โมฮิโต จัดอยู่ในหมวดหมู่เครื่องดื่มไม่มีแอลกอฮอล์',
+  'how is caesar salad categorized?': 'ซีซาร์สลัดจัดอยู่ในหมวดหมู่อาหารประเภทใด?',
+  'caesar salad is categorized as an appetizer.': 'ซีซาร์สลัดจัดอยู่ในหมวดหมู่อาหารเรียกน้ำย่อย (Appetizer)',
+  'what kind of dish is tiramisu? - tiramisu is a dessert.': 'ทีรามิสุคืออาหารประเภทใด? - ทีรามิสุคือของหวาน (Dessert)',
+
+  // Common Service & Later Weeks
+  'may i show you to your table, please?': 'ขออนุญาตพาท่านไปที่โต๊ะได้ไหมครับ/ค่ะ?',
+  'here is the menu. can i get you something to drink to start?': 'นี่คือรายการอาหารครับ/ค่ะ รับเครื่องดื่มอะไรก่อนดีครับ?',
+  'are you ready to order, or do you need a few more minutes?': 'พร้อมสั่งอาหารแล้วหรือยังครับ หรือต้องการเวลาดูเมนูเพิ่มเติม?',
+  'i apologize for the delay. your order will be ready shortly.': 'ขออภัยในความล่าช้าครับ อาหารของท่านจะพร้อมเสิร์ฟในไม่ช้า',
+  'would you like to see the dessert menu?': 'ท่านต้องการดูเมนูของหวานเพิ่มเติมไหมครับ?',
+  'here is your bill, sir/madam. whenever you are ready.': 'นี่คือใบเรียกเก็บเงินครับ/ค่ะ ท่านสามารถชำระได้เมื่อพร้อมครับ',
+  'how would you like to settle the bill, in cash or by credit card?': 'ท่านสะดวกชำระค่าอาหารเป็นเงินสดหรือบัตรเครดิตดีครับ?',
+  'thank you very much for dining with us. we hope to welcome you again soon.': 'ขอบพระคุณเป็นอย่างยิ่งที่มาใช้บริการ หวังว่าจะมีโอกาสได้ต้อนรับท่านอีกครั้งนะครับ',
+  'throughout this semester, i have developed my professional food and beverage service skills.': 'ตลอดภาคเรียนนี้ ฉันได้พัฒนาทักษะวิชาชีพการบริการอาหารและเครื่องดื่มอย่างต่อเนื่อง',
+  'the most challenging part was handling difficult customer complaints and special dietary requests.': 'ส่วนที่ท้าทายที่สุดคือการรับมือกับข้อร้องเรียนของลูกค้าและการจัดการคำขออาหารพิเศษ',
+  'i will apply this skill to my future hotel internship and career in hospitality.': 'ฉันจะนำทักษะนี้ไปประยุกต์ใช้ในการฝึกงานและการทำงานในสายงานบริการโรงแรมในอนาคต',
+  'what is the correct procedure when a guest complains about undercooked food?': 'ขั้นตอนที่ถูกต้องเมื่อลูกค้าแจ้งว่าอาหารไม่สุกคืออะไร?',
+  'how do you present the bill professionally?': 'คุณจะยื่นใบเรียกเก็บเงินให้กับลูกค้าอย่างมืออาชีพได้อย่างไร?',
+}
+
 export async function GET(request: NextRequest) {
   try {
     const user = await guardApi(request, { roles: ['student', 'developer'], maxRequests: 120 })
@@ -25,54 +56,57 @@ export async function GET(request: NextRequest) {
 
     const queryParams: unknown[] = user.role === 'developer' || !enrolledClassId ? [] : [enrolledClassId]
 
-    // Fetch list of available published lesson plans ordered by week number
-    const plansResult = await queryDb<{ id: string; title: string; weeks: string }>(`
-      SELECT id, title, weeks
+    // Fetch list of available published lesson plans ordered by week number (Week 1 first)
+    const plansResult = await queryDb<{ id: string; title: string; weeks: string; concept: string }>(`
+      SELECT id, title, weeks, concept
       FROM fine_lesson_plans
       WHERE publication_status='published' ${scope}
-      ORDER BY COALESCE(NULLIF(regexp_replace(weeks, '[^0-9]', '', 'g'), '')::int, 999) ASC, updated_at DESC
-      LIMIT 18
+      ORDER BY COALESCE(NULLIF(regexp_replace(weeks, '[^0-9]', '', 'g'), '')::int, NULLIF(regexp_replace(id, '[^0-9]', '', 'g'), '')::int, 999) ASC, id ASC
+      LIMIT 30
     `, queryParams)
 
     let filterClause = ''
-    if (planId) {
-      queryParams.push(planId)
-      filterClause = `AND id=$${queryParams.length}`
+    const sentenceParams: unknown[] = [...queryParams]
+    if (planId && planId !== 'all') {
+      sentenceParams.push(planId)
+      filterClause = `AND id=$${sentenceParams.length}`
     }
 
-    const result = await queryDb<LessonSentenceRow & { id: string; weeks: string }>(`
-      SELECT id, title, weeks, sentences
+    const result = await queryDb<LessonSentenceRow & { id: string; weeks: string; concept: string }>(`
+      SELECT id, title, weeks, concept, sentences
       FROM fine_lesson_plans
       WHERE publication_status='published' ${scope} ${filterClause}
         AND jsonb_typeof(sentences) = 'array'
         AND jsonb_array_length(sentences) > 0
-      ORDER BY updated_at DESC
-      LIMIT 6
-    `, queryParams)
+      ORDER BY COALESCE(NULLIF(regexp_replace(weeks, '[^0-9]', '', 'g'), '')::int, NULLIF(regexp_replace(id, '[^0-9]', '', 'g'), '')::int, 999) ASC, id ASC
+      LIMIT 30
+    `, sentenceParams)
 
-    const prompts: Array<{ en: string; th: string; context: string; planId?: string }> = []
+    const prompts: Array<{ en: string; th: string; context: string; planId?: string; weekNum?: number }> = []
     const seen = new Set<string>()
     for (const row of result.rows) {
       if (!Array.isArray(row.sentences)) continue
+      const weekMatch = row.weeks?.match(/\d+/) || row.id?.match(/\d+/)
+      const weekNum = weekMatch ? parseInt(weekMatch[0], 10) : 0
       for (const sentence of row.sentences) {
         if (typeof sentence !== 'string') continue
         const en = sentence.trim()
         const key = en.toLocaleLowerCase('en')
         if (!en || seen.has(key)) continue
         seen.add(key)
+        const customTh = SENTENCE_TRANSLATIONS[key] || `ประโยคฝึกภาษาอังกฤษสำหรับงานบริการ (${row.weeks || 'แผนการสอน'})`
         prompts.push({
           en,
-          th: 'ประโยคฝึกจากแผนการสอน',
+          th: customTh,
           context: `${row.weeks ? row.weeks + ': ' : ''}${row.title || 'แผนการสอนของครู'}`,
           planId: row.id,
+          weekNum,
         })
-        if (prompts.length >= 30) break
       }
-      if (prompts.length >= 30) break
     }
 
     let assignment: { id: string; title: string; maxScore: number } | null = null
-    if (planId) {
+    if (planId && planId !== 'all') {
       const assignRes = await queryDb<{ id: string; title: string; maxScore: number }>(`
         SELECT a.id, a.title, a.max_score AS "maxScore"
         FROM assignments a
@@ -86,7 +120,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(
       { prompts, plans: plansResult.rows, assignment },
-      { headers: { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=300' } },
+      { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate' } },
     )
   } catch (error) {
     return apiErrorResponse(error)
