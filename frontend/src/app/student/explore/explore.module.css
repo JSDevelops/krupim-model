@@ -311,6 +311,67 @@
   background: linear-gradient(90deg, #174b37, #3eb17c);
   transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
+/* ── Week Selector Dropdown ── */
+.weekSelectContainer {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 14px 0 16px;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid #d2e4da;
+  box-shadow: 0 2px 8px rgba(23, 75, 55, 0.04);
+}
+.weekSelectLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #174b37;
+  flex-shrink: 0;
+}
+.weekSelectWrap {
+  position: relative;
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.weekSelectDropdown {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding: 9px 36px 9px 14px;
+  border-radius: 10px;
+  background: #f7faf8;
+  border: 1.5px solid #174b37;
+  color: #174b37;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.18s ease;
+  box-sizing: border-box;
+}
+.weekSelectDropdown:focus {
+  border-color: #276f53;
+  box-shadow: 0 0 0 3px rgba(23, 75, 55, 0.15);
+  background: #ffffff;
+}
+.weekSelectArrow {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 10px;
+  color: #174b37;
+  opacity: 0.8;
+}
+
 .missionCategoryFilters {
   display: flex;
   align-items: center;

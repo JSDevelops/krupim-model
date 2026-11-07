@@ -825,24 +825,29 @@ export default function ExplorePage() {
                 </div>
               </div>
 
-              {/* Week Toggle Pills (สัปดาห์ที่ 1 อยู่ซ้ายสุด/บนสุด) */}
-              <div style={{ display: 'flex', gap: 8, margin: '14px 0 16px', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  className={`${styles.missionFilterBtn} ${selectedMissionWeek === 1 ? styles.missionFilterBtnActive : ''}`}
-                  onClick={() => setSelectedMissionWeek(1)}
-                  style={{ fontWeight: 600 }}
-                >
-                  <ExploreIcon name="book" size={14} /> สัปดาห์ที่ 1: อุปกรณ์บนโต๊ะอาหาร (51 รายการ)
-                </button>
-                <button
-                  type="button"
-                  className={`${styles.missionFilterBtn} ${selectedMissionWeek === 2 ? styles.missionFilterBtnActive : ''}`}
-                  onClick={() => setSelectedMissionWeek(2)}
-                  style={{ fontWeight: 600 }}
-                >
-                  <ExploreIcon name="sparkles" size={14} /> สัปดาห์ที่ 2: เมนูอาหาร 20 ชนิด
-                </button>
+              {/* Week Dropdown Selector */}
+              <div className={styles.weekSelectContainer}>
+                <label htmlFor="weekMissionSelect" className={styles.weekSelectLabel}>
+                  <ExploreIcon name="book" size={15} />
+                  <span>เลือกสัปดาห์ภารกิจ:</span>
+                </label>
+                <div className={styles.weekSelectWrap}>
+                  <select
+                    id="weekMissionSelect"
+                    className={styles.weekSelectDropdown}
+                    value={selectedMissionWeek}
+                    onChange={e => setSelectedMissionWeek(Number(e.target.value) as 1 | 2)}
+                    aria-label="เลือกสัปดาห์ภารกิจ"
+                  >
+                    <option value={1}>
+                      สัปดาห์ที่ 1: อุปกรณ์บนโต๊ะอาหาร (51 รายการ)
+                    </option>
+                    <option value={2}>
+                      สัปดาห์ที่ 2: เมนูอาหาร 20 ชนิด (AI Scan ภารกิจหลัก)
+                    </option>
+                  </select>
+                  <span className={styles.weekSelectArrow}>▼</span>
+                </div>
               </div>
 
               {/* ── Sub-content for Week 1 Mission ── */}
