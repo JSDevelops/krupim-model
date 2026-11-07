@@ -427,6 +427,89 @@
 @keyframes recording { 50% { box-shadow: 0 0 0 6px rgba(167, 70, 80, .12); } }
 @keyframes enter { from { opacity: 0; transform: translateY(5px); } }
 
+.filterControls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.searchWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #f4f6f4;
+  border: 1px solid #d4ded8;
+  border-radius: 12px;
+  padding: 0 12px;
+  color: #3b5a4b;
+}
+
+.searchInput {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 10px 4px;
+  font-size: 13px;
+  color: #1a3328;
+  outline: none;
+  font-family: inherit;
+}
+
+.clearSearchBtn {
+  background: transparent;
+  border: none;
+  color: #798d82;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 4px 6px;
+}
+
+.phaseTabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.phaseTab {
+  padding: 6px 13px;
+  border-radius: 99px;
+  border: 1px solid #d2ded7;
+  background: #ffffff;
+  color: #43594e;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all .15s ease;
+  font-family: inherit;
+}
+
+.phaseTab:hover {
+  background: #eef6f1;
+  border-color: #215e49;
+  color: #174837;
+}
+
+.phaseTabActive {
+  background: #174b37 !important;
+  color: #ffffff !important;
+  border-color: #174b37 !important;
+}
+
+.weekPill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: #e8f4ed;
+  color: #17543a;
+  border: 1px solid #bfe2cf;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
 @container (min-width: 470px) {
   .scenarioGrid,
   .vocabGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

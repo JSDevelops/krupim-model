@@ -75,13 +75,17 @@ export async function GET(request: NextRequest) {
 
     const queryParams: unknown[] = user.role === 'developer' || !enrolledClassId ? [] : [enrolledClassId]
 
-    // Fetch list of available plans
+    // Fetch list of available plans ordered by week number (Week 1 first)
     const plansResult = await queryDb<{ id: string; title: string; weeks: string }>(`
       SELECT id, title, weeks
       FROM fine_lesson_plans
       WHERE publication_status='published' ${scope}
-      ORDER BY updated_at DESC
-      LIMIT 18
+      ORDER BY COALESCE(
+        NULLIF(substring(weeks from '([0-9]+)'), '')::int,
+        NULLIF(substring(id from '([0-9]+)'), '')::int,
+        999
+      ) ASC, id ASC
+      LIMIT 24
     `, queryParams)
 
     let filterClause = ''
@@ -90,28 +94,38 @@ export async function GET(request: NextRequest) {
       filterClause = `AND id=$${queryParams.length}`
     }
 
-    const result = await queryDb<LessonPlanRow>(`
-      SELECT id, title, subject, level, concept, vocabulary, sentences,
+    const result = await queryDb<LessonPlanRow & { weeks: string }>(`
+      SELECT id, title, weeks, subject, level, concept, vocabulary, sentences,
              activities_n AS activity
       FROM fine_lesson_plans
       WHERE publication_status='published' ${scope} ${filterClause}
         AND (jsonb_typeof(vocabulary) = 'array'
          OR jsonb_typeof(sentences) = 'array'
         )
-      ORDER BY updated_at DESC
-      LIMIT 24
+      ORDER BY COALESCE(
+        NULLIF(substring(weeks from '([0-9]+)'), '')::int,
+        NULLIF(substring(id from '([0-9]+)'), '')::int,
+        999
+      ) ASC, id ASC
+      LIMIT 30
     `, queryParams)
 
-    const scenarios = result.rows.map(row => ({
-      id: row.id,
-      title: cleanText(row.title, 'Service Practice'),
-      titleTh: cleanText(row.subject, 'สถานการณ์ฝึกจากแผนการสอน'),
-      role: cleanText(row.level, 'พนักงานบริการอาหารและเครื่องดื่ม'),
-      description: cleanText(row.concept || row.activity, 'ฝึกการสื่อสารและการให้บริการตามสถานการณ์จริง'),
-      activity: cleanText(row.activity),
-      vocabulary: normalizeVocabulary(row.vocabulary),
-      sentences: normalizeSentences(row.sentences),
-    }))
+    const scenarios = result.rows.map(row => {
+      const weekMatch = row.weeks?.match(/\d+/) || row.id?.match(/\d+/)
+      const weekNum = weekMatch ? parseInt(weekMatch[0], 10) : 0
+      return {
+        id: row.id,
+        weeks: cleanText(row.weeks, `สัปดาห์ที่ ${weekNum || ''}`),
+        weekNum,
+        title: cleanText(row.title, 'Service Practice'),
+        titleTh: cleanText(row.subject, 'สถานการณ์ฝึกจากแผนการสอน'),
+        role: cleanText(row.level, 'พนักงานบริการอาหารและเครื่องดื่ม'),
+        description: cleanText(row.concept || row.activity, 'ฝึกการสื่อสารและการให้บริการตามสถานการณ์จริง'),
+        activity: cleanText(row.activity),
+        vocabulary: normalizeVocabulary(row.vocabulary),
+        sentences: normalizeSentences(row.sentences),
+      }
+    })
 
     return NextResponse.json(
       { scenarios, plans: plansResult.rows },

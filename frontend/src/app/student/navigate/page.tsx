@@ -10,6 +10,8 @@ import styles from './navigate.module.css'
 type VocabularyItem = { word: string; pronunciation: string; meaning: string }
 type Scenario = {
   id: string
+  weeks?: string
+  weekNum?: number
   title: string
   titleTh: string
   role: string
@@ -17,6 +19,12 @@ type Scenario = {
   activity: string
   vocabulary: VocabularyItem[]
   sentences: string[]
+}
+
+function getScenarioWeek(s: Scenario, fallbackIndex: number): number {
+  if (typeof s.weekNum === 'number' && s.weekNum > 0) return s.weekNum
+  const m = s.weeks?.match(/\d+/) || s.id?.match(/week-(\d+)/) || s.title?.match(/สัปดาห์ที่\s*(\d+)/)
+  return m ? parseInt(m[1] || m[0], 10) : fallbackIndex + 1
 }
 type PracticeResult = {
   score: number
@@ -282,6 +290,8 @@ function evaluateSentence(target: string, spoken: string): PracticeResult {
 
 export default function NavigatePage() {
   const [scenarios, setScenarios] = useState(defaultScenarios)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [selectedPhase, setSelectedPhase] = useState<'all' | 'phase1' | 'phase2' | 'phase3' | 'phase4'>('all')
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null)
   const [activeView, setActiveView] = useState<DetailView>('overview')
   const [expandedWord, setExpandedWord] = useState<number | null>(null)
@@ -297,7 +307,12 @@ export default function NavigatePage() {
         const response = await authenticatedFetch('/api/student/navigate', { signal: controller.signal })
         if (!response.ok) return
         const payload = await response.json() as { scenarios?: Scenario[] }
-        if (payload.scenarios?.length) setScenarios(payload.scenarios)
+        if (payload.scenarios?.length) {
+          const sorted = [...payload.scenarios].sort((a, b) => {
+            return getScenarioWeek(a, 0) - getScenarioWeek(b, 0)
+          })
+          setScenarios(sorted)
+        }
       } catch (error) {
         if (!controller.signal.aborted) console.warn('Unable to load navigation scenarios:', error)
       }
@@ -317,6 +332,23 @@ export default function NavigatePage() {
     vocabulary: scenarios.reduce((sum, item) => sum + item.vocabulary.length, 0),
     sentences: scenarios.reduce((sum, item) => sum + item.sentences.length, 0),
   }), [scenarios])
+
+  const filteredScenarios = useMemo(() => {
+    return scenarios.filter((s, idx) => {
+      const week = getScenarioWeek(s, idx)
+      if (selectedPhase === 'phase1' && (week < 1 || week > 4)) return false
+      if (selectedPhase === 'phase2' && (week < 5 || week > 11)) return false
+      if (selectedPhase === 'phase3' && (week < 12 || week > 16)) return false
+      if (selectedPhase === 'phase4' && (week < 17 || week > 18)) return false
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim().toLowerCase()
+        const text = `${s.weeks || ''} สัปดาห์ที่ ${week} ${s.title} ${s.titleTh} ${s.description}`.toLowerCase()
+        return text.includes(q)
+      }
+      return true
+    })
+  }, [scenarios, selectedPhase, searchQuery])
 
   function stopMedia() {
     window.speechSynthesis?.cancel()
@@ -610,14 +642,79 @@ export default function NavigatePage() {
         </section>
 
         <section className={styles.catalogue}>
-          <header className={styles.catalogueHeader}><div><span className={styles.sectionEyebrow}>Scenario library</span><h2>เลือกสถานการณ์ที่ต้องการฝึก</h2><p>เนื้อหาจากแผนการสอนของคุณครู พร้อมใช้งานได้ทันที</p></div></header>
+          <header className={styles.catalogueHeader}>
+            <div>
+              <span className={styles.sectionEyebrow}>Scenario library</span>
+              <h2>เลือกสถานการณ์ที่ต้องการฝึก</h2>
+              <p>เนื้อหาจากแผนการสอนของคุณครู พร้อมใช้งานได้ทันที (เรียงลำดับจากสัปดาห์ที่ 1 ถึง 18)</p>
+            </div>
+          </header>
+
+          {/* Search & Phase Filters */}
+          <div className={styles.filterControls}>
+            <div className={styles.searchWrap}>
+              <NavigateIcon name="compass" size={16} />
+              <input
+                type="search"
+                className={styles.searchInput}
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="ค้นหาสถานการณ์ (เช่น สัปดาห์ที่ 1, Cutlery, Table Setting, Taking Orders, Complaints)..."
+              />
+              {searchQuery && (
+                <button type="button" className={styles.clearSearchBtn} onClick={() => setSearchQuery('')}>
+                  ✕ ล้างการค้นหา
+                </button>
+              )}
+            </div>
+
+            <div className={styles.phaseTabs}>
+              {[
+                { id: 'all', label: 'ทั้งหมด (สัปดาห์ที่ 1 - 18)' },
+                { id: 'phase1', label: 'ระยะที่ 1: อุปกรณ์ & เมนู (สัปดาห์ 1-4)' },
+                { id: 'phase2', label: 'ระยะที่ 2: ต้อนรับ & รับออร์เดอร์ (สัปดาห์ 5-11)' },
+                { id: 'phase3', label: 'ระยะที่ 3: คำขอพิเศษ & ร้องเรียน (สัปดาห์ 12-16)' },
+                { id: 'phase4', label: 'ระยะที่ 4: บริการครบวงจร (สัปดาห์ 17-18)' },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  className={`${styles.phaseTab} ${selectedPhase === tab.id ? styles.phaseTabActive : ''}`}
+                  onClick={() => setSelectedPhase(tab.id as typeof selectedPhase)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className={styles.scenarioGrid}>
-            {scenarios.map((scenario, index) => <button type="button" className={styles.scenarioCard} key={scenario.id} onClick={() => openScenario(scenario.id)}>
-              <span className={styles.scenarioAccent} aria-hidden="true" />
-              <span className={styles.scenarioTop}><span className={styles.scenarioNumber}>{String(index + 1).padStart(2, '0')}</span><span className={styles.scenarioIcon}><NavigateIcon name="compass" /></span></span>
-              <span className={styles.scenarioCopy}><span className={styles.scenarioLabel}>Service scenario</span><strong>{scenario.title}</strong><span className={styles.scenarioThai}>{scenario.titleTh}</span><span className={styles.scenarioDescription}>{scenario.description}</span></span>
-              <span className={styles.scenarioFooter}><span><NavigateIcon name="book" size={14} /> {scenario.vocabulary.length} คำศัพท์</span><span><NavigateIcon name="message" size={14} /> {scenario.sentences.length} ประโยค</span><span className={styles.openLabel}>เปิดสถานการณ์ <NavigateIcon name="arrowRight" size={15} /></span></span>
-            </button>)}
+            {filteredScenarios.map((scenario, index) => {
+              const weekNum = getScenarioWeek(scenario, index)
+              const cleanTitle = scenario.title.replace(/^แผนการจัดการเรียนรู้\s*สัปดาห์ที่\s*\d+\s*:\s*/i, '').trim()
+              return (
+                <button type="button" className={styles.scenarioCard} key={scenario.id} onClick={() => openScenario(scenario.id)}>
+                  <span className={styles.scenarioAccent} aria-hidden="true" />
+                  <span className={styles.scenarioTop}>
+                    <span className={styles.weekPill}>
+                      สัปดาห์ที่ {weekNum}
+                    </span>
+                    <span className={styles.scenarioIcon}><NavigateIcon name="compass" /></span>
+                  </span>
+                  <span className={styles.scenarioCopy}>
+                    <span className={styles.scenarioLabel}>Service Scenario · สัปดาห์ที่ {String(weekNum).padStart(2, '0')}</span>
+                    <strong>{cleanTitle || scenario.title}</strong>
+                    <span className={styles.scenarioThai}>{scenario.titleTh}</span>
+                    <span className={styles.scenarioDescription}>{scenario.description}</span>
+                  </span>
+                  <span className={styles.scenarioFooter}>
+                    <span><NavigateIcon name="book" size={14} /> {scenario.vocabulary.length} คำศัพท์</span>
+                    <span><NavigateIcon name="message" size={14} /> {scenario.sentences.length} ประโยค</span>
+                    <span className={styles.openLabel}>เปิดสถานการณ์ <NavigateIcon name="arrowRight" size={15} /></span>
+                  </span>
+                </button>
+              )
+            })}
           </div>
         </section>
       </div>
