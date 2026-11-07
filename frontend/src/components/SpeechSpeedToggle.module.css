@@ -15,7 +15,9 @@
 }
 
 .icon {
-  font-size: 12px;
+  display: inline-flex;
+  align-items: center;
+  color: #2e5946;
 }
 
 .pills {
@@ -30,19 +32,32 @@
 
 .pill {
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
+  justify-content: center;
+  padding: 3px 10px;
+  min-width: 44px;
   border-radius: 999px;
   border: 1px solid transparent;
   background: transparent;
   color: #3b5448;
-  font-size: 11px;
-  font-weight: 600;
   cursor: pointer;
   transition: all .15s ease;
   font-family: inherit;
-  line-height: 1.2;
+  line-height: 1.15;
+}
+
+.pillText {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.pillSub {
+  font-size: 8.5px;
+  font-weight: 500;
+  opacity: 0.75;
+  margin-top: 1px;
 }
 
 .pill:hover {
@@ -54,18 +69,23 @@
   background: #174b37 !important;
   color: #ffffff !important;
   border-color: #174b37 !important;
-  box-shadow: 0 1px 4px rgba(23, 75, 55, 0.18);
+  box-shadow: 0 1px 4px rgba(23, 75, 55, 0.22);
 }
 
-.pillDesc {
-  font-size: 10px;
-  font-weight: 400;
+.pillActive .pillSub {
   opacity: 0.9;
+  color: #e4f3eb;
 }
 
 .compact .pill {
-  padding: 3px 8px;
+  padding: 2px 7px;
+  min-width: 36px;
+}
+.compact .pillText {
   font-size: 10px;
+}
+.compact .pillSub {
+  font-size: 8px;
 }
 .compact .label {
   font-size: 10.5px;
