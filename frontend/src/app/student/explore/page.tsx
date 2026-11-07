@@ -1289,63 +1289,42 @@ export default function ExplorePage() {
                   <>
                     <div className={styles.cameraTop}>
                       <span className={styles.statusBadge}>
-                        <span className={isLiveScanning ? styles.statusDotActive : styles.statusDot} />
-                        {isLiveScanning ? 'กำลังสแกนสดเรียลไทม์...' : 'กล้องสแกนสดเรียลไทม์'}
+                        <span className={styles.statusDot} />
+                        กล้อง AI Scan พร้อมทำงาน
                       </span>
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button
-                          type="button"
-                          className={styles.fallbackPickerBtn}
-                          style={{ padding: '4px 10px', fontSize: '11px' }}
-                          onClick={() => setShowFallbackModal(true)}
-                          title="เลือกวัตถุหรือเมนูเพื่อจำลองผลการสแกนทันที"
-                        >
-                          🎯 เลือกจำลอง
-                        </button>
-                        <button type="button" className={`${styles.autoButton} ${autoScan ? styles.autoActive : ''}`} onClick={() => setAutoScan(value => !value)}>
-                          <ExploreIcon name="scan" size={14} /> สแกนสดเรียลไทม์ {autoScan ? 'เปิด' : 'พัก'}
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={stopCamera}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 5,
+                          padding: '5px 12px',
+                          borderRadius: 999,
+                          background: 'rgba(0, 0, 0, 0.45)',
+                          border: '1px solid rgba(255, 255, 255, 0.2)',
+                          color: '#ffffff',
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                          backdropFilter: 'blur(8px)',
+                        }}
+                        title="ปิดกล้องและกลับสู่หน้าเลือกรูปแบบ Scan"
+                      >
+                        ✕ ปิดกล้อง
+                      </button>
                     </div>
                     <div className={styles.scanCorners} />
-                    <div className={styles.liveRadarRing} />
-                    <div className={styles.liveRadarPulse} />
                     {scanAnim && <div className={styles.scanLine} />}
 
-                    {/* Floating Detected Card during Real-time Live Scan */}
-                    {liveDetected && (
-                      <div className={styles.liveDetectedCard}>
-                        <div className={styles.liveDetectedInfo}>
-                          <span className={styles.liveDetectedBadge}>
-                            ✨ ตรวจพบวัตถุ ({Math.round(liveDetected.confidence)}%)
-                          </span>
-                          <strong className={styles.liveDetectedTitle}>{liveDetected.nameEn}</strong>
-                          <span className={styles.liveDetectedThai}>{liveDetected.nameTh}</span>
-                        </div>
-                        <div className={styles.liveDetectedActions}>
-                          <button
-                            type="button"
-                            className={styles.liveAudioBtn}
-                            onClick={() => speak(liveDetected.nameEn, 'live-obj')}
-                            title="ฟังเสียงคำศัพท์"
-                          >
-                            🔊
-                          </button>
-                          <button
-                            type="button"
-                            className={styles.liveLockBtn}
-                            onClick={() => applyScanResult(liveDetected.result, liveDetected.image)}
-                            title="เปิดดูบทเรียน FINE เต็มรูปแบบ"
-                          >
-                            เปิดบทเรียน F–I–N–E →
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
                     <div className={styles.cameraBottom}>
-                      <button type="button" className={`${styles.primaryButton} ${styles.analyzeButton} ${scanAnim ? styles.buttonDisabled : ''}`} disabled={scanAnim} onClick={() => void captureFrame()}>
-                        <ExploreIcon name={scanAnim ? 'refresh' : 'scan'} size={18} /> {scanAnim ? 'กำลังวิเคราะห์...' : 'ถ่ายภาพและวิเคราะห์ทันที'}
+                      <button
+                        type="button"
+                        className={`${styles.primaryButton} ${styles.analyzeButton} ${scanAnim ? styles.buttonDisabled : ''}`}
+                        disabled={scanAnim}
+                        onClick={() => void captureFrame()}
+                      >
+                        <ExploreIcon name={scanAnim ? 'refresh' : 'scan'} size={18} />
+                        {scanAnim ? 'AI กำลังวิเคราะห์ภาพ...' : 'สแกนและวิเคราะห์ทันที'}
                       </button>
                     </div>
                   </>
