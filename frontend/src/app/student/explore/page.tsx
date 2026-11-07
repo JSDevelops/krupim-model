@@ -779,8 +779,49 @@ export default function ExplorePage() {
                   <p className={styles.missionSubtitle}>
                     {selectedMissionWeek === 1
                       ? 'สำรวจอุปกรณ์บนโต๊ะอาหาร ช้อน ส้อม มีด แก้ว จาน และชาม พร้อมโมเดล 3 มิติ และการฝึกออกเสียง'
-                      : 'ใช้ AI Scan สแกนภาพ/โมเดลจริง หรือกดฟังเสียงและฝึกออกเสียงคำศัพท์ 4 หมวดหมู่ (20 รายการ) เพื่อบันทึกผลการเรียนรู้และส่งงาน'}
+                      : 'ใช้ AI Scan สแกนภาพ/โมเดลจริง หรือกดฟังเสียงคำศัพท์ 4 หมวดหมู่ (20 รายการ) เพื่อบันทึกผลการเรียนรู้และส่งงาน'}
                   </p>
+                </div>
+              </div>
+
+              {/* Teacher Brief & Learning Steps */}
+              <div className={styles.missionBriefBox}>
+                <div className={styles.missionTeacherRow}>
+                  <div className={styles.missionCourseBadge}>
+                    <strong>วิชา:</strong> 20701-2020 การบริการอาหารและเครื่องดื่ม
+                  </div>
+                  <div className={styles.missionTeacherBadge}>
+                    <strong>ครูผู้สอน:</strong> ครูพิมพ์
+                  </div>
+                  <div className={styles.missionStepTag}>
+                    <strong>เป้าหมายขั้น F:</strong> Familiarize (สำรวจ & คุ้นเคย)
+                  </div>
+                </div>
+
+                <div className={styles.missionStepsRow}>
+                  <div className={styles.missionStepCol}>
+                    <span className={styles.missionStepNum}>1</span>
+                    <div>
+                      <strong>สำรวจ & ฟังเสียง</strong>
+                      <span>ฟังคำศัพท์และออกเสียงตาม</span>
+                    </div>
+                  </div>
+                  <div className={styles.missionStepArrow}>➔</div>
+                  <div className={styles.missionStepCol}>
+                    <span className={styles.missionStepNum}>2</span>
+                    <div>
+                      <strong>สแกน AI / AR</strong>
+                      <span>ส่องภาพจริงหรือดูโมเดล 3D</span>
+                    </div>
+                  </div>
+                  <div className={styles.missionStepArrow}>➔</div>
+                  <div className={styles.missionStepCol}>
+                    <span className={styles.missionStepNum}>3</span>
+                    <div>
+                      <strong>ส่งงานคุณครู</strong>
+                      <span>บันทึกคะแนนเข้า Dashboard ครู</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -807,6 +848,19 @@ export default function ExplorePage() {
               {/* ── Sub-content for Week 1 Mission ── */}
               {selectedMissionWeek === 1 && (
                 <div>
+                  {/* Progress Bar for Week 1 */}
+                  <div className={styles.missionProgressWrap}>
+                    <div className={styles.missionProgressHeader}>
+                      <span>ความคืบหน้าการสำรวจอุปกรณ์ (สัปดาห์ที่ 1)</span>
+                      <strong>
+                        {equipment.length} รายการ (อุปกรณ์มาตรฐานสากล)
+                      </strong>
+                    </div>
+                    <div className={styles.missionProgressBar}>
+                      <div className={styles.missionProgressFill} style={{ width: '100%' }} />
+                    </div>
+                  </div>
+
                   {/* Filter Pills and Search for Week 1 */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
@@ -893,6 +947,35 @@ export default function ExplorePage() {
                       ไม่พบคำศัพท์ที่ตรงกับ "{week1Search}" ในหมวดหมู่นี้
                     </div>
                   )}
+
+                  {/* FINE Model Next Activity Bridge for Week 1 */}
+                  <div className={styles.missionNextBridge}>
+                    <div className={styles.missionBridgeHeader}>
+                      <ExploreIcon name="sparkles" size={18} />
+                      <div>
+                        <strong>เชื่อมโยงการเรียนรู้ FINE Model: ก้าวสู่ขั้นต่อไป</strong>
+                        <p>เมื่อรู้จักอุปกรณ์บนโต๊ะอาหารในขั้น Familiarize (F) แล้ว ไปฝึกจำลองจัดโต๊ะอาหาร Outside-In ในขั้น Navigate ต่อได้ทันที:</p>
+                      </div>
+                    </div>
+                    <div className={styles.missionBridgeActions}>
+                      <Link href="/student/interact" className={styles.bridgeBtnInteract}>
+                        <ExploreIcon name="mic" size={16} />
+                        <div>
+                          <strong>ไปขั้น I — Interact (ฝึกพูด)</strong>
+                          <span>ฝึกพูดอธิบายอุปกรณ์บนโต๊ะอาหารภาษาอังกฤษ</span>
+                        </div>
+                        <span className={styles.bridgeBtnArrow}>➔</span>
+                      </Link>
+                      <Link href="/student/navigate" className={styles.bridgeBtnNavigate}>
+                        <ExploreIcon name="cube" size={16} />
+                        <div>
+                          <strong>ไปขั้น N — Navigate (จัดโต๊ะจำลอง)</strong>
+                          <span>ฝึกแก้ปัญหา Table Setting ในสถานการณ์จริง</span>
+                        </div>
+                        <span className={styles.bridgeBtnArrow}>➔</span>
+                      </Link>
+                    </div>
+                  </div>
                 </div>
               )}
 
@@ -992,19 +1075,10 @@ export default function ExplorePage() {
                               type="button"
                               className={styles.missionActionBtn}
                               onClick={() => speak(item.nameEn, item.id)}
-                              title="ฟังการออกเสียง"
+                              title="ฟังการออกเสียงภาษาอังกฤษ"
                             >
                               <ExploreIcon name="volume" size={13} />
                               <span>{speaking === item.id ? 'อ่าน...' : 'ฟังเสียง'}</span>
-                            </button>
-                            <button
-                              type="button"
-                              className={styles.missionActionBtn}
-                              onClick={() => startMissionSpeechPractice(item)}
-                              title="ฝึกพูดออกเสียงด้วยไมโครโฟน"
-                            >
-                              <ExploreIcon name="mic" size={13} />
-                              <span>{isRecording && activeSpeechMissionId === item.id ? 'ฟัง...' : 'ฝึกพูด'}</span>
                             </button>
                             <button
                               type="button"
@@ -1018,16 +1092,17 @@ export default function ExplorePage() {
                                 })
                               }}
                               title="เปิดกล้อง AI Scan เมนูนี้"
+                              style={{ background: '#eef6f2', borderColor: '#b6d8c8', color: '#164836', fontWeight: 600 }}
                             >
                               <ExploreIcon name="camera" size={13} />
-                              <span>สแกน</span>
+                              <span>สแกน AI</span>
                             </button>
                             <button
                               type="button"
                               className={styles.missionActionBtn}
                               onClick={() => void triggerFallbackScan(item)}
                               title="จำลองผลการสแกนด้วยระบบสำรอง (Curriculum Fallback)"
-                              style={{ background: '#fcf6e8', borderColor: '#e4d3a8', color: '#7a5a16' }}
+                              style={{ background: '#fdf8ec', borderColor: '#ebd7ab', color: '#7a5a16' }}
                             >
                               <ExploreIcon name="layers" size={13} />
                               <span>จำลอง</span>
@@ -1065,6 +1140,35 @@ export default function ExplorePage() {
                       </div>
                     )
                   })()}
+
+                  {/* FINE Model Next Activity Bridge (F ➔ I ➔ N) */}
+                  <div className={styles.missionNextBridge}>
+                    <div className={styles.missionBridgeHeader}>
+                      <ExploreIcon name="sparkles" size={18} />
+                      <div>
+                        <strong>เชื่อมโยงการเรียนรู้ FINE Model: ก้าวสู่ขั้นต่อไป</strong>
+                        <p>เมื่อสแกนและคุ้นเคยกับคำศัพท์เมนูในขั้น Familiarize (F) แล้ว สามารถนำไปฝึกต่อได้ทันที:</p>
+                      </div>
+                    </div>
+                    <div className={styles.missionBridgeActions}>
+                      <Link href="/student/interact" className={styles.bridgeBtnInteract}>
+                        <ExploreIcon name="mic" size={16} />
+                        <div>
+                          <strong>ไปขั้น I — Interact (ฝึกพูด)</strong>
+                          <span>ฝึกสนทนาและออกเสียงประโยคบริการในห้องอาหาร</span>
+                        </div>
+                        <span className={styles.bridgeBtnArrow}>➔</span>
+                      </Link>
+                      <Link href="/student/navigate" className={styles.bridgeBtnNavigate}>
+                        <ExploreIcon name="cube" size={16} />
+                        <div>
+                          <strong>ไปขั้น N — Navigate (จำลองสถานการณ์)</strong>
+                          <span>สวมบทบาท Waiter สนทนากับลูกค้า AI ในสถานการณ์จริง</span>
+                        </div>
+                        <span className={styles.bridgeBtnArrow}>➔</span>
+                      </Link>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
