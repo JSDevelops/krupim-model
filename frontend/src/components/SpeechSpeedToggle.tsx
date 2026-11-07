@@ -3,12 +3,12 @@
 import { useEffect, useState } from 'react'
 import styles from './SpeechSpeedToggle.module.css'
 
-export type SpeechRate = 0.75 | 0.9 | 1.0
+export type SpeechRate = 0.75 | 0.9 | 1.1
 
-export const SPEECH_RATES: Array<{ rate: SpeechRate; text: string; sub: string }> = [
-  { rate: 0.75, text: 'ช้า', sub: '0.75x' },
-  { rate: 0.9, text: 'กลาง', sub: '0.9x' },
-  { rate: 1.0, text: 'ปกติ', sub: '1.0x' },
+export const SPEECH_RATES: Array<{ rate: SpeechRate; text: string }> = [
+  { rate: 0.75, text: 'ช้า' },
+  { rate: 0.9, text: 'ปกติ' },
+  { rate: 1.1, text: 'เร็ว' },
 ]
 
 export const STORAGE_KEY = 'finemodel_speech_rate'
@@ -87,7 +87,7 @@ export default function SpeechSpeedToggle({
         </svg>
         <span>ความเร็วเสียง:</span>
       </span>
-      <div className={styles.pills} role="group" aria-label="ปรับความเร็วการฟัง (ช้า กลาง ปกติ)">
+      <div className={styles.pills} role="group" aria-label="ปรับความเร็วการฟัง (ช้า ปกติ เร็ว)">
         {SPEECH_RATES.map(item => {
           const isActive = Math.abs(rate - item.rate) < 0.08
           return (
@@ -96,11 +96,10 @@ export default function SpeechSpeedToggle({
               type="button"
               className={`${styles.pill} ${isActive ? styles.pillActive : ''}`}
               onClick={() => selectRate(item.rate)}
-              title={`ความเร็ว ${item.text} (${item.sub})`}
+              title={`ความเร็วเสียง: ${item.text}`}
               aria-pressed={isActive}
             >
               <span className={styles.pillText}>{item.text}</span>
-              <span className={styles.pillSub}>{item.sub}</span>
             </button>
           )
         })}
