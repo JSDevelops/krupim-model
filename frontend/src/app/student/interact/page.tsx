@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { authenticatedFetch } from '@/lib/api'
 import { toast } from 'sonner'
+import SpeechSpeedToggle, { getStoredSpeechRate } from '@/components/SpeechSpeedToggle'
 import InteractIcon from './InteractIcon'
 import styles from './interact.module.css'
 
@@ -87,6 +88,7 @@ export default function InteractPage() {
   const [wordStatus, setWordStatus] = useState<WordCheck[]>([])
   const [transcript, setTranscript] = useState('')
   const [listLimit, setListLimit] = useState(8)
+  const [speechRate, setSpeechRate] = useState<number>(() => getStoredSpeechRate())
 
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null)
 
@@ -208,7 +210,7 @@ export default function InteractPage() {
     if (!clean) return
     const utterance = new SpeechSynthesisUtterance(clean)
     utterance.lang = 'en-US'
-    utterance.rate = 0.76
+    utterance.rate = Math.min(1.0, Math.max(0.65, speechRate * 0.9))
     window.speechSynthesis.speak(utterance)
     toast.info(`ฝึกออกเสียงคำ: "${clean}"`, { duration: 1500 })
   }
@@ -226,7 +228,7 @@ export default function InteractPage() {
 
     const utterance = new SpeechSynthesisUtterance(current.en)
     utterance.lang = 'en-US'
-    utterance.rate = 0.84
+    utterance.rate = speechRate
     utterance.onstart = () => setSpeaking(true)
     utterance.onend = () => setSpeaking(false)
     utterance.onerror = () => setSpeaking(false)
@@ -328,6 +330,11 @@ export default function InteractPage() {
               <div className={`${styles.languageCard} ${styles.thai}`}>
                 <div className={styles.languageLabel}><InteractIcon name="book" size={15} /> คำแปลภาษาไทย</div>
                 <p className={styles.translation}>{current.th}</p>
+              </div>
+
+              {/* Speed Controller Pills Toggle */}
+              <div style={{ display: 'flex', justifyContent: 'center', margin: '6px 0 12px' }}>
+                <SpeechSpeedToggle currentRate={speechRate} onRateChange={setSpeechRate} />
               </div>
 
               <div className={styles.actions}>

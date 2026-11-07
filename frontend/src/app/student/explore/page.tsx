@@ -6,6 +6,7 @@ import Image from 'next/image'
 import { authenticatedFetch } from '@/lib/api'
 import { analyzeImage as analyzeImageAPI } from '@/lib/gemini'
 import { toast } from 'sonner'
+import SpeechSpeedToggle, { getStoredSpeechRate } from '@/components/SpeechSpeedToggle'
 import ExploreIcon from './ExploreIcon'
 import styles from './explore.module.css'
 import { WEEK2_MISSION_ITEMS, matchMissionItem, type MissionCategory, type Week2MissionItem } from './week2-mission'
@@ -117,6 +118,7 @@ export default function ExplorePage() {
   const [quizAnswered, setQuizAnswered] = useState(false)
   const [speechScore, setSpeechScore] = useState<number | null>(null)
   const [isRecording, setIsRecording] = useState(false)
+  const [speechRate, setSpeechRate] = useState<number>(() => getStoredSpeechRate())
 
   // ── Week 1 Tableware State ──
   const [week1Category, setWeek1Category] = useState<'ALL' | 'cutlery' | 'glass' | 'tableware'>('ALL')
@@ -494,6 +496,7 @@ export default function ExplorePage() {
     window.speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = 'en-US'
+    utterance.rate = speechRate
     utterance.onstart = () => setSpeaking(id)
     utterance.onend = () => setSpeaking(null)
     utterance.onerror = () => setSpeaking(null)
@@ -754,6 +757,11 @@ export default function ExplorePage() {
           </button>
         </div>
 
+        {/* Speed Controller Bar */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', margin: '6px 0 14px' }}>
+          <SpeechSpeedToggle currentRate={speechRate} onRateChange={setSpeechRate} />
+        </div>
+
         {/* ── TAB 1: ภารกิจประจำสัปดาห์ (สัปดาห์ที่ 1 อยู่บนสุด) ── */}
         {activeTab === 'mission' && (
           <section className={styles.missionSection}>
@@ -1012,7 +1020,17 @@ export default function ExplorePage() {
                               title="เปิดกล้อง AI Scan เมนูนี้"
                             >
                               <ExploreIcon name="camera" size={13} />
-                              <span>เปิดกล้องสแกน</span>
+                              <span>สแกน</span>
+                            </button>
+                            <button
+                              type="button"
+                              className={styles.missionActionBtn}
+                              onClick={() => void triggerFallbackScan(item)}
+                              title="จำลองผลการสแกนด้วยระบบสำรอง (Curriculum Fallback)"
+                              style={{ background: '#fcf6e8', borderColor: '#e4d3a8', color: '#7a5a16' }}
+                            >
+                              <ExploreIcon name="layers" size={13} />
+                              <span>จำลอง</span>
                             </button>
                           </div>
                         </div>
@@ -1213,10 +1231,11 @@ export default function ExplorePage() {
                   <div className={styles.cameraEmpty}>
                     <span className={styles.cameraEmptyIcon}><ExploreIcon name="camera" size={34} /></span>
                     <h3>กล้องจะเปิดเมื่อคุณอนุญาต</h3>
-                    <p>ระบบไม่เปิดกล้องอัตโนมัติ ช่วยประหยัดแบตเตอรี่และรักษาความเป็นส่วนตัว คุณสามารถเปิดกล้องเพื่อส่องวัตถุจริง หรือเลือกอัปโหลดรูปภาพได้</p>
+                    <p>ระบบไม่เปิดกล้องอัตโนมัติ ช่วยประหยัดแบตเตอรี่และรักษาความเป็นส่วนตัว คุณสามารถเลือกอัปโหลดรูป หรือใช้โหมดจำลองแทนได้</p>
                     <div className={styles.cameraActions}>
                       <button type="button" className={styles.primaryButton} onClick={() => void startCamera()}><ExploreIcon name="camera" size={17} /> เปิดกล้อง</button>
                       <button type="button" className={styles.secondaryButton} onClick={() => fileInputRef.current?.click()}><ExploreIcon name="upload" size={17} /> เลือกรูปภาพ</button>
+                      <button type="button" className={styles.fallbackPickerBtn} onClick={() => setShowFallbackModal(true)}><ExploreIcon name="layers" size={16} /> 🎯 โหมดเลือกวัตถุจำลอง (Fallback Scan)</button>
                     </div>
                   </div>
                 )}
@@ -1228,9 +1247,20 @@ export default function ExplorePage() {
                         <span className={isLiveScanning ? styles.statusDotActive : styles.statusDot} />
                         {isLiveScanning ? 'กำลังสแกนสดเรียลไทม์...' : 'กล้องสแกนสดเรียลไทม์'}
                       </span>
-                      <button type="button" className={`${styles.autoButton} ${autoScan ? styles.autoActive : ''}`} onClick={() => setAutoScan(value => !value)}>
-                        <ExploreIcon name="scan" size={14} /> สแกนสดเรียลไทม์ {autoScan ? 'เปิด' : 'พัก'}
-                      </button>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button
+                          type="button"
+                          className={styles.fallbackPickerBtn}
+                          style={{ padding: '4px 10px', fontSize: '11px' }}
+                          onClick={() => setShowFallbackModal(true)}
+                          title="เลือกวัตถุหรือเมนูเพื่อจำลองผลการสแกนทันที"
+                        >
+                          🎯 เลือกจำลอง
+                        </button>
+                        <button type="button" className={`${styles.autoButton} ${autoScan ? styles.autoActive : ''}`} onClick={() => setAutoScan(value => !value)}>
+                          <ExploreIcon name="scan" size={14} /> สแกนสดเรียลไทม์ {autoScan ? 'เปิด' : 'พัก'}
+                        </button>
+                      </div>
                     </div>
                     <div className={styles.scanCorners} />
                     <div className={styles.liveRadarRing} />
@@ -1281,6 +1311,13 @@ export default function ExplorePage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <ExploreIcon name="alert" size={17} /> <span>{scanError}</span>
                     </div>
+                    <button
+                      type="button"
+                      className={styles.errorFallbackAction}
+                      onClick={() => setShowFallbackModal(true)}
+                    >
+                      ⚡ คลิกเปิดโหมดจำลอง (เลือกวัตถุเพื่อทำภารกิจต่อ)
+                    </button>
                   </div>
                 )}
               </div>
@@ -1292,7 +1329,7 @@ export default function ExplorePage() {
                 <div className={styles.resultEmpty}>
                   <span className={styles.resultEmptyIcon}><ExploreIcon name="sparkles" size={30} /></span>
                   <h3>ผลวิเคราะห์จะแสดงที่นี่</h3>
-                  <p>จัดวางอุปกรณ์หรือวัตถุให้อยู่กลางภาพ มีแสงสว่างเพียงพอ แล้วกดปุ่ม "ถ่ายภาพและวิเคราะห์ทันที" เพื่อให้ระบบ AI Scan วิเคราะห์วัตถุจริง</p>
+                  <p>จัดวัตถุให้อยู่กลางภาพ มีแสงเพียงพอ หรือใช้โหมดเลือกวัตถุจำลอง (Fallback Scan) เพื่อเรียนรู้ได้ทันที</p>
                 </div>
               ) : (
                 <div className={styles.resultContent}>
@@ -1458,6 +1495,101 @@ export default function ExplorePage() {
                   </Link>
                 )}
               </div>
+            </div>
+          </section>
+        </div>
+      )}
+
+      {showFallbackModal && (
+        <div className={styles.modalBackdrop} role="presentation" onMouseDown={() => setShowFallbackModal(false)}>
+          <section
+            className={styles.modal}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="fallback-modal-title"
+            onMouseDown={event => event.stopPropagation()}
+            style={{ maxWidth: 680 }}
+          >
+            <header className={styles.modalHeader}>
+              <div>
+                <h3 id="fallback-modal-title">โหมดสแกนจำลอง (Fallback Simulator)</h3>
+                <p>เลือกอุปกรณ์หรือเมนูอาหารเพื่อจำลองการสแกนและบันทึกผลการเรียนรู้ได้ทันที</p>
+              </div>
+              <button type="button" className={styles.iconButton} aria-label="ปิด" onClick={() => setShowFallbackModal(false)}>
+                <ExploreIcon name="close" size={17} />
+              </button>
+            </header>
+
+            {/* Filter Tabs & Search */}
+            <div style={{ padding: '14px 18px 0', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <input
+                type="search"
+                placeholder="ค้นหาชื่ออุปกรณ์หรือเมนูอาหาร (เช่น Fork, Caesar Salad, Ribeye, ซุป)..."
+                value={fallbackSearch}
+                onChange={e => setFallbackSearch(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 12,
+                  border: '1px solid #c9d5ce',
+                  fontSize: 13,
+                  outline: 'none',
+                }}
+              />
+
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {[
+                  { id: 'ALL', label: 'ทั้งหมด' },
+                  { id: 'WEEK1', label: 'สัปดาห์ที่ 1: อุปกรณ์บนโต๊ะอาหาร (51)' },
+                  { id: 'WEEK2', label: 'สัปดาห์ที่ 2: เมนูอาหารและเครื่องดื่ม (20)' },
+                ].map(tab => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setFallbackFilter(tab.id as 'ALL' | 'WEEK1' | 'WEEK2')}
+                    style={{
+                      padding: '6px 14px',
+                      borderRadius: 99,
+                      border: '1px solid',
+                      borderColor: fallbackFilter === tab.id ? '#174b37' : '#d2ded7',
+                      background: fallbackFilter === tab.id ? '#174b37' : '#ffffff',
+                      color: fallbackFilter === tab.id ? '#ffffff' : '#415247',
+                      fontSize: 11.5,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.fallbackModalGrid} style={{ margin: '8px 18px 18px' }}>
+              {filteredFallbackItems.map(item => (
+                <div
+                  key={item.nameEn}
+                  className={styles.fallbackItemCard}
+                  onClick={() => void triggerFallbackScan(item)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') void triggerFallbackScan(item)
+                  }}
+                >
+                  <span className={styles.fallbackItemEmoji}>{item.emoji || '🍽️'}</span>
+                  <div className={styles.fallbackItemInfo}>
+                    <h5 className={styles.fallbackItemNameEn}>{item.nameEn}</h5>
+                    <p className={styles.fallbackItemNameTh}>{item.nameTh || item.name}</p>
+                    <span className={styles.fallbackItemBadge}>{item.categoryTh || 'บทเรียน FINE'}</span>
+                  </div>
+                </div>
+              ))}
+              {filteredFallbackItems.length === 0 && (
+                <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '30px 0', color: '#7a857e', fontSize: 13 }}>
+                  ไม่พบรายการที่ตรงกับ &quot;{fallbackSearch}&quot;
+                </div>
+              )}
             </div>
           </section>
         </div>

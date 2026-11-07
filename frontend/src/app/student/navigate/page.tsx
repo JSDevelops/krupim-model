@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { authenticatedFetch } from '@/lib/api'
 import { toast } from 'sonner'
+import SpeechSpeedToggle, { getStoredSpeechRate } from '@/components/SpeechSpeedToggle'
 import NavigateIcon from './NavigateIcon'
 import styles from './navigate.module.css'
 
@@ -290,6 +291,7 @@ function evaluateSentence(target: string, spoken: string): PracticeResult {
 
 export default function NavigatePage() {
   const [scenarios, setScenarios] = useState(defaultScenarios)
+  const [speechRate, setSpeechRate] = useState<number>(() => getStoredSpeechRate())
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedPhase, setSelectedPhase] = useState<'all' | 'phase1' | 'phase2' | 'phase3' | 'phase4'>('all')
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null)
@@ -397,7 +399,7 @@ export default function NavigatePage() {
     recognitionRef.current?.stop()
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = 'en-US'
-    utterance.rate = 0.84
+    utterance.rate = speechRate
     utterance.onstart = () => setSpeakingId(id)
     utterance.onend = () => setSpeakingId(null)
     utterance.onerror = () => setSpeakingId(null)
@@ -472,6 +474,10 @@ export default function NavigatePage() {
           <nav className={styles.tabs} aria-label="เนื้อหาสถานการณ์">
             {tabs.map(tab => <button key={tab.id} type="button" className={`${styles.tab} ${activeView === tab.id ? styles.tabActive : ''}`} onClick={() => selectView(tab.id)}><span>{tab.label}</span>{tab.count !== undefined && <span className={styles.tabCount}>{tab.count}</span>}</button>)}
           </nav>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '8px 0 14px' }}>
+            <SpeechSpeedToggle currentRate={speechRate} onRateChange={setSpeechRate} />
+          </div>
 
           {activeView === 'decision' && (
             <section className={styles.contentSection}>

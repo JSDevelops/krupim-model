@@ -7,6 +7,7 @@ import StudentIcon, { type StudentIconName } from '@/app/student/StudentIcon'
 import { useRole } from '@/context/RoleContext'
 import { authenticatedFetch } from '@/lib/api'
 import { toast } from 'sonner'
+import SpeechSpeedToggle, { getStoredSpeechRate } from '@/components/SpeechSpeedToggle'
 import styles from './simulation.module.css'
 
 type Message = {
@@ -88,6 +89,7 @@ export default function SimulationPage() {
   const [evaluating, setEvaluating] = useState(false)
   const [typing, setTyping] = useState(false)
   const [listening, setListening] = useState(false)
+  const [speechRate, setSpeechRate] = useState<number>(() => getStoredSpeechRate())
   const [scenarioId, setScenarioId] = useState(DEFAULT_SCENARIO_ID)
   const [scenario, setScenario] = useState<LearningScenario | null>(null)
 
@@ -123,14 +125,14 @@ export default function SimulationPage() {
     window.speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(text)
     utterance.lang = 'en-US'
-    utterance.rate = 0.88
+    utterance.rate = speechRate
     const voices = window.speechSynthesis.getVoices()
     utterance.voice =
       voices.find(voice => voice.lang.startsWith('en') && /Google|Natural|Male|David/i.test(voice.name)) ||
       voices.find(voice => voice.lang.startsWith('en')) ||
       null
     window.speechSynthesis.speak(utterance)
-  }, [])
+  }, [speechRate])
 
   const finishSimulation = useCallback(async () => {
     if (finished) return
@@ -501,24 +503,29 @@ export default function SimulationPage() {
           <section className={styles.chatPanel}>
             {/* Customer Header */}
             <div className={styles.customer}>
-              <div className={styles.customerAvatar}>
-                <StudentIcon name="user" size={22} />
+              <div className={styles.customerInfoGroup}>
+                <div className={styles.customerAvatar}>
+                  <StudentIcon name="user" size={22} />
+                </div>
+                <div className={styles.customerMeta}>
+                  <strong>Mr. Robert Smith</strong>
+                  <span>ลูกค้าจำลองชาวต่างชาติ (5-Star Hotel Guest)</span>
+                </div>
               </div>
-              <div>
-                <strong>Mr. Robert Smith</strong>
-                <span>ลูกค้าจำลองชาวต่างชาติ (5-Star Hotel Guest)</span>
+              <div className={styles.customerAudioControls}>
+                <SpeechSpeedToggle compact currentRate={speechRate} onRateChange={setSpeechRate} />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const lastAi = [...messages].reverse().find(m => m.role === 'ai')
+                    if (lastAi) speak(lastAi.text)
+                  }}
+                  aria-label="ฟังเสียงลูกค้าประโยคล่าสุด"
+                  title="ฟังเสียงลูกค้าประโยคล่าสุด"
+                >
+                  <StudentIcon name="volume" size={18} />
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  const lastAi = [...messages].reverse().find(m => m.role === 'ai')
-                  if (lastAi) speak(lastAi.text)
-                }}
-                aria-label="ฟังเสียงลูกค้าประโยคล่าสุด"
-                title="ฟังเสียงลูกค้าประโยคล่าสุด"
-              >
-                <StudentIcon name="volume" size={18} />
-              </button>
             </div>
 
             {/* Messages Container */}
