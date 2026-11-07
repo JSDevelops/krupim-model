@@ -1229,13 +1229,58 @@ export default function ExplorePage() {
 
                 {!isCameraActive && !scanResult && (
                   <div className={styles.cameraEmpty}>
-                    <span className={styles.cameraEmptyIcon}><ExploreIcon name="camera" size={34} /></span>
-                    <h3>กล้องจะเปิดเมื่อคุณอนุญาต</h3>
-                    <p>ระบบไม่เปิดกล้องอัตโนมัติ ช่วยประหยัดแบตเตอรี่และรักษาความเป็นส่วนตัว คุณสามารถเลือกอัปโหลดรูป หรือใช้โหมดจำลองแทนได้</p>
-                    <div className={styles.cameraActions}>
-                      <button type="button" className={styles.primaryButton} onClick={() => void startCamera()}><ExploreIcon name="camera" size={17} /> เปิดกล้อง</button>
-                      <button type="button" className={styles.secondaryButton} onClick={() => fileInputRef.current?.click()}><ExploreIcon name="upload" size={17} /> เลือกรูปภาพ</button>
-                      <button type="button" className={styles.fallbackPickerBtn} onClick={() => setShowFallbackModal(true)}><ExploreIcon name="layers" size={16} /> 🎯 โหมดเลือกวัตถุจำลอง (Fallback Scan)</button>
+                    <span className={styles.scanPickerBadge}>
+                      <ExploreIcon name="scan" size={13} /> โปรดเลือก Scan
+                    </span>
+                    <h3>เลือกรูปแบบการสแกนที่ต้องการ</h3>
+                    <p>เลือกใช้งานระหว่างโมเดล AR 3 มิติ หรือเปิดกล้อง AI สแกนวัตถุสดแบบเรียลไทม์</p>
+
+                    <div className={styles.scanDualActions}>
+                      <Link
+                        href="/student/scanner"
+                        className={`${styles.scanOptionBtn} ${styles.scanBtnAr}`}
+                        title="เปิดกล้องสแกน QR Code เพื่อวางโมเดล AR 3 มิติเสมือนจริงบนโต๊ะ"
+                      >
+                        <span className={styles.scanBtnIconWrap}>
+                          <ExploreIcon name="cube" size={24} />
+                        </span>
+                        <strong className={styles.scanBtnTitle}>AR 3D</strong>
+                        <span className={styles.scanBtnDesc}>โมเดล 3 มิติเสมือนจริง</span>
+                      </Link>
+
+                      <button
+                        type="button"
+                        className={`${styles.scanOptionBtn} ${styles.scanBtnLive}`}
+                        onClick={() => void startCamera()}
+                        title="เปิดกล้องสแกนวัตถุและเมนูอาหารสดแบบเรียลไทม์ด้วย AI"
+                      >
+                        <span className={styles.scanBtnIconWrap}>
+                          <ExploreIcon name="sparkles" size={24} />
+                        </span>
+                        <strong className={styles.scanBtnTitle}>AI Live</strong>
+                        <span className={styles.scanBtnDesc}>สแกนวัตถุสดเรียลไทม์</span>
+                      </button>
+                    </div>
+
+                    <div className={styles.scanSecondaryRow}>
+                      <span>หรือ</span>
+                      <button
+                        type="button"
+                        className={styles.scanTextLink}
+                        onClick={() => fileInputRef.current?.click()}
+                        title="เลือกรูปภาพจากเครื่องเพื่อวิเคราะห์"
+                      >
+                        <ExploreIcon name="upload" size={12} /> อัปโหลดรูปภาพ
+                      </button>
+                      <span>•</span>
+                      <button
+                        type="button"
+                        className={styles.scanTextLink}
+                        onClick={() => setShowFallbackModal(true)}
+                        title="เลือกวัตถุจากคลังเพื่อจำลองผลสแกน"
+                      >
+                        <ExploreIcon name="layers" size={12} /> โหมดจำลอง
+                      </button>
                     </div>
                   </div>
                 )}
