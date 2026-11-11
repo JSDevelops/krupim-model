@@ -76,9 +76,25 @@ export async function recordAiTokenUsage(record: AiTokenRecord): Promise<void> {
 }
 
 export async function getAiQuotaStats(provider = 'gemini'): Promise<AiQuotaStats> {
-  const dailyLimit = 1500 // Google Gemini Free Tier daily requests
+  let dailyLimit = 1500 // Google Gemini Free Tier daily requests baseline
   try {
     await ensureTable()
+
+    // Query any approved extra quota today from ai_token_requests
+    try {
+      const extraRes = await queryDb<{ extra: string }>(`
+        SELECT COALESCE(SUM(approved_quota), 0)::text AS extra
+        FROM ai_token_requests
+        WHERE status = 'approved' AND (updated_at >= CURRENT_DATE OR created_at >= CURRENT_DATE)
+      `)
+      const extraLimit = Number(extraRes.rows[0]?.extra || 0)
+      if (extraLimit > 0) {
+        dailyLimit += extraLimit
+      }
+    } catch {
+      // Table may not exist yet or no requests approved
+    }
+
     const result = await queryDb<{
       requestCount: string
       totalTokens: string
@@ -150,3 +166,4 @@ export async function getAiQuotaStats(provider = 'gemini'): Promise<AiQuotaStats
     }
   }
 }
+

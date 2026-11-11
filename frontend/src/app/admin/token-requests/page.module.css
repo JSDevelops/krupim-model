@@ -1,0 +1,422 @@
+.page {
+  display: grid;
+  gap: 22px;
+}
+
+.pageHeader {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.pageHeader > div:first-child {
+  min-width: 0;
+}
+
+.eyebrow {
+  margin: 0 0 5px;
+  color: #9a7f2c;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+
+.pageHeader h1 {
+  margin: 0;
+  color: #17392b;
+  font-size: clamp(24px, 3vw, 34px);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  display: block;
+  margin-top: 7px;
+  color: #718078;
+  font-size: 13px;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.primaryButton,
+.secondaryButton,
+.approveButton,
+.rejectButton {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border: 1px solid #d7e0da;
+  border-radius: 11px;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  transition: all 150ms ease;
+}
+
+.primaryButton {
+  color: #fff;
+  border-color: #1e5840;
+  background: linear-gradient(135deg, #2f7556 0%, #174431 100%);
+  box-shadow: 0 8px 20px rgb(23 68 49 / 20%);
+}
+
+.secondaryButton {
+  color: #274638;
+}
+
+.approveButton {
+  color: #1b5e20;
+  border-color: #a5d6a7;
+  background: #e8f5e9;
+}
+.approveButton:hover {
+  background: #c8e6c9;
+}
+
+.rejectButton {
+  color: #b71c1c;
+  border-color: #ef9a9a;
+  background: #ffebee;
+}
+.rejectButton:hover {
+  background: #ffcdd2;
+}
+
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.metricCard {
+  background: #fff;
+  border: 1px solid #e1e7e3;
+  border-radius: 16px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+.metricIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.metricCopy {
+  display: grid;
+  gap: 2px;
+}
+
+.metricCopy span {
+  font-size: 11px;
+  font-weight: 700;
+  color: #667085;
+}
+
+.metricCopy strong {
+  font-size: 24px;
+  font-weight: 900;
+  color: #101828;
+}
+
+.tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 1px solid #e2e8e5;
+  padding-bottom: 2px;
+}
+
+.tab {
+  padding: 8px 16px;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 150ms ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tab:hover {
+  color: #1e293b;
+  background: #f1f5f9;
+}
+
+.activeTab {
+  color: #1e5840;
+  background: #eaf4ef;
+  font-weight: 800;
+}
+
+.tabCount {
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 10px;
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.activeTab .tabCount {
+  background: #1e5840;
+  color: #fff;
+}
+
+.contentCard {
+  background: #fff;
+  border: 1px solid #e1e7e3;
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
+}
+
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 12px;
+}
+
+.table th {
+  padding: 14px 18px;
+  background: #f8faf9;
+  color: #475467;
+  font-weight: 800;
+  font-size: 11px;
+  border-bottom: 1px solid #eaecf0;
+  white-space: nowrap;
+}
+
+.table td {
+  padding: 16px 18px;
+  border-bottom: 1px solid #eaecf0;
+  color: #344054;
+  vertical-align: middle;
+}
+
+.table tbody tr:hover {
+  background: #f9fbf9;
+}
+
+.teacherCell strong {
+  display: block;
+  font-size: 13px;
+  color: #101828;
+}
+
+.teacherCell small {
+  color: #667085;
+  font-size: 11px;
+}
+
+.typeBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  white-space: nowrap;
+}
+
+.typeBadge.purchase {
+  background: #eff6ff;
+  color: #1e40af;
+  border-color: #bfdbfe;
+}
+
+.typeBadge.key {
+  background: #fefce8;
+  color: #854d0e;
+  border-color: #fef08a;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.statusPending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.statusApproved {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.statusRejected {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.actionsCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.emptyState {
+  padding: 60px 20px;
+  text-align: center;
+  color: #64748b;
+}
+
+.emptyIcon {
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 12px;
+  border-radius: 50%;
+  background: #f1f5f9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #94a3b8;
+}
+
+.emptyState h3 {
+  margin: 0 0 6px;
+  color: #1e293b;
+  font-size: 15px;
+}
+
+.emptyState p {
+  margin: 0;
+  font-size: 12px;
+}
+
+/* Modal */
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modalContent {
+  background: #fff;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 480px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+  overflow: hidden;
+  animation: modalEnter 180ms ease;
+}
+
+@keyframes modalEnter {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.modalHeader {
+  padding: 20px 24px;
+  border-bottom: 1px solid #eaecf0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.modalHeader h2 {
+  margin: 0;
+  font-size: 16px;
+  color: #101828;
+}
+
+.closeButton {
+  background: none;
+  border: none;
+  color: #98a2b3;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 8px;
+}
+.closeButton:hover {
+  background: #f2f4f7;
+  color: #344054;
+}
+
+.modalBody {
+  padding: 24px;
+  display: grid;
+  gap: 16px;
+}
+
+.formGroup {
+  display: grid;
+  gap: 6px;
+}
+
+.formGroup label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #344054;
+}
+
+.formGroup input,
+.formGroup textarea {
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid #d0d5dd;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 13px;
+  box-sizing: border-box;
+}
+
+.formGroup input:focus,
+.formGroup textarea:focus {
+  outline: none;
+  border-color: #2f7556;
+  box-shadow: 0 0 0 3px rgba(47, 117, 86, 0.12);
+}
+
+.modalFooter {
+  padding: 16px 24px;
+  background: #f8faf9;
+  border-top: 1px solid #eaecf0;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}

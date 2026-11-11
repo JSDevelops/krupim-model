@@ -93,6 +93,15 @@ export default function TeacherDashboard() {
   const [gradingNotes, setGradingNotes] = useState('ผ่านเกณฑ์การประเมินสมรรถนะสะสมเบื้องต้น')
   const [aiQuota, setAiQuota] = useState<AiQuotaData | null>(null)
 
+  // Token Request State
+  const [tokenModalOpen, setTokenModalOpen] = useState(false)
+  const [reqType, setReqType] = useState('temporary_extension')
+  const [reqStudentCount, setReqStudentCount] = useState(35)
+  const [reqTargetDate, setReqTargetDate] = useState('')
+  const [reqContact, setReqContact] = useState('')
+  const [reqNotes, setReqNotes] = useState('')
+  const [submittingTokenReq, setSubmittingTokenReq] = useState(false)
+
   const loadDashboard = useCallback(async (signal?: AbortSignal) => {
     const response = await authenticatedFetch('/api/teacher/dashboard', { cache: 'no-store', signal })
     const payload = await response.json() as {
@@ -223,6 +232,36 @@ export default function TeacherDashboard() {
     }
   }
 
+  async function handleSendTokenRequest(e: React.FormEvent) {
+    e.preventDefault()
+    if (!reqContact.trim()) {
+      toast.error('กรุณาระบุเบอร์โทรหรือ LINE ID สำหรับติดต่อกลับ')
+      return
+    }
+    setSubmittingTokenReq(true)
+    try {
+      const res = await authenticatedFetch('/api/teacher/token-request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestType: reqType,
+          studentCount: reqStudentCount,
+          targetDate: reqTargetDate,
+          contactChannel: reqContact,
+          notes: reqNotes,
+        }),
+      })
+      if (!res.ok) throw new Error('ส่งคำขอไม่สำเร็จ')
+      toast.success('ส่งคำขอเพิ่มโควต้า AI ไปยังผู้ดูแลระบบเรียบร้อยแล้ว Admin จะได้รับการแจ้งเตือนทันที')
+      setTokenModalOpen(false)
+      setReqNotes('')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการส่งคำขอ')
+    } finally {
+      setSubmittingTokenReq(false)
+    }
+  }
+
   return (
     <main className={styles.dashboard} aria-busy={loading}>
       <section className={styles.hero} aria-labelledby="teacher-dashboard-title">
@@ -327,6 +366,20 @@ export default function TeacherDashboard() {
               <small>ปริมาณโทเค็นสะสมวันนี้</small>
               <strong>≈ {aiQuota.totalTokensUsed.toLocaleString()} Tokens</strong>
             </div>
+          </div>
+
+          <div className={styles.aiQuotaFooter}>
+            <div className={styles.aiQuotaFooterNote}>
+              <span>💡 ต้องการขยายโควต้าพิเศษสำหรับสัปดาห์สอบ หรือขอซื้อแพ็กเกจเพิ่มสำหรับชั้นเรียน?</span>
+            </div>
+            <button
+              type="button"
+              className={styles.aiQuotaRequestBtn}
+              onClick={() => setTokenModalOpen(true)}
+            >
+              <AdminIcon name="sparkles" size={14} />
+              ขอเพิ่มโควต้า / ติดต่อซื้อ Token
+            </button>
           </div>
         </section>
       )}
@@ -452,6 +505,115 @@ export default function TeacherDashboard() {
             <label className={styles.notesField}><span>ข้อเสนอแนะเพิ่มเติม</span><textarea rows={2} value={gradingNotes} onChange={event => setGradingNotes(event.target.value)} /></label>
             <footer><button type="button" onClick={() => setSelectedGrading(null)} disabled={saving}>ยกเลิก</button><button type="button" onClick={() => void saveGrading()} disabled={saving}><AdminIcon name={saving ? 'clock' : 'check'} size={17} /> {saving ? 'กำลังบันทึก' : 'บันทึกผลประเมิน'}</button></footer>
           </section>
+        </div>
+      )}
+
+      {/* Token Request Modal */}
+      {tokenModalOpen && (
+        <div
+          className={styles.modalBackdrop}
+          onClick={() => !submittingTokenReq && setTokenModalOpen(false)}
+        >
+          <div className={styles.requestModal} onClick={e => e.stopPropagation()}>
+            <div className={styles.requestModalHeader}>
+              <div>
+                <h3>ขอเพิ่มโควต้า AI / ติดต่อซื้อ Token</h3>
+                <p>ส่งคำขอตรงถึงผู้ดูแลระบบ (Admin) เพื่อจัดสรรโควต้าพิเศษหรือแพ็กเกจสถาบัน</p>
+              </div>
+              <button
+                type="button"
+                className={styles.modalCloseBtn}
+                onClick={() => setTokenModalOpen(false)}
+                disabled={submittingTokenReq}
+                aria-label="ปิดหน้าต่าง"
+              >
+                <AdminIcon name="close" size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSendTokenRequest} className={styles.requestForm}>
+              <div className={styles.formGroup}>
+                <label htmlFor="reqType">ประเภทคำขอที่ต้องการ: *</label>
+                <select
+                  id="reqType"
+                  value={reqType}
+                  onChange={e => setReqType(e.target.value)}
+                >
+                  <option value="temporary_extension">ขยายโควต้าชั่วคราว (วันสอบ / กิจกรรมพิเศษ 1 วัน)</option>
+                  <option value="purchase_package">ขอซื้อแพ็กเกจขยายลิมิตประจำภาคเรียน</option>
+                  <option value="institution_key">เชื่อมต่อ API Key ของวิทยาลัย/สถาบัน (ไม่จำกัดโควต้า)</option>
+                  <option value="other">ปรึกษา / ขอคำแนะนำเพิ่มเติม</option>
+                </select>
+              </div>
+
+              <div className={styles.formRow}>
+                <div className={styles.formGroup}>
+                  <label htmlFor="reqStudentCount">จำนวนนักเรียนในคาบ (โดยประมาณ):</label>
+                  <input
+                    id="reqStudentCount"
+                    type="number"
+                    min={1}
+                    max={500}
+                    value={reqStudentCount}
+                    onChange={e => setReqStudentCount(Number(e.target.value) || 30)}
+                    required
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label htmlFor="reqTargetDate">วันที่ต้องการใช้งาน:</label>
+                  <input
+                    id="reqTargetDate"
+                    type="text"
+                    placeholder="เช่น 25 มี.ค. หรือ ทุกวันพุธ"
+                    value={reqTargetDate}
+                    onChange={e => setReqTargetDate(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label htmlFor="reqContact">เบอร์โทร หรือ LINE ID สำหรับติดต่อกลับ: *</label>
+                <input
+                  id="reqContact"
+                  type="text"
+                  placeholder="เช่น 081-234-5678 หรือ line_krupim"
+                  value={reqContact}
+                  onChange={e => setReqContact(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label htmlFor="reqNotes">รายละเอียดเพิ่มเติม / วัตถุประสงค์การใช้งาน:</label>
+                <textarea
+                  id="reqNotes"
+                  rows={3}
+                  placeholder="เช่น จัดสอบปฏิบัติวิชาการบริการอาหารและเครื่องดื่ม จำนวน 40 คน ในช่วงเวลา 09:00 - 12:00 น."
+                  value={reqNotes}
+                  onChange={e => setReqNotes(e.target.value)}
+                />
+              </div>
+
+              <div className={styles.requestModalFooter}>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => setTokenModalOpen(false)}
+                  disabled={submittingTokenReq}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="submit"
+                  className={styles.submitTokenBtn}
+                  disabled={submittingTokenReq}
+                >
+                  <AdminIcon name="sparkles" size={15} />
+                  {submittingTokenReq ? 'กำลังส่งคำขอ...' : 'ส่งคำขอถึงผู้ดูแลระบบ'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </main>

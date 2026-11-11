@@ -60,6 +60,7 @@ const adminNavigation: Array<{ label: string; items: NavigationItem[] }> = [
     label: 'การกำกับดูแลและระบบ',
     items: [
       { href: '/admin/users', label: 'ครูและนักเรียน', description: 'บัญชี บทบาท และสิทธิ์เข้าถึง', icon: 'users' },
+      { href: '/admin/token-requests', label: 'คำขอโควต้า AI', description: 'คำขอเพิ่ม Token และจัดสรรโควต้า', icon: 'sparkles' },
       { href: '/admin/content', label: 'ตรวจสอบสื่อการเรียนรู้', description: 'กำกับดูแลและตรวจสอบสื่อของครู', icon: 'content' },
       { href: '/admin/blog', label: 'ข่าวและประกาศ', description: 'สื่อสารกับผู้ใช้งาน', icon: 'announcement' },
       { href: '/admin/audit-logs', label: 'ประวัติกิจกรรม', description: 'ตรวจสอบการเปลี่ยนแปลงในระบบ', icon: 'activity' },
