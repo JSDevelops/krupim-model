@@ -217,7 +217,7 @@
 @media (min-width: 960px) {
   .page { padding: 28px 20px 122px; }
   .hero {
-    grid-template-columns: minmax(0, 1.35fr) minmax(280px, .65fr);
+    grid-template-columns: minmax(0, 1fr);
     gap: 30px;
     padding: 34px;
     border-radius: 30px;

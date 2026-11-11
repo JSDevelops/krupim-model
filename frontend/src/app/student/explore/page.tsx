@@ -715,16 +715,6 @@ export default function ExplorePage() {
             <h1 className={styles.title}>สำรวจอุปกรณ์และเรียนรู้คำศัพท์งานบริการ</h1>
             <p className={styles.subtitle}>เลือกดูคลังคำศัพท์หรือใช้ AI Scan วิเคราะห์วัตถุ แล้วฝึกเรียนรู้ตามกระบวนการ F–I–N–E ได้ในหน้าเดียว</p>
           </div>
-          <div className={styles.heroStats}>
-            <div className={styles.stat}>
-              <span className={styles.statIcon}><ExploreIcon name="book" /></span>
-              <span><strong className={styles.statValue}>{equipment.length || '—'}</strong><small className={styles.statLabel}>คำศัพท์พร้อมเรียนรู้</small></span>
-            </div>
-            <div className={styles.stat}>
-              <span className={styles.statIcon}><ExploreIcon name="scan" /></span>
-              <span><strong className={styles.statValue}>AI Vision</strong><small className={styles.statLabel}>วิเคราะห์ภาพตามวัตถุจริง</small></span>
-            </div>
-          </div>
         </section>
 
         {/* ── Tabs Navigation: 3 ปุ่มตามที่ผู้ใช้กำหนด ── */}
