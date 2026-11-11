@@ -42,7 +42,7 @@ async function requestBody(request: NextRequest) {
 export async function GET(request: NextRequest) {
   try {
     const user = await guardApi(request, { roles: ['student', 'developer'], maxRequests: 120 })
-    const [profileResult, analyticsResult, taskResult] = await Promise.all([
+    const [profileResult, analyticsResult, taskResult, notifResult, annResult] = await Promise.all([
       queryDb(`
         SELECT id, name, email, role, approval_status AS status, avatar_url AS "avatarUrl",
                school_id AS "schoolId", school_name AS "schoolName", phone, bio,
@@ -74,10 +74,46 @@ export async function GET(request: NextRequest) {
         ORDER BY (s.id IS NULL) DESC, a.due_date ASC NULLS LAST, a.created_at DESC
         LIMIT 120
       `, [user.id]),
+      queryDb(`
+        SELECT id, title, message, type, link_url AS "linkUrl", is_read AS "isRead", created_at AS "createdAt"
+        FROM notifications
+        WHERE user_id = $1::uuid
+        ORDER BY created_at DESC
+        LIMIT 25
+      `, [user.id]),
+      queryDb(`
+        SELECT a.id, a.title, a.content, a.priority, a.tags, a.link_url AS "linkUrl",
+               a.published_at AS "publishedAt", a.expires_at AS "expiresAt",
+               COALESCE(c.name, 'ประกาศทั่วไป') AS "className",
+               COALESCE(p.name, 'ผู้ดูแลระบบ') AS "authorName",
+               COALESCE(p.role, 'developer') AS "authorRole"
+        FROM system_announcements a
+        LEFT JOIN classes c ON c.id = a.class_id
+        LEFT JOIN profiles p ON p.id = a.created_by
+        WHERE (a.starts_at IS NULL OR a.starts_at <= NOW())
+          AND (a.expires_at IS NULL OR a.expires_at >= NOW())
+          AND (
+            (a.class_id IS NULL AND (p.role != 'teacher' OR p.role IS NULL) AND (a.target_audience = 'all' OR a.target_audience = 'students' OR a.target_audience IS NULL))
+            OR (a.class_id IN (SELECT class_id FROM class_students WHERE student_id = $1::uuid))
+            OR (a.class_id IS NULL AND a.created_by IN (
+              SELECT c2.teacher_id FROM classes c2
+              JOIN class_students cs2 ON cs2.class_id = c2.id
+              WHERE cs2.student_id = $1::uuid
+            ))
+          )
+        ORDER BY a.published_at DESC
+        LIMIT 30
+      `, [user.id]),
     ])
     if (!profileResult.rows[0]) throw new ApiError('ไม่พบข้อมูลโปรไฟล์', 404, 'NOT_FOUND')
     return NextResponse.json(
-      { profile: profileResult.rows[0], stats: analyticsResult.rows[0], tasks: taskResult.rows },
+      {
+        profile: profileResult.rows[0],
+        stats: analyticsResult.rows[0],
+        tasks: taskResult.rows,
+        notifications: notifResult.rows,
+        announcements: annResult.rows,
+      },
       { headers: { 'Cache-Control': 'private, no-store' } },
     )
   } catch (error) { return apiErrorResponse(error) }

@@ -60,6 +60,30 @@ type Certificate = {
   issuedAt: string;
 };
 
+type StudentNotification = {
+  id: string;
+  title: string;
+  message: string;
+  type: string;
+  linkUrl: string | null;
+  isRead: boolean;
+  createdAt: string;
+};
+
+type StudentAnnouncement = {
+  id: string;
+  title: string;
+  content: string;
+  priority: 'urgent' | 'general' | 'event';
+  tags: string[];
+  linkUrl: string | null;
+  publishedAt: string;
+  expiresAt?: string | null;
+  className?: string;
+  authorName?: string;
+  authorRole?: string;
+};
+
 const emptyStats: Stats = {
   knowledgeScore: 0,
   skillsScore: 0,
@@ -117,7 +141,11 @@ export default function StudentProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [stats, setStats] = useState(emptyStats);
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [activeTab, setActiveTab] = useState<"overview" | "tasks" | "manual">(
+  const [notifications, setNotifications] = useState<StudentNotification[]>([]);
+  const [announcements, setAnnouncements] = useState<StudentAnnouncement[]>([]);
+  const [bellOpen, setBellOpen] = useState(false);
+  const [newsFilter, setNewsFilter] = useState<'all' | 'urgent' | 'general' | 'event'>('all');
+  const [activeTab, setActiveTab] = useState<"overview" | "tasks" | "announcements" | "manual">(
     "overview",
   );
   const [profileModal, setProfileModal] = useState(false);
@@ -158,10 +186,14 @@ export default function StudentProfilePage() {
           profile: Profile;
           stats: Stats;
           tasks: Task[];
+          notifications?: StudentNotification[];
+          announcements?: StudentAnnouncement[];
         };
         setProfile(payload.profile);
         setStats(payload.stats || emptyStats);
         setTasks(payload.tasks || []);
+        if (payload.notifications) setNotifications(payload.notifications);
+        if (payload.announcements) setAnnouncements(payload.announcements);
         setForm({
           name: payload.profile.name || "",
           schoolName: payload.profile.schoolName || "",
@@ -194,6 +226,26 @@ export default function StudentProfilePage() {
       .catch(() => undefined);
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      if (tabParam === "announcements" || tabParam === "tasks" || tabParam === "overview" || tabParam === "manual") {
+        setActiveTab(tabParam as "announcements" | "tasks" | "overview" | "manual");
+      }
+    }
+  }, []);
+
+  const unreadNotifsCount = useMemo(
+    () => notifications.filter((n) => !n.isRead).length,
+    [notifications],
+  );
+
+  const filteredAnnouncements = useMemo(() => {
+    if (newsFilter === "all") return announcements;
+    return announcements.filter((a) => a.priority === newsFilter);
+  }, [announcements, newsFilter]);
 
   const pendingTasks = useMemo(
     () => tasks.filter((task) => task.status === "pending"),
@@ -445,6 +497,12 @@ export default function StudentProfilePage() {
       icon: "task" as StudentIconName,
       count: pendingTasks.length,
     },
+    {
+      id: "announcements" as const,
+      label: "ข่าวสาร",
+      icon: "announcement" as StudentIconName,
+      count: announcements.length > 0 ? announcements.length : undefined,
+    },
     { id: "manual" as const, label: "คู่มือ", icon: "book" as StudentIconName },
   ];
 
@@ -488,6 +546,104 @@ export default function StudentProfilePage() {
             </div>
           </div>
           <div className={styles.profileActions}>
+            <div className={styles.bellContainer}>
+              <button
+                type="button"
+                className={styles.bellButton}
+                onClick={() => setBellOpen((prev) => !prev)}
+                aria-label="การแจ้งเตือน"
+                title="การแจ้งเตือนและข่าวสาร"
+              >
+                <StudentIcon name="bell" size={17} />
+                {unreadNotifsCount > 0 && (
+                  <span className={styles.bellBadge}>
+                    {unreadNotifsCount > 9 ? "9+" : unreadNotifsCount}
+                  </span>
+                )}
+              </button>
+
+              {bellOpen && (
+                <div className={styles.bellDropdown}>
+                  <div className={styles.bellHeader}>
+                    <strong>การแจ้งเตือน ({notifications.length})</strong>
+                    {unreadNotifsCount > 0 && (
+                      <button
+                        type="button"
+                        className={styles.bellMarkAll}
+                        onClick={async () => {
+                          try {
+                            await authenticatedFetch("/api/student/notifications", {
+                              method: "PATCH",
+                            });
+                            setNotifications((prev) =>
+                              prev.map((n) => ({ ...n, isRead: true })),
+                            );
+                            toast.success("ทำเครื่องหมายว่าอ่านทั้งหมดแล้ว");
+                          } catch {
+                            // ignore
+                          }
+                        }}
+                      >
+                        อ่านทั้งหมด
+                      </button>
+                    )}
+                  </div>
+
+                  <div className={styles.bellList}>
+                    {notifications.length === 0 ? (
+                      <div style={{ padding: "24px 16px", textAlign: "center", color: "#8a9c93" }}>
+                        <p style={{ margin: 0, fontSize: 13 }}>ไม่มีการแจ้งเตือนใหม่</p>
+                      </div>
+                    ) : (
+                      notifications.slice(0, 8).map((notif) => (
+                        <div
+                          key={notif.id}
+                          className={styles.bellItem}
+                          data-unread={!notif.isRead}
+                          onClick={() => {
+                            if (notif.linkUrl) {
+                              if (notif.linkUrl.includes("announcements")) {
+                                setActiveTab("announcements");
+                                setBellOpen(false);
+                              } else {
+                                router.push(notif.linkUrl);
+                              }
+                            }
+                          }}
+                        >
+                          <div className={styles.bellItemTop}>
+                            <span className={styles.bellItemTitle}>{notif.title}</span>
+                            <span className={styles.bellItemTime}>
+                              {new Date(notif.createdAt).toLocaleDateString("th-TH", {
+                                day: "numeric",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          </div>
+                          <span className={styles.bellItemMsg}>{notif.message}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className={styles.bellFooter}>
+                    <button
+                      type="button"
+                      className={styles.bellFooterBtn}
+                      onClick={() => {
+                        setActiveTab("announcements");
+                        setBellOpen(false);
+                      }}
+                    >
+                      ดูข่าวสารและประกาศทั้งหมด ({announcements.length}) →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <button
               type="button"
               className={styles.heroAction}
@@ -730,6 +886,110 @@ export default function StudentProfilePage() {
                 </div>
               )}
             </>
+          )}
+
+          {activeTab === "announcements" && (
+            <div>
+              <div className={styles.newsFilters}>
+                {[
+                  { id: "all", label: `ทั้งหมด (${announcements.length})` },
+                  { id: "urgent", label: `🔴 ด่วน (${announcements.filter((a) => a.priority === "urgent").length})` },
+                  { id: "general", label: `🟢 ทั่วไป (${announcements.filter((a) => a.priority === "general").length})` },
+                  { id: "event", label: `🟡 กิจกรรม (${announcements.filter((a) => a.priority === "event").length})` },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    type="button"
+                    className={styles.newsFilterBtn}
+                    data-active={newsFilter === f.id}
+                    onClick={() => setNewsFilter(f.id as "all" | "urgent" | "general" | "event")}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+
+              {filteredAnnouncements.length > 0 ? (
+                <div className={styles.newsFeed}>
+                  {filteredAnnouncements.map((ann) => (
+                    <article key={ann.id} className={styles.newsCard}>
+                      <div className={styles.newsCardTop}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                          {ann.authorRole === "teacher" || ann.className ? (
+                            <span className={styles.newsAuthorBadge} data-role="teacher">
+                              👨‍🏫 ครูผู้สอน ({ann.authorName || "ครูประจำวิชา"} · {ann.className || "ห้องเรียนของคุณ"})
+                            </span>
+                          ) : (
+                            <span className={styles.newsAuthorBadge}>
+                              🏛️ ผู้ดูแลระบบ (ส่วนกลาง)
+                            </span>
+                          )}
+                          <span
+                            className={styles.newsPriorityBadge}
+                            data-priority={ann.priority}
+                          >
+                            {ann.priority === "urgent" && "🔴 ประกาศด่วน"}
+                            {ann.priority === "general" && "🟢 ข่าวทั่วไป"}
+                            {ann.priority === "event" && "🟡 กิจกรรม"}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: 11.5, color: "#8a9c93" }}>
+                          📅 {new Date(ann.publishedAt).toLocaleDateString("th-TH", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      </div>
+
+                      <h3 className={styles.newsTitle}>{ann.title}</h3>
+                      <p className={styles.newsBody}>{ann.content}</p>
+
+                      <footer className={styles.newsFooter}>
+                        <div>
+                          {ann.expiresAt && (
+                            <span style={{ color: "#d97706", fontWeight: 600 }}>
+                              ⏳ สิ้นสุดประกาศ: {new Date(ann.expiresAt).toLocaleDateString("th-TH", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </span>
+                          )}
+                        </div>
+                        {ann.linkUrl && (
+                          <a
+                            href={ann.linkUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 4,
+                              color: "#215c43",
+                              fontWeight: 700,
+                              textDecoration: "underline",
+                            }}
+                          >
+                            เปิดลิงก์ที่เกี่ยวข้อง ↗
+                          </a>
+                        )}
+                      </footer>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <div className={`${styles.card} ${styles.empty}`}>
+                  <StudentIcon name="announcement" size={28} />
+                  <strong>ไม่มีข่าวสารในหมวดหมู่นี้</strong>
+                  <span>เมื่อมีประกาศสำคัญจากครูหรือระบบ ข้อมูลจะปรากฏที่นี่</span>
+                </div>
+              )}
+            </div>
           )}
 
           {activeTab === "manual" && (

@@ -1,7 +1,9 @@
-export type StudentIconName = 'arrowLeft' | 'arrowRight' | 'award' | 'book' | 'calendar' | 'camera' | 'chart' | 'check' | 'chevron' | 'clock' | 'cube' | 'download' | 'edit' | 'exhibit' | 'eye' | 'eyeOff' | 'history' | 'info' | 'key' | 'lock' | 'logout' | 'message' | 'mic' | 'profile' | 'refresh' | 'school' | 'sparkles' | 'target' | 'task' | 'user' | 'volume' | 'x'
+export type StudentIconName = 'arrowLeft' | 'arrowRight' | 'award' | 'bell' | 'announcement' | 'book' | 'calendar' | 'camera' | 'chart' | 'check' | 'chevron' | 'clock' | 'cube' | 'download' | 'edit' | 'exhibit' | 'eye' | 'eyeOff' | 'history' | 'info' | 'key' | 'lock' | 'logout' | 'message' | 'mic' | 'profile' | 'refresh' | 'school' | 'sparkles' | 'target' | 'task' | 'user' | 'volume' | 'x'
 
 export default function StudentIcon({ name, size = 20 }: { name: StudentIconName; size?: number }) {
   const common = { width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, 'aria-hidden': true }
+  if (name === 'bell') return <svg {...common}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" /></svg>
+  if (name === 'announcement') return <svg {...common}><path d="m3 11 18-5v12L3 13v-2ZM11.6 16.8a3 3 0 1 1-5.8-1.6" /></svg>
   if (name === 'arrowLeft') return <svg {...common}><path d="M19 12H5M10 7l-5 5 5 5" /></svg>
   if (name === 'arrowRight') return <svg {...common}><path d="M5 12h14M14 7l5 5-5 5" /></svg>
   if (name === 'award') return <svg {...common}><circle cx="12" cy="8" r="5" /><path d="m8.5 12-1 9 4.5-2 4.5 2-1-9" /></svg>

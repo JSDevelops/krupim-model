@@ -477,3 +477,277 @@
   font-style: italic;
   margin: 0;
 }
+
+/* Student Bell Dropdown */
+.bellContainer {
+  position: relative;
+}
+
+.bellButton {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.bellButton:hover {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.bellBadge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  background: #ef4444;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.bellDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 320px;
+  max-width: 90vw;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.18);
+  border: 1px solid #e2e8e5;
+  z-index: 1000;
+  overflow: hidden;
+  animation: bellFade 150ms ease;
+}
+
+@keyframes bellFade {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.bellHeader {
+  padding: 12px 16px;
+  background: #f8faf9;
+  border-bottom: 1px solid #edf2ef;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.bellHeader strong {
+  font-size: 13px;
+  color: #17382b;
+}
+
+.bellMarkAll {
+  background: none;
+  border: none;
+  color: #215c43;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.bellMarkAll:hover {
+  text-decoration: underline;
+}
+
+.bellList {
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.bellItem {
+  padding: 12px 16px;
+  border-bottom: 1px solid #f1f5f3;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 120ms ease;
+}
+
+.bellItem:hover {
+  background: #f8faf9;
+}
+
+.bellItem[data-unread="true"] {
+  background: #f0fdf4;
+}
+
+.bellItemTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.bellItemTitle {
+  font-size: 12px;
+  font-weight: 800;
+  color: #17382b;
+}
+
+.bellItemMsg {
+  font-size: 11.5px;
+  color: #64756c;
+  line-height: 1.35;
+}
+
+.bellItemTime {
+  font-size: 10px;
+  color: #8c9c94;
+}
+
+.bellFooter {
+  padding: 10px 16px;
+  background: #f8faf9;
+  border-top: 1px solid #edf2ef;
+  text-align: center;
+}
+
+.bellFooterBtn {
+  background: none;
+  border: none;
+  color: #215c43;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* News & Announcements Feed in Profile Tab */
+.newsFilters {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.newsFilterBtn {
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid #dce5e0;
+  background: #fff;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #64756c;
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.newsFilterBtn:hover {
+  background: #f1f5f3;
+}
+
+.newsFilterBtn[data-active="true"] {
+  background: #215c43;
+  color: #fff;
+  border-color: #215c43;
+}
+
+.newsFeed {
+  display: grid;
+  gap: 14px;
+}
+
+.newsCard {
+  background: #fff;
+  border: 1px solid #dce5e0;
+  border-radius: 18px;
+  padding: 18px 22px;
+  box-shadow: 0 4px 16px rgba(18, 52, 38, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.newsCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.newsAuthorBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.newsAuthorBadge[data-role="teacher"] {
+  background: #eff6ff;
+  color: #1e40af;
+  border-color: #bfdbfe;
+}
+
+.newsPriorityBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 9px;
+  border-radius: 8px;
+  font-size: 10.5px;
+  font-weight: 800;
+}
+
+.newsPriorityBadge[data-priority="urgent"] {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.newsPriorityBadge[data-priority="general"] {
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.newsPriorityBadge[data-priority="event"] {
+  background: #fefce8;
+  color: #854d0e;
+}
+
+.newsTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  color: #17382b;
+}
+
+.newsBody {
+  margin: 0;
+  font-size: 13px;
+  color: #4a5c53;
+  line-height: 1.6;
+  white-space: pre-wrap;
+}
+
+.newsFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f3;
+  font-size: 11px;
+  color: #8a9c93;
+  flex-wrap: wrap;
+}

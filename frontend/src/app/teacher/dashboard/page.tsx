@@ -102,6 +102,20 @@ export default function TeacherDashboard() {
   const [reqNotes, setReqNotes] = useState('')
   const [submittingTokenReq, setSubmittingTokenReq] = useState(false)
 
+  // Teacher Announcement State
+  const [teacherAnnModalOpen, setTeacherAnnModalOpen] = useState(false)
+  const [teacherClasses, setTeacherClasses] = useState<Array<{ id: string; name: string }>>([])
+  const [annTitle, setAnnTitle] = useState('')
+  const [annContent, setAnnContent] = useState('')
+  const [annPriority, setAnnPriority] = useState<'urgent' | 'general' | 'event'>('general')
+  const [annClassId, setAnnClassId] = useState('')
+  const [annExpiresAt, setAnnExpiresAt] = useState('')
+  const [annTags, setAnnTags] = useState('')
+  const [annLinkUrl, setAnnLinkUrl] = useState('')
+  const [annIsPush, setAnnIsPush] = useState(true)
+  const [submittingAnn, setSubmittingAnn] = useState(false)
+  const [generatingAnnWithAI, setGeneratingAnnWithAI] = useState(false)
+
   const loadDashboard = useCallback(async (signal?: AbortSignal) => {
     const response = await authenticatedFetch('/api/teacher/dashboard', { cache: 'no-store', signal })
     const payload = await response.json() as {
@@ -158,6 +172,14 @@ export default function TeacherDashboard() {
       publishedAt: formatActivityDate(item.publishedAt),
     })))
     if (payload.aiQuota) setAiQuota(payload.aiQuota)
+
+    // Load teacher classes for announcement targeting
+    authenticatedFetch('/api/teacher/announcements', { signal })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => {
+        if (d?.classes) setTeacherClasses(d.classes)
+      })
+      .catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -259,6 +281,86 @@ export default function TeacherDashboard() {
       toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการส่งคำขอ')
     } finally {
       setSubmittingTokenReq(false)
+    }
+  }
+
+  async function generateTeacherAnnWithAI() {
+    if (!annTitle.trim()) {
+      toast.warning('กรุณาระบุหัวข้อประกาศก่อนให้ AI ช่วยร่าง')
+      return
+    }
+    setGeneratingAnnWithAI(true)
+    try {
+      const response = await authenticatedFetch('/api/blog/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: annTitle.trim(),
+          category: 'การเรียนการสอนและกิจกรรมในชั้นเรียน',
+          tone: 'กระชับ สุภาพ เป็นกันเอง ชัดเจนสำหรับนักเรียน',
+          keywords: annTags,
+        }),
+      })
+      if (!response.ok) throw new Error('ไม่สามารถให้ AI ช่วยร่างเนื้อหาได้')
+      const payload = await response.json() as { content?: string; tags?: string[] }
+      if (payload.content) {
+        setAnnContent(payload.content)
+        if (payload.tags && payload.tags.length > 0 && !annTags.trim()) {
+          setAnnTags(payload.tags.join(', '))
+        }
+        toast.success('AI ช่วยร่างข้อความประกาศให้เรียบร้อยแล้ว ตรวจสอบและแก้ไขต่อได้เลย ✨')
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการเชื่อมต่อ AI')
+    } finally {
+      setGeneratingAnnWithAI(false)
+    }
+  }
+
+  async function handlePublishTeacherAnn(e: React.FormEvent) {
+    e.preventDefault()
+    if (!annTitle.trim() || !annContent.trim()) {
+      toast.warning('กรุณากรอกหัวข้อและเนื้อหาประกาศ')
+      return
+    }
+    setSubmittingAnn(true)
+    try {
+      const res = await authenticatedFetch('/api/teacher/announcements', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: annTitle,
+          content: annContent,
+          priority: annPriority,
+          classId: annClassId || null,
+          expiresAt: annExpiresAt || null,
+          isPushNotification: annIsPush,
+          linkUrl: annLinkUrl || null,
+          tags: annTags.split(',').map(t => t.trim()).filter(Boolean),
+        }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'ส่งประกาศไม่สำเร็จ')
+      }
+      const result = await res.json()
+      toast.success(
+        result.pushedCount > 0
+          ? `เผยแพร่ประกาศถึง${result.targetClassName}เรียบร้อยแล้ว (ส่ง Push ถึงนักเรียน ${result.pushedCount} คน) 🔔`
+          : `เผยแพร่ประกาศถึง${result.targetClassName}เรียบร้อยแล้ว`
+      )
+      setTeacherAnnModalOpen(false)
+      setAnnTitle('')
+      setAnnContent('')
+      setAnnClassId('')
+      setAnnExpiresAt('')
+      setAnnTags('')
+      setAnnLinkUrl('')
+      await loadDashboard()
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาด')
+    } finally {
+      setSubmittingAnn(false)
     }
   }
 
@@ -457,7 +559,21 @@ export default function TeacherDashboard() {
         <div className={styles.sideColumn}>
           <article className={styles.panel}>
             <header className={styles.panelHeader}>
-              <div><span className={styles.panelIcon}><AdminIcon name="announcement" size={18} /></span><div><h2>ประกาศล่าสุด</h2><p>ข่าวสารสำหรับครูผู้สอน</p></div></div>
+              <div>
+                <span className={styles.panelIcon}><AdminIcon name="announcement" size={18} /></span>
+                <div>
+                  <h2>ประกาศล่าสุด</h2>
+                  <p>ข่าวสารและสื่อสารกับนักเรียน</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className={styles.announceBtn}
+                onClick={() => setTeacherAnnModalOpen(true)}
+              >
+                <AdminIcon name="plus" size={14} />
+                เขียนประกาศ
+              </button>
             </header>
             <div className={styles.announcementList}>
               {announcements.length ? announcements.map(item => (
@@ -610,6 +726,212 @@ export default function TeacherDashboard() {
                 >
                   <AdminIcon name="sparkles" size={15} />
                   {submittingTokenReq ? 'กำลังส่งคำขอ...' : 'ส่งคำขอถึงผู้ดูแลระบบ'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Teacher Announcement to Students Modal */}
+      {teacherAnnModalOpen && (
+        <div
+          className={styles.modalBackdrop}
+          onClick={() => !submittingAnn && setTeacherAnnModalOpen(false)}
+        >
+          <div className={styles.requestModal} onClick={e => e.stopPropagation()}>
+            <div className={styles.requestModalHeader}>
+              <div>
+                <h3>เขียนประกาศถึงนักเรียนในชั้นเรียน</h3>
+                <p>ประกาศจะแสดงเฉพาะนักเรียนในห้องเรียนที่คุณสอนเท่านั้น</p>
+              </div>
+              <button
+                type="button"
+                className={styles.modalCloseBtn}
+                onClick={() => setTeacherAnnModalOpen(false)}
+                disabled={submittingAnn}
+                aria-label="ปิดหน้าต่าง"
+              >
+                <AdminIcon name="close" size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handlePublishTeacherAnn} className={styles.requestForm}>
+              <div className={styles.formGroup}>
+                <label htmlFor="annClassId">ส่งถึงห้องเรียนเป้าหมาย: *</label>
+                <select
+                  id="annClassId"
+                  value={annClassId}
+                  onChange={e => setAnnClassId(e.target.value)}
+                >
+                  <option value="">👥 ทุกห้องเรียนที่คุณสอน ({teacherClasses.length} ห้อง)</option>
+                  {teacherClasses.map(c => (
+                    <option key={c.id} value={c.id}>
+                      🏫 {c.name}
+                    </option>
+                  ))}
+                </select>
+                <small style={{ color: '#64756c' }}>
+                  * นักเรียนที่อยู่นอกห้องเรียนของคุณจะไม่สามารถเห็นประกาศนี้ได้
+                </small>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>ระดับความสำคัญ:</label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+                  {[
+                    { id: 'general', label: '🟢 ทั่วไป', desc: 'ข้อมูลการเรียน' },
+                    { id: 'urgent', label: '🔴 ด่วน', desc: 'เรื่องสำคัญ' },
+                    { id: 'event', label: '🟡 กิจกรรม', desc: 'กำหนดการส่งงาน' },
+                  ].map(p => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setAnnPriority(p.id as 'urgent' | 'general' | 'event')}
+                      style={{
+                        padding: '8px 6px',
+                        border: annPriority === p.id ? '2px solid #215c43' : '1px solid #dce5e0',
+                        borderRadius: 10,
+                        background: annPriority === p.id ? '#eef6f2' : '#fff',
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                      }}
+                    >
+                      <strong style={{ display: 'block', fontSize: 12 }}>{p.label}</strong>
+                      <small style={{ fontSize: 10, color: '#72827a' }}>{p.desc}</small>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label htmlFor="annTitle">หัวข้อประกาศ: *</label>
+                <input
+                  id="annTitle"
+                  type="text"
+                  placeholder="ระบุหัวข้อที่ต้องการสื่อสาร เช่น กำหนดส่งงานโมเดล 3D สัปดาห์นี้"
+                  value={annTitle}
+                  onChange={e => setAnnTitle(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <label htmlFor="annContent" style={{ margin: 0 }}>รายละเอียดประกาศ: *</label>
+                  <button
+                    type="button"
+                    onClick={() => void generateTeacherAnnWithAI()}
+                    disabled={generatingAnnWithAI || !annTitle.trim()}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '4px 10px',
+                      borderRadius: 8,
+                      border: '1px solid #fde047',
+                      background: '#fef9c3',
+                      color: '#854d0e',
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      cursor: generatingAnnWithAI || !annTitle.trim() ? 'not-allowed' : 'pointer',
+                      opacity: !annTitle.trim() ? 0.6 : 1,
+                    }}
+                    title={!annTitle.trim() ? 'กรุณากรอกหัวข้อประกาศก่อน' : 'ให้ AI ช่วยร่างเนื้อหาประกาศ'}
+                  >
+                    ✨ {generatingAnnWithAI ? 'AI กำลังร่าง...' : 'ให้ AI ช่วยร่าง'}
+                  </button>
+                </div>
+                <textarea
+                  id="annContent"
+                  rows={4}
+                  placeholder="เขียนรายละเอียด หรือให้ AI ช่วยร่างเนื้อหา..."
+                  value={annContent}
+                  onChange={e => setAnnContent(e.target.value)}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div className={styles.formGroup}>
+                  <label htmlFor="annTags">ป้ายกำกับ:</label>
+                  <input
+                    id="annTags"
+                    type="text"
+                    placeholder="คั่นแต่ละคำด้วยจุลภาค เช่น ส่งงาน, AR, บทเรียน"
+                    value={annTags}
+                    onChange={e => setAnnTags(e.target.value)}
+                  />
+                </div>
+                <div className={styles.formGroup}>
+                  <label htmlFor="annLinkUrl">ลิงก์เพิ่มเติม:</label>
+                  <input
+                    id="annLinkUrl"
+                    type="url"
+                    placeholder="https://example.com"
+                    value={annLinkUrl}
+                    onChange={e => setAnnLinkUrl(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label htmlFor="annExpiresAt">⏳ วัน-เวลาหมดอายุ (ซ่อนอัตโนมัติเมื่อครบกำหนด):</label>
+                <input
+                  id="annExpiresAt"
+                  type="datetime-local"
+                  value={annExpiresAt}
+                  onChange={e => setAnnExpiresAt(e.target.value)}
+                />
+              </div>
+
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, fontWeight: 700, color: '#17382b', cursor: 'pointer' }}>
+                <input
+                  type="checkbox"
+                  checked={annIsPush}
+                  onChange={e => setAnnIsPush(e.target.checked)}
+                  style={{ width: 17, height: 17, accentColor: '#215c43' }}
+                />
+                <span>🔔 ส่ง Push Notification เข้ากระดิ่งของนักเรียนกลุ่มนี้ทันที</span>
+              </label>
+
+              <div className={styles.requestModalFooter}>
+                <button
+                  type="button"
+                  className={styles.secondaryButton}
+                  onClick={() => setTeacherAnnModalOpen(false)}
+                  disabled={submittingAnn || generatingAnnWithAI}
+                >
+                  ยกเลิก
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void generateTeacherAnnWithAI()}
+                  disabled={generatingAnnWithAI || !annTitle.trim()}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '8px 14px',
+                    borderRadius: 10,
+                    border: '1px solid #fde047',
+                    background: '#fef9c3',
+                    color: '#854d0e',
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    cursor: generatingAnnWithAI || !annTitle.trim() ? 'not-allowed' : 'pointer',
+                    opacity: !annTitle.trim() ? 0.6 : 1,
+                  }}
+                >
+                  ✨ {generatingAnnWithAI ? 'AI กำลังร่าง...' : 'ให้ AI ช่วยร่าง'}
+                </button>
+                <button
+                  type="submit"
+                  className={styles.submitTokenBtn}
+                  disabled={submittingAnn || generatingAnnWithAI}
+                >
+                  <AdminIcon name="announcement" size={15} />
+                  {submittingAnn ? 'กำลังเผยแพร่...' : '📣 เผยแพร่ประกาศ'}
                 </button>
               </div>
             </form>
