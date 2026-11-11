@@ -1,1 +1,5 @@
-export { default } from '@/app/teacher/assignments/page'
+import { redirect } from 'next/navigation'
+
+export default function AdminAssignmentsRedirect() {
+  redirect('/teacher/assignments')
+}
