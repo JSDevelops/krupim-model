@@ -84,8 +84,8 @@ export default function Dashboard() {
               <StudentIcon name="sparkles" size={15} />
               Student dashboard
             </div>
-            <h1 className={styles.title}>ยินดีต้อนรับกลับมา {data.profile?.name || 'นักเรียน'}</h1>
-            <p className={styles.subtitle}>{data.profile?.schoolName || 'วางแผนการเรียน ฝึกทักษะ และติดตามงานของคุณในที่เดียว'}</p>
+            <h1 className={styles.title}>ยินดีต้อนรับการเรียนรู้ FINE Model</h1>
+            <p className={styles.subtitle}>{data.profile?.name && data.profile.name !== 'นักเรียน' ? `ผู้เรียน: ${data.profile.name} • ` : ''}{data.profile?.schoolName || 'วางแผนการเรียน ฝึกทักษะ และติดตามงานของคุณในที่เดียว'}</p>
             <div className={styles.dashboardHeroActions}>
               <Link className={styles.heroAction} href="/student/profile">
                 <StudentIcon name="user" size={15} />
