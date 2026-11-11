@@ -23,8 +23,18 @@ export default function ChatPage() {
   const [listening, setListening] = useState(false)
   const [speakingIndex, setSpeakingIndex] = useState<number | null>(null)
   const [sessionId, setSessionId] = useState<string | null>(null)
+  const [cooldown, setCooldown] = useState(0)
+  const [quotaNotice, setQuotaNotice] = useState(false)
   const endRef = useRef<HTMLDivElement>(null)
   const recognitionRef = useRef<Recognition | null>(null)
+
+  useEffect(() => {
+    if (cooldown <= 0) return
+    const timer = setInterval(() => {
+      setCooldown(c => Math.max(0, c - 1))
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [cooldown])
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search).get('q')
@@ -64,8 +74,20 @@ export default function ChatPage() {
     try {
       const response = await authenticatedFetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message: text, history, session_type: 'learning_chat', topic: 'FINE Learning Assistant', session_id: sessionId }) })
       const payload = await response.json()
-      if (!response.ok) throw new Error(payload.error || 'ผู้ช่วย AI ไม่สามารถตอบกลับได้')
+      if (!response.ok) {
+        if (response.status === 429) {
+          toast.warning('ขณะนี้โควต้า AI มีผู้ใช้งานหนาแน่น กรุณารอสักครู่ (ประมาณ 30 วินาที) แล้วลองใหม่อีกครั้ง')
+          setCooldown(30)
+          setQuotaNotice(true)
+        }
+        throw new Error(payload.error || 'ผู้ช่วย AI ไม่สามารถตอบกลับได้')
+      }
       if (payload.session_id) setSessionId(String(payload.session_id))
+      if (payload.is_quota_exceeded) {
+        toast.warning('ขณะนี้โควต้า AI มีผู้ใช้งานหนาแน่น ระบบสลับมาใช้คลังคำตอบจำลองอัตโนมัติ')
+        setQuotaNotice(true)
+        setCooldown(15)
+      }
       setMessages(items => [...items, { role: 'model', text: String(payload.response || 'ยังไม่มีคำตอบจากระบบ'), timestamp: new Date() }])
     } catch (error) {
       const message = error instanceof Error ? error.message : 'เกิดข้อผิดพลาด กรุณาลองใหม่'
@@ -140,13 +162,26 @@ export default function ChatPage() {
                 ))}
               </div>
             )}
+            {quotaNotice && (
+              <aside className={styles.quotaNoticeBanner} role="status">
+                <div className={styles.quotaNoticeText}>
+                  <StudentIcon name="info" size={15} />
+                  <span>ขณะนี้ AI มีผู้ใช้งานหนาแน่น ระบบสลับมาใช้คลังคำตอบจำลองอัตโนมัติชั่วคราว</span>
+                </div>
+                <button type="button" onClick={() => setQuotaNotice(false)} aria-label="ปิดการแจ้งเตือน">✕</button>
+              </aside>
+            )}
             <form className={styles.composer} onSubmit={event => { event.preventDefault(); void sendMessage() }}>
               <button type="button" className={`${styles.micButton} ${listening ? styles.listening : ''}`} onClick={toggleMic} aria-label={listening ? 'หยุดรับเสียง' : 'พิมพ์ด้วยเสียง'}>
                 <StudentIcon name="mic" size={18} />
               </button>
-              <input value={input} onChange={event => setInput(event.target.value)} placeholder={listening ? 'กำลังรับเสียง...' : 'พิมพ์คำถามหรือประโยคที่ต้องการฝึก...'} maxLength={4000} />
-              <button type="submit" className={styles.sendButton} disabled={!input.trim() || loading} aria-label="ส่งข้อความ">
-                <StudentIcon name="arrowRight" size={18} />
+              <input value={input} onChange={event => setInput(event.target.value)} placeholder={listening ? 'กำลังรับเสียง...' : cooldown > 0 ? `กรุณารออีก ${cooldown} วินาที...` : 'พิมพ์คำถามหรือประโยคที่ต้องการฝึก...'} maxLength={4000} disabled={cooldown > 0} />
+              <button type="submit" className={styles.sendButton} disabled={!input.trim() || loading || cooldown > 0} aria-label="ส่งข้อความ">
+                {cooldown > 0 ? (
+                  <span style={{ fontSize: 11, fontWeight: 700 }}>{cooldown}s</span>
+                ) : (
+                  <StudentIcon name="arrowRight" size={18} />
+                )}
               </button>
             </form>
           </section>

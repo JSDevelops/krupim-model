@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
 
     let text = ''
     let isFallback = false
+    let isQuotaExceeded = false
 
     try {
       const provider = await getActiveProvider(req)
@@ -106,7 +107,19 @@ export async function POST(req: NextRequest) {
         text = result.response.text()
       }
     } catch (aiErr: unknown) {
-      console.warn('AI Provider failed in /api/chat, falling back to intelligent dialogue:', getErrorMessage(aiErr))
+      const errMsg = getErrorMessage(aiErr)
+      console.warn('AI Provider failed in /api/chat, falling back to intelligent dialogue:', errMsg)
+      if (
+        errMsg.includes('429') ||
+        errMsg.includes('quota') ||
+        errMsg.includes('RESOURCE_EXHAUSTED') ||
+        errMsg.includes('rate-limit') ||
+        errMsg.includes('Rate limit') ||
+        errMsg.includes('tokens') ||
+        errMsg.includes('credits')
+      ) {
+        isQuotaExceeded = true
+      }
       text = generateChatFallback(userMessage)
       isFallback = true
     }
@@ -141,7 +154,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({ response: text, session_id: savedSessionId, is_fallback: isFallback })
+    return NextResponse.json({
+      response: text,
+      session_id: savedSessionId,
+      is_fallback: isFallback,
+      is_quota_exceeded: isQuotaExceeded,
+    })
   } catch (err: unknown) {
     console.error('Chat API Fatal Error:', getErrorMessage(err))
     // Even on fatal error, return educational fallback response
