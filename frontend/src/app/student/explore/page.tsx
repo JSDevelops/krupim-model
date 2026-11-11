@@ -121,7 +121,7 @@ export default function ExplorePage() {
   const [speechRate, setSpeechRate] = useState<number>(() => getStoredSpeechRate())
 
   // ── Week 1 Tableware State ──
-  const [week1Category, setWeek1Category] = useState<'ALL' | 'cutlery' | 'glass' | 'tableware'>('ALL')
+  const [week1Category, setWeek1Category] = useState<'ALL' | 'cutlery' | 'glass' | 'glassware' | 'tableware'>('ALL')
   const [week1Search, setWeek1Search] = useState('')
 
   // ── Week 2 Mission State ──
@@ -637,7 +637,8 @@ export default function ExplorePage() {
     const q = week1Search.trim().toLowerCase()
     return equipment.filter(item => {
       const cat = (item.category || '').toLowerCase()
-      const matchCat = week1Category === 'ALL' || cat === week1Category.toLowerCase()
+      const isGlass = (week1Category === 'glass' || week1Category === 'glassware') && (cat === 'glass' || cat === 'glassware')
+      const matchCat = week1Category === 'ALL' || cat === week1Category.toLowerCase() || isGlass
       if (!matchCat) return false
       if (!q) return true
       return (
@@ -905,14 +906,14 @@ export default function ExplorePage() {
                       {[
                         { id: 'ALL', label: `ทั้งหมด (${equipment.length})` },
                         { id: 'cutlery', label: `ช้อน ส้อม มีด (${equipment.filter(e => (e.category || '').toLowerCase() === 'cutlery').length})` },
-                        { id: 'glass', label: `แก้วเครื่องดื่ม (${equipment.filter(e => (e.category || '').toLowerCase() === 'glass').length})` },
+                        { id: 'glassware', label: `แก้วเครื่องดื่ม (${equipment.filter(e => { const c = (e.category || '').toLowerCase(); return c === 'glassware' || c === 'glass'; }).length})` },
                         { id: 'tableware', label: `จานและชาม (${equipment.filter(e => (e.category || '').toLowerCase() === 'tableware').length})` },
                       ].map(tab => (
                         <button
                           key={tab.id}
                           type="button"
                           className={`${styles.missionFilterBtn} ${week1Category === tab.id ? styles.missionFilterBtnActive : ''}`}
-                          onClick={() => setWeek1Category(tab.id as 'ALL' | 'cutlery' | 'glass' | 'tableware')}
+                          onClick={() => setWeek1Category(tab.id as 'ALL' | 'cutlery' | 'glass' | 'glassware' | 'tableware')}
                         >
                           {tab.label}
                         </button>
@@ -1235,14 +1236,14 @@ export default function ExplorePage() {
                   {[
                     { id: 'ALL', label: `ทั้งหมด (${equipment.length})` },
                     { id: 'cutlery', label: `ช้อน ส้อม มีด (${equipment.filter(e => (e.category || '').toLowerCase() === 'cutlery').length})` },
-                    { id: 'glass', label: `แก้วเครื่องดื่ม (${equipment.filter(e => (e.category || '').toLowerCase() === 'glass').length})` },
+                    { id: 'glassware', label: `แก้วเครื่องดื่ม (${equipment.filter(e => { const c = (e.category || '').toLowerCase(); return c === 'glassware' || c === 'glass'; }).length})` },
                     { id: 'tableware', label: `จานและชาม (${equipment.filter(e => (e.category || '').toLowerCase() === 'tableware').length})` },
                   ].map(tab => (
                     <button
                       key={tab.id}
                       type="button"
                       className={`${styles.missionFilterBtn} ${week1Category === tab.id ? styles.missionFilterBtnActive : ''}`}
-                      onClick={() => setWeek1Category(tab.id as 'ALL' | 'cutlery' | 'glass' | 'tableware')}
+                      onClick={() => setWeek1Category(tab.id as 'ALL' | 'cutlery' | 'glass' | 'glassware' | 'tableware')}
                     >
                       {tab.label}
                     </button>
