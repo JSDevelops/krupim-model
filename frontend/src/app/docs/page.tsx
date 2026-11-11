@@ -250,7 +250,7 @@ export default function DocsPage() {
                     <span className={styles.sectionCategory}>Chapter 01 · System Architecture</span>
                     <h2 className={styles.sectionTitle}>1. ภาพรวมสถาปัตยกรรม & โมเดล FINE Model</h2>
                     <p className={styles.sectionDesc}>
-                      โครงสร้างการจัดกระบวนการเรียนรู้ภาษาอังกฤษเพื่องานบริการ บูรณาการเทคโนโลยีสื่อเสมือนจริง AR 3D และปัญญาประดิษฐ์ AI
+                      โครงสร้างการจัดกระบวนการเรียนรู้ภาษาอังกฤษเพื่องานบริการ บูรณาการเทคโนโลยีสื่อเสมือนจริง AR 3D และปัญญาประดิษฐ์ AI Scan
                     </p>
                   </div>
                   <Link href="/role-select" className={styles.sectionActionBtn}>
@@ -943,7 +943,7 @@ export default function DocsPage() {
             {/* Document Footer */}
             <footer className={styles.docFooter}>
               <div>
-                <strong>FINE MODEL AR AI 3D</strong> — นวัตกรรมการจัดการเรียนรู้ภาษาอังกฤษเพื่องานบริการ โดย ครูพิมพ์
+                <strong>FINE MODEL (AR 3D+AI Scan)</strong> — นวัตกรรมการจัดการเรียนรู้ภาษาอังกฤษเพื่องานบริการ โดย ครูพิมพ์
                 <div style={{ fontSize: 12, marginTop: 4 }}>
                   เวอร์ชันเอกสาร: 2.4.0 (อัปเดตล่าสุด: พฤศจิกายน 2569) · ครอบคลุมทุกบทบาทและฟังก์ชัน
                 </div>
@@ -962,3 +962,4 @@ export default function DocsPage() {
     </div>
   )
 }
+

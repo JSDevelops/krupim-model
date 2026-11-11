@@ -178,7 +178,7 @@ export default function RoleSelectPage() {
           <Image src={logo} width={54} height={54} loading="eager" alt="ตราสัญลักษณ์ FINE MODEL" />
           <div>
             <strong>FINE MODEL</strong>
-            <span>AR 3D + AI LEARNING</span>
+            <span>AR 3D+AI Scan</span>
           </div>
         </div>
         <div className={styles.roleHeading}>

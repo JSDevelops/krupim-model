@@ -3,8 +3,8 @@ import Link from 'next/link'
 import styles from './landing.module.css'
 
 export const metadata = {
-  title: 'FINE MODEL AR AI 3D — นวัตกรรมการจัดการเรียนรู้ภาษาอังกฤษเพื่องานบริการ',
-  description: 'แพลตฟอร์มการจัดการเรียนรู้ภาษาอังกฤษเพื่องานบริการด้วยโมเดล FINE ผสานเทคโนโลยีเสมือนจริง AR 3D และปัญญาประดิษฐ์ AI สำหรับนักเรียน ครูผู้สอน และผู้ดูแลระบบ',
+  title: 'FINE MODEL (AR 3D+AI Scan) — นวัตกรรมการจัดการเรียนรู้ภาษาอังกฤษเพื่องานบริการ',
+  description: 'แพลตฟอร์มการจัดการเรียนรู้ภาษาอังกฤษเพื่องานบริการด้วยโมเดล FINE ผสานเทคโนโลยีเสมือนจริง AR 3D และปัญญาประดิษฐ์ AI Scan สำหรับนักเรียน ครูผู้สอน และผู้ดูแลระบบ',
 }
 
 export default function HomePage() {
@@ -28,7 +28,7 @@ export default function HomePage() {
               />
               <div className={styles.brandText}>
                 <span className={styles.brandTitle}>FINE MODEL</span>
-                <span className={styles.brandSubtitle}>AR AI 3D · งานครูพิมพ์</span>
+                <span className={styles.brandSubtitle}>AR 3D+AI Scan · งานครูพิมพ์</span>
               </div>
             </Link>
 
@@ -59,7 +59,7 @@ export default function HomePage() {
 
             <h1 className={styles.heroTitle}>
               ยกระดับทักษะงานบริการด้วย <br />
-              <span className={styles.heroHighlight}>FINE MODEL · AR 3D · AI</span>
+              <span className={styles.heroHighlight}>FINE MODEL · AR 3D+AI Scan</span>
             </h1>
 
             <p className={styles.heroDesc}>
@@ -340,10 +340,10 @@ export default function HomePage() {
         <div className={styles.container}>
           <div className={styles.footerGrid}>
             <div className={styles.footerBrand}>
-              <h4>FINE MODEL AR AI 3D</h4>
+              <h4>FINE MODEL (AR 3D+AI Scan)</h4>
               <p>
                 แพลตฟอร์มการจัดการเรียนรู้ภาษาอังกฤษเพื่องานบริการด้วยโมเดล FINE 
-                ผสานเทคโนโลยีเสมือนจริง AR 3D และปัญญาประดิษฐ์ AI · นวัตกรรมเพื่อการศึกษาโดย ครูพิมพ์
+                ผสานเทคโนโลยีเสมือนจริง AR 3D และปัญญาประดิษฐ์ AI Scan · นวัตกรรมเพื่อการศึกษาโดย ครูพิมพ์
               </p>
             </div>
 
@@ -357,7 +357,7 @@ export default function HomePage() {
           </div>
 
           <div className={styles.footerBottom}>
-            <span>© 2026 FINE MODEL AR AI 3D (งานครูพิมพ์). All rights reserved.</span>
+            <span>© 2026 FINE MODEL (AR 3D+AI Scan) · งานครูพิมพ์. All rights reserved.</span>
             <span>🔒 คุ้มครองข้อมูลส่วนบุคคลตามมาตรฐาน PDPA Compliant</span>
           </div>
         </div>

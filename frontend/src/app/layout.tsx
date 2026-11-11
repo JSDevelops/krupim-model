@@ -45,8 +45,8 @@ const cormorantGaramond = Cormorant_Garamond({ subsets: ['latin'], variable: '--
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://finemodel.app'),
-  title: 'FINE MODEL — AR 3D + AI Learning',
-  description: 'แพลตฟอร์มการเรียนรู้แบบบูรณาการ 3 มิติ ผ่าน AR + AI สำหรับพัฒนาสมรรถนะการบริการอาหารและเครื่องดื่ม',
+  title: 'FINE MODEL (AR 3D+AI Scan) — การเรียนรู้ภาษาอังกฤษเพื่องานบริการ',
+  description: 'แพลตฟอร์มการเรียนรู้แบบบูรณาการผ่าน AR 3D+AI Scan สำหรับพัฒนาสมรรถนะการบริการอาหารและเครื่องดื่ม',
   manifest: '/manifest.json',
   icons: {
     icon: [

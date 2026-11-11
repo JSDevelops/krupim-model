@@ -180,7 +180,7 @@ export async function exportSubmissionsToPDF(
       doc.setFontSize(7)
       doc.setTextColor(150)
       doc.text(
-        `Page ${data.pageNumber} | FINE Model AR AI 3D | Teacher: ${assignment.teacherName ?? 'Teacher'}`,
+        `Page ${data.pageNumber} | FINE Model (AR 3D+AI Scan) | Teacher: ${assignment.teacherName ?? 'Teacher'}`,
         14, doc.internal.pageSize.height - 8,
       )
     },

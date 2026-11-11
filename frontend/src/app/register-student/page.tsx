@@ -316,7 +316,7 @@ export default function RegisterPage() {
           <Image src="/logo.png" alt="FINE MODEL Logo" width={60} height={60} priority style={{ borderRadius: 'var(--radius-lg)', border: '1.5px solid rgba(201,168,76,0.4)', boxShadow: '0 0 20px rgba(201,168,76,0.15)' }} />
           <div style={{ textAlign: 'left' }}>
             <div className="login-brand">FINE MODEL</div>
-            <div className="login-brand-sub">AR 3D + AI LEARNING</div>
+            <div className="login-brand-sub">AR 3D+AI Scan</div>
           </div>
         </div>
       </div>
