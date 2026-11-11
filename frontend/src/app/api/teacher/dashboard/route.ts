@@ -102,6 +102,9 @@ export async function GET(request: NextRequest) {
       queryDb(`
         SELECT id, title, content, priority, link_url AS "linkUrl", published_at AS "publishedAt"
         FROM system_announcements
+        WHERE (starts_at IS NULL OR starts_at <= NOW())
+          AND (expires_at IS NULL OR expires_at >= NOW())
+          AND (target_audience = 'all' OR target_audience = 'teachers' OR target_audience IS NULL)
         ORDER BY published_at DESC
         LIMIT 3
       `),

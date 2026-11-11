@@ -30,3 +30,4 @@ export const REQUEST_TYPE_LABELS: Record<TokenRequestType, string> = {
   institution_key: 'เชื่อมต่อ API Key ของวิทยาลัย/สถาบัน',
   other: 'ปรึกษา/สอบถามข้อมูลเพิ่มเติม',
 }
+
