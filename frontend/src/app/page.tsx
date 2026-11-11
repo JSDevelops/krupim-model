@@ -36,7 +36,7 @@ export default function HomePage() {
               <a href="#fine-model" className={styles.navLink}>กระบวนการ FINE</a>
               <a href="#user-roles" className={styles.navLink}>3 บทบาทผู้ใช้งาน</a>
               <a href="#showcase" className={styles.navLink}>สื่อการสอน 3D</a>
-              <Link href="/docs" className={styles.navLink}>คู่มือ & สิทธิ์</Link>
+              <Link href="/docs" className={styles.navLink}>คู่มือการใช้งาน</Link>
             </nav>
 
             <div className={styles.navActions}>
@@ -340,7 +340,7 @@ export default function HomePage() {
         <div className={styles.container}>
           <div className={styles.footerGrid}>
             <div className={styles.footerBrand}>
-              <h4>FINE MODEL (AR 3D+AI Scan)</h4>
+              <h4>FINE MODEL · AR 3D+AI Scan</h4>
               <p>
                 แพลตฟอร์มการจัดการเรียนรู้ภาษาอังกฤษเพื่องานบริการด้วยโมเดล FINE 
                 ผสานเทคโนโลยีเสมือนจริง AR 3D และปัญญาประดิษฐ์ AI Scan · นวัตกรรมเพื่อการศึกษาโดย ครูพิมพ์
@@ -349,7 +349,7 @@ export default function HomePage() {
 
             <nav className={styles.footerLinks} aria-label="ลิงก์ท้ายหน้าเว็บ">
               <Link href="/role-select" className={styles.footerLink}>เข้าสู่ระบบ</Link>
-              <Link href="/docs" className={styles.footerLink}>คู่มือการใช้งาน & สิทธิ์</Link>
+              <Link href="/docs" className={styles.footerLink}>คู่มือการใช้งาน</Link>
               <Link href="/register-student" className={styles.footerLink}>สมัครนักเรียน</Link>
               <Link href="/register-teacher" className={styles.footerLink}>สมัครครู</Link>
               <Link href="/role-select" className={styles.footerLink}>เลือกบทบาท</Link>
@@ -357,7 +357,7 @@ export default function HomePage() {
           </div>
 
           <div className={styles.footerBottom}>
-            <span>© 2026 FINE MODEL (AR 3D+AI Scan) · งานครูพิมพ์. All rights reserved.</span>
+            <span>© 2026 FINE MODEL · AR 3D+AI Scan (งานครูพิมพ์). All rights reserved.</span>
             <span>🔒 คุ้มครองข้อมูลส่วนบุคคลตามมาตรฐาน PDPA Compliant</span>
           </div>
         </div>

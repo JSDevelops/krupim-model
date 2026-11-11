@@ -8,7 +8,16 @@ const ROLE_GUARDS: Record<string, ('developer' | 'teacher' | 'student')[]> = {
   '/student': ['student', 'developer'],
 }
 
-const PUBLIC_PATHS = ['/', '/role-select', '/forgot-password', '/register-teacher', '/register-student', '/preview-soup-bowl.html']
+const PUBLIC_PATHS = [
+  '/',
+  '/docs',
+  '/role-select',
+  '/forgot-password',
+  '/register-teacher',
+  '/register-student',
+  '/verify',
+  '/preview-soup-bowl.html',
+]
 
 function redirectToLogin(request: NextRequest, code?: string) {
   const url = request.nextUrl.clone()

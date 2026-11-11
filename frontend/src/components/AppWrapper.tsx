@@ -83,7 +83,7 @@ export default function AppWrapper({ children }: { children: React.ReactNode }) 
     }
   }
 
-  if (pathname === '/' || pathname === '/role-select') return <>{children}</>
+  if (pathname === '/' || pathname === '/role-select' || pathname.startsWith('/docs') || pathname.startsWith('/verify')) return <>{children}</>
 
   const isAdmin = pathname.startsWith('/admin')
   const isTeacher = pathname.startsWith('/teacher')
