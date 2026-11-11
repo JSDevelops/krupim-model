@@ -36,7 +36,7 @@ export default function HomePage() {
               <a href="#fine-model" className={styles.navLink}>กระบวนการ FINE</a>
               <a href="#user-roles" className={styles.navLink}>3 บทบาทผู้ใช้งาน</a>
               <a href="#showcase" className={styles.navLink}>สื่อการสอน 3D</a>
-              <Link href="/role-select" className={styles.navLink}>คู่มือ & สิทธิ์</Link>
+              <Link href="/docs" className={styles.navLink}>คู่มือ & สิทธิ์</Link>
             </nav>
 
             <div className={styles.navActions}>
@@ -349,6 +349,7 @@ export default function HomePage() {
 
             <nav className={styles.footerLinks} aria-label="ลิงก์ท้ายหน้าเว็บ">
               <Link href="/role-select" className={styles.footerLink}>เข้าสู่ระบบ</Link>
+              <Link href="/docs" className={styles.footerLink}>คู่มือการใช้งาน & สิทธิ์</Link>
               <Link href="/register-student" className={styles.footerLink}>สมัครนักเรียน</Link>
               <Link href="/register-teacher" className={styles.footerLink}>สมัครครู</Link>
               <Link href="/role-select" className={styles.footerLink}>เลือกบทบาท</Link>
