@@ -69,10 +69,6 @@ export default function HomePage() {
             </p>
 
             <div className={styles.heroCtaGroup}>
-              <Link href="/role-select" className={styles.primaryCta}>
-                <span>🚀 เข้าสู่ระบบ / เลือกบทบาท</span>
-                <span aria-hidden="true">→</span>
-              </Link>
               <Link href="/register-student" className={styles.secondaryCta}>
                 <span>🎒 สมัครสมาชิกนักเรียน</span>
               </Link>

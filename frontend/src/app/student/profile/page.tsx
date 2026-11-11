@@ -820,7 +820,7 @@ export default function StudentProfilePage() {
               <header className={styles.sectionHeader}>
                 <h2>งานที่ได้รับมอบหมาย</h2>
                 <p>
-                  {pendingTasks.length} งานคงค้าง และ {completedTasks}{" "}
+                  {pendingTasks.length} กิจกรรม และ {completedTasks}{" "}
                   งานที่ส่งแล้ว
                 </p>
               </header>

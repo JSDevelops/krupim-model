@@ -112,7 +112,7 @@ export default function Dashboard() {
             </div>
             <div>
               <strong>{loading ? '...' : (data.tasks?.length || 0)}</strong>
-              <span>งานคงค้าง</span>
+              <span>กิจกรรม</span>
             </div>
           </div>
         </section>
@@ -193,7 +193,7 @@ export default function Dashboard() {
               ) : (
                 <div className={styles.empty}>
                   <StudentIcon name="check" size={24}/>
-                  <strong>ไม่มีงานคงค้าง</strong>
+                  <strong>ไม่มีกิจกรรมค้าง</strong>
                 </div>
               )}
             </section>
