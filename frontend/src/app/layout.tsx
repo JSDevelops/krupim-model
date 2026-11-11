@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
-import { Cormorant_Garamond, Kanit, Noto_Sans_Thai, Playfair_Display, Prompt, Sarabun } from 'next/font/google'
+import { Kanit, Noto_Sans_Thai, Prompt, Sarabun } from 'next/font/google'
 import './globals.css'
 import { RoleProvider } from '@/context/RoleContext'
 import AppWrapper from '@/components/AppWrapper'
@@ -40,8 +40,6 @@ const notoSansThai = Noto_Sans_Thai({
   preload: false,
 })
 
-const playfairDisplay = Playfair_Display({ subsets: ['latin'], variable: '--font-playfair', display: 'swap', preload: false })
-const cormorantGaramond = Cormorant_Garamond({ subsets: ['latin'], variable: '--font-cormorant', display: 'swap', preload: false })
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://finemodel.app'),
@@ -71,17 +69,17 @@ export const metadata: Metadata = {
   formatDetection: { telephone: false },
   openGraph: {
     type: 'website',
-    title: 'FINE MODEL 3D AR+AI',
-    description: 'เรียนรู้การบริการอาหารและเครื่องดื่มผ่าน AR + AI ระดับโรงแรม 6 ดาว',
-    images: [{ url: '/logo.png', width: 1024, height: 1024, alt: 'FINE MODEL 3D AR+AI Logo' }],
+    title: 'FINE MODEL · AR 3D+AI Scan',
+    description: 'แพลตฟอร์มการเรียนรู้ภาษาอังกฤษผ่าน AR 3D และ AI สำหรับพัฒนาสมรรถนะงานบริการอาหารและเครื่องดื่ม',
+    images: [{ url: '/logo.png', width: 1024, height: 1024, alt: 'FINE MODEL AR 3D+AI Scan Logo' }],
   },
 }
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
+  maximumScale: 5,
+  userScalable: true,
   themeColor: '#1E4D3A',
 }
 
@@ -96,7 +94,7 @@ export default function RootLayout({
       data-app-font="kanit"
       data-text-size="normal"
       suppressHydrationWarning
-      className={`${kanit.variable} ${sarabun.variable} ${prompt.variable} ${notoSansThai.variable} ${playfairDisplay.variable} ${cormorantGaramond.variable}`}
+      className={`${kanit.variable} ${sarabun.variable} ${prompt.variable} ${notoSansThai.variable}`}
     >
       <head>
         <Script id="appearance-preference" strategy="beforeInteractive">

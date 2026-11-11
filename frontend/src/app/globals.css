@@ -106,7 +106,7 @@
 
   /* ── TYPOGRAPHY ──────────────────────────────── */
   --font-primary: var(--font-kanit), 'Tahoma', sans-serif;
-  --font-display: var(--font-playfair), var(--font-cormorant), var(--font-primary);
+  --font-display: var(--font-kanit), 'Georgia', serif;
   --font-size-xs: 11px;
   --font-size-sm: 13px;
   --font-size-base: 15px;

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import styles from './docs.module.css'
@@ -60,7 +60,10 @@ export default function DocsPage() {
                 className={styles.printBtn}
                 title="พิมพ์คู่มือหรือบันทึกเป็น PDF"
               >
-                <span>🖨️ พิมพ์ / PDF</span>
+                <span aria-hidden="true" style={{ display: 'inline-flex', verticalAlign: 'middle', marginRight: 4 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                </span>
+                <span>พิมพ์ / PDF</span>
               </button>
 
               <Link href="/" className={styles.backHomeBtn}>
@@ -68,7 +71,7 @@ export default function DocsPage() {
               </Link>
 
               <Link href="/role-select" className={styles.loginPortalBtn}>
-                <span>🚀 เข้าสู่ระบบ</span>
+                <span>เข้าสู่ระบบ →</span>
               </Link>
             </div>
           </div>
@@ -79,7 +82,7 @@ export default function DocsPage() {
       <section className={styles.hero}>
         <div className={styles.container}>
           <div className={styles.heroEyebrow}>
-            <span>📚 OFFICIAL SYSTEM MANUAL & PERMISSIONS SPECIFICATION</span>
+            <span>OFFICIAL SYSTEM MANUAL &amp; PERMISSIONS SPECIFICATION</span>
           </div>
           <h1 className={styles.heroTitle}>
             เอกสารคู่มือการใช้งาน <span className={styles.heroTitleHighlight}>ฉบับสมบูรณ์</span>
@@ -92,7 +95,9 @@ export default function DocsPage() {
           <div className={styles.toolbarWrap}>
             {/* Search Input */}
             <div className={styles.searchBox}>
-              <span className={styles.searchIcon} aria-hidden="true">🔍</span>
+              <span className={styles.searchIcon} aria-hidden="true">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              </span>
               <input
                 type="text"
                 className={styles.searchInput}
@@ -119,49 +124,49 @@ export default function DocsPage() {
                 className={`${styles.roleTabBtn} ${selectedRole === 'ALL' ? styles.roleTabActive : ''}`}
                 onClick={() => setSelectedRole('ALL')}
               >
-                🌟 ทั้งหมด (All Topics)
+                ทั้งหมด
               </button>
               <button
                 type="button"
                 className={`${styles.roleTabBtn} ${selectedRole === 'OVERVIEW' ? styles.roleTabActive : ''}`}
                 onClick={() => setSelectedRole('OVERVIEW')}
               >
-                🎓 ภาพรวม FINE Model
+                ภาพรวม FINE Model
               </button>
               <button
                 type="button"
                 className={`${styles.roleTabBtn} ${selectedRole === 'STUDENT' ? styles.roleTabActive : ''}`}
                 onClick={() => setSelectedRole('STUDENT')}
               >
-                🎒 นักเรียน (Student)
+                นักเรียน (Student)
               </button>
               <button
                 type="button"
                 className={`${styles.roleTabBtn} ${selectedRole === 'TEACHER' ? styles.roleTabActive : ''}`}
                 onClick={() => setSelectedRole('TEACHER')}
               >
-                👨‍🏫 ครูผู้สอน (Teacher)
+                ครูผู้สอน (Teacher)
               </button>
               <button
                 type="button"
                 className={`${styles.roleTabBtn} ${selectedRole === 'ADMIN' ? styles.roleTabActive : ''}`}
                 onClick={() => setSelectedRole('ADMIN')}
               >
-                ⚙️ ผู้ดูแลระบบ (Admin)
+                ผู้ดูแลระบบ (Admin)
               </button>
               <button
                 type="button"
                 className={`${styles.roleTabBtn} ${selectedRole === 'PERMISSIONS' ? styles.roleTabActive : ''}`}
                 onClick={() => setSelectedRole('PERMISSIONS')}
               >
-                🛡️ เมทริกซ์สิทธิ์ (Permissions)
+                เมทริกซ์สิทธิ์ (Permissions)
               </button>
               <button
                 type="button"
                 className={`${styles.roleTabBtn} ${selectedRole === 'FAQ' ? styles.roleTabActive : ''}`}
                 onClick={() => setSelectedRole('FAQ')}
               >
-                ❓ FAQ & ปัญหาที่พบบ่อย
+                FAQ &amp; การแก้ปัญหา
               </button>
             </div>
           </div>
@@ -174,49 +179,43 @@ export default function DocsPage() {
           {/* Sticky Sidebar Navigation */}
           <aside className={styles.sidebar} aria-label="สารบัญเอกสาร">
             <div className={styles.sidebarTitle}>
-              <span>📑 สารบัญด่วน</span>
+              <span>สารบัญด่วน</span>
               <span style={{ fontSize: 11, color: '#8c6819' }}>Quick Nav</span>
             </div>
             <ul className={styles.sidebarList}>
               <li>
                 <a href="#overview" className={styles.sidebarLink}>
-                  <span>🎓</span>
                   <span>1. ภาพรวม FINE Model</span>
                   <span className={styles.sidebarBadge}>กรอบคิด</span>
                 </a>
               </li>
               <li>
                 <a href="#student-manual" className={styles.sidebarLink}>
-                  <span>🎒</span>
                   <span>2. คู่มือนักเรียน (Student)</span>
                   <span className={styles.sidebarBadge}>6 ขั้น</span>
                 </a>
               </li>
               <li>
                 <a href="#teacher-manual" className={styles.sidebarLink}>
-                  <span>👨‍🏫</span>
                   <span>3. คู่มือครูผู้สอน (Teacher)</span>
                   <span className={styles.sidebarBadge}>8 โมดูล</span>
                 </a>
               </li>
               <li>
                 <a href="#admin-manual" className={styles.sidebarLink}>
-                  <span>⚙️</span>
                   <span>4. คู่มือผู้ดูแลระบบ (Admin)</span>
                   <span className={styles.sidebarBadge}>Telemetry</span>
                 </a>
               </li>
               <li>
                 <a href="#permissions-matrix" className={styles.sidebarLink}>
-                  <span>🛡️</span>
                   <span>5. เมทริกซ์สิทธิ์ (Matrix)</span>
                   <span className={styles.sidebarBadge}>4 ระดับ</span>
                 </a>
               </li>
               <li>
                 <a href="#faq-section" className={styles.sidebarLink}>
-                  <span>❓</span>
-                  <span>6. FAQ & การแก้ไขปัญหา</span>
+                  <span>6. FAQ &amp; การแก้ไขปัญหา</span>
                   <span className={styles.sidebarBadge}>Help</span>
                 </a>
               </li>
@@ -224,7 +223,7 @@ export default function DocsPage() {
 
             <div style={{ marginTop: 24, paddingTop: 16, borderTop: '1px solid rgba(23, 75, 55, 0.1)' }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: '#174735', marginBottom: 8 }}>
-                🚀 ทางลัดเข้าสู่ระบบ
+                ทางลัดเข้าสู่ระบบ
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 <Link href="/student/dashboard" style={{ fontSize: 12.5, color: '#245b43', textDecoration: 'none' }}>

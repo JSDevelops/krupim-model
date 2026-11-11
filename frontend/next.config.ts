@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  serverExternalPackages: ['@google/generative-ai', 'nodemailer', 'pg'],
+  serverExternalPackages: ['@google/generative-ai', '@anthropic-ai/sdk', 'openai', 'nodemailer', 'pg'],
   async headers() {
     return [{
       source: '/:path*',
