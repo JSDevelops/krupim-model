@@ -89,9 +89,25 @@ function optionalScore(value: unknown, fallback: number) {
   return integer(value, 'คะแนนสมรรถนะ', 0, 100)
 }
 
+let assignmentColumnsEnsured = false
+async function ensureAssignmentColumns() {
+  if (assignmentColumnsEnsured) return
+  try {
+    await queryDb(`
+      ALTER TABLE assignments
+        ADD COLUMN IF NOT EXISTS is_published BOOLEAN NOT NULL DEFAULT TRUE,
+        ADD COLUMN IF NOT EXISTS available_from TIMESTAMPTZ DEFAULT NULL;
+    `)
+    assignmentColumnsEnsured = true
+  } catch (err) {
+    console.warn('Could not auto-add assignment columns:', err)
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const user = await guardApi(request, { roles: ['teacher', 'developer'], maxRequests: 120 })
+    await ensureAssignmentColumns()
     const assignmentId = request.nextUrl.searchParams.get('id')?.trim()
     if (assignmentId) {
       const id = uuid(assignmentId, 'งาน')
@@ -166,6 +182,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const user = await guardApi(request, { roles: ['teacher', 'developer'], maxRequests: 50 })
+    await ensureAssignmentColumns()
     const item = normalize(await requestBody(request))
     await requireClass(user, item.classId)
     const assignment = await withTransaction(async client => {
