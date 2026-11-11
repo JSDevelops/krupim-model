@@ -57,13 +57,17 @@ function path(type: string) {
 export default function Dashboard() {
   const { logout } = useRole()
   const [data, setData] = useState<Data>({})
+  const [loading, setLoading] = useState(true)
   const [logoutOpen, setLogoutOpen] = useState(false)
   useEffect(() => {
     const c = new AbortController()
     authenticatedFetch('/api/student/dashboard', { signal: c.signal })
       .then(r => (r.ok ? r.json() : null))
-      .then(v => v && setData(v))
+      .then(v => {
+        if (v) setData(v)
+      })
       .catch(() => {})
+      .finally(() => setLoading(false))
     return () => c.abort()
   }, [])
   const s = data.stats || {
@@ -99,15 +103,15 @@ export default function Dashboard() {
           </div>
           <div className={styles.heroStats}>
             <div>
-              <strong>{s.overallScore}%</strong>
+              <strong>{loading ? '...' : `${s.overallScore}%`}</strong>
               <span>คะแนนรวม</span>
             </div>
             <div>
-              <strong>{s.lessonsCompleted}</strong>
+              <strong>{loading ? '...' : s.lessonsCompleted}</strong>
               <span>บทเรียนสำเร็จ</span>
             </div>
             <div>
-              <strong>{data.tasks?.length || 0}</strong>
+              <strong>{loading ? '...' : (data.tasks?.length || 0)}</strong>
               <span>งานคงค้าง</span>
             </div>
           </div>
@@ -314,7 +318,7 @@ export default function Dashboard() {
               {item.letter}
             </span>
             <span className={styles.ksaScore} style={{ color: item.color }}>
-              {item.score}%
+              {loading ? '...' : `${item.score}%`}
             </span>
           </div>
           <div>
@@ -324,11 +328,11 @@ export default function Dashboard() {
           <div className={styles.ksaBarTrack}>
             <div
               className={styles.ksaBarFill}
-              style={{ width: `${Math.min(100, Math.max(0, item.score))}%`, backgroundColor: item.color }}
+              style={{ width: `${loading ? 0 : Math.min(100, Math.max(0, item.score))}%`, backgroundColor: item.color }}
             />
           </div>
           <span className={styles.ksaEvaluationPill} style={{ color: item.color }}>
-            {getGrade(item.score)}
+            {loading ? 'กำลังเชื่อมต่อคะแนน...' : getGrade(item.score)}
           </span>
         </article>
       )

@@ -1,6 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
+import type { QueryResultRow } from 'pg'
 import { queryDb } from '@/lib/db'
 import { apiErrorResponse, guardApi } from '../../_lib/auth'
+
+async function safeQuery<T extends QueryResultRow = QueryResultRow>(
+  sql: string,
+  params: unknown[] = [],
+  fallback: T[] = [],
+): Promise<{ rows: T[] }> {
+  try {
+    return await queryDb<T>(sql, params)
+  } catch (err) {
+    console.warn('Dashboard safeQuery fallback:', err)
+    return { rows: fallback }
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -12,11 +26,11 @@ export async function GET(request: NextRequest) {
       ))
     )`
     const [profile, stats, tasks, recentGraded, lesson, notifications, fEvents, iSessions, nSimulations, eSubmissions, certRow] = await Promise.all([
-      queryDb(`
+      safeQuery(`
         SELECT name,email,avatar_url AS "avatarUrl",school_name AS "schoolName"
         FROM profiles WHERE id=$1::uuid LIMIT 1
       `, [user.id]),
-      queryDb(`
+      safeQuery(`
         SELECT COALESCE(ROUND(AVG(knowledge_score)),0)::int AS "knowledgeScore",
                COALESCE(ROUND(AVG(skills_score)),0)::int AS "skillsScore",
                COALESCE(ROUND(AVG(attitude_score)),0)::int AS "attitudeScore",
@@ -26,7 +40,7 @@ export async function GET(request: NextRequest) {
                COALESCE(SUM(time_spent_minutes),0)::int AS "timeSpentMinutes"
         FROM learning_analytics WHERE student_id=$1::uuid
       `, [user.id]),
-      queryDb(`
+      safeQuery(`
         SELECT a.id, a.title, a.description, a.activity_type AS "activityType",
                a.due_date AS "dueDate", a.max_score AS "maxScore",
                c.name AS "className",
@@ -43,7 +57,7 @@ export async function GET(request: NextRequest) {
           AND (a.available_from IS NULL OR a.available_from <= NOW())
         ORDER BY (s.status = 'returned') DESC, COALESCE(a.available_from, a.due_date) ASC NULLS LAST, a.due_date ASC NULLS LAST, a.title ASC LIMIT 50
       `, [user.id]),
-      queryDb(`
+      safeQuery(`
         SELECT a.id, a.title, a.activity_type AS "activityType",
                a.max_score AS "maxScore",
                c.name AS "className",
@@ -54,35 +68,35 @@ export async function GET(request: NextRequest) {
         WHERE s.student_id=$1::uuid AND s.status='graded' AND s.score IS NOT NULL
         ORDER BY s.graded_at DESC LIMIT 5
       `, [user.id]),
-      queryDb(`
+      safeQuery(`
         SELECT id,title,subject,level,weeks,concept FROM fine_lesson_plans
         WHERE publication_status='published' ${lessonScope}
         ORDER BY updated_at DESC LIMIT 1
       `, user.role === 'developer' ? [] : [user.id]),
-      queryDb(`
+      safeQuery(`
         SELECT id,title,message,type,link_url AS "linkUrl",created_at AS "createdAt"
         FROM notifications WHERE user_id=$1::uuid AND is_read=FALSE
         ORDER BY created_at DESC LIMIT 5
       `, [user.id]),
-      queryDb<{ count: string }>(`
+      safeQuery<{ count: string }>(`
         SELECT COUNT(*)::text AS count FROM learning_events
         WHERE student_id=$1::uuid AND event_type IN ('ar_view', 'ai_scan', 'mission_completed')
       `, [user.id]),
-      queryDb<{ count: string }>(`
+      safeQuery<{ count: string }>(`
         SELECT COUNT(*)::text AS count FROM chat_sessions
         WHERE student_id=$1::uuid
       `, [user.id]),
-      queryDb<{ count: string }>(`
+      safeQuery<{ count: string }>(`
         SELECT COUNT(*)::text AS count FROM simulation_sessions
         WHERE student_id=$1::uuid
       `, [user.id]),
-      queryDb<{ count: string }>(`
+      safeQuery<{ count: string }>(`
         SELECT (
           (SELECT COUNT(*) FROM student_assessments WHERE student_id=$1::uuid) +
           (SELECT COUNT(*) FROM assignment_submissions WHERE student_id=$1::uuid)
         )::text AS count
       `, [user.id]),
-      queryDb<{ id: string; certificate_code: string }>(`
+      safeQuery<{ id: string; certificate_code: string }>(`
         SELECT id, certificate_code FROM certificates WHERE student_id=$1::uuid AND revoked_at IS NULL LIMIT 1
       `, [user.id]),
     ])
@@ -117,7 +131,7 @@ export async function GET(request: NextRequest) {
         taskCounts: counts, latestLesson: lesson.rows[0] || null, notifications: notifications.rows,
         journey,
       },
-      { headers: { 'Cache-Control': 'private, max-age=30, stale-while-revalidate=120' } },
+      { headers: { 'Cache-Control': 'private, no-store, must-revalidate' } },
     )
   } catch (error) {
     return apiErrorResponse(error)
