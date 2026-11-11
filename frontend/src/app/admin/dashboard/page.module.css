@@ -737,3 +737,219 @@
     transition: none;
   }
 }
+
+/* System Telemetry & Health Monitoring Styles */
+.viewTabs {
+  display: flex;
+  gap: 10px;
+  background: #edf3ef;
+  padding: 5px;
+  border-radius: 14px;
+  width: fit-content;
+  border: 1px solid #dce5e0;
+}
+
+.viewTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 10px;
+  border: none;
+  background: transparent;
+  color: #55685f;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 160ms ease;
+}
+
+.viewTab:hover {
+  color: #17382b;
+}
+
+.viewTabActive {
+  background: #fff;
+  color: #17382b;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.liveDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #10b981;
+  display: inline-block;
+  box-shadow: 0 0 8px #10b981;
+  animation: pulseLive 2s infinite;
+}
+
+@keyframes pulseLive {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.2); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.telemetryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .telemetryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 500px) {
+  .telemetryGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.telemetryCard {
+  background: #fff;
+  border: 1px solid #dce5e0;
+  border-radius: 18px;
+  padding: 18px;
+  box-shadow: 0 4px 18px rgba(23, 56, 43, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.telemetryCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.telemetryCardTitle {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #718078;
+}
+
+.telemetryCardBadge {
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #f0fdf4;
+  color: #166534;
+}
+
+.telemetryCardBadgeWarning {
+  background: #fefce8;
+  color: #854d0e;
+}
+
+.telemetryBigVal {
+  font-size: 26px;
+  font-weight: 800;
+  color: #17382b;
+  line-height: 1.1;
+}
+
+.telemetrySub {
+  font-size: 11px;
+  color: #72847c;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.barTrack {
+  height: 6px;
+  background: #edf2ef;
+  border-radius: 999px;
+  overflow: hidden;
+  margin-top: 4px;
+}
+
+.barFill {
+  height: 100%;
+  border-radius: 999px;
+  background: #215c43;
+  transition: width 300ms ease;
+}
+
+.storageList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 20px;
+}
+
+.storageRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+}
+
+.storageName {
+  font-weight: 700;
+  color: #17382b;
+  font-family: monospace;
+}
+
+.storageSize {
+  font-weight: 800;
+  color: #215c43;
+}
+
+.hourlyContainer {
+  padding: 18px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hourlyChart {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 130px;
+  padding-top: 10px;
+  border-bottom: 1px solid #edf2ef;
+}
+
+.hourlyCol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.hourlyBarWrap {
+  width: 100%;
+  height: 100px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.hourlyBar {
+  width: 70%;
+  min-height: 3px;
+  background: #215c43;
+  border-radius: 4px 4px 0 0;
+  transition: height 200ms ease;
+}
+
+.hourlyBarPeak {
+  background: #eab308;
+}
+
+.hourlyText {
+  font-size: 8.5px;
+  color: #8c9c94;
+  white-space: nowrap;
+}
+
