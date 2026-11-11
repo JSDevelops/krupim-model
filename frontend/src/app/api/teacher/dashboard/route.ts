@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { queryDb } from '@/lib/db'
 import { apiErrorResponse, guardApi } from '../../_lib/auth'
+import { getAiQuotaStats } from '@/lib/aiUsage'
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,7 +10,7 @@ export async function GET(request: NextRequest) {
     const classScope = user.role === 'developer' ? '' : 'WHERE c.teacher_id=$1::uuid'
     const assignmentScope = user.role === 'developer' ? '' : 'WHERE a.teacher_id=$1::uuid'
 
-    const [classes, students, pending, announcements, notifications] = await Promise.all([
+    const [classes, students, pending, announcements, notifications, aiQuota] = await Promise.all([
       queryDb(`
         SELECT c.id, c.name, c.year, c.semester, c.is_active AS "isActive",
                COUNT(cs.id)::int AS "studentCount"
@@ -111,6 +112,7 @@ export async function GET(request: NextRequest) {
         ORDER BY created_at DESC
         LIMIT 10
       `, values),
+      getAiQuotaStats('gemini'),
     ])
 
     return NextResponse.json(
@@ -121,6 +123,7 @@ export async function GET(request: NextRequest) {
         pendingSubmissions: pending.rows,
         announcements: announcements.rows,
         notifications: notifications.rows,
+        aiQuota,
       },
       { headers: { 'Cache-Control': 'private, no-store' } },
     )

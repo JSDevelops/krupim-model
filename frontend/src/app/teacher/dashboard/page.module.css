@@ -529,3 +529,121 @@
 @media (prefers-reduced-motion: reduce) {
   .progressTrack span { transition: none; }
 }
+
+.aiQuotaCard {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px 22px;
+  background: #ffffff;
+  border: 1px solid #dce5e0;
+  border-radius: 20px;
+  box-shadow: 0 4px 18px rgba(18, 52, 38, 0.05);
+}
+
+.aiQuotaHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.aiQuotaHeaderTitle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.aiQuotaIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: #eef6f2;
+  color: #215c43;
+  display: grid;
+  place-items: center;
+}
+
+.aiQuotaHeaderTitle h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 800;
+  color: #17382b;
+}
+
+.aiQuotaHeaderTitle p {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  color: #687870;
+}
+
+.aiQuotaBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.aiQuotaBadge[data-health="healthy"] {
+  background: #e7f7ed;
+  color: #1b7a42;
+}
+
+.aiQuotaBadge[data-health="warning"] {
+  background: #fff9e6;
+  color: #946c0a;
+}
+
+.aiQuotaBadge[data-health="critical"] {
+  background: #fdeeee;
+  color: #b71c1c;
+}
+
+.aiQuotaTrack {
+  width: 100%;
+  height: 9px;
+  background: #edf2ef;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.aiQuotaBar {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+.aiQuotaBar[data-health="healthy"] { background: #2f945a; }
+.aiQuotaBar[data-health="warning"] { background: #d49a18; }
+.aiQuotaBar[data-health="critical"] { background: #d32f2f; }
+
+.aiQuotaStatsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.aiQuotaStatItem {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 14px;
+  background: #f8faf9;
+  border-radius: 12px;
+  border: 1px solid #edf2ef;
+}
+
+.aiQuotaStatItem small {
+  font-size: 11px;
+  color: #72827a;
+}
+
+.aiQuotaStatItem strong {
+  font-size: 14.5px;
+  color: #1a382c;
+  font-weight: 800;
+}

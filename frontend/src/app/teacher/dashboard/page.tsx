@@ -43,6 +43,18 @@ type PendingGradingItem = {
   attachmentUrl?: string | null
 }
 
+type AiQuotaData = {
+  providerName: string
+  dailyRequestLimit: number
+  requestsUsed: number
+  requestsRemaining: number
+  percentUsed: number
+  totalTokensUsed: number
+  health: 'healthy' | 'warning' | 'critical'
+  healthLabel: string
+  resetTime: string
+}
+
 const scoreDefinitions = [
   { key: 'K', label: 'Knowledge (30%)', detail: 'ความรู้และคำศัพท์ (30 คะแนน)', color: '#347553' },
   { key: 'S', label: 'Skills (50%)', detail: 'ทักษะปฏิบัติและการสื่อสาร (50 คะแนน)', color: '#35688c' },
@@ -79,6 +91,7 @@ export default function TeacherDashboard() {
   const [selectedGrading, setSelectedGrading] = useState<PendingGradingItem | null>(null)
   const [scores, setScores] = useState({ K: 80, S: 75, A: 85, C: 70 })
   const [gradingNotes, setGradingNotes] = useState('ผ่านเกณฑ์การประเมินสมรรถนะสะสมเบื้องต้น')
+  const [aiQuota, setAiQuota] = useState<AiQuotaData | null>(null)
 
   const loadDashboard = useCallback(async (signal?: AbortSignal) => {
     const response = await authenticatedFetch('/api/teacher/dashboard', { cache: 'no-store', signal })
@@ -106,6 +119,7 @@ export default function TeacherDashboard() {
         }
       >
       announcements?: Array<Omit<TeacherAnnouncement, 'publishedAt'> & { publishedAt: string }>
+      aiQuota?: AiQuotaData
     }
     if (!response.ok) throw new Error(payload.error || 'ไม่สามารถโหลดแดชบอร์ดได้')
     setClasses((payload.classes ?? []).map(item => item.name))
@@ -134,6 +148,7 @@ export default function TeacherDashboard() {
       ...item,
       publishedAt: formatActivityDate(item.publishedAt),
     })))
+    if (payload.aiQuota) setAiQuota(payload.aiQuota)
   }, [])
 
   useEffect(() => {
@@ -268,6 +283,50 @@ export default function TeacherDashboard() {
             <Link href="/teacher/assignments" className={styles.reviewBtn}>
               <AdminIcon name="check" size={15} /> ไปที่หน้ารายงานการส่งงาน
             </Link>
+          </div>
+        </section>
+      )}
+
+      {aiQuota && (
+        <section className={styles.aiQuotaCard} role="region" aria-label="สถานะโควต้า AI ประจำวัน">
+          <div className={styles.aiQuotaHeader}>
+            <div className={styles.aiQuotaHeaderTitle}>
+              <span className={styles.aiQuotaIcon}>
+                <AdminIcon name="sparkles" size={20} />
+              </span>
+              <div>
+                <h3>สถานะโควต้า AI ประจำวัน ({aiQuota.providerName})</h3>
+                <p>รีเซ็ตโควต้าใหม่ทุกวันเวลา {aiQuota.resetTime} · สำหรับกิจกรรมการเรียนรู้ของนักเรียน</p>
+              </div>
+            </div>
+            <span className={styles.aiQuotaBadge} data-health={aiQuota.health}>
+              {aiQuota.healthLabel} ({aiQuota.percentUsed}% ใช้ไป)
+            </span>
+          </div>
+
+          <div className={styles.aiQuotaTrack}>
+            <div
+              className={styles.aiQuotaBar}
+              data-health={aiQuota.health}
+              style={{ width: `${Math.max(2, aiQuota.percentUsed)}%` }}
+            />
+          </div>
+
+          <div className={styles.aiQuotaStatsGrid}>
+            <div className={styles.aiQuotaStatItem}>
+              <small>โควต้าที่ใช้ไปวันนี้</small>
+              <strong>{aiQuota.requestsUsed.toLocaleString()} / {aiQuota.dailyRequestLimit.toLocaleString()} ครั้ง</strong>
+            </div>
+            <div className={styles.aiQuotaStatItem}>
+              <small>โควต้าคงเหลือวันนี้</small>
+              <strong style={{ color: aiQuota.health === 'critical' ? '#b71c1c' : '#1b7a42' }}>
+                {aiQuota.requestsRemaining.toLocaleString()} ครั้ง
+              </strong>
+            </div>
+            <div className={styles.aiQuotaStatItem}>
+              <small>ปริมาณโทเค็นสะสมวันนี้</small>
+              <strong>≈ {aiQuota.totalTokensUsed.toLocaleString()} Tokens</strong>
+            </div>
           </div>
         </section>
       )}

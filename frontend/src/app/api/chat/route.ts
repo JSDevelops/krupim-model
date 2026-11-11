@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { apiErrorResponse, getErrorMessage, guardApi, getDatabase } from '../_lib/auth'
 import { getActiveProvider, getConfiguredModel, getGemini, getOpenAI, getAnthropic } from '../_lib/ai'
 import { generateChatFallback } from './fallback-chat'
+import { recordAiTokenUsage } from '@/lib/aiUsage'
 
 const SYSTEM_PROMPT = 'คุณคือผู้ช่วยสอนอัจฉริยะในแพลตฟอร์ม FINE MODEL ที่เชี่ยวชาญด้านศิลปะการบริการอาหารและเครื่องดื่ม การจัดโต๊ะอาหาร (Table Setting) และคำศัพท์ภาษาอังกฤษที่ใช้ในวิชาชีพนี้ ตอบผู้เรียนด้วยความสุภาพ กระชับ สนับสนุนการเรียนรู้ และมีตัวอย่างสถานการณ์จริงเสมอ'
 
@@ -63,6 +64,16 @@ export async function POST(req: NextRequest) {
         ]
         const completion = await client.chat.completions.create({ model: configuredModel, messages, temperature: 0.7 })
         text = completion.choices[0].message.content || ''
+        const usage = completion.usage
+        void recordAiTokenUsage({
+          userId: authUser.id,
+          provider: 'openai',
+          model: configuredModel,
+          serviceType: 'chat',
+          promptTokens: usage?.prompt_tokens || Math.ceil(userMessage.length / 4),
+          completionTokens: usage?.completion_tokens || Math.ceil(text.length / 4),
+          totalTokens: usage?.total_tokens || 0,
+        })
       } else if (provider === 'claude') {
         const client = await getAnthropic(req)
         const messages = [
@@ -105,6 +116,19 @@ export async function POST(req: NextRequest) {
         const chat = model.startChat({ history: formattedHistory })
         const result = await chat.sendMessage(userMessage)
         text = result.response.text()
+        const meta = result.response.usageMetadata
+        const promptTokens = meta?.promptTokenCount || Math.ceil(userMessage.length / 4)
+        const completionTokens = meta?.candidatesTokenCount || Math.ceil(text.length / 4)
+        const totalTokens = meta?.totalTokenCount || (promptTokens + completionTokens)
+        void recordAiTokenUsage({
+          userId: authUser.id,
+          provider: 'gemini',
+          model: configuredModel,
+          serviceType: 'chat',
+          promptTokens,
+          completionTokens,
+          totalTokens,
+        })
       }
     } catch (aiErr: unknown) {
       const errMsg = getErrorMessage(aiErr)
