@@ -11,28 +11,27 @@ type NavItem = {
   href: string
   letter: FineLetter
   label: string
-  fineLabel: string
   icon: NavIcon
   aliases?: string[]
 }
 
 const TABS: NavItem[] = [
-  { href: '/student/dashboard', letter: 'H', label: 'หน้าหลัก', fineLabel: 'Home', icon: 'home' },
-  { href: '/student/explore', letter: 'F', label: 'Familiarize', fineLabel: 'Explore', icon: 'explore' },
-  { href: '/student/interact', letter: 'I', label: 'Interact', fineLabel: 'Speak', icon: 'interact', aliases: ['/chat', '/live'] },
-  { href: '/student/navigate', letter: 'N', label: 'Navigate', fineLabel: 'Scenario', icon: 'navigate', aliases: ['/simulation', '/student/simulation'] },
-  { href: '/student/exhibit', letter: 'E', label: 'Exhibit', fineLabel: 'Review', icon: 'exhibit' },
-  { href: '/student/profile', letter: 'P', label: 'Portfolio', fineLabel: 'Profile', icon: 'profile', aliases: ['/student/progress'] },
+  { href: '/student/dashboard', letter: 'H', label: 'หน้าหลัก', icon: 'home' },
+  { href: '/student/explore', letter: 'F', label: 'F · Explore', icon: 'explore' },
+  { href: '/student/interact', letter: 'I', label: 'I · Speak', icon: 'interact', aliases: ['/chat', '/live'] },
+  { href: '/student/navigate', letter: 'N', label: 'N · Scenario', icon: 'navigate', aliases: ['/simulation', '/student/simulation'] },
+  { href: '/student/exhibit', letter: 'E', label: 'E · Exhibit', icon: 'exhibit' },
+  { href: '/student/profile', letter: 'P', label: 'Portfolio', icon: 'profile', aliases: ['/student/progress'] },
 ]
 
 function FineNavIcon({ name }: { name: NavIcon }) {
   const common = {
-    width: 20,
-    height: 20,
+    width: 18,
+    height: 18,
     viewBox: '0 0 24 24',
     fill: 'none',
     stroke: 'currentColor',
-    strokeWidth: 1.9,
+    strokeWidth: 2,
     strokeLinecap: 'round' as const,
     strokeLinejoin: 'round' as const,
     'aria-hidden': true,
@@ -66,14 +65,11 @@ export default function StudentFINENav() {
               href={tab.href}
               prefetch={false}
               aria-current={active ? 'page' : undefined}
-              aria-label={`${tab.label} — ${tab.letter} · ${tab.fineLabel}`}
+              aria-label={`${tab.label} (${tab.letter})`}
               className={`${styles.item} ${active ? styles.active : ''}`}
             >
               <span className={styles.iconWrap}><FineNavIcon name={tab.icon} /></span>
-              <span className={styles.copy}>
-                <span className={styles.label}>{tab.label}</span>
-                <span className={styles.fineLabel}>{tab.letter} · {tab.fineLabel}</span>
-              </span>
+              <span className={styles.label}>{tab.label}</span>
               {active && <span className={styles.activeMark} aria-hidden="true" />}
             </Link>
           )
