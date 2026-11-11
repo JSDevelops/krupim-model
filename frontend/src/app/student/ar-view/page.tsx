@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { localData } from '@/lib/localData'
 import { authenticatedFetch } from '@/lib/api'
 import { toast } from 'sonner'
+import { defaultEquipment } from '@/app/student/explore/equipment-data'
 import StudentIcon from '../StudentIcon'
 import styles from './ar-view.module.css'
 
@@ -19,6 +20,7 @@ type ARModel = {
   usdzUrl?: string
   pronounce?: string
   sentence?: string
+  imageUrl?: string
 }
 
 type RecognitionResultEvent = { results: ArrayLike<{ 0: { transcript: string } }> }
@@ -39,7 +41,7 @@ type ARSupport =
   | { checked: true; webxr: boolean; quicklook: boolean }
 
 // ─── Constants ───────────────────────────────────────────────
-const FALLBACK_MODEL = 'https://modelviewer.dev/shared-assets/models/Astronaut.glb'
+const FALLBACK_MODEL = ''
 const DISTRACTORS = [
   'จานสลัดเดี่ยว', 'ช้อนตักแกง', 'ถ้วยน้ำจิ้ม', 'มีดหั่นเนื้อสเต็ก',
   'แก้วเครื่องดื่มค็อกเทล', 'ถาดไม้วางจาน', 'ผ้าเช็ดปากลูกค้า',
@@ -48,15 +50,23 @@ const DISTRACTORS = [
 
 // ─── Helpers ─────────────────────────────────────────────────
 function mapRow(row: Record<string, unknown>): ARModel {
+  const nameEn = String(row.name_en || row.nameEn || '')
+  const matched = defaultEquipment.find(
+    e => e.nameEn.toLowerCase() === nameEn.toLowerCase()
+  )
+  const glb = String(row.glb_url || row.glbUrl || matched?.glbUrl || '')
+  const cleanGlb = glb.includes('Astronaut.glb') ? '' : glb
+
   return {
     id: String(row.id || ''),
-    nameEn: String(row.name_en || row.nameEn || ''),
-    nameTh: String(row.name_th || row.nameTh || ''),
-    desc: String(row.description || row.desc || row.use_desc || ''),
-    glbUrl: String(row.glb_url || row.glbUrl || FALLBACK_MODEL),
-    usdzUrl: String(row.usdz_url || row.usdzUrl || ''),
-    pronounce: String(row.pronounce || ''),
-    sentence: String(row.sentence || row.service_tips || ''),
+    nameEn,
+    nameTh: String(row.name_th || row.nameTh || matched?.name || ''),
+    desc: String(row.description || row.desc || row.use_desc || matched?.use || ''),
+    glbUrl: cleanGlb,
+    usdzUrl: String(row.usdz_url || row.usdzUrl || matched?.usdzUrl || ''),
+    pronounce: String(row.pronounce || matched?.pronounce || ''),
+    sentence: String(row.sentence || row.service_tips || matched?.sentence || ''),
+    imageUrl: String(row.image_url || row.imageUrl || matched?.imageUrl || ''),
   }
 }
 
@@ -192,15 +202,22 @@ function ARViewerContent() {
         // Fallback: inline query params
         const nameEn = searchParams.get('nameEn')
         if (nameEn && active) {
+          const matched = defaultEquipment.find(
+            e => e.nameEn.toLowerCase() === nameEn.toLowerCase()
+          )
+          const glb = searchParams.get('glbUrl') || matched?.glbUrl || ''
+          const cleanGlb = glb.includes('Astronaut.glb') ? '' : glb
+
           setModel({
             id,
             nameEn,
-            nameTh: searchParams.get('nameTh') || '',
-            desc: searchParams.get('desc') || '',
-            glbUrl: searchParams.get('glbUrl') || FALLBACK_MODEL,
-            usdzUrl: searchParams.get('usdzUrl') || '',
-            pronounce: searchParams.get('pronounce') || '',
-            sentence: searchParams.get('sentence') || '',
+            nameTh: searchParams.get('nameTh') || matched?.name || '',
+            desc: searchParams.get('desc') || matched?.use || '',
+            glbUrl: cleanGlb,
+            usdzUrl: searchParams.get('usdzUrl') || matched?.usdzUrl || '',
+            pronounce: searchParams.get('pronounce') || matched?.pronounce || '',
+            sentence: searchParams.get('sentence') || matched?.sentence || '',
+            imageUrl: searchParams.get('imageUrl') || matched?.imageUrl || '',
           })
         }
       } catch (error) {
@@ -320,10 +337,11 @@ function ARViewerContent() {
   }
 
   // ─── Derived ─────────────────────────────────────────────
-  const hasUsdz = Boolean(model?.usdzUrl)
-  const arAvailable = isARAvailable(arSupport, hasUsdz)
+  const has3D = Boolean(model?.glbUrl && model.glbUrl.trim() !== '' && !model.glbUrl.includes('Astronaut.glb'))
+  const hasUsdz = Boolean(has3D && model?.usdzUrl)
+  const arAvailable = has3D && isARAvailable(arSupport, hasUsdz)
   const arLabel = arButtonLabel(arSupport, hasUsdz)
-  const isLoadingModel = modelProgress > 0 && modelProgress < 100
+  const isLoadingModel = has3D && modelProgress > 0 && modelProgress < 100
 
   // ─── States ──────────────────────────────────────────────
   if (loading) {
@@ -370,51 +388,82 @@ function ARViewerContent() {
           </div>
         )}
 
-        {/*
-          model-viewer web component.
-          - ar-modes priority: webxr (Android) → scene-viewer (Android fallback) → quick-look (iOS)
-          - ios-src: USDZ path required for Quick Look on iOS Safari
-          - xr-environment: shows real-world shadows in WebXR sessions
-          - shadow-intensity / shadow-softness: realistic shadows
-        */}
-        <model-viewer
-          ref={attachViewerEvents as unknown as React.Ref<HTMLElement>}
-          src={model.glbUrl}
-          ios-src={hasUsdz ? model.usdzUrl : undefined}
-          alt={`โมเดล 3 มิติ ${model.nameEn}`}
-          ar=""
-          ar-modes="webxr scene-viewer quick-look"
-          ar-scale="auto"
-          camera-controls=""
-          auto-rotate=""
-          shadow-intensity="1.4"
-          shadow-softness="0.7"
-          exposure="1.0"
-          loading="eager"
-          reveal="auto"
-          class={styles.modelViewer}
-        >
-          {/*
-            AR button slot.
-            model-viewer shows this button only when AR is available on the device.
-            We add our own label text so it reflects the platform.
-          */}
-          <button
-            slot="ar-button"
-            className={styles.arButton}
-            aria-label={arLabel}
+        {!has3D ? (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: '100%',
+            minHeight: '46svh',
+            padding: '28px 20px',
+            textAlign: 'center',
+            position: 'relative'
+          }}>
+            {model.imageUrl ? (
+              <img
+                src={model.imageUrl}
+                alt={model.nameEn}
+                style={{
+                  maxWidth: '85%',
+                  maxHeight: '270px',
+                  objectFit: 'contain',
+                  filter: 'drop-shadow(0 14px 28px rgba(23,75,55,0.18))',
+                  borderRadius: 16
+                }}
+              />
+            ) : (
+              <div style={{ fontSize: 64, marginBottom: 12 }}>🍽️</div>
+            )}
+            <div style={{
+              marginTop: 18,
+              padding: '7px 16px',
+              borderRadius: 20,
+              background: 'rgba(23, 62, 48, 0.08)',
+              border: '1px solid rgba(23, 62, 48, 0.15)',
+              color: '#173e30',
+              fontSize: 12,
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7
+            }}>
+              <span>📷 ภาพประกอบมาตรฐานสากล</span>
+              <span style={{ opacity: 0.5 }}>•</span>
+              <span style={{ fontSize: 11, fontWeight: 500 }}>กำลังจัดเตรียมโมเดล 3D</span>
+            </div>
+          </div>
+        ) : (
+          <model-viewer
+            ref={attachViewerEvents as unknown as React.Ref<HTMLElement>}
+            src={model.glbUrl}
+            ios-src={hasUsdz ? model.usdzUrl : undefined}
+            alt={`โมเดล 3 มิติ ${model.nameEn}`}
+            ar=""
+            ar-modes="webxr scene-viewer quick-look"
+            ar-scale="auto"
+            camera-controls=""
+            auto-rotate=""
+            shadow-intensity="1.4"
+            shadow-softness="0.7"
+            exposure="1.0"
+            loading="eager"
+            reveal="auto"
+            class={styles.modelViewer}
           >
-            <StudentIcon name="cube" size={17} />
-            {arLabel}
-          </button>
-        </model-viewer>
+            <button
+              slot="ar-button"
+              className={styles.arButton}
+              aria-label={arLabel}
+            >
+              <StudentIcon name="cube" size={17} />
+              {arLabel}
+            </button>
+          </model-viewer>
+        )}
 
         {/*
           iOS Quick Look safety net.
-          If the model-viewer AR button fails (e.g. Chrome iOS which doesn't support Quick Look),
-          we show a dedicated note. For Safari iOS, this anchor provides a direct fallback.
-          The anchor MUST wrap an <img> or be rel="ar" + href pointing to the .usdz file.
-          We keep it visually hidden and trigger it programmatically only when needed.
         */}
         {hasUsdz && (
           <a
@@ -424,7 +473,6 @@ function ARViewerContent() {
             aria-hidden="true"
             style={{ display: 'none' }}
           >
-            {/* Required child for Quick Look activation */}
             <img src={model.glbUrl} alt="" />
           </a>
         )}
@@ -436,12 +484,12 @@ function ARViewerContent() {
 
         {/* Viewer hint */}
         <span className={styles.viewerHint}>
-          <StudentIcon name="target" size={15} />
-          ลากเพื่อหมุน บีบเพื่อซูม
+          <StudentIcon name={has3D ? 'target' : 'sparkles'} size={15} />
+          {has3D ? 'ลากเพื่อหมุน บีบเพื่อซูม' : 'ภาพอุปกรณ์มาตรฐานสากล'}
         </span>
 
-        {/* AR not-supported banner — shown only when we've checked and know it's unsupported */}
-        {arSupport.checked && !arAvailable && (
+        {/* AR not-supported banner — shown only when 3D is available and checked */}
+        {has3D && arSupport.checked && !arAvailable && (
           <div className={styles.arUnsupported} role="status">
             <StudentIcon name="info" size={15} />
             {hasUsdz

@@ -648,8 +648,6 @@ export const defaultEquipment: Equipment[] = [
     "pronounce": "/tiː kʌp/",
     "use": "ถ้วยสำหรับเสิร์ฟและดื่มชา มักใช้คู่กับจานรองถ้วยชา",
     "sentence": "The waiter serves tea in a tea cup.",
-    "imageUrl": "/uploads/tableware_tea_cup.webp",
-    "glbUrl": "/uploads/model_porcelain_teapot.glb",
-    "usdzUrl": "/uploads/model_porcelain_teapot.usdz"
+    "imageUrl": "/uploads/tableware_tea_cup.webp"
   }
 ]

@@ -938,7 +938,7 @@ export default function ExplorePage() {
                           <span className={styles.itemTh}>{item.name}</span>
                           <span style={{ fontSize: '10px', color: '#174b37', fontWeight: 600, marginTop: 2 }}>
                             {item.categoryTh || item.category || 'อุปกรณ์บนโต๊ะอาหาร'}
-                            {(item.glbUrl || item.usdzUrl) ? ' • มีโมเดล 3 มิติ' : ''}
+                            {(item.glbUrl || item.usdzUrl) ? ' • มีโมเดล 3 มิติ' : ' • ภาพประกอบ 2D'}
                           </span>
                         </span>
                         <span className={styles.cardArrow}>
@@ -1268,7 +1268,7 @@ export default function ExplorePage() {
                       <span className={styles.itemTh}>{item.name}</span>
                       <span style={{ fontSize: '10px', color: '#174b37', fontWeight: 600, marginTop: 2 }}>
                         {item.categoryTh || item.category || 'อุปกรณ์บนโต๊ะอาหาร'}
-                        {(item.glbUrl || item.usdzUrl) ? ' • มีโมเดล 3 มิติ' : ''}
+                        {(item.glbUrl || item.usdzUrl) ? ' • มีโมเดล 3 มิติ' : ' • ภาพประกอบ 2D'}
                       </span>
                     </span>
                     <span className={styles.cardArrow}>
@@ -1619,13 +1619,21 @@ export default function ExplorePage() {
               <div className={styles.detailActions}>
                 <button type="button" className={styles.ghostButton} onClick={() => speak(viewItem.nameEn, 'detail-name')}><ExploreIcon name="volume" size={16} /> ฟังชื่อ</button>
                 <button type="button" className={styles.primaryButton} onClick={() => speak(viewItem.sentence, 'detail-sentence')}><ExploreIcon name="volume" size={16} /> ฟังประโยค</button>
-                {(viewItem.modelId || viewItem.id || viewItem.glbUrl || viewItem.usdzUrl) && (
+                {(viewItem.modelId || viewItem.glbUrl || viewItem.usdzUrl) ? (
                   <Link
                     href={viewItem.modelId || viewItem.id ? `/student/ar-view?id=${encodeURIComponent(viewItem.modelId || viewItem.id || '')}` : `/student/ar-view?nameEn=${encodeURIComponent(viewItem.nameEn)}&nameTh=${encodeURIComponent(viewItem.name)}`}
                     className={styles.primaryButton}
                     style={{ gridColumn: '1 / -1', marginTop: 6 }}
                   >
                     <ExploreIcon name="cube" size={16} /> ดูโมเดล AR 3D
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/student/ar-view?nameEn=${encodeURIComponent(viewItem.nameEn)}&nameTh=${encodeURIComponent(viewItem.name)}`}
+                    className={styles.ghostButton}
+                    style={{ gridColumn: '1 / -1', marginTop: 6, borderColor: '#174b37', color: '#174b37', fontWeight: 600 }}
+                  >
+                    <ExploreIcon name="sparkles" size={16} /> ดูภาพประกอบ & แบบฝึกหัด
                   </Link>
                 )}
               </div>
