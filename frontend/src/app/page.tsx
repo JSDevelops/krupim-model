@@ -33,7 +33,7 @@ export default function HomePage() {
             </Link>
 
             <nav className={styles.navLinks} aria-label="เมนูหลัก">
-              <a href="#pillars" className={styles.navLink}>5 เสาหลักเทคโนโลยี</a>
+              <a href="#pillars" className={styles.navLink}>เทคโนโลยีอัจฉริยะ</a>
               <a href="#fine-process" className={styles.navLink}>กระบวนการ FINE</a>
               <a href="#scenario" className={styles.navLink}>สถานการณ์จำลอง</a>
               <a href="#ksac" className={styles.navLink}>สมรรถนะ KSA-C</a>
@@ -142,13 +142,13 @@ export default function HomePage() {
         {/* =================================================================
             FLOATING 4 PILLARS (Inspired by Pinterest "Our Services" Cards)
             ================================================================= */}
-        <section id="pillars" className={styles.floatingPillarsSection} aria-label="5 เสาหลักเทคโนโลยี">
+        <section id="pillars" className={styles.floatingPillarsSection} aria-label="เทคโนโลยีอัจฉริยะ">
           <div className={styles.container}>
             <div className={styles.floatingPillarsGrid}>
               {/* Card 1: Solid Emerald Intro Card */}
               <div className={styles.pillarCardIntro}>
                 <div className={styles.pillarIntroTag}>TECH PILLARS</div>
-                <h2 className={styles.pillarIntroTitle}>5 เสาหลักเทคโนโลยีอัจฉริยะ</h2>
+                <h2 className={styles.pillarIntroTitle}>เทคโนโลยีอัจฉริยะ</h2>
                 <p className={styles.pillarIntroDesc}>
                   ผสานเทคโนโลยีเสมือนจริงและปัญญาประดิษฐ์ สร้างประสบการณ์เรียนรู้สมจริง
                 </p>
