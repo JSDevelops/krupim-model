@@ -1357,7 +1357,7 @@ export default function ExplorePage() {
                         <span className={styles.scanBtnIconWrap}>
                           <ExploreIcon name="sparkles" size={24} />
                         </span>
-                        <strong className={styles.scanBtnTitle}>AI Live</strong>
+                        <strong className={styles.scanBtnTitle}>AI Scan</strong>
                         <span className={styles.scanBtnDesc}>สแกนวัตถุสดเรียลไทม์</span>
                       </button>
                     </div>
