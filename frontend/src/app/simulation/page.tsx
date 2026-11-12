@@ -43,16 +43,20 @@ type RecognitionConstructor = new () => Recognition
 const DEFAULT_SCENARIO_ID = '44444444-4444-4444-4444-444444444441'
 const TIME_LIMIT = 600
 
-const INITIAL_CUSTOMER_MESSAGE: Message = {
-  role: 'ai',
-  text: 'Good evening! I have a reservation for two under the name Smith. Is our table ready?',
-  translation: 'สวัสดีตอนเย็นครับ! ผมจองโต๊ะสำหรับ 2 ท่านไว้ในชื่อ สมิธ โต๊ะพร้อมแล้วหรือยังครับ?',
-  showTranslation: false,
+export type GuestStatus = 'waiting_greeting' | 'listening' | 'thinking' | 'speaking' | 'ready'
+
+export const GUEST_STATUS_INFO: Record<GuestStatus, { label: string; tone: string }> = {
+  waiting_greeting: { label: '🚶 รอรับการทักทาย', tone: '#b27814' },
+  listening: { label: '👂 กำลังฟังคุณพูด...', tone: '#2563eb' },
+  thinking: { label: '💭 กำลังคิดคำตอบ...', tone: '#6b7280' },
+  speaking: { label: '🗣️ กำลังพูดตอบกลับ...', tone: '#16a34a' },
+  ready: { label: 'พร้อมสนทนา', tone: '#215c43' },
 }
 
-const INITIAL_SUGGESTIONS = [
-  'Good evening, Mr. Smith! Welcome to our restaurant. Yes, your table is ready. Right this way, please.',
-  'Good evening, sir! Please follow me to your table by the window. Here are your menus.',
+const INITIAL_GREETING_SUGGESTIONS = [
+  'Good evening, sir! Welcome to our restaurant. Do you have a reservation tonight?',
+  'Good evening, sir! Welcome to the Grand Dining Room. A table for how many persons, please?',
+  'Good evening and welcome! May I have your name for the table reservation, sir?',
 ]
 
 type LearningScenario = {
@@ -80,15 +84,16 @@ export default function SimulationPage() {
   const [finished, setFinished] = useState(false)
   const [turnCount, setTurnCount] = useState(0)
   const [stage, setStage] = useState('Greeting & Seating')
-  const [suggestedResponses, setSuggestedResponses] = useState<string[]>(INITIAL_SUGGESTIONS)
+  const [suggestedResponses, setSuggestedResponses] = useState<string[]>(INITIAL_GREETING_SUGGESTIONS)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
-  const [score, setScore] = useState(20)
+  const [score, setScore] = useState(15)
   const [timeLeft, setTimeLeft] = useState(TIME_LIMIT)
   const [feedback, setFeedback] = useState<Feedback | null>(null)
   const [evaluating, setEvaluating] = useState(false)
   const [typing, setTyping] = useState(false)
   const [listening, setListening] = useState(false)
+  const [guestStatus, setGuestStatus] = useState<GuestStatus>('waiting_greeting')
   const [speechRate, setSpeechRate] = useState<number>(() => getStoredSpeechRate())
   const [scenarioId, setScenarioId] = useState(DEFAULT_SCENARIO_ID)
   const [scenario, setScenario] = useState<LearningScenario | null>(null)
@@ -120,7 +125,7 @@ export default function SimulationPage() {
     return () => { window.clearTimeout(timer); controller.abort() }
   }, [])
 
-  const speak = useCallback((text: string) => {
+  const speak = useCallback((text: string, onDone?: () => void) => {
     if (!window.speechSynthesis) return
     window.speechSynthesis.cancel()
     const utterance = new SpeechSynthesisUtterance(text)
@@ -131,6 +136,15 @@ export default function SimulationPage() {
       voices.find(voice => voice.lang.startsWith('en') && /Google|Natural|Male|David/i.test(voice.name)) ||
       voices.find(voice => voice.lang.startsWith('en')) ||
       null
+
+    setGuestStatus('speaking')
+    utterance.onend = () => {
+      setGuestStatus('ready')
+      onDone?.()
+    }
+    utterance.onerror = () => {
+      setGuestStatus('ready')
+    }
     window.speechSynthesis.speak(utterance)
   }, [speechRate])
 
@@ -189,16 +203,14 @@ export default function SimulationPage() {
 
   function startSimulation() {
     setStarted(true)
-    setTyping(true)
+    setTyping(false)
     setTurnCount(0)
-    setScore(20)
+    setScore(15)
     setStage('Greeting & Seating')
-    setSuggestedResponses(INITIAL_SUGGESTIONS)
-    window.setTimeout(() => {
-      setMessages([INITIAL_CUSTOMER_MESSAGE])
-      setTyping(false)
-      speak(INITIAL_CUSTOMER_MESSAGE.text)
-    }, 600)
+    setSuggestedResponses(INITIAL_GREETING_SUGGESTIONS)
+    setMessages([])
+    setGuestStatus('waiting_greeting')
+    setInput('')
   }
 
   async function sendMessage(value = input) {
@@ -210,6 +222,7 @@ export default function SimulationPage() {
     setMessages(updatedMessages)
     setInput('')
     setTyping(true)
+    setGuestStatus('thinking')
 
     try {
       // 2. Call AI Customer Simulation API
@@ -247,12 +260,12 @@ export default function SimulationPage() {
       setTurnCount(count => count + 1)
       if (data.stage) setStage(data.stage)
       if (data.suggestedResponses?.length) setSuggestedResponses(data.suggestedResponses)
-      setScore(s => Math.min(100, s + 16))
+      setScore(s => Math.min(100, s + 17))
       speak(data.reply)
 
       if (data.isFinished) {
         toast.success('การบริการครบทุกขั้นตอนแล้ว!', {
-          description: 'คุณสามารถกดปุ่ม "จบและประเมินผล" เพื่อดูสรุปคะแนนทักษะได้เลยครับ',
+          description: 'คุณสามารถกดปุ่ม "จบประเมินผล" เพื่อดูสรุปคะแนนทักษะได้เลยครับ',
         })
       }
     } catch (err) {
@@ -260,8 +273,8 @@ export default function SimulationPage() {
       toast.error('มีปัญหาในการเชื่อมต่อ AI ลูกค้าชั่วคราว กำลังใช้การตอบกลับสำรอง')
       const fallbackReply: Message = {
         role: 'ai',
-        text: 'Thank you very much. Could we please have the bill whenever you are ready?',
-        translation: 'ขอบคุณมากครับ ขอเช็คบิลได้เลยครับเมื่อท่านพร้อม',
+        text: 'Good evening! Thank you. Yes, I have a reservation for two under the name Smith. Is our table ready?',
+        translation: 'สวัสดีตอนเย็นครับ! ขอบคุณครับ ใช่ครับ ผมมีจองโต๊ะสำหรับ 2 ท่านไว้ในชื่อ สมิธ โต๊ะพร้อมแล้วหรือยังครับ?',
         showTranslation: false,
       }
       setMessages(prev => [...prev, fallbackReply])
@@ -285,6 +298,8 @@ export default function SimulationPage() {
   function toggleSpeech() {
     if (listening) {
       recognitionRef.current?.stop()
+      setListening(false)
+      setGuestStatus(messageRef.current.length === 0 ? 'waiting_greeting' : 'ready')
       return
     }
     const speechWindow = window as typeof window & {
@@ -300,15 +315,20 @@ export default function SimulationPage() {
     recognition.onresult = event => {
       const transcript = event.results[0]?.[0]?.transcript || ''
       setInput(transcript)
+      setListening(false)
       if (transcript) void sendMessage(transcript)
     }
     recognition.onerror = () => {
       setListening(false)
+      setGuestStatus(messageRef.current.length === 0 ? 'waiting_greeting' : 'ready')
       toast.error('ไม่สามารถรับเสียงได้ กรุณาตรวจสอบสิทธิ์ไมโครโฟน')
     }
-    recognition.onend = () => setListening(false)
+    recognition.onend = () => {
+      setListening(false)
+    }
     recognitionRef.current = recognition
     setListening(true)
+    setGuestStatus('listening')
     recognition.start()
   }
 
@@ -318,10 +338,11 @@ export default function SimulationPage() {
     setTurnCount(0)
     setMessages([])
     setInput('')
-    setScore(20)
+    setScore(15)
     setTimeLeft(TIME_LIMIT)
     setFeedback(null)
     setTyping(false)
+    setGuestStatus('waiting_greeting')
   }
 
   // ─── 1. INTRO PAGE ───────────────────────────────────────────
@@ -508,7 +529,13 @@ export default function SimulationPage() {
                   <StudentIcon name="user" size={22} />
                 </div>
                 <div className={styles.customerMeta}>
-                  <strong>Mr. Robert Smith</strong>
+                  <div className={styles.customerNameRow}>
+                    <strong>Mr. Robert Smith</strong>
+                    <span className={`${styles.guestStatusBadge} ${styles[guestStatus]}`}>
+                      <span className={styles.pulseDot} />
+                      {GUEST_STATUS_INFO[guestStatus].label}
+                    </span>
+                  </div>
                   <span>ลูกค้าจำลองชาวต่างชาติ (5-Star Hotel Guest)</span>
                 </div>
               </div>
@@ -530,6 +557,35 @@ export default function SimulationPage() {
 
             {/* Messages Container */}
             <div className={styles.messages} aria-live="polite">
+              {messages.length === 0 && (
+                <div className={styles.arrivalCard}>
+                  <div className={styles.arrivalBadge}>
+                    <span className={styles.arrivalDot} />
+                    <span>GUEST ARRIVAL · ขั้นตอนที่ 1 ทักทายต้อนรับลูกค้า</span>
+                  </div>
+                  <h3 className={styles.arrivalTitle}>
+                    Mr. Robert Smith กำลังเดินเข้ามาถึงหน้าร้านอาหาร
+                  </h3>
+                  <p className={styles.arrivalDesc}>
+                    ตามมาตรฐานงานบริการสากล (5-Star Hospitality) พนักงานบริการต้องเป็นฝ่าย <strong>กล่าวทักทายต้อนรับลูกค้าก่อนเสมอ</strong><br />
+                    กดปุ่มไมโครโฟนด้านล่างเพื่อ <strong>พูดสด</strong> หรือกดเลือกประโยคทักทายแนะนำเพื่อเริ่มการสนทนา
+                  </p>
+                  <div className={styles.arrivalPromptList}>
+                    {INITIAL_GREETING_SUGGESTIONS.map((phrase, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        className={styles.arrivalPromptBtn}
+                        onClick={() => useSuggestion(phrase)}
+                      >
+                        <span className={styles.arrivalPromptIcon}>💬</span>
+                        <span>{phrase}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {messages.map((message, index) => (
                 <div
                   key={`${message.role}-${index}`}
@@ -622,7 +678,13 @@ export default function SimulationPage() {
               <input
                 value={input}
                 onChange={event => setInput(event.target.value)}
-                placeholder={listening ? 'กำลังฟังเสียงของคุณ...' : 'พิมพ์หรือเลือกคำตอบภาษาอังกฤษ...'}
+                placeholder={
+                  listening
+                    ? 'กำลังฟังเสียงของคุณ (พูดภาษาอังกฤษได้เลย)...'
+                    : messages.length === 0
+                    ? 'กดไมค์พูดทักทายลูกค้า หรือพิมพ์ "Good evening, sir! Welcome..."'
+                    : 'พิมพ์หรือเลือกคำตอบภาษาอังกฤษ...'
+                }
                 maxLength={1000}
                 disabled={typing}
               />

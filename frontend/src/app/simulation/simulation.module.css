@@ -20,3 +20,158 @@
 @keyframes spin{to{transform:rotate(360deg)}}
 @media(min-width:700px){.introPage{padding:18px 16px 120px}.sessionPage{padding:14px 16px 92px}.hero{grid-template-columns:minmax(0,1.2fr) minmax(260px,.8fr)}.heroCopy{padding:29px}.restaurantVisual{min-height:270px}.introGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.chatPanel{max-width:780px;margin-left:auto;margin-right:auto}.sessionHeader,.progressTrack{max-width:780px;margin-left:auto;margin-right:auto}}
 @media(prefers-reduced-motion:reduce){.evaluating svg{animation:none}.progressTrack span{transition:none}}
+
+/* Real-Time Customer Status & Arrival Card Styles */
+.customerNameRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.guestStatusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 7.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  background: #f1f4f2;
+  color: #3b5246;
+  border: 1px solid #d8e3dc;
+  transition: all 0.2s ease;
+}
+
+.guestStatusBadge.waiting_greeting {
+  background: #fef7ec;
+  color: #925f0c;
+  border-color: #f7dcb1;
+}
+
+.guestStatusBadge.listening {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+
+.guestStatusBadge.thinking {
+  background: #f3f4f6;
+  color: #4b5563;
+  border-color: #e5e7eb;
+}
+
+.guestStatusBadge.speaking {
+  background: #f0fdf4;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+
+.guestStatusBadge.ready {
+  background: #eaf3ee;
+  color: #215c43;
+  border-color: #c9ded3;
+}
+
+.pulseDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulseAnim 1.4s ease-in-out infinite;
+}
+
+@keyframes pulseAnim {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+/* Arrival Card */
+.arrivalCard {
+  margin: 12px auto;
+  max-width: 540px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7faf8 100%);
+  border: 1px solid #d6e5dc;
+  border-radius: 16px;
+  padding: 18px 16px;
+  text-align: center;
+  box-shadow: 0 6px 20px rgba(23, 56, 43, 0.05);
+  animation: fadeInArrival 0.25s ease-out;
+}
+
+@keyframes fadeInArrival {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.arrivalBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: #eaf3ee;
+  border: 1px solid #cce0d5;
+  color: #215c43;
+  font-size: 8.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+
+.arrivalDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #215c43;
+}
+
+.arrivalTitle {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #17382b;
+  margin: 0 0 6px;
+  line-height: 1.35;
+}
+
+.arrivalDesc {
+  font-size: 9.5px;
+  color: #556b60;
+  line-height: 1.6;
+  margin: 0 0 14px;
+}
+
+.arrivalPromptList {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  text-align: left;
+}
+
+.arrivalPromptBtn {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #d4e3db;
+  color: #1e3f32;
+  font-size: 9.5px;
+  line-height: 1.4;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.arrivalPromptBtn:hover {
+  background: #eef7f2;
+  border-color: #215c43;
+  color: #143e2d;
+  transform: translateX(2px);
+}
+
+.arrivalPromptIcon {
+  flex-shrink: 0;
+  font-size: 11px;
+}

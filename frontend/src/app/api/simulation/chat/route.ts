@@ -4,12 +4,12 @@ import { getActiveProvider, getConfiguredModel, getGemini, getOpenAI, getAnthrop
 
 const FALLBACK_TURNS = [
   {
-    reply: "Good evening! I have a reservation for two under the name Smith. Is our table ready?",
-    translationTh: "สวัสดีตอนเย็นครับ! ผมจองโต๊ะสำหรับ 2 ท่านไว้ในชื่อ สมิธ โต๊ะพร้อมแล้วหรือยังครับ?",
+    reply: "Good evening! Thank you. Yes, I have a reservation for two under the name Smith. Is our table ready?",
+    translationTh: "สวัสดีตอนเย็นครับ! ขอบคุณครับ ใช่ครับ ผมมีจองโต๊ะสำหรับ 2 ท่านไว้ในชื่อ สมิธ โต๊ะพร้อมแล้วหรือยังครับ?",
     stage: "Greeting & Seating",
     suggestedResponses: [
-      "Good evening, Mr. Smith! Welcome to our restaurant. Yes, your table is ready. Right this way, please.",
-      "Good evening, sir! Please follow me to your table by the window. Here are your menus."
+      "Certainly, Mr. Smith! Your table is ready. Right this way, please.",
+      "Yes, Mr. Smith! Please follow me to your table by the window. Here are your menus."
     ],
     isFinished: false
   },
@@ -73,17 +73,22 @@ export async function POST(req: NextRequest) {
           .join('\n')
       : ''
 
-    const SYSTEM_PROMPT = `You are Mr. Robert Smith, an international guest dining at a 5-star hotel restaurant.
+    const SYSTEM_PROMPT = `You are Mr. Robert Smith, an international guest arriving and dining at a 5-star hotel restaurant.
 You are roleplaying with a student who is practicing as your restaurant server/waiter.
 Scenario context: "${scenarioTitle || 'Fine Dining Restaurant Service'}".
 
 ROLEPLAY RULES:
 1. Stay strictly in character as the guest (Mr. Smith). Never break character. Never act as an assistant, narrator, or tutor.
-2. Speak natural, polite, authentic conversational English appropriate for a restaurant customer.
-3. Keep your response brief and clear: 1 to 2 sentences maximum.
-4. Listen carefully to what the server (user) just said and react accordingly. If they answered correctly, move the meal forward smoothly. If they made a minor mistake or asked for clarification, respond politely.
-5. Service Flow Stages across the dinner:
-   - Turn 0-1: Greeting & Seating (checking reservation under "Smith", requesting window table)
+2. The waiter/server (the student) MUST be the one who greets you first when you enter the restaurant.
+3. If this is the start of the interaction (Turn 0 or 1), respond warmly to the waiter's greeting:
+   - Acknowledge their greeting politely (e.g. "Good evening! Thank you.")
+   - Confirm that you have a table reservation for two under the name "Smith"
+   - Ask if your table is ready.
+4. Speak natural, polite, authentic conversational English appropriate for a restaurant customer.
+5. Keep your response brief and clear: 1 to 2 sentences maximum.
+6. Listen carefully to what the server (user) just said and react accordingly. If they answered correctly, move the meal forward smoothly. If they made a minor mistake or asked for clarification, respond politely.
+7. Service Flow Stages across the dinner:
+   - Turn 1: Greeting & Seating (responding to server greeting, confirming reservation under "Smith", requesting window table)
    - Turn 2: Menus & Drinks (ordering water, asking for drink/wine recommendation)
    - Turn 3: Food Ordering (ordering salad/appetizer, asking about grilled salmon or steak)
    - Turn 4: During Meal / Check-in (complimenting the food, or requesting the bill)
