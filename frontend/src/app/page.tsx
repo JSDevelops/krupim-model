@@ -28,7 +28,7 @@ export default function HomePage() {
               />
               <div className={styles.brandText}>
                 <span className={styles.brandTitle}>FINE MODEL</span>
-                <span className={styles.brandSubtitle}>AR 3D+AI Scan · งานครูพิมพ์</span>
+                <span className={styles.brandSubtitle}>AR 3D+AI Scan · งานครูพิม</span>
               </div>
             </Link>
 

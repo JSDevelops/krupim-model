@@ -581,7 +581,7 @@ export default function ExplorePage() {
 
       setMissionSubmitted(true)
       toast.success('🎉 ส่งงานและบันทึกผลการสแกนสัปดาห์ที่ 2 [F] เรียบร้อยแล้ว!', {
-        description: `บันทึกรายการสำเร็จ ${completedItems.length}/20 รายการ พร้อมส่งตรงถึงแดชบอร์ดครูพิมพ์`,
+        description: `บันทึกรายการสำเร็จ ${completedItems.length}/20 รายการ พร้อมส่งตรงถึงแดชบอร์ดครูพิม`,
       })
       window.dispatchEvent(new Event('assignment-submitted'))
     } catch (error) {
@@ -782,7 +782,7 @@ export default function ExplorePage() {
                     <strong>วิชา:</strong> 20701-2020 การบริการอาหารและเครื่องดื่ม
                   </div>
                   <div className={styles.missionTeacherBadge}>
-                    <strong>ครูผู้สอน:</strong> ครูพิมพ์
+                    <strong>ครูผู้สอน:</strong> ครูพิม (นางสาวอนัญญา วิชัยผิน)
                   </div>
                   <div className={styles.missionStepTag}>
                     <strong>เป้าหมายขั้น F:</strong> Familiarize (สำรวจ & คุ้นเคย)

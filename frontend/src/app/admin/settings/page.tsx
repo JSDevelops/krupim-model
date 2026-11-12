@@ -556,7 +556,7 @@ export default function AdminSettingsPage() {
                     {thaiFonts.map(font => (
                       <button key={font.key} type="button" data-font={font.key} aria-pressed={fontFamily === font.key} onClick={() => { setFontFamily(font.key); applyFontPreference(font.key) }}>
                         <span>กข</span>
-                        <div><strong>{font.name}</strong><p>{font.description}</p><small>ครูพิมพ์ · การเรียนรู้ด้วย AR และ AI</small></div>
+                        <div><strong>{font.name}</strong><p>{font.description}</p><small>ครูพิม · การเรียนรู้ด้วย AR และ AI</small></div>
                         <i>{fontFamily === font.key && <AdminIcon name="check" size={13} />}</i>
                       </button>
                     ))}
