@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import ActivityGallery from '@/components/landing/ActivityGallery'
 import styles from './landing.module.css'
 
 export const metadata = {
@@ -28,12 +29,13 @@ export default function HomePage() {
               />
               <div className={styles.brandText}>
                 <span className={styles.brandTitle}>FINE MODEL</span>
-                <span className={styles.brandSubtitle}>AR 3D+AI Scan · งานครูพิม</span>
+                <span className={styles.brandSubtitle}>AR 3D+AI Scan · ครูพิม</span>
               </div>
             </Link>
 
             <nav className={styles.navLinks} aria-label="เมนูหลัก">
               <a href="#pillars" className={styles.navLink}>เทคโนโลยีอัจฉริยะ</a>
+              <a href="#gallery" className={styles.navLink}>ภาพกิจกรรม</a>
               <a href="#fine-process" className={styles.navLink}>กระบวนการ FINE</a>
               <a href="#scenario" className={styles.navLink}>สถานการณ์จำลอง</a>
               <a href="#ksac" className={styles.navLink}>สมรรถนะ KSA-C</a>
@@ -206,87 +208,9 @@ export default function HomePage() {
         </section>
 
         {/* =================================================================
-            NEEDS ANALYSIS (Problem vs FINE Solution)
+            AUTHENTIC LEARNING GALLERY (Active Learning & Real-World Simulation)
             ================================================================= */}
-        <section className={styles.needsSection} aria-label="สภาพปัญหาและทางออกนวัตกรรม">
-          <div className={styles.container}>
-            <div className={styles.sectionEyebrow}>NEEDS ANALYSIS &amp; VALUE PROPOSITION</div>
-            <h2 className={styles.sectionTitle}>จากสภาพปัญหาในห้องเรียน สู่ทางออกด้วย FINE Model</h2>
-            <p className={styles.sectionDesc}>
-              การจัดการเรียนการสอนภาษาอังกฤษเพื่องานบริการในอดีตเผชิญข้อจำกัดด้านสถานที่ อุปกรณ์ และความมั่นใจของผู้เรียน
-            </p>
-
-            <div className={styles.needsGrid}>
-              {/* Problem Column */}
-              <div className={styles.needsCardProblem}>
-                <div className={styles.needsHeaderRow}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#d9534f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="12" y1="8" x2="12" y2="12"/>
-                    <line x1="12" y1="16" x2="12.01" y2="16"/>
-                  </svg>
-                  <h3 className={styles.needsHeaderTitle}>สภาพปัญหาเดิมในการเรียนรู้</h3>
-                </div>
-                <ul className={styles.needsList}>
-                  <li className={styles.needsItem}>
-                    <span className={styles.needsBulletProblem}>✕</span>
-                    <span>ผู้เรียนมีความรู้คำศัพท์ภาษาอังกฤษเฉพาะทางด้านอาหารและเครื่องดื่มในระดับจำกัด</span>
-                  </li>
-                  <li className={styles.needsItem}>
-                    <span className={styles.needsBulletProblem}>✕</span>
-                    <span>การเรียนรู้แบบเดิมขาดความน่าสนใจ และไม่เชื่อมโยงกับสถานการณ์บริการจริง</span>
-                  </li>
-                  <li className={styles.needsItem}>
-                    <span className={styles.needsBulletProblem}>✕</span>
-                    <span>ผู้เรียนขาดทักษะและความมั่นใจในการสื่อสารภาษาอังกฤษในการรับคำสั่งอาหาร</span>
-                  </li>
-                  <li className={styles.needsItem}>
-                    <span className={styles.needsBulletProblem}>✕</span>
-                    <span>ขาดโอกาสในการฝึกฝนซ้ำและการประเมินสมรรถนะตามสภาพจริงอย่างต่อเนื่อง</span>
-                  </li>
-                  <li className={styles.needsItem}>
-                    <span className={styles.needsBulletProblem}>✕</span>
-                    <span>ผลสัมฤทธิ์ทางการเรียนและสมรรถนะวิชาชีพยังไม่เป็นไปตามเกณฑ์มาตรฐาน</span>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Solution Column */}
-              <div className={styles.needsCardSolution}>
-                <div className={styles.needsHeaderRow}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#215c43" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10"/>
-                    <polyline points="16 12 12 8 8 12"/>
-                    <line x1="12" y1="16" x2="12" y2="8"/>
-                  </svg>
-                  <h3 className={styles.needsHeaderTitle}>การแก้ปัญหาด้วยนวัตกรรม FINE Model</h3>
-                </div>
-                <ul className={styles.needsList}>
-                  <li className={styles.needsItem}>
-                    <span className={styles.needsBulletSolution}>✓</span>
-                    <span>สแกนวัตถุและสำรวจสื่อ 3D เสมือนจริง ทำความเข้าใจรูปทรงและคำศัพท์ได้ทันที</span>
-                  </li>
-                  <li className={styles.needsItem}>
-                    <span className={styles.needsBulletSolution}>✓</span>
-                    <span>ฝึกพูดกับ AI Gemini Live ลดความประหม่า และได้รับคำแนะนำการออกเสียงเรียลไทม์</span>
-                  </li>
-                  <li className={styles.needsItem}>
-                    <span className={styles.needsBulletSolution}>✓</span>
-                    <span>จำลองสถานการณ์บริการลูกค้าจริง ฝึกไหวพริบและการแก้ไขปัญหาเฉพาะหน้า</span>
-                  </li>
-                  <li className={styles.needsItem}>
-                    <span className={styles.needsBulletSolution}>✓</span>
-                    <span>วัดผลสมรรถนะรอบด้าน KSA-C พร้อมสะสมผลงานใน E-Portfolio ดิจิทัล</span>
-                  </li>
-                  <li className={styles.needsItem}>
-                    <span className={styles.needsBulletSolution}>✓</span>
-                    <span>ผู้เรียนเกิดความพร้อมสู่การปฏิบัติงานจริงในอุตสาหกรรมบริการอาหารและเครื่องดื่ม</span>
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </section>
+        <ActivityGallery />
 
         {/* =================================================================
             LEARNING PROCESS ROAD (01-04 Inspired by Pinterest Process Road)
