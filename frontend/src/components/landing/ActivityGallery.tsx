@@ -90,12 +90,10 @@ const GALLERY_ITEMS: GalleryItem[] = [
 ]
 
 export default function ActivityGallery() {
-  const [activeTab, setActiveTab] = useState<'all' | 'simulation' | 'demo'>('all')
+  const [activeTab, setActiveTab] = useState<'simulation' | 'demo'>('simulation')
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null)
 
-  const filteredItems = activeTab === 'all' 
-    ? GALLERY_ITEMS 
-    : GALLERY_ITEMS.filter((item) => item.category === activeTab)
+  const filteredItems = GALLERY_ITEMS.filter((item) => item.category === activeTab)
 
   const openLightbox = (index: number) => {
     setSelectedIndex(index)
@@ -148,21 +146,6 @@ export default function ActivityGallery() {
 
           {/* Filter Tabs */}
           <div className={styles.tabsWrap} role="tablist" aria-label="หมวดหมู่ภาพกิจกรรม">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'all'}
-              className={`${styles.tabBtn} ${activeTab === 'all' ? styles.tabBtnActive : ''}`}
-              onClick={() => { setActiveTab('all'); setSelectedIndex(null); }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="7" height="7" rx="1.5" />
-                <rect x="14" y="3" width="7" height="7" rx="1.5" />
-                <rect x="14" y="14" width="7" height="7" rx="1.5" />
-                <rect x="3" y="14" width="7" height="7" rx="1.5" />
-              </svg>
-              <span>ทั้งหมด ({GALLERY_ITEMS.length})</span>
-            </button>
             <button
               type="button"
               role="tab"
@@ -344,3 +327,4 @@ export default function ActivityGallery() {
     </section>
   )
 }
+
