@@ -318,7 +318,7 @@
 
 .heroFloatingBadge1 {
   position: absolute;
-  bottom: 20px;
+  bottom: 84px;
   right: -12px;
   z-index: 3;
   background: #ffffff;
@@ -344,7 +344,7 @@
 
 .heroFloatingBadge2 {
   position: absolute;
-  bottom: 84px;
+  bottom: 20px;
   left: -16px;
   z-index: 3;
   background: #215c43;
@@ -1064,12 +1064,12 @@
   }
   .heroFloatingBadge1 {
     right: 4px;
-    bottom: 12px;
+    bottom: 74px;
     padding: 8px 14px;
   }
   .heroFloatingBadge2 {
     left: 4px;
-    bottom: 74px;
+    bottom: 12px;
     padding: 8px 14px;
   }
   .readyCtaCard {
