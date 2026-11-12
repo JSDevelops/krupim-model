@@ -40,7 +40,7 @@ const topics: GuideTopic[] = [
   {
     id: 'start',
     number: '01',
-    title: 'เริ่มต้นใช้งาน Teacher Console & สถาปัตยกรรมระบบ',
+    title: 'เริ่มต้นใช้งาน Teacher Console & เทคโนโลยีระบบ',
     shortTitle: 'เริ่มต้นใช้งาน',
     category: 'SETUP',
     categoryLabel: 'เริ่มต้น',
@@ -558,7 +558,7 @@ export default function TeacherManualPage() {
       <section className={styles.hero}>
         <div className={styles.heroContent}>
           <p>TEACHER HANDBOOK & CONSOLE MANUAL</p>
-          <h1>คู่มือใช้งาน Teacher Console ฉบับสมบูรณ์</h1>
+          <h1>คู่มือใช้งาน Teacher Console</h1>
           <span>
             คู่มือการใช้งานอย่างละเอียดที่สุดสำหรับครูผู้สอน: การจัดการห้องเรียน, ออกแบบแผนการสอน FINE Model, จัดการสื่อ AR 3D, มอบหมายงาน, ตรวจประเมินผลพร้อม Feedback, วิเคราะห์สมรรถนะ KSA-C และการสอน Active Learning
           </span>

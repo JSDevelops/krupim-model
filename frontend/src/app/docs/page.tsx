@@ -49,7 +49,7 @@ export default function DocsPage() {
               />
               <div className={styles.brandText}>
                 <span className={styles.brandTitle}>FINE MODEL DOCUMENTATION</span>
-                <span className={styles.brandSubtitle}>คู่มือการใช้งานฉบับสมบูรณ์ & สิทธิ์ระบบ</span>
+                <span className={styles.brandSubtitle}>คู่มือการใช้งาน & สิทธิ์ระบบ</span>
               </div>
             </Link>
 
@@ -85,10 +85,10 @@ export default function DocsPage() {
             <span>OFFICIAL SYSTEM MANUAL &amp; PERMISSIONS SPECIFICATION</span>
           </div>
           <h1 className={styles.heroTitle}>
-            เอกสารคู่มือการใช้งาน <span className={styles.heroTitleHighlight}>ฉบับสมบูรณ์</span>
+            เอกสารคู่มือการใช้งาน
           </h1>
           <p className={styles.heroDesc}>
-            คำอธิบายกระบวนการ FINE Model, สถาปัตยกรรมระบบ, ขั้นตอนการปฏิบัติงานของทุกบทบาท (นักเรียน, ครูผู้สอน, ผู้ดูแลระบบ) 
+            คำอธิบายกระบวนการ FINE Model, เทคโนโลยีระบบ, ขั้นตอนการปฏิบัติงานของทุกบทบาท (นักเรียน, ครูผู้สอน, ผู้ดูแลระบบ) 
             พร้อมตารางกำหนดสิทธิ์การใช้งาน (Permissions Matrix) และแนวทางแก้ไขปัญหาทางเทคนิค
           </p>
 
@@ -246,8 +246,8 @@ export default function DocsPage() {
               <section id="overview" className={styles.docSection}>
                 <div className={styles.sectionHeader}>
                   <div className={styles.sectionTitleGroup}>
-                    <span className={styles.sectionCategory}>Chapter 01 · System Architecture</span>
-                    <h2 className={styles.sectionTitle}>1. ภาพรวมสถาปัตยกรรม & โมเดล FINE Model</h2>
+                    <span className={styles.sectionCategory}>Chapter 01 · Technology &amp; Learning Model</span>
+                    <h2 className={styles.sectionTitle}>1. ภาพรวมโมเดล FINE Model</h2>
                     <p className={styles.sectionDesc}>
                       โครงสร้างการจัดกระบวนการเรียนรู้ภาษาอังกฤษเพื่องานบริการ บูรณาการเทคโนโลยีสื่อเสมือนจริง AR 3D และปัญญาประดิษฐ์ AI Scan
                     </p>
