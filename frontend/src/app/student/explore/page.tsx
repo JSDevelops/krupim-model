@@ -253,7 +253,9 @@ export default function ExplorePage() {
       setAutoScan(false)
     } catch (error) {
       console.error('Camera unavailable:', error)
-      setScanError('เปิดกล้องไม่ได้ กรุณาตรวจสอบสิทธิ์กล้องหรืออัปโหลดรูปภาพแทน')
+      const errText = 'เปิดกล้องไม่ได้ กรุณาตรวจสอบสิทธิ์กล้องหรืออัปโหลดรูปภาพแทน'
+      setScanError(errText)
+      toast.error(errText)
       setIsCameraActive(false)
     }
   }
@@ -329,13 +331,14 @@ export default function ExplorePage() {
     } catch (error) {
       const message = error instanceof Error ? error.message : 'ไม่สามารถวิเคราะห์รูปภาพได้'
       const normalized = message.toLowerCase()
+      let friendlyError = message
       if (normalized.includes('429') || normalized.includes('quota') || normalized.includes('rate limit')) {
-        setScanError('ระบบ AI มีคำขอหนาแน่นชั่วคราว (โควต้าเต็ม) คุณสามารถใช้ "โหมดเลือกวัตถุจำลอง (Fallback Scan)" เพื่อทำภารกิจต่อได้ทันที')
+        friendlyError = 'ระบบ AI มีคำขอหนาแน่นชั่วคราว (โควต้าเต็ม) คุณสามารถใช้ "โหมดเลือกวัตถุจำลอง (Fallback Scan)" เพื่อทำภารกิจต่อได้ทันที'
       } else if (normalized.includes('api key') || normalized.includes('unauthorized') || normalized.includes('403')) {
-        setScanError('การตั้งค่าผู้ให้บริการ AI ไม่สมบูรณ์ กรุณาใช้โหมดเลือกวัตถุจำลอง')
-      } else {
-        setScanError(message)
+        friendlyError = 'การตั้งค่าผู้ให้บริการ AI ไม่สมบูรณ์ กรุณาใช้โหมดเลือกวัตถุจำลอง'
       }
+      setScanError(friendlyError)
+      toast.error(friendlyError)
     } finally {
       setScanAnim(false)
     }

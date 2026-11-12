@@ -277,8 +277,9 @@ export default function InteractPage() {
       }).catch(error => console.warn('Unable to save pronunciation score:', error))
     }
     recognition.onerror = event => {
-      console.warn('Speech recognition error:', event.error)
+      console.warn('Speech recognition error:', event)
       setRecording(false)
+      toast.error('ไม่สามารถรับเสียงได้ กรุณาตรวจสอบสิทธิ์ไมโครโฟนในเบราว์เซอร์')
     }
     recognition.onend = () => {
       setRecording(false)
