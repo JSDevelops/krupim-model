@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
       SELECT value_json FROM system_settings WHERE setting_key='general' LIMIT 1
     `)
     return NextResponse.json({
-      settings: result.rows[0]?.value_json || { schoolName: 'วิทยาลัยอาชีวศึกษากรุงเทพ', maintenance: false },
+      settings: result.rows[0]?.value_json || { schoolName: 'วิทยาลัยเทคนิคกาฬสินธุ์', maintenance: false },
     })
   } catch (error) {
     return apiErrorResponse(error)

@@ -107,7 +107,7 @@ export default function AdminSettingsPage() {
   const [showTripoKey, setShowTripoKey] = useState(false)
   const [loadingTripo, setLoadingTripo] = useState(true)
   const [savingSystem, setSavingSystem] = useState(false)
-  const [schoolName, setSchoolName] = useState('วิทยาลัยอาชีวศึกษากรุงเทพ')
+  const [schoolName, setSchoolName] = useState('วิทยาลัยเทคนิคกาฬสินธุ์')
   const [maintenance, setMaintenance] = useState(false)
   const [themeMode, setThemeMode] = useState('forest-gold')
   const [fontFamily, setFontFamily] = useState<AppFontKey>('kanit')

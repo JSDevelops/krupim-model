@@ -942,7 +942,7 @@ export default function DocsPage() {
             {/* Document Footer */}
             <footer className={styles.docFooter}>
               <div>
-                <strong>FINE MODEL · AR 3D+AI Scan</strong> — นวัตกรรมการจัดการเรียนรู้ภาษาอังกฤษเพื่องานบริการ โดย ครูพิมพ์
+                <strong>FINE MODEL · AR 3D+AI Scan</strong> — นวัตกรรมการจัดการเรียนรู้ภาษาอังกฤษเพื่องานบริการ โดย นางสาวอนัญญา วิชัยผิน แผนกวิชาการโรงแรม วิทยาลัยเทคนิคกาฬสินธุ์
                 <div style={{ fontSize: 12, marginTop: 4 }}>
                   เวอร์ชันเอกสาร: 2.4.0 (อัปเดตล่าสุด: พฤศจิกายน 2569) · ครอบคลุมทุกบทบาทและฟังก์ชัน
                 </div>

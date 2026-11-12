@@ -3,8 +3,8 @@ import Link from 'next/link'
 import styles from './landing.module.css'
 
 export const metadata = {
-  title: 'FINE MODEL (AR 3D+AI Scan) — นวัตกรรมการจัดการเรียนรู้ภาษาอังกฤษเพื่องานบริการ โดย ครูพิมพ์',
-  description: 'แพลตฟอร์มการจัดการเรียนรู้ภาษาอังกฤษเพื่องานบริการด้วยโมเดล FINE ผสานเทคโนโลยีเสมือนจริง AR 3D และปัญญาประดิษฐ์ AI Scan วิจัยและพัฒนาโดย คุณครูธัญญา ศรีจันทร์ (ครูพิมพ์)',
+  title: 'FINE MODEL (AR 3D+AI Scan) — นวัตกรรมการจัดการเรียนรู้ภาษาอังกฤษเพื่องานบริการ โดย นางสาวอนัญญา วิชัยผิน',
+  description: 'แพลตฟอร์มการจัดการเรียนรู้ภาษาอังกฤษเพื่องานบริการด้วยโมเดล FINE ผสานเทคโนโลยีเสมือนจริง AR 3D และปัญญาประดิษฐ์ AI Scan วิจัยและพัฒนาโดย นางสาวอนัญญา วิชัยผิน แผนกวิชาการโรงแรม วิทยาลัยเทคนิคกาฬสินธุ์',
 }
 
 export default function HomePage() {
@@ -62,7 +62,7 @@ export default function HomePage() {
               <div className={styles.heroContent}>
                 <div className={styles.heroEyebrowBadge}>
                   <span className={styles.heroEyebrowDot} />
-                  <span>นวัตกรรมการศึกษา · วิจัยและพัฒนาโดย คุณครูธัญญา ศรีจันทร์</span>
+                  <span>นวัตกรรมการศึกษา · วิจัยและพัฒนาโดย นางสาวอนัญญา วิชัยผิน · วิทยาลัยเทคนิคกาฬสินธุ์</span>
                 </div>
 
                 <h1 className={styles.heroTitle}>
@@ -108,7 +108,7 @@ export default function HomePage() {
                 <div className={styles.heroVisualCard}>
                   <Image
                     src="/images/krupim_hero.png"
-                    alt="คุณครูธัญญา ศรีจันทร์ (ครูพิมพ์) ผู้พัฒนานวัตกรรม FINE MODEL"
+                    alt="นางสาวอนัญญา วิชัยผิน แผนกวิชาการโรงแรม วิทยาลัยเทคนิคกาฬสินธุ์ ผู้พัฒนานวัตกรรม FINE MODEL"
                     width={400}
                     height={520}
                     className={styles.heroCoverImage}
@@ -121,8 +121,8 @@ export default function HomePage() {
                       <path d="M6 12v5c3 3 9 3 12 0v-5"/>
                     </svg>
                     <div>
-                      <div className={styles.heroFloatingBadge1Title}>คุณครูธัญญา ศรีจันทร์ (ครูพิมพ์)</div>
-                      <div className={styles.heroFloatingBadge1Sub}>ผู้วิจัยและพัฒนานวัตกรรม</div>
+                      <div className={styles.heroFloatingBadge1Title}>นางสาวอนัญญา วิชัยผิน</div>
+                      <div className={styles.heroFloatingBadge1Sub}>แผนกวิชาการโรงแรม วิทยาลัยเทคนิคกาฬสินธุ์</div>
                     </div>
                   </div>
 
@@ -512,7 +512,7 @@ export default function HomePage() {
               <div className={styles.authorPhotoWrap}>
                 <Image
                   src="/images/krupim_hero.png"
-                  alt="คุณครูธัญญา ศรีจันทร์ (ครูพิมพ์)"
+                  alt="นางสาวอนัญญา วิชัยผิน แผนกวิชาการโรงแรม วิทยาลัยเทคนิคกาฬสินธุ์"
                   width={240}
                   height={320}
                   className={styles.authorPhoto}
@@ -521,9 +521,9 @@ export default function HomePage() {
 
               <div className={styles.authorContent}>
                 <span className={styles.authorRoleTag}>ผู้วิจัยและพัฒนานวัตกรรมการจัดการเรียนรู้</span>
-                <h2 className={styles.authorName}>คุณครูธัญญา ศรีจันทร์ (ครูพิมพ์)</h2>
+                <h2 className={styles.authorName}>นางสาวอนัญญา วิชัยผิน</h2>
                 <div className={styles.authorAffiliation}>
-                  ผู้เชี่ยวชาญการจัดการเรียนการสอนภาษาอังกฤษเพื่องานบริการและเทคโนโลยีการศึกษา
+                  แผนกวิชาการโรงแรม วิทยาลัยเทคนิคกาฬสินธุ์
                 </div>
                 <p className={styles.authorBio}>
                   มุ่งมั่นพัฒนานวัตกรรมการศึกษาเพื่อยกระดับทักษะภาษาอังกฤษและสมรรถนะวิชาชีพของผู้เรียน 
@@ -565,7 +565,7 @@ export default function HomePage() {
                 นวัตกรรมการเรียนรู้ที่เข้าถึงง่าย ใช้เทคโนโลยีอย่างชาญฉลาด พัฒนาผู้เรียนสู่สมรรถนะวิชาชีพที่ยั่งยืน
               </p>
               <div className={styles.quoteAuthor}>
-                — คุณครูธัญญา ศรีจันทร์ (ครูพิมพ์) · ผู้วิจัยและพัฒนานวัตกรรม FINE MODEL
+                — นางสาวอนัญญา วิชัยผิน · แผนกวิชาการโรงแรม วิทยาลัยเทคนิคกาฬสินธุ์
               </div>
             </div>
           </div>
@@ -598,7 +598,7 @@ export default function HomePage() {
               <h4>FINE MODEL · AR 3D+AI Scan</h4>
               <p>
                 แพลตฟอร์มการจัดการเรียนรู้ภาษาอังกฤษเพื่องานบริการอาหารและเครื่องดื่มด้วยโมเดล FINE 
-                ผสานเทคโนโลยีเสมือนจริง AR 3D และปัญญาประดิษฐ์ AI Scan · นวัตกรรมเพื่อการศึกษาโดย คุณครูธัญญา ศรีจันทร์ (ครูพิมพ์)
+                ผสานเทคโนโลยีเสมือนจริง AR 3D และปัญญาประดิษฐ์ AI Scan · นวัตกรรมเพื่อการศึกษาโดย นางสาวอนัญญา วิชัยผิน แผนกวิชาการโรงแรม วิทยาลัยเทคนิคกาฬสินธุ์
               </p>
             </div>
 
@@ -612,7 +612,7 @@ export default function HomePage() {
           </div>
 
           <div className={styles.footerBottom}>
-            <span>© 2026 FINE MODEL · AR 3D+AI Scan (งานครูพิมพ์). All rights reserved.</span>
+            <span>© 2026 FINE MODEL · AR 3D+AI Scan (นางสาวอนัญญา วิชัยผิน · วิทยาลัยเทคนิคกาฬสินธุ์). All rights reserved.</span>
             <span>🔒 คุ้มครองข้อมูลส่วนบุคคลตามมาตรฐาน PDPA Compliant</span>
           </div>
         </div>
