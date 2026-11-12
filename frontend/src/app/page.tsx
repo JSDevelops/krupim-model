@@ -355,13 +355,13 @@ export default function HomePage() {
                 </div>
               </div>
 
-              {/* Graphic Mask on the Right: Infographic Framework */}
+              {/* Graphic Mask on the Right: Hospitality Students Table Setting */}
               <div className={styles.processVisualWrap}>
                 <Image
-                  src="/images/fine_framework_infographic.jpg"
-                  alt="กรอบแนวคิดนวัตกรรมการเรียนรู้ FINE Model"
+                  src="/images/hotel_students_table.jpg"
+                  alt="การฝึกปฏิบัติการจัดโต๊ะอาหารและงานบริการ แผนกวิชาการโรงแรม วิทยาลัยเทคนิคกาฬสินธุ์"
                   width={600}
-                  height={800}
+                  height={463}
                   className={styles.processVisualImage}
                 />
               </div>
