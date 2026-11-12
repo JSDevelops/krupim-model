@@ -233,6 +233,7 @@ export default function SimulationPage() {
           messages: updatedMessages.map(m => ({ role: m.role, text: m.text })),
           userMessage: text,
           turnCount: turnCountRef.current + 1,
+          currentStage: stage,
           scenarioTitle: scenario?.title || 'Fine Dining Restaurant',
         }),
       })
@@ -487,7 +488,14 @@ export default function SimulationPage() {
   }
 
   // ─── 3. ACTIVE SIMULATION CHAT ───────────────────────────────
-  const progressPercent = Math.min(100, Math.max(20, turnCount * 20))
+  const stageWeights: Record<string, number> = {
+    'Greeting & Seating': 20,
+    'Drinks & Menus': 40,
+    'Food Ordering': 60,
+    'During Meal': 80,
+    'Billing & Farewell': 100,
+  }
+  const progressPercent = turnCount === 0 ? 10 : Math.min(100, Math.max(stageWeights[stage] || 20, Math.min(100, turnCount * 20)))
 
   return (
     <>

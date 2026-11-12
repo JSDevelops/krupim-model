@@ -16,7 +16,20 @@ export async function getActiveProvider(req?: NextRequest): Promise<AIProvider> 
 }
 
 export async function getConfiguredModel(provider: AIProvider) {
-  return (await getAISetting(provider)).model
+  const model = (await getAISetting(provider)).model
+  if (provider === 'gemini') {
+    if (model.includes('3.6') || model.includes('flash-lite') || !model.startsWith('gemini-')) {
+      return 'gemini-1.5-flash'
+    }
+  }
+  if (provider === 'openai') {
+    if (model.includes('4.1')) return 'gpt-4o-mini'
+  }
+  if (provider === 'claude') {
+    if (model.includes('sonnet') || model.includes('4-6')) return 'claude-3-5-sonnet-20241022'
+    if (model.includes('haiku')) return 'claude-3-5-haiku-20241022'
+  }
+  return model
 }
 
 export async function hasConfiguredKey(provider: AIProvider) {
