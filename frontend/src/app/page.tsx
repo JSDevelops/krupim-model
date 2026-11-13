@@ -36,10 +36,10 @@ export default function HomePage() {
 
             <nav className={styles.navLinks} aria-label="เมนูหลัก">
               <a href="#pillars" className={styles.navLink}>เทคโนโลยีอัจฉริยะ</a>
+              <a href="#student-app" className={styles.navLink}>แอปพลิเคชันนักเรียน</a>
               <a href="#gallery" className={styles.navLink}>ภาพกิจกรรม</a>
               <a href="#fine-process" className={styles.navLink}>กระบวนการ FINE</a>
               <a href="#scenario" className={styles.navLink}>สถานการณ์จำลอง</a>
-              <a href="#student-app" className={styles.navLink}>แอปพลิเคชันนักเรียน</a>
               <a href="#ksac" className={styles.navLink}>สมรรถนะ KSA-C</a>
               <a href="#instructor" className={styles.navLink}>ครูผู้จัดทำ</a>
               <Link href="/docs" className={styles.navLink}>คู่มือการใช้งาน</Link>
@@ -210,6 +210,109 @@ export default function HomePage() {
         </section>
 
         {/* =================================================================
+            STUDENT MOBILE APP SHOWCASE & REGISTRATION SECTION
+            ================================================================= */}
+        <section id="student-app" className={styles.studentAppSection} aria-label="แอปพลิเคชัน FINE MODEL สำหรับนักเรียน">
+          <div className={styles.container}>
+            <div className={styles.studentAppCard}>
+              <div className={styles.studentAppGrid}>
+                {/* Left: Interactive Mobile App Mockup Slider */}
+                <div className={styles.studentAppMockupCol}>
+                  <StudentAppSlider />
+                </div>
+
+                {/* Right: Content for Students + Registration CTA */}
+                <div className={styles.studentAppInfoCol}>
+                  <div className={styles.studentAppEyebrow}>
+                    <span className={styles.studentAppEyebrowIcon}>✨</span>
+                    <span>STUDENT APPLICATION · FINE MODEL AR 3D+AI SCAN</span>
+                  </div>
+
+                  <h2 className={styles.studentAppTitle}>
+                    เรียนรู้และฝึกปฏิบัติงานบริการ <br />
+                    <span className={styles.studentAppTitleHighlight}>ผ่านแอปพลิเคชัน FINE MODEL AR 3D+AI Scan</span>
+                  </h2>
+
+                  <p className={styles.studentAppDesc}>
+                    ออกแบบสำหรับนักเรียนแผนกวิชาการโรงแรมโดยเฉพาะ ให้คุณเข้าถึงการเรียนรู้อย่างเป็นระบบ 
+                    สแกนวัตถุเครื่องมือบริการ 3 มิติ ฝึกสนทนาภาษาอังกฤษกับ AI แบบเรียลไทม์ 
+                    และติดตามความก้าวหน้าตามวงรอบ FINE Model ได้ทุกที่ทุกเวลาตลอด 24 ชั่วโมง
+                  </p>
+
+                  {/* 4 Feature Highlights */}
+                  <div className={styles.studentAppFeatureGrid}>
+                    <div className={styles.studentAppFeatureItem}>
+                      <div className={styles.studentFeatureIconBox}>
+                        <span>F</span>
+                      </div>
+                      <div className={styles.studentFeatureText}>
+                        <div className={styles.studentFeatureHeading}>F · FAMILIARIZE &amp; AI SCAN</div>
+                        <p className={styles.studentFeaturePara}>
+                          สแกนวัตถุอุปกรณ์จริงด้วย AI และสำรวจคลังโมเดล 3D เสมือนจริง หมุนดูได้ 360° จดจำคำศัพท์เฉพาะทาง
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className={styles.studentAppFeatureItem}>
+                      <div className={styles.studentFeatureIconBox}>
+                        <span>I</span>
+                      </div>
+                      <div className={styles.studentFeatureText}>
+                        <div className={styles.studentFeatureHeading}>I · INTERACT &amp; VOICE COACH</div>
+                        <p className={styles.studentFeaturePara}>
+                          ฝึกออกเสียงประโยคบริการอาหารและเครื่องดื่ม ฟังเสียงเจ้าของภาษา และรับคำแนะนำการออกเสียงเรียลไทม์
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className={styles.studentAppFeatureItem}>
+                      <div className={styles.studentFeatureIconBox}>
+                        <span>N</span>
+                      </div>
+                      <div className={styles.studentFeatureText}>
+                        <div className={styles.studentFeatureHeading}>N · NATIVE SCENARIO SIMULATION</div>
+                        <p className={styles.studentFeaturePara}>
+                          จำลองสถานการณ์ต้อนรับและบริการลูกค้าจริง โต้ตอบบทสนทนาภาษาอังกฤษกับ Mr. Robert Smith
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className={styles.studentAppFeatureItem}>
+                      <div className={styles.studentFeatureIconBox}>
+                        <span>E</span>
+                      </div>
+                      <div className={styles.studentFeatureText}>
+                        <div className={styles.studentFeatureHeading}>E · EXHIBIT &amp; E-PORTFOLIO</div>
+                        <p className={styles.studentFeaturePara}>
+                          บันทึกความก้าวหน้า สะสมผลงานและคะแนนประเมินสมรรถนะ KSA-C ลงในแฟ้มสะสมงานดิจิทัลอัตโนมัติ
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons: Register & Sign In */}
+                  <div className={styles.studentAppCtaWrap}>
+                    <Link href="/register-student" className={styles.studentRegisterBtn}>
+                      <span className={styles.btnIcon}>📝</span>
+                      <span>ลงทะเบียนนักเรียน (เริ่มต้นใช้งาน)</span>
+                      <span className={styles.btnArrow}>→</span>
+                    </Link>
+                    <Link href="/role-select" className={styles.studentLoginBtn}>
+                      <span>เข้าสู่ระบบนักเรียน</span>
+                    </Link>
+                  </div>
+
+                  <div className={styles.studentAppNote}>
+                    <span className={styles.noteCheck}>✓</span>
+                    <span>สมัครสมาชิกฟรี · เข้าสู่ห้องเรียนและเริ่มฝึกฝนได้ทันที ไม่ต้องติดตั้งโปรแกรมเพิ่มเติม</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* =================================================================
             AUTHENTIC LEARNING GALLERY (Active Learning & Real-World Simulation)
             ================================================================= */}
         <ActivityGallery />
@@ -367,109 +470,6 @@ export default function HomePage() {
                   <div className={styles.scenarioCheckItem}>
                     <span className={styles.scenarioCheckIcon}>✓</span>
                     <span>Service Mind (จิตบริการ)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* =================================================================
-            STUDENT MOBILE APP SHOWCASE & REGISTRATION SECTION
-            ================================================================= */}
-        <section id="student-app" className={styles.studentAppSection} aria-label="แอปพลิเคชัน FINE MODEL สำหรับนักเรียน">
-          <div className={styles.container}>
-            <div className={styles.studentAppCard}>
-              <div className={styles.studentAppGrid}>
-                {/* Left: Interactive Mobile App Mockup Slider */}
-                <div className={styles.studentAppMockupCol}>
-                  <StudentAppSlider />
-                </div>
-
-                {/* Right: Content for Students + Registration CTA */}
-                <div className={styles.studentAppInfoCol}>
-                  <div className={styles.studentAppEyebrow}>
-                    <span className={styles.studentAppEyebrowIcon}>✨</span>
-                    <span>STUDENT APPLICATION · FINE MODEL AR 3D+AI SCAN</span>
-                  </div>
-
-                  <h2 className={styles.studentAppTitle}>
-                    เรียนรู้และฝึกปฏิบัติงานบริการ <br />
-                    <span className={styles.studentAppTitleHighlight}>ผ่านแอปพลิเคชัน FINE MODEL AR 3D+AI Scan</span>
-                  </h2>
-
-                  <p className={styles.studentAppDesc}>
-                    ออกแบบสำหรับนักเรียนแผนกวิชาการโรงแรมโดยเฉพาะ ให้คุณเข้าถึงการเรียนรู้อย่างเป็นระบบ 
-                    สแกนวัตถุเครื่องมือบริการ 3 มิติ ฝึกสนทนาภาษาอังกฤษกับ AI แบบเรียลไทม์ 
-                    และติดตามความก้าวหน้าตามวงรอบ FINE Model ได้ทุกที่ทุกเวลาตลอด 24 ชั่วโมง
-                  </p>
-
-                  {/* 4 Feature Highlights */}
-                  <div className={styles.studentAppFeatureGrid}>
-                    <div className={styles.studentAppFeatureItem}>
-                      <div className={styles.studentFeatureIconBox}>
-                        <span>F</span>
-                      </div>
-                      <div className={styles.studentFeatureText}>
-                        <div className={styles.studentFeatureHeading}>F · FAMILIARIZE &amp; AI SCAN</div>
-                        <p className={styles.studentFeaturePara}>
-                          สแกนวัตถุอุปกรณ์จริงด้วย AI และสำรวจคลังโมเดล 3D เสมือนจริง หมุนดูได้ 360° จดจำคำศัพท์เฉพาะทาง
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className={styles.studentAppFeatureItem}>
-                      <div className={styles.studentFeatureIconBox}>
-                        <span>I</span>
-                      </div>
-                      <div className={styles.studentFeatureText}>
-                        <div className={styles.studentFeatureHeading}>I · INTERACT &amp; VOICE COACH</div>
-                        <p className={styles.studentFeaturePara}>
-                          ฝึกออกเสียงประโยคบริการอาหารและเครื่องดื่ม ฟังเสียงเจ้าของภาษา และรับคำแนะนำการออกเสียงเรียลไทม์
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className={styles.studentAppFeatureItem}>
-                      <div className={styles.studentFeatureIconBox}>
-                        <span>N</span>
-                      </div>
-                      <div className={styles.studentFeatureText}>
-                        <div className={styles.studentFeatureHeading}>N · NATIVE SCENARIO SIMULATION</div>
-                        <p className={styles.studentFeaturePara}>
-                          จำลองสถานการณ์ต้อนรับและบริการลูกค้าจริง โต้ตอบบทสนทนาภาษาอังกฤษกับ Mr. Robert Smith
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className={styles.studentAppFeatureItem}>
-                      <div className={styles.studentFeatureIconBox}>
-                        <span>E</span>
-                      </div>
-                      <div className={styles.studentFeatureText}>
-                        <div className={styles.studentFeatureHeading}>E · EXHIBIT &amp; E-PORTFOLIO</div>
-                        <p className={styles.studentFeaturePara}>
-                          บันทึกความก้าวหน้า สะสมผลงานและคะแนนประเมินสมรรถนะ KSA-C ลงในแฟ้มสะสมงานดิจิทัลอัตโนมัติ
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons: Register & Sign In */}
-                  <div className={styles.studentAppCtaWrap}>
-                    <Link href="/register-student" className={styles.studentRegisterBtn}>
-                      <span className={styles.btnIcon}>📝</span>
-                      <span>ลงทะเบียนนักเรียน (เริ่มต้นใช้งาน)</span>
-                      <span className={styles.btnArrow}>→</span>
-                    </Link>
-                    <Link href="/role-select" className={styles.studentLoginBtn}>
-                      <span>เข้าสู่ระบบนักเรียน</span>
-                    </Link>
-                  </div>
-
-                  <div className={styles.studentAppNote}>
-                    <span className={styles.noteCheck}>✓</span>
-                    <span>สมัครสมาชิกฟรี · เข้าสู่ห้องเรียนและเริ่มฝึกฝนได้ทันที ไม่ต้องติดตั้งโปรแกรมเพิ่มเติม</span>
                   </div>
                 </div>
               </div>
