@@ -1,0 +1,497 @@
+.wrapper {
+  width: 100%;
+  margin-top: 36px;
+}
+
+/* -------------------------------------------------------------
+   Step Navigation Tabs
+   ------------------------------------------------------------- */
+.tabsContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 32px;
+  overflow-x: auto;
+  padding: 6px 4px 14px 4px;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tabButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  background: #ffffff;
+  border: 1.5px solid #e1e8e4;
+  border-radius: 999px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  color: #3b5247;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.tabButton:hover {
+  border-color: #215c43;
+  color: #215c43;
+  background: #f7faf8;
+  transform: translateY(-1px);
+}
+
+.tabButtonActive {
+  background: #215c43;
+  border-color: #215c43;
+  color: #ffffff;
+  box-shadow: 0 4px 16px rgba(33, 92, 67, 0.25);
+}
+
+.tabButtonActive:hover {
+  background: #174532;
+  border-color: #174532;
+  color: #ffffff;
+}
+
+.tabBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  background: rgba(33, 92, 67, 0.08);
+  color: #215c43;
+}
+
+.tabButtonActive .tabBadge {
+  background: #cbb36b;
+  color: #184130;
+}
+
+/* -------------------------------------------------------------
+   Main Grid: Slider (Left) + Content (Right)
+   ------------------------------------------------------------- */
+.sliderGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 36px;
+  align-items: stretch;
+}
+
+/* -------------------------------------------------------------
+   Left Column: Frame & Image Slide
+   ------------------------------------------------------------- */
+.photoCol {
+  display: flex;
+  flex-direction: column;
+}
+
+.photoFrame {
+  position: relative;
+  background: #0f241b;
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: 0 20px 48px rgba(16, 45, 33, 0.16);
+  border: 2px solid #ffffff;
+  aspect-ratio: 5 / 4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  user-select: none;
+}
+
+.photoFrame:active {
+  cursor: grabbing;
+}
+
+.slideImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: opacity 0.35s ease-in-out, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.slideOverlay {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+  right: 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.stepPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(16, 45, 33, 0.88);
+  backdrop-filter: blur(8px);
+  color: #f7faf8;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  border: 1px solid rgba(203, 179, 107, 0.5);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.stepPillGold {
+  color: #dfc982;
+  font-weight: 800;
+}
+
+.slideCounter {
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(6px);
+  color: #ffffff;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Nav Arrows */
+.navArrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(33, 92, 67, 0.15);
+  color: #184130;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 6;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.15);
+  transition: all 0.2s ease;
+}
+
+.navArrow:hover {
+  background: #215c43;
+  color: #ffffff;
+  transform: translateY(-50%) scale(1.08);
+}
+
+.navArrowPrev {
+  left: 14px;
+}
+
+.navArrowNext {
+  right: 14px;
+}
+
+/* Dots & Controls below photo */
+.photoControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+  padding: 0 6px;
+}
+
+.dotsRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: #d4ded8;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.25s ease;
+}
+
+.dotActive {
+  width: 28px;
+  background: #215c43;
+}
+
+.autoPlayTag {
+  font-size: 12px;
+  color: #657e72;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.autoPlayDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #10b981;
+}
+
+.autoPlayDotPaused {
+  background: #f59e0b;
+}
+
+/* -------------------------------------------------------------
+   Right Column: Checklist & F&B Tip
+   ------------------------------------------------------------- */
+.contentCol {
+  background: #ffffff;
+  border: 1px solid #e5ebe8;
+  border-radius: 28px;
+  padding: 34px 36px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.contentHeader {
+  margin-bottom: 18px;
+}
+
+.stepSuperTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #cbb36b;
+  background: #17382b;
+  padding: 4px 12px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+}
+
+.stepTitle {
+  font-size: 22px;
+  font-weight: 800;
+  color: #17382b;
+  margin: 0 0 6px 0;
+  line-height: 1.35;
+}
+
+.stepTitleTh {
+  font-size: 16px;
+  font-weight: 600;
+  color: #4b6659;
+  margin: 0 0 12px 0;
+}
+
+.stepObjective {
+  font-size: 14px;
+  color: #5d7569;
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* Checklist Grid */
+.checklistGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.checklistItem {
+  background: #f8faf8;
+  border: 1px solid #e2eae5;
+  border-radius: 12px;
+  padding: 10px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #1c3c2f;
+  line-height: 1.4;
+  transition: all 0.2s ease;
+}
+
+.checklistItem:hover {
+  background: #f0f6f2;
+  border-color: #215c43;
+  transform: translateY(-1px);
+}
+
+.checkIcon {
+  color: #215c43;
+  background: #e2f0e8;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* F&B Tip Card */
+.tipCard {
+  background: linear-gradient(135deg, #fbf7ee 0%, #f4ede0 100%);
+  border: 1.5px solid #e8dbbe;
+  border-radius: 16px;
+  padding: 16px 20px;
+  margin-top: 12px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.tipIconWrap {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: #cbb36b;
+  color: #184130;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(203, 179, 107, 0.3);
+}
+
+.tipContent {
+  flex: 1;
+}
+
+.tipLabel {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #876d29;
+  margin-bottom: 3px;
+}
+
+.tipTextEn {
+  font-size: 13px;
+  font-weight: 600;
+  color: #204735;
+  line-height: 1.45;
+  margin: 0 0 4px 0;
+}
+
+.tipTextTh {
+  font-size: 12.5px;
+  color: #556b60;
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* Footer Step Buttons */
+.footerNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px dashed #d8e2dc;
+}
+
+.btnStepNav {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: #215c43;
+  transition: all 0.2s ease;
+}
+
+.btnStepNav:hover:not(:disabled) {
+  background: #f0f6f2;
+  transform: translateY(-1px);
+}
+
+.btnStepNav:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btnStepNext {
+  background: #215c43;
+  color: #ffffff;
+  padding: 8px 20px;
+  box-shadow: 0 4px 12px rgba(33, 92, 67, 0.2);
+}
+
+.btnStepNext:hover:not(:disabled) {
+  background: #174532;
+  color: #ffffff;
+}
+
+/* -------------------------------------------------------------
+   Responsive Breakpoints
+   ------------------------------------------------------------- */
+@media (max-width: 992px) {
+  .sliderGrid {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+
+  .contentCol {
+    padding: 28px 24px;
+  }
+}
+
+@media (max-width: 640px) {
+  .tabsContainer {
+    justify-content: flex-start;
+  }
+
+  .tabButton {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .checklistGrid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .photoFrame {
+    aspect-ratio: 4 / 3;
+    border-radius: 20px;
+  }
+
+  .contentCol {
+    border-radius: 20px;
+    padding: 22px 18px;
+  }
+
+  .stepTitle {
+    font-size: 19px;
+  }
+
+  .stepTitleTh {
+    font-size: 14.5px;
+  }
+}

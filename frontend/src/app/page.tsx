@@ -3,6 +3,7 @@ import Link from 'next/link'
 import ActivityGallery from '@/components/landing/ActivityGallery'
 import StudentAppSlider from '@/components/landing/StudentAppSlider'
 import TeacherConsoleSlider from '@/components/landing/TeacherConsoleSlider'
+import ScenarioStepSlider from '@/components/landing/ScenarioStepSlider'
 import styles from './landing.module.css'
 
 export const metadata = {
@@ -511,76 +512,13 @@ export default function HomePage() {
         <section id="scenario" className={styles.scenarioSection} aria-label="สถานการณ์จำลองงานบริการจริง">
           <div className={styles.container}>
             <div className={styles.sectionEyebrow}>VOCATIONAL EXCELLENCE IN PRACTICE</div>
-            <h2 className={styles.sectionTitle}>ตัวอย่างสถานการณ์จำลอง: การเตรียมความพร้อมก่อนการบริการ</h2>
+            <h2 className={styles.sectionTitle}>ตัวอย่างสถานการณ์จำลอง: มาตรฐานการบริการอาหารและเครื่องดื่ม (F&amp;B Service Guide)</h2>
             <p className={styles.sectionDesc}>
               ผู้เรียนจะได้ฝึกฝนมาตรฐานการบริการอาหารและเครื่องดื่มระดับโรงแรม 5-6 ดาว 
-              ผ่านขั้นตอนปฏิบัติจริงที่สอดคล้องกับเกณฑ์มาตรฐานวิชาชีพสากล
+              ผ่านขั้นตอนปฏิบัติจริงที่สอดคล้องกับเกณฑ์มาตรฐานวิชาชีพสากล พร้อมระบบตรวจสอบสมรรถนะตามขั้นตอน
             </p>
 
-            <div className={styles.scenarioGrid}>
-              {/* Photo on the Left */}
-              <div className={styles.scenarioPhotoWrap}>
-                <Image
-                  src="/images/service_prepare.jpg"
-                  alt="การเตรียมความพร้อมก่อนบริการอาหารและเครื่องดื่ม (Prepare Before Service)"
-                  width={600}
-                  height={400}
-                  className={styles.scenarioPhoto}
-                />
-              </div>
-
-              {/* Checklist & Content on the Right */}
-              <div className={styles.scenarioContent}>
-                <div className={styles.needsHeaderRow}>
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#215c43" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                    <polyline points="14 2 14 8 20 8"/>
-                    <line x1="16" y1="13" x2="8" y2="13"/>
-                    <line x1="16" y1="17" x2="8" y2="17"/>
-                    <polyline points="10 9 9 9 8 9"/>
-                  </svg>
-                  <h3 className={styles.needsHeaderTitle}>1. Prepare Before Service Checklist</h3>
-                </div>
-                <p style={{ fontSize: '14.5px', color: '#556b60', lineHeight: 1.6, margin: 0 }}>
-                  ในบทเรียนสถานการณ์จำลอง นักเรียนจะได้รับการประเมินความพร้อมและฝึกใช้ภาษาอังกฤษตามรายการตรวจสอบมาตรฐาน:
-                </p>
-
-                <div className={styles.scenarioChecklist}>
-                  <div className={styles.scenarioCheckItem}>
-                    <span className={styles.scenarioCheckIcon}>✓</span>
-                    <span>Check grooming (บุคลิกภาพ)</span>
-                  </div>
-                  <div className={styles.scenarioCheckItem}>
-                    <span className={styles.scenarioCheckIcon}>✓</span>
-                    <span>Check table setup (การจัดโต๊ะ)</span>
-                  </div>
-                  <div className={styles.scenarioCheckItem}>
-                    <span className={styles.scenarioCheckIcon}>✓</span>
-                    <span>Check station (จุดบริการ)</span>
-                  </div>
-                  <div className={styles.scenarioCheckItem}>
-                    <span className={styles.scenarioCheckIcon}>✓</span>
-                    <span>Know the menu (รอบรู้เมนู)</span>
-                  </div>
-                  <div className={styles.scenarioCheckItem}>
-                    <span className={styles.scenarioCheckIcon}>✓</span>
-                    <span>Check cutlery (ช้อนส้อมมีด)</span>
-                  </div>
-                  <div className={styles.scenarioCheckItem}>
-                    <span className={styles.scenarioCheckIcon}>✓</span>
-                    <span>Check glassware (เครื่องแก้ว)</span>
-                  </div>
-                  <div className={styles.scenarioCheckItem}>
-                    <span className={styles.scenarioCheckIcon}>✓</span>
-                    <span>Ensure cleanliness (ความสะอาด)</span>
-                  </div>
-                  <div className={styles.scenarioCheckItem}>
-                    <span className={styles.scenarioCheckIcon}>✓</span>
-                    <span>Service Mind (จิตบริการ)</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <ScenarioStepSlider />
           </div>
         </section>
 
