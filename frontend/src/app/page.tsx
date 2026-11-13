@@ -37,15 +37,46 @@ export default function HomePage() {
             </Link>
 
             <nav className={styles.navLinks} aria-label="เมนูหลัก">
-              <a href="#pillars" className={styles.navLink}>เทคโนโลยีอัจฉริยะ</a>
-              <a href="#student-app" className={styles.navLink}>แอปพลิเคชันนักเรียน</a>
-              <a href="#teacher-console" className={styles.navLink}>ระบบครูผู้สอน</a>
-              <a href="#gallery" className={styles.navLink}>ภาพกิจกรรม</a>
-              <a href="#fine-process" className={styles.navLink}>กระบวนการ FINE</a>
-              <a href="#scenario" className={styles.navLink}>สถานการณ์จำลอง</a>
-              <a href="#ksac" className={styles.navLink}>สมรรถนะ KSA-C</a>
-              <a href="#instructor" className={styles.navLink}>ครูผู้จัดทำ</a>
+              <Link href="/" className={styles.navLink}>หน้าแรก</Link>
+
+              {/* เทคโนโลยีอัจฉริยะ Dropdown */}
+              <div className={styles.navDropdown}>
+                <a href="#pillars" className={styles.navDropdownTrigger}>
+                  <span>เทคโนโลยีอัจฉริยะ</span>
+                  <svg className={styles.dropdownCaret} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </a>
+                <div className={styles.navDropdownMenu}>
+                  <a href="#student-app" className={styles.dropdownItem}>
+                    <span>แอปพลิเคชันนักเรียน</span>
+                  </a>
+                  <a href="#teacher-console" className={styles.dropdownItem}>
+                    <span>ระบบครูผู้สอน</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* กระบวนการ FINE Dropdown */}
+              <div className={styles.navDropdown}>
+                <a href="#fine-process" className={styles.navDropdownTrigger}>
+                  <span>กระบวนการ FINE</span>
+                  <svg className={styles.dropdownCaret} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </a>
+                <div className={styles.navDropdownMenu}>
+                  <a href="#scenario" className={styles.dropdownItem}>
+                    <span>สถานการณ์จำลอง</span>
+                  </a>
+                  <a href="#ksac" className={styles.dropdownItem}>
+                    <span>สมรรถนะ KSA-C</span>
+                  </a>
+                </div>
+              </div>
+
               <Link href="/docs" className={styles.navLink}>คู่มือการใช้งาน</Link>
+              <a href="#instructor" className={styles.navLink}>ครูผู้จัดทำ</a>
             </nav>
 
             <div className={styles.navActions}>
@@ -307,7 +338,7 @@ export default function HomePage() {
 
                   <div className={styles.studentAppNote}>
                     <span className={styles.noteCheck}>✓</span>
-                    <span>สมัครสมาชิกฟรี · เข้าสู่ห้องเรียนและเริ่มฝึกฝนได้ทันที ไม่ต้องติดตั้งโปรแกรมเพิ่มเติม</span>
+                    <span>เข้าเรียนฟรี · เข้าสู่ห้องเรียนและเริ่มฝึกฝนได้ทันที ไม่ต้องติดตั้งโปรแกรมเพิ่มเติม</span>
                   </div>
                 </div>
               </div>

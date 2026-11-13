@@ -173,27 +173,6 @@ export default function ScenarioStepSlider() {
       onMouseLeave={() => setIsPaused(false)}
     >
       {/* ---------------------------------------------------------
-          STEP TABS
-          --------------------------------------------------------- */}
-      <div className={styles.tabsContainer} role="tablist" aria-label="เลือกลำดับขั้นตอนสถานการณ์จำลอง">
-        {SCENARIO_STEPS.map((step, idx) => {
-          const isActive = idx === currentIndex;
-          return (
-            <button
-              key={step.id}
-              role="tab"
-              aria-selected={isActive}
-              className={`${styles.tabButton} ${isActive ? styles.tabButtonActive : ''}`}
-              onClick={() => setCurrentIndex(idx)}
-            >
-              <span className={styles.tabBadge}>Step {step.stepNum}</span>
-              <span>{step.titleTh.split(' ')[0]}</span>
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ---------------------------------------------------------
           SLIDER GRID
           --------------------------------------------------------- */}
       <div className={styles.sliderGrid}>
@@ -332,3 +311,4 @@ export default function ScenarioStepSlider() {
     </div>
   );
 }
+
