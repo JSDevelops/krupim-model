@@ -705,6 +705,302 @@
 }
 
 /* ==========================================================================
+   STUDENT MOBILE APP SHOWCASE & REGISTRATION SECTION
+   ========================================================================== */
+.studentAppSection {
+  padding: 80px 0;
+  background: #ffffff;
+  position: relative;
+}
+
+.studentAppCard {
+  background: linear-gradient(145deg, #184130 0%, #102d21 100%);
+  border-radius: 36px;
+  padding: 60px 52px;
+  color: #ffffff;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(16, 45, 33, 0.22);
+  border: 1px solid rgba(203, 179, 107, 0.3);
+}
+
+.studentAppCard::before {
+  content: '';
+  position: absolute;
+  top: -120px;
+  right: -120px;
+  width: 440px;
+  height: 440px;
+  background: radial-gradient(circle, rgba(203, 179, 107, 0.16) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.studentAppCard::after {
+  content: '';
+  position: absolute;
+  bottom: -100px;
+  left: -100px;
+  width: 360px;
+  height: 360px;
+  background: radial-gradient(circle, rgba(33, 92, 67, 0.35) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.studentAppGrid {
+  display: grid;
+  grid-template-columns: 360px 1fr;
+  gap: 56px;
+  align-items: center;
+  position: relative;
+  z-index: 1;
+}
+
+.studentAppMockupCol {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.studentAppMockupFrame {
+  position: relative;
+  border-radius: 36px;
+  box-shadow: 0 26px 50px rgba(0, 0, 0, 0.45);
+  transition: transform 300ms ease;
+  display: inline-block;
+  line-height: 0;
+  border: 2px solid rgba(203, 179, 107, 0.4);
+  background: #000000;
+  overflow: hidden;
+}
+
+.studentAppMockupFrame:hover {
+  transform: translateY(-6px);
+}
+
+.studentAppMockupImg {
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  display: block;
+}
+
+.mockupFloatingBadge {
+  position: absolute;
+  bottom: -18px;
+  background: #ffffff;
+  color: #17382b;
+  padding: 10px 18px;
+  border-radius: 50px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28);
+  border: 1px solid #d4af37;
+  white-space: nowrap;
+}
+
+.mockupBadgeIcon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.mockupBadgeTitle {
+  font-size: 13px;
+  font-weight: 800;
+  color: #17382b;
+}
+
+.mockupBadgeSub {
+  font-size: 11px;
+  color: #556b60;
+  font-weight: 600;
+}
+
+.studentAppInfoCol {
+  display: flex;
+  flex-direction: column;
+}
+
+.studentAppEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(203, 179, 107, 0.18);
+  border: 1px solid rgba(203, 179, 107, 0.45);
+  color: #f0e0b2;
+  padding: 6px 14px;
+  border-radius: 100px;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  margin-bottom: 16px;
+  align-self: flex-start;
+}
+
+.studentAppEyebrowIcon {
+  font-size: 13px;
+}
+
+.studentAppTitle {
+  font-size: clamp(24px, 2.6vw, 34px);
+  font-weight: 850;
+  line-height: 1.3;
+  color: #ffffff;
+  margin: 0 0 14px;
+  letter-spacing: -0.01em;
+}
+
+.studentAppTitleHighlight {
+  color: #eedca4;
+}
+
+.studentAppDesc {
+  font-size: 15px;
+  line-height: 1.65;
+  color: #d1e2da;
+  margin: 0 0 28px;
+  max-width: 640px;
+}
+
+.studentAppFeatureGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 32px;
+}
+
+.studentAppFeatureItem {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  transition: all 200ms ease;
+}
+
+.studentAppFeatureItem:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(203, 179, 107, 0.45);
+  transform: translateY(-2px);
+}
+
+.studentFeatureIconBox {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #cbb36b 0%, #a88d40 100%);
+  color: #17382b;
+  font-weight: 900;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.studentFeatureText {
+  display: flex;
+  flex-direction: column;
+}
+
+.studentFeatureHeading {
+  font-size: 13px;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 4px;
+  letter-spacing: 0.02em;
+}
+
+.studentFeaturePara {
+  font-size: 12px;
+  line-height: 1.5;
+  color: #bdd4c9;
+  margin: 0;
+}
+
+.studentAppCtaWrap {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.studentRegisterBtn {
+  background: linear-gradient(135deg, #d4af37 0%, #b8860b 100%);
+  color: #122c21;
+  padding: 14px 28px;
+  border-radius: 14px;
+  font-size: 15.5px;
+  font-weight: 850;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 8px 24px rgba(212, 175, 55, 0.35);
+  transition: all 200ms ease;
+  border: 1px solid #f2e394;
+}
+
+.studentRegisterBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(212, 175, 55, 0.5);
+  background: linear-gradient(135deg, #e5cb7a 0%, #c59b27 100%);
+  color: #122c21;
+}
+
+.btnIcon {
+  font-size: 16px;
+}
+
+.btnArrow {
+  font-size: 16px;
+  transition: transform 200ms ease;
+}
+
+.studentRegisterBtn:hover .btnArrow {
+  transform: translateX(4px);
+}
+
+.studentLoginBtn {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  padding: 14px 24px;
+  border-radius: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  transition: all 200ms ease;
+}
+
+.studentLoginBtn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: #ffffff;
+  color: #ffffff;
+}
+
+.studentAppNote {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #a8cfbe;
+}
+
+.noteCheck {
+  color: #d4af37;
+  font-weight: 900;
+}
+
+/* ==========================================================================
    KSA-C COMPETENCY FRAMEWORK SECTION
    ========================================================================== */
 .ksacSection {
@@ -1030,6 +1326,31 @@
   .scenarioGrid {
     grid-template-columns: 1fr;
   }
+  .studentAppGrid {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    text-align: center;
+  }
+  .studentAppMockupCol {
+    order: 2;
+    margin-top: 20px;
+  }
+  .studentAppInfoCol {
+    order: 1;
+    align-items: center;
+  }
+  .studentAppEyebrow {
+    align-self: center;
+  }
+  .studentAppDesc {
+    text-align: center;
+  }
+  .studentAppFeatureGrid {
+    text-align: left;
+  }
+  .studentAppCtaWrap {
+    justify-content: center;
+  }
   .ksacGrid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -1061,6 +1382,26 @@
   }
   .scenarioChecklist {
     grid-template-columns: 1fr;
+  }
+  .studentAppCard {
+    padding: 40px 24px;
+    border-radius: 24px;
+  }
+  .studentAppFeatureGrid {
+    grid-template-columns: 1fr;
+  }
+  .mockupFloatingBadge {
+    position: static;
+    margin-top: 16px;
+    white-space: normal;
+  }
+  .studentAppCtaWrap {
+    flex-direction: column;
+    width: 100%;
+  }
+  .studentRegisterBtn, .studentLoginBtn {
+    width: 100%;
+    justify-content: center;
   }
   .heroFloatingBadge1 {
     right: 4px;
