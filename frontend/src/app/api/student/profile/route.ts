@@ -78,6 +78,14 @@ export async function GET(request: NextRequest) {
         SELECT id, title, message, type, link_url AS "linkUrl", is_read AS "isRead", created_at AS "createdAt"
         FROM notifications
         WHERE user_id = $1::uuid
+          AND (
+            type IN ('announcement', 'news', 'blog', 'event', 'assignment')
+            OR link_url LIKE '%announcements%'
+            OR title LIKE '%📢%'
+            OR title LIKE '%ข่าว%'
+            OR title LIKE '%ประกาศ%'
+            OR title LIKE '%มีงานใหม่%'
+          )
         ORDER BY created_at DESC
         LIMIT 25
       `, [user.id]),

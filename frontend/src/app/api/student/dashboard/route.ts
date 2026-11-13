@@ -75,7 +75,16 @@ export async function GET(request: NextRequest) {
       `, user.role === 'developer' ? [] : [user.id]),
       safeQuery(`
         SELECT id,title,message,type,link_url AS "linkUrl",created_at AS "createdAt"
-        FROM notifications WHERE user_id=$1::uuid AND is_read=FALSE
+        FROM notifications 
+        WHERE user_id=$1::uuid AND is_read=FALSE
+          AND (
+            type IN ('announcement', 'news', 'blog', 'event', 'assignment')
+            OR link_url LIKE '%announcements%'
+            OR title LIKE '%📢%'
+            OR title LIKE '%ข่าว%'
+            OR title LIKE '%ประกาศ%'
+            OR title LIKE '%มีงานใหม่%'
+          )
         ORDER BY created_at DESC LIMIT 5
       `, [user.id]),
       safeQuery<{ count: string }>(`

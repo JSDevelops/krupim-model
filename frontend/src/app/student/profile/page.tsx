@@ -237,9 +237,38 @@ export default function StudentProfilePage() {
     }
   }, []);
 
-  const unreadNotifsCount = useMemo(
-    () => notifications.filter((n) => !n.isRead).length,
+  // คัดกรองการแจ้งเตือน: เฉพาะข่าวสาร/ประกาศ และการสั่งงานใหม่จากครูผู้สอน (ยกเว้นระบบฟอร์มอื่น)
+  const isNewsOrAssignment = (n: StudentNotification) => {
+    if (
+      n.type === 'announcement' ||
+      n.type === 'news' ||
+      n.type === 'blog' ||
+      n.type === 'event' ||
+      (n.linkUrl && n.linkUrl.includes('announcements')) ||
+      n.title.includes('📢') ||
+      n.title.includes('ข่าว') ||
+      n.title.includes('ประกาศ')
+    ) {
+      return true;
+    }
+    if (
+      n.type === 'assignment' ||
+      n.title.includes('มีงานใหม่') ||
+      n.title.includes('มอบหมายงาน')
+    ) {
+      return true;
+    }
+    return false;
+  };
+
+  const relevantNotifications = useMemo(
+    () => notifications.filter(isNewsOrAssignment),
     [notifications],
+  );
+
+  const unreadNotifsCount = useMemo(
+    () => relevantNotifications.filter((n) => !n.isRead).length,
+    [relevantNotifications],
   );
 
   const filteredAnnouncements = useMemo(() => {
@@ -565,7 +594,7 @@ export default function StudentProfilePage() {
               {bellOpen && (
                 <div className={styles.bellDropdown}>
                   <div className={styles.bellHeader}>
-                    <strong>การแจ้งเตือน ({notifications.length})</strong>
+                    <strong>การแจ้งเตือนข่าวสาร ({relevantNotifications.length})</strong>
                     {unreadNotifsCount > 0 && (
                       <button
                         type="button"
@@ -590,12 +619,12 @@ export default function StudentProfilePage() {
                   </div>
 
                   <div className={styles.bellList}>
-                    {notifications.length === 0 ? (
+                    {relevantNotifications.length === 0 ? (
                       <div style={{ padding: "24px 16px", textAlign: "center", color: "#8a9c93" }}>
                         <p style={{ margin: 0, fontSize: 13 }}>ไม่มีการแจ้งเตือนใหม่</p>
                       </div>
                     ) : (
-                      notifications.slice(0, 8).map((notif) => (
+                      relevantNotifications.slice(0, 8).map((notif) => (
                         <div
                           key={notif.id}
                           className={styles.bellItem}
