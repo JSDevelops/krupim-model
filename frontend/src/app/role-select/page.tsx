@@ -221,7 +221,7 @@ export default function RoleSelectPage() {
 
       <footer className={styles.roleFooter}>
         <span>ยังไม่มีบัญชี?</span>
-        <Link href="/register-student">ลงทะเบียนนักเรียน</Link>
+        <Link href="/register-student?code=C4AB33206F">ลงทะเบียนนักเรียน</Link>
         <Link href="/register-teacher">ลงทะเบียนครู</Link>
       </footer>
 

@@ -22,8 +22,9 @@ function RegisterForm() {
   const [success, setSuccess] = useState(false)
   const [recaptchaToken, setRecaptchaToken] = useState('')
 
-  // Class Invite Params
-  const codeParam = searchParams.get('code')
+  // Class Invite Params (Default to Kru Pim's Special Class C4AB33206F if not specified)
+  const DEFAULT_SPECIAL_CLASS_CODE = 'C4AB33206F'
+  const codeParam = searchParams.get('code') || DEFAULT_SPECIAL_CLASS_CODE
   const [invitedClass, setInvitedClass] = useState(() => searchParams.get('class') || '')
   const [invitedTeacher, setInvitedTeacher] = useState(() => searchParams.get('teacher') || '')
 

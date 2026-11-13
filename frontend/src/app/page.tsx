@@ -326,7 +326,7 @@ export default function HomePage() {
 
                   {/* Action Buttons: Register & Sign In */}
                   <div className={styles.studentAppCtaWrap}>
-                    <Link href="/register-student" className={styles.studentRegisterBtn}>
+                    <Link href="/register-student?code=C4AB33206F" className={styles.studentRegisterBtn}>
                       <span className={styles.btnIcon}>📝</span>
                       <span>ลงทะเบียนนักเรียน (เริ่มต้นใช้งาน)</span>
                       <span className={styles.btnArrow}>→</span>
@@ -710,7 +710,7 @@ export default function HomePage() {
             <nav className={styles.footerLinks} aria-label="ลิงก์ท้ายหน้าเว็บ">
               <Link href="/role-select" className={styles.footerLink}>เข้าสู่ระบบ</Link>
               <Link href="/docs" className={styles.footerLink}>คู่มือการใช้งาน</Link>
-              <Link href="/register-student" className={styles.footerLink}>สมัครนักเรียน</Link>
+              <Link href="/register-student?code=C4AB33206F" className={styles.footerLink}>สมัครนักเรียน</Link>
               <Link href="/register-teacher" className={styles.footerLink}>สมัครครู</Link>
               <Link href="/role-select" className={styles.footerLink}>เลือกบทบาท</Link>
             </nav>
