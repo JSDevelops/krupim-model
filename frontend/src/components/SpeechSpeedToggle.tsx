@@ -3,26 +3,27 @@
 import { useEffect, useState } from 'react'
 import styles from './SpeechSpeedToggle.module.css'
 
-export type SpeechRate = 0.75 | 0.9 | 1.1
+export type SpeechRate = 0.5 | 1.0
 
 export const SPEECH_RATES: Array<{ rate: SpeechRate; text: string }> = [
-  { rate: 0.75, text: 'ช้า' },
-  { rate: 0.9, text: 'ปกติ' },
-  { rate: 1.1, text: 'เร็ว' },
+  { rate: 0.5, text: '0.50x ช้า' },
+  { rate: 1.0, text: '1x ปกติ' },
 ]
 
 export const STORAGE_KEY = 'finemodel_speech_rate'
 
 export function getStoredSpeechRate(): number {
-  if (typeof window === 'undefined') return 0.9
+  if (typeof window === 'undefined') return 1.0
   try {
     const val = localStorage.getItem(STORAGE_KEY)
     if (val) {
       const num = parseFloat(val)
-      if (!Number.isNaN(num) && num >= 0.5 && num <= 2) return num
+      if (!Number.isNaN(num) && num >= 0.3 && num <= 2) {
+        return num < 0.75 ? 0.5 : 1.0
+      }
     }
   } catch {}
-  return 0.9
+  return 1.0
 }
 
 export function setStoredSpeechRate(rate: number): void {
@@ -87,9 +88,9 @@ export default function SpeechSpeedToggle({
         </svg>
         <span>ความเร็วเสียง:</span>
       </span>
-      <div className={styles.pills} role="group" aria-label="ปรับความเร็วการฟัง (ช้า ปกติ เร็ว)">
+      <div className={styles.pills} role="group" aria-label="ปรับความเร็วการฟัง (0.50x ช้า / 1x ปกติ)">
         {SPEECH_RATES.map(item => {
-          const isActive = Math.abs(rate - item.rate) < 0.08
+          const isActive = Math.abs(rate - item.rate) < 0.25
           return (
             <button
               key={item.rate}

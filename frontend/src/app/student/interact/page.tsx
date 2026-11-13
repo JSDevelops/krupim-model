@@ -210,7 +210,7 @@ export default function InteractPage() {
     if (!clean) return
     const utterance = new SpeechSynthesisUtterance(clean)
     utterance.lang = 'en-US'
-    utterance.rate = Math.min(1.0, Math.max(0.65, speechRate * 0.9))
+    utterance.rate = Math.min(1.0, Math.max(0.5, speechRate))
     window.speechSynthesis.speak(utterance)
     toast.info(`ฝึกออกเสียงคำ: "${clean}"`, { duration: 1500 })
   }
