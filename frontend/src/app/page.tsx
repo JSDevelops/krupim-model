@@ -2,6 +2,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import ActivityGallery from '@/components/landing/ActivityGallery'
 import StudentAppSlider from '@/components/landing/StudentAppSlider'
+import TeacherConsoleSlider from '@/components/landing/TeacherConsoleSlider'
 import styles from './landing.module.css'
 
 export const metadata = {
@@ -37,6 +38,7 @@ export default function HomePage() {
             <nav className={styles.navLinks} aria-label="เมนูหลัก">
               <a href="#pillars" className={styles.navLink}>เทคโนโลยีอัจฉริยะ</a>
               <a href="#student-app" className={styles.navLink}>แอปพลิเคชันนักเรียน</a>
+              <a href="#teacher-console" className={styles.navLink}>ระบบครูผู้สอน</a>
               <a href="#gallery" className={styles.navLink}>ภาพกิจกรรม</a>
               <a href="#fine-process" className={styles.navLink}>กระบวนการ FINE</a>
               <a href="#scenario" className={styles.navLink}>สถานการณ์จำลอง</a>
@@ -306,6 +308,111 @@ export default function HomePage() {
                     <span className={styles.noteCheck}>✓</span>
                     <span>สมัครสมาชิกฟรี · เข้าสู่ห้องเรียนและเริ่มฝึกฝนได้ทันที ไม่ต้องติดตั้งโปรแกรมเพิ่มเติม</span>
                   </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* =================================================================
+            TEACHER CONSOLE & MANAGEMENT SECTION
+            ================================================================= */}
+        <section id="teacher-console" className={styles.teacherSection} aria-label="ระบบบริหารจัดการการเรียนรู้สำหรับครูผู้สอน">
+          <div className={styles.container}>
+            <div className={styles.teacherCard}>
+              <div className={styles.teacherGrid}>
+                {/* Left: Info, Features & Actions */}
+                <div className={styles.teacherInfoCol}>
+                  <div className={styles.teacherEyebrow}>
+                    <span className={styles.teacherEyebrowIcon}>🎓</span>
+                    <span>TEACHER CONSOLE · แพลตฟอร์มบริหารการเรียนรู้สำหรับครู</span>
+                  </div>
+
+                  <h2 className={styles.teacherTitle}>
+                    ยกระดับการสอนอย่างมืออาชีพ <br />
+                    <span className={styles.teacherTitleHighlight}>ด้วยระบบบริหารจัดการ Teacher Console</span>
+                  </h2>
+
+                  <p className={styles.teacherDesc}>
+                    ออกแบบสำหรับครูแผนกวิชาการโรงแรมโดยเฉพาะ ช่วยครูพิมจัดทำแผนการสอนบูรณาการ 18 สัปดาห์ 
+                    ตรวจประเมินสมรรถนะ KSA-C รายบุคคล และบริหารคลังสื่อ AR 3D และคลังคำศัพท์วิชาชีพได้อย่างมีประสิทธิภาพในหน้าจอเดียว
+                  </p>
+
+                  {/* 4 Feature Highlights */}
+                  <div className={styles.teacherFeatureGrid}>
+                    <div className={styles.teacherFeatureItem}>
+                      <div className={styles.teacherFeatureIconBox}>
+                        <span>📊</span>
+                      </div>
+                      <div className={styles.teacherFeatureText}>
+                        <div className={styles.teacherFeatureHeading}>แดชบอร์ด &amp; วัดสมรรถนะ KSA-C</div>
+                        <p className={styles.teacherFeaturePara}>
+                          ติดตามความก้าวหน้า ตรวจงานนักเรียนรายบุคคล และตรวจสอบโควต้า AI ประจำวันของห้องเรียน
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className={styles.teacherFeatureItem}>
+                      <div className={styles.teacherFeatureIconBox}>
+                        <span>📑</span>
+                      </div>
+                      <div className={styles.teacherFeatureText}>
+                        <div className={styles.teacherFeatureHeading}>แผนการสอนบูรณาการ 18 สัปดาห์</div>
+                        <p className={styles.teacherFeaturePara}>
+                          จัดระบบแผนการเรียนรู้ตามวงรอบ FINE Model ครบถ้วน 220 วัตถุประสงค์เชิงสมรรถนะ
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className={styles.teacherFeatureItem}>
+                      <div className={styles.teacherFeatureIconBox}>
+                        <span>📦</span>
+                      </div>
+                      <div className={styles.teacherFeatureText}>
+                        <div className={styles.teacherFeatureHeading}>คลังสื่อ AR 3D &amp; คำศัพท์ 51 รายการ</div>
+                        <p className={styles.teacherFeaturePara}>
+                          อัปโหลดไฟล์โมเดล 3 มิติ (.GLB / .USDZ) เชื่อมโยงคำศัพท์ สัทอักษร และประโยคฝึกพูด
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className={styles.teacherFeatureItem}>
+                      <div className={styles.teacherFeatureIconBox}>
+                        <span>👥</span>
+                      </div>
+                      <div className={styles.teacherFeatureText}>
+                        <div className={styles.teacherFeatureHeading}>จัดการห้องเรียน &amp; นักเรียน 42 คน</div>
+                        <p className={styles.teacherFeaturePara}>
+                          บริหารสมาชิกชั้นเรียน ปวช.1 และ ปวช.2 ระบบสร้างลิงก์เชิญ และรายงานผลการเรียนรู้แบบเรียลไทม์
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons: Login Teacher & Register Teacher */}
+                  <div className={styles.teacherCtaWrap}>
+                    <Link href="/role-select" className={styles.teacherLoginBtn}>
+                      <span className={styles.btnIcon}>🔐</span>
+                      <span>เข้าสู่ระบบครูผู้สอน</span>
+                      <span className={styles.btnArrow}>→</span>
+                    </Link>
+                    <Link href="/register-teacher" className={styles.teacherRegisterBtn}>
+                      <span>ลงทะเบียนครูผู้สอน</span>
+                    </Link>
+                    <Link href="/docs" className={styles.teacherDocsBtn}>
+                      <span>คู่มือการใช้งานระบบ</span>
+                    </Link>
+                  </div>
+
+                  <div className={styles.teacherNote}>
+                    <span className={styles.noteCheck}>✓</span>
+                    <span>ระบบคลาวด์มาตรฐานความปลอดภัยสูง · พร้อมใช้งานผ่านเว็บเบราว์เซอร์บน PC และแท็บเล็ต</span>
+                  </div>
+                </div>
+
+                {/* Right: Desktop/Browser Mockup Slider */}
+                <div className={styles.teacherMockupCol}>
+                  <TeacherConsoleSlider />
                 </div>
               </div>
             </div>
