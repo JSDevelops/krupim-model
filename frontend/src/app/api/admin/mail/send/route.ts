@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { apiErrorResponse, guardApi, ApiError } from '../../../_lib/auth'
 import { queryDb } from '@/lib/db'
-import { sendAdminCustomReplyEmail, smtpConfigured } from '@/lib/mail'
+import { sendAdminCustomReplyEmail, smtpConfigured, getAdminNotificationEmail } from '@/lib/mail'
+
+export async function GET(request: NextRequest) {
+  try {
+    await guardApi(request, { roles: ['developer'], maxRequests: 60 })
+    return NextResponse.json({
+      smtpConfigured: smtpConfigured(),
+      adminEmail: getAdminNotificationEmail(),
+    })
+  } catch (error) {
+    return apiErrorResponse(error)
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -61,3 +73,4 @@ export async function POST(request: NextRequest) {
     return apiErrorResponse(error)
   }
 }
+

@@ -1238,3 +1238,114 @@
     animation: none;
   }
 }
+
+/* ==========================================================================
+   Mail Dispatch Modal Styles
+   ========================================================================== */
+.mailModal {
+  width: min(100%, 640px);
+}
+
+.mailBadge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  color: #215c43;
+  background: #e8f3ed;
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: 0.04em;
+  margin-bottom: 2px;
+}
+
+.mailNoticeBox {
+  background: #fdfaf0;
+  border: 1px solid #e9ddb8;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  color: #7a6320;
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.mailNoticeBoxSuccess {
+  background: #f3faf5;
+  border-color: #c9e4d4;
+  color: #205c43;
+}
+
+.mailPresetRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 2px 0 6px;
+}
+
+.mailPresetBtn {
+  font-size: 12px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  border: 1px solid #cfe0d6;
+  background: #f4fbf7;
+  color: #1f5940;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.mailPresetBtn:hover {
+  background: #215c43;
+  color: #ffffff;
+  border-color: #215c43;
+}
+
+.mailTextarea {
+  width: 100%;
+  font-family: inherit;
+  font-size: 13.5px;
+  line-height: 1.6;
+  padding: 10px 14px;
+  border-radius: 12px;
+  border: 1px solid #d5e0da;
+  background: #ffffff;
+  color: #17382b;
+  resize: vertical;
+}
+
+.mailTextarea:focus {
+  outline: none;
+  border-color: #215c43;
+  box-shadow: 0 0 0 3px rgba(33, 92, 67, 0.12);
+}
+
+.mailAltActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+.mailAltBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid #d0ded6;
+  background: #ffffff;
+  color: #23523d;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+}
+
+.mailAltBtn:hover {
+  background: #f0f6f2;
+  border-color: #215c43;
+}
