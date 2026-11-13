@@ -119,18 +119,41 @@ export async function POST(req: NextRequest) {
       text = completion.content[0].type === 'text' ? completion.content[0].text : ''
     } else {
       const genAI = await getGemini(req)
-      const model = genAI.getGenerativeModel({
-        model: configuredModel,
-        generationConfig: {
-          responseMimeType: 'application/json',
-          temperature: 0.2,
+      const targetModel = configuredModel || 'gemini-3.1-flash-lite'
+      try {
+        const model = genAI.getGenerativeModel({
+          model: targetModel,
+          generationConfig: {
+            responseMimeType: 'application/json',
+            temperature: 0.2,
+          }
+        })
+        const result = await model.generateContent([
+          SCAN_SYSTEM_PROMPT,
+          { inlineData: { data: imageBase64, mimeType } }
+        ])
+        text = result.response.text()
+      } catch (geminiErr: unknown) {
+        const errMsg = getErrorMessage(geminiErr)
+        // If the configured model is deprecated or not found (404), gracefully retry with gemini-3.1-flash-lite
+        if ((errMsg.includes('404') || errMsg.includes('not found') || errMsg.includes('not supported')) && targetModel !== 'gemini-3.1-flash-lite') {
+          console.warn(`[ScanAPI] Model ${targetModel} not available, retrying with gemini-3.1-flash-lite...`)
+          const fallbackModel = genAI.getGenerativeModel({
+            model: 'gemini-3.1-flash-lite',
+            generationConfig: {
+              responseMimeType: 'application/json',
+              temperature: 0.2,
+            }
+          })
+          const fallbackResult = await fallbackModel.generateContent([
+            SCAN_SYSTEM_PROMPT,
+            { inlineData: { data: imageBase64, mimeType } }
+          ])
+          text = fallbackResult.response.text()
+        } else {
+          throw geminiErr
         }
-      })
-      const result = await model.generateContent([
-        SCAN_SYSTEM_PROMPT,
-        { inlineData: { data: imageBase64, mimeType } }
-      ])
-      text = result.response.text()
+      }
     }
 
     const jsonMatch = text.match(/\{[\s\S]*\}/)

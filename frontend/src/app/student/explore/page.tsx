@@ -336,6 +336,8 @@ export default function ExplorePage() {
         friendlyError = 'ระบบ AI มีคำขอหนาแน่นชั่วคราว (โควต้าเต็ม) คุณสามารถใช้ "โหมดเลือกวัตถุจำลอง (Fallback Scan)" เพื่อทำภารกิจต่อได้ทันที'
       } else if (normalized.includes('api key') || normalized.includes('unauthorized') || normalized.includes('403')) {
         friendlyError = 'การตั้งค่าผู้ให้บริการ AI ไม่สมบูรณ์ กรุณาใช้โหมดเลือกวัตถุจำลอง'
+      } else if (normalized.includes('404') || normalized.includes('not found') || normalized.includes('googlegenerativeai')) {
+        friendlyError = 'โมเดล AI ตอบสนองไม่สำเร็จ กรุณาลองใหม่อีกครั้ง หรือใช้ "โหมดเลือกวัตถุจำลอง (Fallback Scan)" เพื่อเรียนรู้ได้ทันที'
       }
       setScanError(friendlyError)
       toast.error(friendlyError)

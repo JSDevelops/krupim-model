@@ -16,11 +16,15 @@ export async function getActiveProvider(req?: NextRequest): Promise<AIProvider> 
 }
 
 export async function getConfiguredModel(provider: AIProvider) {
-  const model = (await getAISetting(provider)).model
+  const setting = await getAISetting(provider)
+  const model = setting.model || ''
   if (provider === 'gemini') {
-    if (model.includes('3.6') || model.includes('flash-lite') || !model.startsWith('gemini-')) {
-      return 'gemini-1.5-flash'
+    // Google retired gemini-1.5-flash and gemini-2.5-flash (404 Not Found).
+    // The current active vision models are gemini-3.1-flash-lite and gemini-3.8-flash.
+    if (model.includes('1.5') || model.includes('2.5') || !model.startsWith('gemini-')) {
+      return 'gemini-3.1-flash-lite'
     }
+    return model
   }
   if (provider === 'openai') {
     if (model.includes('4.1')) return 'gpt-4o-mini'
