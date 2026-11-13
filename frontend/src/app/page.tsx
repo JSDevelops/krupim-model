@@ -1,6 +1,7 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import ActivityGallery from '@/components/landing/ActivityGallery'
+import StudentAppSlider from '@/components/landing/StudentAppSlider'
 import styles from './landing.module.css'
 
 export const metadata = {
@@ -380,24 +381,9 @@ export default function HomePage() {
           <div className={styles.container}>
             <div className={styles.studentAppCard}>
               <div className={styles.studentAppGrid}>
-                {/* Left: Mobile App Mockup Image */}
+                {/* Left: Interactive Mobile App Mockup Slider */}
                 <div className={styles.studentAppMockupCol}>
-                  <div className={styles.studentAppMockupFrame}>
-                    <Image
-                      src="/images/student_app_mockup.jpg"
-                      alt="หน้าจอ Student Dashboard และ FINE Learning Loop บนสมาร์ทโฟน"
-                      width={380}
-                      height={675}
-                      className={styles.studentAppMockupImg}
-                    />
-                  </div>
-                  <div className={styles.mockupFloatingBadge}>
-                    <span className={styles.mockupBadgeIcon}>📱</span>
-                    <div>
-                      <div className={styles.mockupBadgeTitle}>FINE MODEL Mobile Web App</div>
-                      <div className={styles.mockupBadgeSub}>รองรับสมาร์ทโฟนทุกระบบ · ใช้งานได้ทันที</div>
-                    </div>
-                  </div>
+                  <StudentAppSlider />
                 </div>
 
                 {/* Right: Content for Students + Registration CTA */}
