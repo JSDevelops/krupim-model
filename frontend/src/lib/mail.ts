@@ -1,5 +1,7 @@
 import 'server-only'
 import nodemailer, { type Transporter } from 'nodemailer'
+import { queryDb } from '@/lib/db'
+import { decryptSecret } from '@/lib/aiSettings'
 
 type MailRuntime = typeof globalThis & { __krupimMailer?: Transporter }
 const mailRuntime = globalThis as MailRuntime
@@ -8,22 +10,150 @@ function booleanEnv(value: string | undefined) {
   return value?.trim().toLowerCase() === 'true'
 }
 
+export type SmtpRuntimeConfig = {
+  host: string
+  port: number
+  secure: boolean
+  user: string
+  pass: string
+  from: string
+  adminEmail: string
+  source: 'database' | 'environment' | 'none'
+  hasPassword: boolean
+  passwordHint: string | null
+}
+
+let cachedSmtpConfig: { expiresAt: number; config: SmtpRuntimeConfig } | null = null
+
+export function invalidateSmtpCache() {
+  cachedSmtpConfig = null
+  mailRuntime.__krupimMailer = undefined
+}
+
 export function smtpConfigured() {
-  return Boolean(process.env.SMTP_HOST?.trim())
+  return Boolean(process.env.SMTP_HOST?.trim() || cachedSmtpConfig?.config.host)
+}
+
+export async function isSmtpReady(): Promise<boolean> {
+  try {
+    const config = await getEffectiveSmtpConfig()
+    if (!config.host) return false
+    if (config.host === '127.0.0.1' || config.host === 'localhost') return true
+    return Boolean(config.user && config.hasPassword)
+  } catch {
+    return false
+  }
+}
+
+export async function getEffectiveSmtpConfig(forceFresh = false): Promise<SmtpRuntimeConfig> {
+  const now = Date.now()
+  if (!forceFresh && cachedSmtpConfig && cachedSmtpConfig.expiresAt > now) {
+    return cachedSmtpConfig.config
+  }
+
+  let dbConfig: Record<string, unknown> | null = null
+  try {
+    const res = await queryDb<{ value_json: Record<string, unknown> }>(
+      `SELECT value_json FROM system_settings WHERE setting_key = 'smtp' LIMIT 1`
+    )
+    dbConfig = res.rows[0]?.value_json || null
+  } catch {
+    // If DB is offline or table missing, fallback to environment
+  }
+
+  const envHost = process.env.SMTP_HOST?.trim()
+  const dbHost = typeof dbConfig?.host === 'string' ? dbConfig.host.trim() : ''
+  const host = dbHost || envHost || 'smtp.gmail.com'
+
+  const envPort = Number(process.env.SMTP_PORT || 465)
+  const dbPort = typeof dbConfig?.port === 'number' ? dbConfig.port : undefined
+  const port = dbPort || envPort
+
+  const secure = dbConfig?.secure !== undefined
+    ? Boolean(dbConfig.secure)
+    : (process.env.SMTP_SECURE ? booleanEnv(process.env.SMTP_SECURE) : port === 465)
+
+  const envUser = process.env.SMTP_USER?.trim()
+  const dbUser = typeof dbConfig?.user === 'string' ? dbConfig.user.trim() : ''
+  const user = dbUser || envUser || 'krupim@ktc.ac.th'
+
+  let pass = ''
+  let passwordHint: string | null = null
+  let source: SmtpRuntimeConfig['source'] = 'none'
+
+  if (typeof dbConfig?.passEncrypted === 'string' && dbConfig.passEncrypted) {
+    try {
+      pass = decryptSecret(dbConfig.passEncrypted)
+      source = 'database'
+      passwordHint = typeof dbConfig?.passHint === 'string'
+        ? dbConfig.passHint
+        : (pass ? `••••${pass.slice(-4)}` : null)
+    } catch {
+      // ignore decryption failure, fallback
+    }
+  }
+
+  if (!pass && process.env.SMTP_PASS) {
+    pass = process.env.SMTP_PASS.trim()
+    source = 'environment'
+    passwordHint = `••••${pass.slice(-4)}`
+  }
+
+  const envFrom = process.env.SMTP_FROM?.trim()
+  const dbFrom = typeof dbConfig?.from === 'string' ? dbConfig.from.trim() : ''
+  const from = dbFrom || envFrom || `KruPIM FINE Model <${user}>`
+
+  const envAdminEmail = process.env.ADMIN_NOTIFICATION_EMAIL?.trim()
+  const dbAdminEmail = typeof dbConfig?.adminEmail === 'string' ? dbConfig.adminEmail.trim() : ''
+  const adminEmail = dbAdminEmail || envAdminEmail || 'krupim@ktc.ac.th'
+
+  const config: SmtpRuntimeConfig = {
+    host,
+    port,
+    secure,
+    user,
+    pass,
+    from,
+    adminEmail,
+    source,
+    hasPassword: Boolean(pass),
+    passwordHint,
+  }
+
+  cachedSmtpConfig = {
+    expiresAt: now + 30_000,
+    config,
+  }
+
+  return config
+}
+
+export async function getMailTransporter() {
+  const config = await getEffectiveSmtpConfig()
+  if (!config.host) throw new Error('SMTP_HOST is not configured')
+
+  return nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    ...(config.user && config.pass ? { auth: { user: config.user, pass: config.pass } } : {}),
+    connectionTimeout: 10_000,
+    greetingTimeout: 10_000,
+    socketTimeout: 15_000,
+  })
 }
 
 function transporter() {
   if (mailRuntime.__krupimMailer) return mailRuntime.__krupimMailer
-  const host = process.env.SMTP_HOST?.trim()
-  if (!host) throw new Error('SMTP_HOST is not configured')
-  const port = Number(process.env.SMTP_PORT || 1025)
+  const host = process.env.SMTP_HOST?.trim() || 'smtp.gmail.com'
+  const port = Number(process.env.SMTP_PORT || 465)
   if (!Number.isInteger(port) || port < 1 || port > 65_535) throw new Error('SMTP_PORT is invalid')
-  const user = process.env.SMTP_USER?.trim()
+  const user = process.env.SMTP_USER?.trim() || 'krupim@ktc.ac.th'
   const pass = process.env.SMTP_PASS
   mailRuntime.__krupimMailer = nodemailer.createTransport({
     host,
     port,
-    secure: booleanEnv(process.env.SMTP_SECURE),
+    secure: booleanEnv(process.env.SMTP_SECURE) || port === 465,
     ...(user && pass ? { auth: { user, pass } } : {}),
     connectionTimeout: 8_000,
     greetingTimeout: 8_000,
@@ -56,7 +186,7 @@ export function getPublicAppUrl() {
 }
 
 export function getAdminNotificationEmail() {
-  return process.env.ADMIN_NOTIFICATION_EMAIL?.trim() || 'krupim@ktc.ac.th'
+  return cachedSmtpConfig?.config.adminEmail || process.env.ADMIN_NOTIFICATION_EMAIL?.trim() || 'krupim@ktc.ac.th'
 }
 
 export async function sendPasswordResetEmail(input: {
@@ -67,9 +197,10 @@ export async function sendPasswordResetEmail(input: {
 }) {
   const safeName = escapeHtml(input.name || 'ผู้ใช้งาน')
   const safeUrl = escapeHtml(input.resetUrl)
-  const from = process.env.SMTP_FROM?.trim() || 'KruPIM FINE Model <no-reply@krupim.local>'
-  return transporter().sendMail({
-    from,
+  const config = await getEffectiveSmtpConfig()
+  const transport = await getMailTransporter()
+  return transport.sendMail({
+    from: config.from,
     to: input.to,
     subject: 'ตั้งรหัสผ่านใหม่สำหรับ KruPIM FINE Model',
     text: `สวัสดี ${input.name || 'ผู้ใช้งาน'}\n\nเปิดลิงก์นี้เพื่อตั้งรหัสผ่านใหม่ภายใน ${input.expiresMinutes} นาที:\n${input.resetUrl}\n\nหากคุณไม่ได้ส่งคำขอนี้ สามารถละเว้นอีเมลฉบับนี้ได้`,
@@ -98,7 +229,8 @@ export async function sendAssignmentSubmissionEmail(input: {
   const safeAttachmentName = input.attachmentName ? escapeHtml(input.attachmentName) : ''
   const safeAttachmentUrl = input.attachmentUrl ? escapeHtml(input.attachmentUrl) : ''
   const safeReviewUrl = escapeHtml(input.reviewUrl)
-  const from = process.env.SMTP_FROM?.trim() || 'KruPIM FINE Model <no-reply@krupim.local>'
+  const config = await getEffectiveSmtpConfig()
+  const transport = await getMailTransporter()
 
   const subject = `[KruPIM FINE Model] นักเรียนส่งงาน: ${input.studentName} (${input.className}) - ${input.assignmentTitle}`
 
@@ -152,8 +284,8 @@ export async function sendAssignmentSubmissionEmail(input: {
     </div>
   `
 
-  return transporter().sendMail({
-    from,
+  return transport.sendMail({
+    from: config.from,
     to: input.to,
     subject,
     text: textContent,
