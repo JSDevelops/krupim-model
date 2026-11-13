@@ -4,6 +4,7 @@ import { queryDb, withTransaction, type DbResult } from '@/lib/db'
 import { apiErrorResponse, guardApi, getDatabase, ApiError } from '../../_lib/auth'
 import { passwordPolicyError } from '@/lib/passwordPolicy'
 import { removeLocalStoredFiles } from '@/lib/localFileStorage'
+import { sendTeacherApprovalEmail, smtpConfigured } from '@/lib/mail'
 
 const developerOnly = ['developer'] as const
 const managedRoles = ['teacher', 'student'] as const
@@ -213,6 +214,20 @@ export async function PATCH(req: NextRequest) {
         INSERT INTO notifications (user_id,title,message,type,link_url)
         VALUES ($1::uuid,'บัญชีครูได้รับการอนุมัติแล้ว','คุณสามารถเข้าใช้งาน Teacher Console ได้แล้ว','success','/teacher/dashboard')
       `, [id])
+
+      if (smtpConfigured()) {
+        queryDb<{ name: string; email: string }>('SELECT name, email FROM profiles WHERE id=$1::uuid', [id])
+          .then(res => {
+            const teacher = res.rows[0]
+            if (teacher?.email) {
+              return sendTeacherApprovalEmail({
+                to: teacher.email,
+                teacherName: teacher.name,
+              })
+            }
+          })
+          .catch(err => console.warn('Failed to send teacher approval email:', err))
+      }
     }
     await queryDb(`INSERT INTO audit_logs(actor_id,action,entity_type,entity_id,details_json) VALUES($1::uuid,$2,'profile',$3,'{}'::jsonb)`, [actor.id, action, id])
     return NextResponse.json({ ok: true })

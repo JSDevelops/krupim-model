@@ -114,6 +114,10 @@ export default function AdminUsersPage() {
     edit: false,
     editConfirm: false,
   })
+  const [mailTarget, setMailTarget] = useState<UserItem | null>(null)
+  const [mailSubject, setMailSubject] = useState('')
+  const [mailMessage, setMailMessage] = useState('')
+  const [mailSending, setMailSending] = useState(false)
 
   const loadUsers = useCallback(async (signal?: AbortSignal) => {
     const response = await authenticatedFetch('/api/admin/users', { signal })
@@ -314,6 +318,40 @@ export default function AdminUsersPage() {
       toast.error(editError instanceof Error ? editError.message : 'ไม่สามารถแก้ไขบัญชีได้')
     } finally {
       setBusyAction(null)
+    }
+  }
+
+  async function handleSendCustomMail(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    if (!mailTarget?.email) {
+      toast.warning('ผู้ใช้งานนี้ไม่มีที่อยู่อีเมล')
+      return
+    }
+    if (!mailSubject.trim() || !mailMessage.trim()) {
+      toast.warning('กรุณากรอกหัวข้อและข้อความตอบกลับ')
+      return
+    }
+    setMailSending(true)
+    try {
+      const response = await authenticatedFetch('/api/admin/mail/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: mailTarget.email,
+          recipientName: mailTarget.name,
+          subject: mailSubject.trim(),
+          message: mailMessage.trim(),
+        }),
+      })
+      if (!response.ok) throw new Error(await getResponseError(response))
+      toast.success(`ส่งอีเมลตอบกลับไปยัง ${mailTarget.email} เรียบร้อยแล้ว`)
+      setMailTarget(null)
+      setMailSubject('')
+      setMailMessage('')
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'ส่งอีเมลไม่สำเร็จ กรุณาตรวจสอบการตั้งค่า SMTP')
+    } finally {
+      setMailSending(false)
     }
   }
 
@@ -538,6 +576,20 @@ export default function AdminUsersPage() {
                       <button
                         type="button"
                         className={styles.iconButton}
+                        aria-label={`ส่งอีเมลตอบกลับ ${user.name}`}
+                        title="ส่งอีเมลตอบกลับ"
+                        onClick={() => {
+                          setMailTarget(user)
+                          setMailSubject('แจ้งข้อมูลเพิ่มเติมเกี่ยวกับบัญชีผู้ใช้งาน FINE Model')
+                          setMailMessage(`เรียน คุณครู ${user.name},\n\nตามที่ท่านได้ลงทะเบียนขอเปิดใช้งานบัญชีครูผู้สอนในระบบ FINE MODEL นั้น\n\n`)
+                        }}
+                        disabled={isBusy}
+                      >
+                        <AdminIcon name="mail" size={15} />
+                      </button>
+                      <button
+                        type="button"
+                        className={styles.iconButton}
                         aria-label={`แก้ไขบัญชี ${user.name}`}
                         title="แก้ไขข้อมูล"
                         onClick={() => openEditUser(user)}
@@ -567,6 +619,20 @@ export default function AdminUsersPage() {
                     </>
                   ) : (
                     <>
+                      <button
+                        type="button"
+                        className={styles.iconButton}
+                        aria-label={`ส่งอีเมลถึง ${user.name}`}
+                        title="ส่งอีเมลตอบกลับ"
+                        onClick={() => {
+                          setMailTarget(user)
+                          setMailSubject('แจ้งข้อมูลจากผู้ดูแลระบบ FINE Model')
+                          setMailMessage(`สวัสดี ${user.name},\n\n`)
+                        }}
+                        disabled={isBusy}
+                      >
+                        <AdminIcon name="mail" size={15} />
+                      </button>
                       {user.role === 'teacher' && user.status === 'active' && (
                         <button
                           type="button"
@@ -892,6 +958,92 @@ export default function AdminUsersPage() {
                 <button type="submit" className={styles.primaryButton} disabled={Boolean(busyAction)}>
                   <AdminIcon name={busyAction?.startsWith('update:') ? 'clock' : 'check'} size={17} />
                   {busyAction?.startsWith('update:') ? 'กำลังบันทึกข้อมูล' : 'บันทึกการแก้ไข'}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
+
+      {mailTarget && (
+        <div className={styles.modalOverlay} onMouseDown={event => {
+          if (event.target === event.currentTarget && !mailSending) setMailTarget(null)
+        }}>
+          <section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="mail-title">
+            <header className={styles.modalHeader}>
+              <div>
+                <span className={styles.modalBadge}>✉️ ตอบกลับทางอีเมล (EMAIL DISPATCH)</span>
+                <h2 id="mail-title">ส่งอีเมลถึง {mailTarget.name}</h2>
+                <p>ที่อยู่อีเมลผู้รับ: <strong>{mailTarget.email}</strong></p>
+              </div>
+              <button
+                type="button"
+                className={styles.modalClose}
+                onClick={() => setMailTarget(null)}
+                aria-label="ปิดหน้าต่าง"
+                disabled={mailSending}
+              >
+                <AdminIcon name="close" size={18} />
+              </button>
+            </header>
+
+            <form onSubmit={handleSendCustomMail}>
+              <div className={styles.formGrid}>
+                <label>
+                  <span>หัวข้ออีเมล</span>
+                  <input
+                    value={mailSubject}
+                    onChange={e => setMailSubject(e.target.value)}
+                    placeholder="เช่น แจ้งข้อมูลการใช้งาน หรือ ตอบกลับการติดต่อ"
+                    required
+                    disabled={mailSending}
+                  />
+                </label>
+
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', margin: '4px 0 10px' }}>
+                  <button
+                    type="button"
+                    style={{ fontSize: '11.5px', padding: '4px 10px', borderRadius: '999px', border: '1px solid #cce0d6', background: '#f4fbf7', color: '#1f5940', cursor: 'pointer' }}
+                    onClick={() => {
+                      setMailSubject('แจ้งผลการอนุมัติบัญชีครูผู้สอน FINE Model')
+                      setMailMessage(`เรียน คุณครู ${mailTarget.name},\n\nบัญชีผู้ใช้งานครูผู้สอนของคุณได้รับการอนุมัติเรียบร้อยแล้ว ท่านสามารถเข้าสู่ระบบและเริ่มต้นสร้างห้องเรียนได้ทันทีที่ https://www.krupim-finemodel3d-ar.com/role-select\n\nด้วยความเคารพอย่างสูง,\nนางสาวอนัญญา วิชัยผิน (ครูพิม)`)
+                    }}
+                  >
+                    + ข้อความอนุมัติบัญชี
+                  </button>
+                  <button
+                    type="button"
+                    style={{ fontSize: '11.5px', padding: '4px 10px', borderRadius: '999px', border: '1px solid #cce0d6', background: '#f4fbf7', color: '#1f5940', cursor: 'pointer' }}
+                    onClick={() => {
+                      setMailSubject('แจ้งข้อมูลเพิ่มเติมเกี่ยวกับบัญชีผู้ใช้งาน FINE Model')
+                      setMailMessage(`เรียน คุณครู ${mailTarget.name},\n\nผู้ดูแลระบบขอสอบถามข้อมูลเพิ่มเติมเกี่ยวกับสถานศึกษา/กลุ่มวิชาที่ท่านจัดการเรียนการสอน เพื่ออำนวยความสะดวกในการจัดสรรโควตาและคู่มือการสอนให้ตรงจุดประสงค์\n\nด้วยความเคารพอย่างสูง,\nนางสาวอนัญญา วิชัยผิน (ครูพิม)`)
+                    }}
+                  >
+                    + ขอข้อมูลเพิ่มเติม
+                  </button>
+                </div>
+
+                <label>
+                  <span>เนื้อหาข้อความ</span>
+                  <textarea
+                    rows={6}
+                    value={mailMessage}
+                    onChange={e => setMailMessage(e.target.value)}
+                    placeholder="พิมพ์ข้อความตอบกลับหรือคำแนะนำที่ต้องการส่งถึงผู้ใช้งาน..."
+                    required
+                    disabled={mailSending}
+                    style={{ width: '100%', fontFamily: 'inherit', padding: '12px', borderRadius: '10px', border: '1px solid #d5e0da', resize: 'vertical' }}
+                  />
+                </label>
+              </div>
+
+              <div className={styles.modalActions}>
+                <button type="button" onClick={() => setMailTarget(null)} disabled={mailSending}>
+                  ยกเลิก
+                </button>
+                <button type="submit" className={styles.primaryButton} disabled={mailSending}>
+                  <AdminIcon name={mailSending ? 'clock' : 'check'} size={17} />
+                  {mailSending ? 'กำลังส่งอีเมล...' : 'ส่งอีเมลทันที'}
                 </button>
               </div>
             </form>

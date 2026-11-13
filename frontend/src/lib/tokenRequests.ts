@@ -5,6 +5,11 @@ import {
   type TokenRequestRow,
   REQUEST_TYPE_LABELS,
 } from './tokenRequestTypes'
+import {
+  sendAdminNewTokenRequestEmail,
+  sendTokenRequestApprovalEmail,
+  smtpConfigured,
+} from './mail'
 
 export type { TokenRequestType, TokenRequestStatus, TokenRequestRow }
 export { REQUEST_TYPE_LABELS }
@@ -91,6 +96,21 @@ export async function createTokenRequest(input: {
         'คำขอเพิ่มโควต้า AI Token ใหม่',
         `ครู ${input.teacherName}${schoolText} ส่งคำขอ: ${typeLabel}`,
       ])
+    }
+
+    if (smtpConfigured()) {
+      queryDb<{ email: string }>('SELECT email FROM profiles WHERE id = $1::uuid', [input.userId])
+        .then(res => {
+          const teacherEmail = res.rows[0]?.email || input.contactChannel || 'ไม่ระบุอีเมล'
+          return sendAdminNewTokenRequestEmail({
+            teacherName: input.teacherName,
+            teacherEmail,
+            targetClass: input.packageName || `กลุ่มนักเรียน (${input.studentCount || 30} คน)`,
+            requestedQuota: input.studentCount ? input.studentCount * 50 : 1500,
+            reason: input.notes || REQUEST_TYPE_LABELS[input.requestType],
+          })
+        })
+        .catch(err => console.warn('Failed to send admin token request email:', err))
     }
   } catch (err) {
     console.warn('Failed to notify admins of token request:', err)
@@ -195,6 +215,23 @@ export async function updateTokenRequestStatus(
         'อนุมัติคำขอโควต้า AI แล้ว 🎉',
         input.adminNotes || `ผู้ดูแลระบบอนุมัติคำขอของคุณแล้ว${quotaMsg} สามารถเข้าใช้งานต่อได้ทันที`,
       ])
+
+      if (smtpConfigured()) {
+        queryDb<{ email: string; name: string }>('SELECT email, name FROM profiles WHERE id = $1::uuid', [updated.user_id])
+          .then(res => {
+            const teacher = res.rows[0]
+            if (teacher?.email) {
+              return sendTokenRequestApprovalEmail({
+                to: teacher.email,
+                teacherName: teacher.name || updated.teacher_name,
+                targetClass: updated.package_name || 'ชั้นเรียนของคุณ',
+                approvedQuota: input.approvedQuota || 1500,
+                adminNotes: input.adminNotes,
+              })
+            }
+          })
+          .catch(err => console.warn('Failed to send token approval email:', err))
+      }
     } else {
       await queryDb(`
         INSERT INTO notifications (user_id, title, message, type, link_url)

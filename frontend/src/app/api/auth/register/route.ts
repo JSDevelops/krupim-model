@@ -5,6 +5,7 @@ import { createSessionToken, setSessionCookie, type SessionRole } from '@/lib/se
 import { apiErrorResponse, enforceRateLimit, ApiError } from '../../_lib/auth'
 import { passwordPolicyError } from '@/lib/passwordPolicy'
 import { verifyRecaptcha } from '@/lib/recaptcha'
+import { sendAdminNewTeacherPendingEmail, smtpConfigured } from '@/lib/mail'
 
 type InviteRow = {
   short_code: string
@@ -104,6 +105,14 @@ export async function POST(request: NextRequest) {
           FROM profiles
           WHERE role='developer' AND approval_status='active'
         `, [`${name} (${email}) รอการอนุมัติ`])
+
+        if (smtpConfigured()) {
+          sendAdminNewTeacherPendingEmail({
+            teacherName: name,
+            teacherEmail: email,
+            schoolName,
+          }).catch(err => console.warn('Failed to send admin new teacher pending email:', err))
+        }
       }
 
       if (invite?.class_id) {
