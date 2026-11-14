@@ -358,7 +358,10 @@ export default function LearnPage() {
                             <span className={styles.fineCardAction}>ไปดูวิดีโอ & ฝึกพูด →</span>
                           </Link>
 
-                          <Link href={`/student/exhibit?planId=${encodeURIComponent(lesson.id)}`} className={styles.fineActivityCard}>
+                          <Link
+                            href={`/student/exhibit?planId=week-${(lesson.weeks || lesson.title || '1').match(/\d+/)?.[0] || '1'}`}
+                            className={styles.fineActivityCard}
+                          >
                             <div>
                               <div className={styles.fineCardTop}>
                                 <span className={styles.fineBadgeE}>[E] Exhibit</span>

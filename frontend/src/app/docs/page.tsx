@@ -579,14 +579,14 @@ export default function DocsPage() {
                     <div className={styles.topicCardHeader}>
                       <h3 className={styles.topicTitle}>
                         <span className={styles.topicNumber}>3.2</span>
-                        <span>การมอบหมายบทเรียนประจำสัปดาห์ (Assignment Management)</span>
+                        <span>การสร้างแบบทดสอบ &amp; การประเมินประจำสัปดาห์ (Assessment Management)</span>
                       </h3>
                     </div>
                     <div className={styles.topicCardBody}>
                       <div className={styles.noteBox}>
                         <span>📌</span>
                         <div>
-                          <strong>เฉพาะบทบาทครู:</strong> หน้าจัดการบทเรียนประจำสัปดาห์ (<code>/teacher/assignments</code>) 
+                          <strong>เฉพาะบทบาทครู:</strong> หน้าจัดการแบบทดสอบ &amp; การประเมินประจำสัปดาห์ (<code>/teacher/assignments</code>) 
                           ถูกสงวนไว้ให้ครูผู้สอนเป็นผู้ควบคุมการมอบหมายงานแก่นักเรียน โดยมีฟิลด์ความปลอดภัย <code>is_published</code> และ <code>available_from</code> ควบคุมการเปิด-ปิดบทเรียน
                         </div>
                       </div>
@@ -594,7 +594,7 @@ export default function DocsPage() {
                       <ol className={styles.stepList}>
                         <li className={styles.stepItem}>
                           <span className={styles.stepBadge}>1</span>
-                          <div>เลือกเมนู <strong>&quot;บทเรียนประจำสัปดาห์&quot;</strong> แล้วกด <code>+ สร้างการเรียนรู้</code></div>
+                          <div>เลือกเมนู <strong>&quot;แบบทดสอบ &amp; การประเมินประจำสัปดาห์&quot;</strong> แล้วกด <code>+ สร้างแบบทดสอบ / งานประเมิน</code></div>
                         </li>
                         <li className={styles.stepItem}>
                           <span className={styles.stepBadge}>2</span>

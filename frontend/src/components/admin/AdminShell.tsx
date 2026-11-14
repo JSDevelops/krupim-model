@@ -88,7 +88,7 @@ const teacherNavigation: Array<{ label: string; items: NavigationItem[] }> = [
     items: [
       { href: '/teacher/classes', label: 'ห้องเรียน', description: 'รายวิชาและสมาชิกในชั้น', icon: 'school' },
       { href: '/teacher/students', label: 'นักเรียน', description: 'ทะเบียน สิทธิ์ และผลการเรียน', icon: 'student' },
-      { href: '/teacher/assignments', label: 'บทเรียนประจำสัปดาห์', description: 'มอบหมาย ตรวจ และให้คะแนน', icon: 'score' },
+      { href: '/teacher/assignments', label: 'แบบทดสอบ & ประเมินสัปดาห์', description: 'แบบทดสอบย่อย 1-18 และคะแนน KSA-C', icon: 'score' },
     ],
   },
   {
@@ -106,7 +106,7 @@ const pageTitles: Record<string, string> = {
   '/admin/classes': 'ห้องเรียนทั้งหมด',
   '/admin/students': 'ทะเบียนนักเรียน',
   '/admin/lessons': 'แผนการสอนทั้งหมด',
-  '/admin/assignments': 'บทเรียนประจำสัปดาห์',
+  '/admin/assignments': 'แบบทดสอบ & การประเมินประจำสัปดาห์',
   '/admin/certificates': 'ใบรับรองสมรรถนะ',
   '/admin/vocabulary': 'คลังคำศัพท์',
   '/admin/ar-models': 'โมเดล AR 3D',
@@ -121,7 +121,7 @@ const pageTitles: Record<string, string> = {
   '/teacher/vocab': 'คลังคำศัพท์',
   '/teacher/classes': 'จัดการห้องเรียน',
   '/teacher/students': 'จัดการนักเรียน',
-  '/teacher/assignments': 'บทเรียนประจำสัปดาห์',
+  '/teacher/assignments': 'แบบทดสอบ & การประเมินประจำสัปดาห์',
   '/teacher/manual': 'คู่มือการใช้งาน',
   '/teacher/profile': 'ข้อมูลส่วนตัว',
 }

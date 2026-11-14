@@ -142,13 +142,20 @@ export default function Dashboard() {
                   href={data.latestLesson.id ? `/student/learn?planId=${encodeURIComponent(data.latestLesson.id)}` : '/student/learn'}
                   className={styles.weeklyFocusPrimaryBtn}
                 >
-                  เริ่มบทเรียนสัปดาห์นี้ (F · I · N · E) <StudentIcon name="arrowRight" size={15} />
+                  เริ่มเรียนรู้สัปดาห์นี้ (F · I · N) <StudentIcon name="arrowRight" size={15} />
                 </Link>
                 <Link
                   href={data.latestLesson.id ? `/student/navigate?planId=${encodeURIComponent(data.latestLesson.id)}` : '/student/navigate'}
                   className={styles.weeklyFocusSecondaryBtn}
                 >
                   🎬 วิดีโอสถานการณ์ (N)
+                </Link>
+                <Link
+                  href={`/student/exhibit?planId=week-${(data.latestLesson.weeks || data.latestLesson.title || '1').match(/\d+/)?.[0] || '1'}`}
+                  className={styles.weeklyFocusSecondaryBtn}
+                  style={{ background: '#fdf9ee', borderColor: '#d8bd67', color: '#7a5a14' }}
+                >
+                  📝 แบบทดสอบสัปดาห์นี้ (E)
                 </Link>
               </div>
             </article>

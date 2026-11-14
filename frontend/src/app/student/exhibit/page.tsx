@@ -10,7 +10,7 @@ import styles from '../studentPages.module.css'
 type HistoryType = 'chat' | 'live' | 'simulation'
 type HistoryEntry = { id: string; occurredAt: string; type: HistoryType; preview: string; score: number | null; durationMinutes: number }
 type Scores = { averageScore: number; knowledgeScore: number; skillsScore: number; attitudeScore: number; competencyScore: number; assessments: number }
-type QuizQuestion = { question: string; options: string[]; correct: number }
+type QuizQuestion = { question: string; options: string[]; correct: number; explanation?: string }
 
 type ExhibitTask = {
   id: string
@@ -22,11 +22,11 @@ type ExhibitTask = {
 
 const emptyScores: Scores = { averageScore: 0, knowledgeScore: 0, skillsScore: 0, attitudeScore: 0, competencyScore: 0, assessments: 0 }
 const quizBank: QuizQuestion[] = [
-  { question: 'What is a dinner fork used for?', options: ['Soup course', 'Main course', 'Dessert', 'Bread'], correct: 1 },
-  { question: 'Where is the water goblet placed?', options: ['Left of the plate', 'Below the knife', 'Above the knife', 'Next to the fork'], correct: 2 },
-  { question: 'What does Outside-In mean in table setting?', options: ['Use center utensils first', 'Use outermost utensils first', 'Use left side first', 'Use right side first'], correct: 1 },
-  { question: 'Which phrase is appropriate for welcoming a guest?', options: ['What do you want?', 'Good evening. Welcome to our restaurant.', 'Sit down.', 'You want food?'], correct: 1 },
-  { question: 'How should you apologize for a delay?', options: ['Sorry.', 'Wait.', 'I apologize for the inconvenience.', 'Not my fault.'], correct: 2 },
+  { question: 'What is a dinner fork used for?', options: ['Soup course', 'Main course', 'Dessert', 'Bread'], correct: 1, explanation: 'ส้อมอาหารค่ำ (Dinner Fork) ใช้สำหรับอาหารจานหลัก' },
+  { question: 'Where is the water goblet placed?', options: ['Left of the plate', 'Below the knife', 'Above the knife', 'Next to the fork'], correct: 2, explanation: 'Water Goblet จัดวางอยู่เหนือปลายมีด Dinner Knife ด้านขวา' },
+  { question: 'What does Outside-In mean in table setting?', options: ['Use center utensils first', 'Use outermost utensils first', 'Use left side first', 'Use right side first'], correct: 1, explanation: 'Outside-In คือการใช้อุปกรณ์จากด้านนอกสุดเข้าหาด้านในตามลำดับคอร์สอาหาร' },
+  { question: 'Which phrase is appropriate for welcoming a guest?', options: ['What do you want?', 'Good evening. Welcome to our restaurant.', 'Sit down.', 'You want food?'], correct: 1, explanation: 'Good evening. Welcome to our restaurant. เป็นประโยคต้อนรับที่สุภาพตามมาตรฐานสากล' },
+  { question: 'How should you apologize for a delay?', options: ['Sorry.', 'Wait.', 'I apologize for the inconvenience.', 'Not my fault.'], correct: 2, explanation: 'I apologize for the inconvenience. แสดงความขออภัยอย่างจริงใจและเป็นมืออาชีพ' },
 ]
 
 function historyDetails(type: HistoryType): { label: string; icon: StudentIconName; className: string } {
@@ -42,7 +42,9 @@ function formatDate(value: string) {
 
 type QuizTopic = {
   topicId: string
+  weekNum?: number
   topicTitle: string
+  category?: 'weekly' | 'comprehensive'
   questions: QuizQuestion[]
 }
 
@@ -73,22 +75,33 @@ export default function ExhibitPage() {
           authenticatedFetch('/api/student/dashboard', { signal: controller.signal }),
         ])
         if (response.ok) {
-          const payload = await response.json() as { history?: HistoryEntry[]; scores?: Scores; quizBank?: QuizTopic[] }
+          const payload = await response.json() as {
+            history?: HistoryEntry[]
+            scores?: Scores
+            quizBank?: QuizTopic[]
+            currentWeekNum?: number | null
+            currentTopicId?: string
+          }
           setHistory(payload.history || [])
           setScores(payload.scores || emptyScores)
           if (payload.quizBank?.length) {
             setQuizTopics(payload.quizBank)
             const p = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('planId') : null
+            let targetTopicId = payload.currentTopicId || 'week-1'
             if (p) {
               setActiveTab('quiz')
-              setSelectedTopicId(p)
-              const found = payload.quizBank.find(t => t.topicId === p)
-              if (found && found.questions.length) {
-                setActiveQuestions(found.questions)
+              if (p.startsWith('week-')) {
+                targetTopicId = p
               } else {
-                const allQ = payload.quizBank.flatMap(t => t.questions)
-                setActiveQuestions(allQ.length ? allQ : quizBank)
+                const match = p.match(/\d+/)
+                if (match) targetTopicId = `week-${match[0]}`
+                else targetTopicId = p
               }
+            }
+            setSelectedTopicId(targetTopicId)
+            const found = payload.quizBank.find(t => t.topicId === targetTopicId)
+            if (found && found.questions.length) {
+              setActiveQuestions(found.questions)
             } else {
               const allQ = payload.quizBank.flatMap(t => t.questions)
               setActiveQuestions(allQ.length ? allQ : quizBank)
@@ -143,17 +156,24 @@ export default function ExhibitPage() {
     timerRef.current = setTimeout(() => {
       const next = [...answers, correct]
       setAnswers(next)
-      if (questionIndex < activeQuestions.length - 1) { setQuestionIndex(value => value + 1); setSelected(null) }
-      else {
+      if (questionIndex < activeQuestions.length - 1) {
+        setQuestionIndex(value => value + 1)
+        setSelected(null)
+      } else {
         setQuizDone(true)
         const score = Math.round((next.filter(Boolean).length / activeQuestions.length) * 100)
         const nowStr = new Intl.DateTimeFormat('th-TH', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date())
         setRecordedAt(nowStr)
 
+        const currentTopic = quizTopics.find(t => t.topicId === selectedTopicId)
         void authenticatedFetch('/api/student/exhibit', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ score })
+          body: JSON.stringify({
+            score,
+            topicId: selectedTopicId,
+            topicTitle: currentTopic?.topicTitle || 'แบบทดสอบ Exhibit Quiz',
+          })
         }).then(() => {
           setScores(prev => ({
             ...prev,
@@ -164,7 +184,7 @@ export default function ExhibitPage() {
           toast.success('บันทึกผลการทดสอบเข้าระบบแล้ว', { description: `คะแนนของคุณ: ${score}%` })
         }).catch(error => console.warn('Unable to save quiz score:', error))
       }
-    }, 650)
+    }, 1200)
   }
 
   function resetQuiz() {
@@ -178,12 +198,13 @@ export default function ExhibitPage() {
     setSubmittingAssignment(true)
     try {
       const correctCount = answers.filter(Boolean).length
+      const currentTopic = quizTopics.find(t => t.topicId === selectedTopicId)
       const response = await authenticatedFetch('/api/student/assignments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           assignmentId: pendingExhibitTask.id,
-          attachmentName: `ผลการทดสอบ Exhibit Quiz (${quizScore}%) - ถูก ${correctCount}/${quizBank.length} ข้อ`,
+          attachmentName: `ผลแบบทดสอบ ${currentTopic?.topicTitle || 'Exhibit Quiz'} (${quizScore}%) - ถูก ${correctCount}/${activeQuestions.length} ข้อ`,
           attachmentUrl: typeof window !== 'undefined' ? window.location.href : '',
         }),
       })
@@ -271,11 +292,11 @@ export default function ExhibitPage() {
         </article>})}</div> : <div className={`${styles.card} ${styles.empty}`}><StudentIcon name="history" size={26} /><strong>ยังไม่มีประวัติการฝึก</strong><span>เริ่มฝึกจากหน้า Interact หรือ Navigate แล้วผลจะปรากฏในหน้านี้</span></div>}
       </>}
 
-      {activeTab === 'quiz' && <>{!quizStarted && !quizDone && <div className={`${styles.card} ${styles.quizIntro}`}><span className={styles.largeIcon}><StudentIcon name="exhibit" size={27} /></span><h2>แบบทดสอบ F&amp;B Service</h2><p>ทดสอบคำศัพท์และการเลือกประโยคในสถานการณ์งานบริการ</p>
+      {activeTab === 'quiz' && <>{!quizStarted && !quizDone && <div className={`${styles.card} ${styles.quizIntro}`}><span className={styles.largeIcon}><StudentIcon name="exhibit" size={27} /></span><h2>แบบทดสอบ &amp; การประเมินสมรรถนะ (Exhibit Quiz)</h2><p>ทดสอบความรู้คำศัพท์และการตัดสินใจแก้ปัญหาในสถานการณ์จริงประจำสัปดาห์</p>
         {quizTopics.length > 0 && (
-          <div style={{ margin: '14px 0 20px', width: '100%', maxWidth: 420 }}>
+          <div style={{ margin: '14px 0 20px', width: '100%', maxWidth: 460 }}>
             <label htmlFor="topic-select" style={{ display: 'block', fontSize: 11, color: '#687770', marginBottom: 6 }}>
-              เลือกหมวดหมู่แบบทดสอบ:
+              เลือกชุดแบบทดสอบประจำสัปดาห์ / วัดผลรวม:
             </label>
             <select
               id="topic-select"
@@ -289,19 +310,53 @@ export default function ExhibitPage() {
                 fontSize: 12,
                 background: '#fff',
                 color: '#243b31',
+                fontWeight: 600,
               }}
             >
-              <option value="all">ทุกหมวดหมู่รวมกัน ({quizTopics.flatMap(t => t.questions).length} ข้อ)</option>
-              {quizTopics.map(t => (
-                <option key={t.topicId} value={t.topicId}>
-                  {t.topicTitle} ({t.questions.length} ข้อ)
+              <optgroup label="🏆 แบบทดสอบวัดสมรรถนะรวม">
+                <option value="comprehensive_all">
+                  🏆 แบบทดสอบวัดสมรรถนะรวม F&amp;B Service (5 ข้อ)
                 </option>
-              ))}
+                <option value="all">
+                  ทำแบบทดสอบรวมทุกหมวดหมู่ ({quizTopics.flatMap(t => t.questions).length} ข้อ)
+                </option>
+              </optgroup>
+              <optgroup label="🎯 แบบทดสอบประจำสัปดาห์ (สัปดาห์ที่ 1 - 18)">
+                {quizTopics.filter(t => t.category === 'weekly' || t.topicId.startsWith('week-')).map(t => (
+                  <option key={t.topicId} value={t.topicId}>
+                    {t.topicTitle} ({t.questions.length} ข้อ)
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </div>
         )}
         <div className={styles.factGrid}><div className={styles.fact}><span>จำนวนคำถาม</span><strong>{activeQuestions.length} ข้อ</strong></div><div className={styles.fact}><span>คะแนนผ่าน</span><strong>70%</strong></div><div className={styles.fact}><span>ทักษะที่วัด</span><strong>Knowledge + Skills</strong></div><div className={styles.fact}><span>เวลาโดยประมาณ</span><strong>5 นาที</strong></div></div><button type="button" className={`${styles.button} ${styles.full}`} onClick={() => setQuizStarted(true)}>เริ่มทำแบบทดสอบ <StudentIcon name="arrowRight" size={16} /></button></div>}
-        {quizStarted && !quizDone && <div className={styles.card}><div className={styles.progressRow}><div className={styles.progressTrack}><div className={styles.progressBar} style={{ width: `${((questionIndex + 1) / activeQuestions.length) * 100}%` }} /></div><span>{questionIndex + 1}/{activeQuestions.length}</span></div><span className={styles.questionLabel}>คำถามที่ {questionIndex + 1}</span><h2 className={styles.question}>{activeQuestions[questionIndex].question}</h2><div className={styles.options}>{activeQuestions[questionIndex].options.map((option, index) => { const correct = selected !== null && index === activeQuestions[questionIndex].correct; const wrong = selected === index && !correct; return <button type="button" disabled={selected !== null} className={`${styles.option} ${correct ? styles.optionCorrect : ''} ${wrong ? styles.optionWrong : ''}`} key={option} onClick={() => chooseAnswer(index)}><span className={styles.optionLetter}>{String.fromCharCode(65 + index)}</span><span>{option}</span>{(correct || wrong) && <StudentIcon name={correct ? 'check' : 'x'} size={16} />}</button>})}</div></div>}
+        {quizStarted && !quizDone && <div className={styles.card}><div className={styles.progressRow}><div className={styles.progressTrack}><div className={styles.progressBar} style={{ width: `${((questionIndex + 1) / activeQuestions.length) * 100}%` }} /></div><span>{questionIndex + 1}/{activeQuestions.length}</span></div><span className={styles.questionLabel}>คำถามที่ {questionIndex + 1}</span><h2 className={styles.question}>{activeQuestions[questionIndex].question}</h2><div className={styles.options}>{activeQuestions[questionIndex].options.map((option, index) => { const correct = selected !== null && index === activeQuestions[questionIndex].correct; const wrong = selected === index && !correct; return <button type="button" disabled={selected !== null} className={`${styles.option} ${correct ? styles.optionCorrect : ''} ${wrong ? styles.optionWrong : ''}`} key={option} onClick={() => chooseAnswer(index)}><span className={styles.optionLetter}>{String.fromCharCode(65 + index)}</span><span>{option}</span>{(correct || wrong) && <StudentIcon name={correct ? 'check' : 'x'} size={16} />}</button>})}</div>
+          {selected !== null && activeQuestions[questionIndex].explanation && (
+            <div style={{
+              marginTop: 12,
+              padding: '10px 14px',
+              borderRadius: 10,
+              background: selected === activeQuestions[questionIndex].correct ? '#eaf5ef' : '#fef2f2',
+              border: `1px solid ${selected === activeQuestions[questionIndex].correct ? '#8dbba5' : '#fecaca'}`,
+              color: selected === activeQuestions[questionIndex].correct ? '#1e543b' : '#991b1b',
+              fontSize: '11px',
+              lineHeight: 1.55,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: 8,
+            }}>
+              <span style={{ fontSize: '14px', flexShrink: 0 }}>
+                {selected === activeQuestions[questionIndex].correct ? '💡' : '⚠️'}
+              </span>
+              <div>
+                <strong>{selected === activeQuestions[questionIndex].correct ? 'ตอบถูกต้อง!' : 'เฉลยและคำอธิบาย:'}</strong>{' '}
+                <span>{activeQuestions[questionIndex].explanation}</span>
+              </div>
+            </div>
+          )}
+        </div>}
         {quizDone && <div className={`${styles.card} ${styles.quizResult}`}>
           <span className={styles.largeIcon}><StudentIcon name={quizScore >= 70 ? 'award' : 'refresh'} size={28} /></span>
           <span className={styles.questionLabel}>คะแนนของคุณ</span>

@@ -124,7 +124,7 @@ const activityMeta: Record<
   },
   Exhibit: {
     label: "Exhibit",
-    detail: "สรุปผลงานและสมรรถนะ",
+    detail: "แบบทดสอบ & ประเมินสมรรถนะ",
     icon: "archive",
     tone: "purple",
   },
@@ -435,7 +435,7 @@ function TeacherAssignmentsContent() {
       Familiarize: "กิจกรรม F: สำรวจคำศัพท์และโมเดล 3D (Familiarize)",
       Interact: "กิจกรรม I: ฝึกสื่อสารและโต้ตอบ (Interact)",
       Navigate: "กิจกรรม N: แก้ปัญหาผ่านสถานการณ์ AR (Navigate)",
-      Exhibit: "กิจกรรม E: สรุปผลงานและประเมินผล (Exhibit)",
+      Exhibit: "แบบทดสอบ & ประเมินผล E (Exhibit Quiz)",
     };
 
     setForm((prev) => ({
@@ -477,7 +477,7 @@ function TeacherAssignmentsContent() {
       Familiarize: "กิจกรรม F: สำรวจคำศัพท์และโมเดล 3D (Familiarize)",
       Interact: "กิจกรรม I: ฝึกสื่อสารและโต้ตอบ (Interact)",
       Navigate: "กิจกรรม N: แก้ปัญหาผ่านสถานการณ์ AR (Navigate)",
-      Exhibit: "กิจกรรม E: สรุปผลงานและประเมินผล (Exhibit)",
+      Exhibit: "แบบทดสอบ & ประเมินผล E (Exhibit Quiz)",
     };
 
     let activityDetail = "";
@@ -557,7 +557,7 @@ function TeacherAssignmentsContent() {
       setEditorOpen(false);
       await loadAssignments();
       toast.success(
-        editingId ? "บันทึกการแก้ไขแล้ว" : "สร้างการเรียนรู้แล้ว",
+        editingId ? "บันทึกการแก้ไขแล้ว" : "สร้างแบบทดสอบ/งานประเมินแล้ว",
         { description: form.title },
       );
     } catch (saveError) {
@@ -1096,10 +1096,10 @@ function TeacherAssignmentsContent() {
     <main className={styles.page}>
       <header className={styles.pageHeader}>
         <div>
-          <p>ASSIGNMENT MANAGEMENT</p>
-          <h1>บทเรียนประจำสัปดาห์</h1>
+          <p>WEEKLY ASSESSMENT & QUIZ MANAGEMENT</p>
+          <h1>แบบทดสอบ &amp; การประเมินประจำสัปดาห์</h1>
           <span>
-            มอบหมายงาน ติดตามการส่ง และประเมินผลผู้เรียนตามกระบวนการ FINE Model
+            จัดการแบบทดสอบสัปดาห์ที่ 1 - 18 ตรวจผลงาน และประเมินคะแนนสมรรถนะ KSA-C ตาม FINE Model
           </span>
         </div>
         <div className={styles.headerActions}>
@@ -1118,7 +1118,7 @@ function TeacherAssignmentsContent() {
             onClick={openCreate}
           >
             <AdminIcon name="plus" size={16} />
-            สร้างการเรียนรู้
+            สร้างแบบทดสอบ / งานประเมิน
           </button>
         </div>
       </header>
@@ -1347,7 +1347,7 @@ function TeacherAssignmentsContent() {
                 {assignments.length
                   ? "ลองเปลี่ยนคำค้นหา ห้องเรียน หรือสถานะ"
                   : classrooms.length
-                    ? "สร้างการเรียนรู้แรกให้กับผู้เรียนในห้องของคุณ"
+                    ? "สร้างแบบทดสอบหรือการประเมินแรกให้กับผู้เรียนในห้องของคุณ"
                     : "สร้างห้องเรียนก่อนเริ่มจัดการเรียนรู้"}
               </p>
               <button
@@ -1359,7 +1359,7 @@ function TeacherAssignmentsContent() {
                 }
               >
                 <AdminIcon name="plus" size={16} />
-                {classrooms.length ? "สร้างการเรียนรู้แรก" : "สร้างห้องเรียน"}
+                {classrooms.length ? "สร้างแบบทดสอบ/ประเมินแรก" : "สร้างห้องเรียน"}
               </button>
             </div>
           )}
@@ -1387,9 +1387,9 @@ function TeacherAssignmentsContent() {
               </span>
               <div>
                 <h2 id="assignment-editor-title">
-                  {editingId ? "แก้ไขการเรียนรู้" : "สร้างการเรียนรู้"}
+                  {editingId ? "แก้ไขแบบทดสอบ / งานประเมิน" : "สร้างแบบทดสอบ & การประเมินประจำสัปดาห์"}
                 </h2>
-                <p>กำหนดกิจกรรม ห้องเรียน คะแนน และวันส่งงาน</p>
+                <p>กำหนดแบบทดสอบย่อย/ภารกิจประเมิน ห้องเรียน คะแนน และกำหนดส่ง</p>
               </div>
               <button
                 type="button"
@@ -1670,7 +1670,7 @@ function TeacherAssignmentsContent() {
                       name={busy === "save" ? "clock" : "check"}
                       size={16}
                     />
-                    {editingId ? "บันทึกการแก้ไข" : "สร้างการเรียนรู้"}
+                    {editingId ? "บันทึกการแก้ไข" : "สร้างแบบทดสอบ / งานประเมิน"}
                   </button>
                 </footer>
               </form>

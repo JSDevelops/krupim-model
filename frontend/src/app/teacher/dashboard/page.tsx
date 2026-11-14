@@ -373,7 +373,7 @@ export default function TeacherDashboard() {
           <h1 id="teacher-dashboard-title">สวัสดี {user?.name || 'คุณครูผู้สอน'}</h1>
           <span>จัดการชั้นเรียน ติดตามงานประเมิน และดูพัฒนาการของนักเรียนได้ครบในหน้าเดียว</span>
           <div className={styles.heroActions}>
-            <Link href="/teacher/assignments"><AdminIcon name="plus" size={16} /> สร้างการเรียนรู้</Link>
+            <Link href="/teacher/assignments"><AdminIcon name="plus" size={16} /> สร้างแบบทดสอบ/ประเมิน</Link>
             <Link href="/teacher/students"><AdminIcon name="student" size={16} /> จัดการนักเรียน</Link>
           </div>
           <dl className={styles.heroFacts}>
@@ -595,7 +595,7 @@ export default function TeacherDashboard() {
             <div className={styles.quickLinks}>
               <Link href="/teacher/students"><span><AdminIcon name="student" size={17} /></span><div><strong>จัดการนักเรียน</strong><small>ทะเบียน สิทธิ์ และคะแนน</small></div><AdminIcon name="chevron" size={15} /></Link>
               <Link href="/teacher/lessons"><span><AdminIcon name="content" size={17} /></span><div><strong>แผนการสอน</strong><small>สร้างและจัดลำดับบทเรียน</small></div><AdminIcon name="chevron" size={15} /></Link>
-              <Link href="/teacher/assignments"><span><AdminIcon name="score" size={17} /></span><div><strong>มอบหมายงาน</strong><small>กิจกรรมและการประเมิน</small></div><AdminIcon name="chevron" size={15} /></Link>
+              <Link href="/teacher/assignments"><span><AdminIcon name="score" size={17} /></span><div><strong>แบบทดสอบ & ประเมินสัปดาห์</strong><small>แบบทดสอบย่อย 1-18 และคะแนน KSA-C</small></div><AdminIcon name="chevron" size={15} /></Link>
             </div>
           </article>
         </div>
