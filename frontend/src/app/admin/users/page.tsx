@@ -1033,8 +1033,8 @@ export default function AdminUsersPage() {
                       type="button"
                       className={styles.mailPresetBtn}
                       onClick={() => {
-                        setMailSubject('แจ้งผลการอนุมัติบัญชีครูผู้สอน FINE Model')
-                        setMailMessage(`เรียน คุณครู ${mailTarget.name},\n\nผู้ดูแลระบบขอเรียนให้ทราบว่า บัญชีผู้ใช้งานครูผู้สอนของคุณได้รับการอนุมัติเรียบร้อยแล้ว ท่านสามารถเข้าสู่ระบบเพื่อจัดการเรียนการสอนและสร้างห้องเรียนได้ทันทีที่:\nhttps://www.krupim-finemodel3d-ar.com/role-select\n\nด้วยความเคารพอย่างสูง,\nนางสาวอนัญญา วิชัยผิน (ครูพิม)\nผู้ดูแลระบบ FINE MODEL Platform`)
+                        setMailSubject('แจ้งผลการอนุมัติบัญชีผู้ใช้งาน FINE Model')
+                        setMailMessage(`เรียน คุณ${mailTarget.role === 'teacher' ? 'ครู ' : ''}${mailTarget.name},\n\nผู้ดูแลระบบขอเรียนให้ทราบว่า บัญชีผู้ใช้งานระบบ FINE Model ของคุณได้รับการอนุมัติเรียบร้อยแล้ว ท่านสามารถเข้าสู่ระบบเพื่อจัดการเรียนการสอนและสร้างห้องเรียนได้ทันทีที่:\nhttps://www.krupim-finemodel3d-ar.com/role-select\n\nด้วยความเคารพอย่างสูง,\nนางสาวอนัญญา วิชัยผิน (ครูพิม)\nผู้ดูแลระบบ FINE MODEL Platform`)
                       }}
                     >
                       + ข้อความอนุมัติบัญชี
@@ -1043,8 +1043,38 @@ export default function AdminUsersPage() {
                       type="button"
                       className={styles.mailPresetBtn}
                       onClick={() => {
+                        setMailSubject('คำแนะนำการตั้งรหัสผ่านใหม่สำหรับบัญชี FINE Model')
+                        setMailMessage(`เรียน คุณ${mailTarget.role === 'teacher' ? 'ครู ' : ''}${mailTarget.name},\n\nผู้ดูแลระบบได้รับคำร้องขอตั้งรหัสผ่านใหม่สำหรับบัญชีของท่าน (${mailTarget.email}) เรียบร้อยแล้ว\n\nท่านสามารถเข้าสู่ระบบเพื่อตั้งรหัสผ่านใหม่ได้โดยตรงผ่านลิงก์ด้านล่างนี้:\nhttps://www.krupim-finemodel3d-ar.com/forgot-password\n\nขั้นตอนการตั้งรหัสผ่านใหม่:\n1. เปิดลิงก์ด้านบน แล้วกรอกอีเมลบัญชีของท่าน (${mailTarget.email})\n2. กำหนดรหัสผ่านใหม่ที่ต้องการ (ความยาวอย่างน้อย 8 ตัวอักษร)\n3. กดยืนยัน และเข้าสู่ระบบด้วยรหัสผ่านใหม่ได้ทันทีครับ\n\nหากท่านไม่ได้เป็นผู้ส่งคำร้องนี้ หรือติดขัดขั้นตอนใด สามารถตอบกลับอีเมลนี้ได้ทันทีครับ\n\nด้วยความเคารพอย่างสูง,\nนางสาวอนัญญา วิชัยผิน (ครูพิม)\nผู้ดูแลระบบ FINE MODEL Platform`)
+                      }}
+                    >
+                      🔑 + ขอรหัสผ่านใหม่
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.mailPresetBtn}
+                      onClick={() => {
+                        setMailSubject('ตอบกลับการติดต่อสอบถามเรื่องการใช้งานระบบ FINE Model')
+                        setMailMessage(`เรียน คุณ${mailTarget.role === 'teacher' ? 'ครู ' : ''}${mailTarget.name},\n\nตามที่ท่านได้ส่งอีเมลติดต่อสอบถามเข้ามาเรื่องการใช้งานระบบ FINE MODEL AR 3D+AI ทางผู้ดูแลระบบขอเรียนชี้แจงและให้คำแนะนำดังนี้ครับ:\n\n[ พิมพ์รายละเอียดการตอบกลับ หรือวิธีแก้ไขปัญหาที่นี่... ]\n\nท่านสามารถศึกษาคู่มือการใช้งานระบบฉบับสมบูรณ์ได้ที่:\nhttps://www.krupim-finemodel3d-ar.com/docs\n\nหากต้องการสอบถามข้อมูลเพิ่มเติม สามารถตอบกลับอีเมลนี้ได้ตลอดเวลาครับ\n\nด้วยความเคารพอย่างสูง,\nนางสาวอนัญญา วิชัยผิน (ครูพิม)\nผู้ดูแลระบบ FINE MODEL Platform`)
+                      }}
+                    >
+                      💬 + ตอบกลับการติดต่อ
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.mailPresetBtn}
+                      onClick={() => {
+                        setMailSubject('แจ้งเตือน: กำหนดการเข้าเรียนและทำแบบทดสอบประจำสัปดาห์ FINE Model')
+                        setMailMessage(`เรียน คุณ${mailTarget.role === 'teacher' ? 'ครู ' : ''}${mailTarget.name},\n\nขอแจ้งเตือนกำหนดการเข้าศึกษาบทเรียนและทำแบบทดสอบประจำสัปดาห์ในระบบ FINE MODEL Platform\n\nขอความกรุณาท่านเข้าสู่ระบบเพื่อฝึกทักษะการบริการอาหารและเครื่องดื่ม (F·I·N) และทำแบบทดสอบประจำสัปดาห์ขั้น E (Exhibit) ให้เสร็จสิ้นตามกำหนดเวลาครับ\n\nเข้าสู่ระบบได้ที่:\nhttps://www.krupim-finemodel3d-ar.com/role-select\n\nด้วยความเคารพอย่างสูง,\nนางสาวอนัญญา วิชัยผิน (ครูพิม)\nผู้ดูแลระบบ FINE MODEL Platform`)
+                      }}
+                    >
+                      ⏰ + แจ้งเตือนการเรียน/ประเมิน
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.mailPresetBtn}
+                      onClick={() => {
                         setMailSubject('แจ้งข้อมูลเพิ่มเติมเกี่ยวกับบัญชีผู้ใช้งาน FINE Model')
-                        setMailMessage(`เรียน คุณครู ${mailTarget.name},\n\nผู้ดูแลระบบขอสอบถามข้อมูลเพิ่มเติมเกี่ยวกับสถานศึกษา หรือวิชาที่ท่านจัดการเรียนการสอน เพื่ออำนวยความสะดวกในการจัดสรรโควตาและคู่มือการสอนให้ตรงจุดประสงค์\n\nด้วยความเคารพอย่างสูง,\nนางสาวอนัญญา วิชัยผิน (ครูพิม)\nผู้ดูแลระบบ FINE MODEL Platform`)
+                        setMailMessage(`เรียน คุณ${mailTarget.role === 'teacher' ? 'ครู ' : ''}${mailTarget.name},\n\nผู้ดูแลระบบขอสอบถามข้อมูลเพิ่มเติมเกี่ยวกับสถานศึกษา หรือวิชาที่ท่านจัดการเรียนการสอน เพื่ออำนวยความสะดวกในการจัดสรรโควตาและคู่มือการสอนให้ตรงจุดประสงค์\n\nด้วยความเคารพอย่างสูง,\nนางสาวอนัญญา วิชัยผิน (ครูพิม)\nผู้ดูแลระบบ FINE MODEL Platform`)
                       }}
                     >
                       + ขอข้อมูลเพิ่มเติม
@@ -1055,7 +1085,7 @@ export default function AdminUsersPage() {
                 <label>
                   <span>เนื้อหาข้อความตอบกลับ</span>
                   <textarea
-                    rows={7}
+                    rows={9}
                     className={styles.mailTextarea}
                     value={mailMessage}
                     onChange={e => setMailMessage(e.target.value)}
