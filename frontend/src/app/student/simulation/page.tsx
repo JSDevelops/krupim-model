@@ -1,7 +1,5 @@
-'use client'
+import { redirect } from 'next/navigation'
 
-import SimulationPage from '@/app/simulation/page'
-
-export default function StudentSimulationWrapper() {
-  return <SimulationPage />
+export default function StudentSimulationPage() {
+  redirect('/student/navigate')
 }

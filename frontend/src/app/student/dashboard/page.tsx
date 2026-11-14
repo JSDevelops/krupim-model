@@ -41,7 +41,7 @@ const features: Array<{ href: string; label: string; desc: string; icon: Student
   { href: '/student/learn', label: 'บทเรียน', desc: 'ดูแผนและเป้าหมายการเรียนรู้', icon: 'book' },
   { href: '/student/explore', label: 'สำรวจอุปกรณ์ (F)', desc: 'คำศัพท์ โมเดล 3 มิติ และ AR', icon: 'target' },
   { href: '/student/interact', label: 'ฝึกฟังและพูด (I)', desc: 'ประเมินการออกเสียงรายคำ', icon: 'message' },
-  { href: '/student/simulation', label: 'สถานการณ์จำลอง (N)', desc: 'ฝึกบทบาทงานบริการ 3 มิติ', icon: 'task' },
+  { href: '/student/navigate', label: 'สถานการณ์จำลอง (N)', desc: 'วิดีโอตัวอย่างและฝึกพูดประโยค', icon: 'task' },
   { href: '/student/exhibit', label: 'ทบทวนผล (E)', desc: 'แบบทดสอบและคะแนนสะสม', icon: 'exhibit' },
   { href: '/chat', label: 'AI Chat', desc: 'ถามคำศัพท์และงานบริการ', icon: 'sparkles' },
   { href: '/live', label: 'AI Voice Coach', desc: 'โต้ตอบด้วยเสียงแบบทันที', icon: 'mic' },
@@ -50,7 +50,7 @@ const features: Array<{ href: string; label: string; desc: string; icon: Student
 function path(type: string) {
   const v = type.toLowerCase()
   if (v.includes('interact') || v.includes('speak')) return '/student/interact'
-  if (v.includes('navigate') || v.includes('simulat')) return '/student/simulation'
+  if (v.includes('navigate') || v.includes('simulat')) return '/student/navigate'
   if (v.includes('exhibit') || v.includes('quiz')) return '/student/exhibit'
   return '/student/explore'
 }

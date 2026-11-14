@@ -642,12 +642,19 @@ export default function NavigatePage() {
                     </div>
                   )}
 
-                  <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
+                  <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end', gap: 10, flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className={styles.secondaryButton}
+                      onClick={() => selectView('decision')}
+                    >
+                      <NavigateIcon name="target" size={16} /> ไปทดสอบการตัดสินใจ (Dilemma)
+                    </button>
                     <Link
                       className={styles.launchButton}
-                      href={`/simulation?scenario=${encodeURIComponent(activeScenario.id)}`}
+                      href="/student/exhibit"
                     >
-                      เข้าสู่ห้อง 3D Simulation <NavigateIcon name="arrowRight" size={17} />
+                      ไปขั้นถัดไป: E · Exhibit (สรุปผลและสะสมผลงาน) <NavigateIcon name="arrowRight" size={17} />
                     </Link>
                   </div>
                 </div>
@@ -748,10 +755,10 @@ export default function NavigatePage() {
                 <header className={styles.cardHeader}><span className={`${styles.cardIcon} ${styles.goldIcon}`}><NavigateIcon name="target" /></span><div><h2>ลำดับการฝึก</h2><p>เรียนรู้ให้ครบใน 3 ขั้นตอน</p></div></header>
                 <ol className={styles.steps}>
                   <li><span>01</span><div><strong>ทำความเข้าใจบริบท</strong><p>อ่านบทบาทและเป้าหมายของสถานการณ์</p></div></li>
-                  <li><span>02</span><div><strong>เตรียมคำศัพท์และประโยค</strong><p>ฟังเสียงต้นแบบและฝึกพูดให้คล่อง</p></div></li>
-                  <li><span>03</span><div><strong>ทดลองสถานการณ์จริง</strong><p>นำความรู้ไปใช้ในห้องจำลอง</p></div></li>
+                  <li><span>02</span><div><strong>ชมวิดีโอสถานการณ์</strong><p>สังเกตการปฏิบัติงานจริงและประเด็นสำคัญ</p></div></li>
+                  <li><span>03</span><div><strong>ฝึกพูดประโยคบริการ</strong><p>ฟังเสียงต้นแบบและฝึกออกเสียงรายคำ</p></div></li>
                 </ol>
-                <Link className={styles.launchButton} href={`/simulation?scenario=${encodeURIComponent(activeScenario.id)}`}>เริ่มสถานการณ์จำลอง <NavigateIcon name="arrowRight" size={17} /></Link>
+                <button type="button" className={styles.launchButton} onClick={() => selectView('video')}>ชมวิดีโอ & ฝึกพูดทันที <NavigateIcon name="arrowRight" size={17} /></button>
               </aside>
             </div>
           )}

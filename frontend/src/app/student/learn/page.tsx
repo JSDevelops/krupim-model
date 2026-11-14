@@ -38,7 +38,7 @@ function getWeekNumber(lesson: Lesson, fallbackIndex: number): number {
 function getActivityRoute(type: string, planId: string, weekNum: number) {
   const t = (type || '').toLowerCase()
   if (t.includes('interact') || t.includes('speak')) return `/student/interact?planId=${encodeURIComponent(planId)}`
-  if (t.includes('navigate') || t.includes('simulat')) return `/student/simulation?planId=${encodeURIComponent(planId)}`
+  if (t.includes('navigate') || t.includes('simulat')) return `/student/navigate?planId=${encodeURIComponent(planId)}`
   if (t.includes('exhibit') || t.includes('quiz')) return `/student/exhibit?planId=${encodeURIComponent(planId)}`
   return `/student/explore?planId=${encodeURIComponent(planId)}&week=${weekNum}`
 }
@@ -287,18 +287,18 @@ export default function LearnPage() {
                             <span className={styles.fineCardAction}>ไปฝึกพูด AI →</span>
                           </Link>
 
-                          <Link href={`/student/simulation?planId=${encodeURIComponent(lesson.id)}`} className={styles.fineActivityCard}>
+                          <Link href={`/student/navigate?planId=${encodeURIComponent(lesson.id)}`} className={styles.fineActivityCard}>
                             <div>
                               <div className={styles.fineCardTop}>
                                 <span className={styles.fineBadgeN}>[N] Navigate</span>
                                 {stages['N'] ? <span className={styles.statusPillSubmitted}>✓ ทำแล้ว</span> : <span className={styles.statusPillPending}>ยังไม่ทำ</span>}
                               </div>
                               <div className={styles.fineCardContent}>
-                                <strong>สถานการณ์จำลอง Restaurant Simulation</strong>
-                                <p>{lesson.activitiesN || 'จำลองบทบาทการบริการในร้านอาหาร'}</p>
+                                <strong>วิดีโอสถานการณ์จำลอง & ฝึกพูด</strong>
+                                <p>{lesson.activitiesN || 'ชมคลิปตัวอย่างและฝึกพูดประโยคบริการ'}</p>
                               </div>
                             </div>
-                            <span className={styles.fineCardAction}>เข้าสู่ห้องจำลอง →</span>
+                            <span className={styles.fineCardAction}>ไปดูวิดีโอ & ฝึกพูด →</span>
                           </Link>
 
                           <Link href={`/student/exhibit?planId=${encodeURIComponent(lesson.id)}`} className={styles.fineActivityCard}>
