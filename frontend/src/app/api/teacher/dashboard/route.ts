@@ -57,11 +57,14 @@ export async function GET(request: NextRequest) {
         ), sessions AS (
           SELECT activity.student_id, COUNT(*)::int AS total, MAX(activity.occurred_at) AS last_active
           FROM (
-            SELECT student_id, completed_at AS occurred_at FROM simulation_sessions
+            SELECT ss.student_id, ss.completed_at AS occurred_at
+            FROM simulation_sessions ss
+            JOIN memberships m ON m.student_id = ss.student_id
             UNION ALL
-            SELECT student_id, started_at AS occurred_at FROM chat_sessions
+            SELECT cs.student_id, cs.started_at AS occurred_at
+            FROM chat_sessions cs
+            JOIN memberships m ON m.student_id = cs.student_id
           ) activity
-          JOIN memberships m ON m.student_id=activity.student_id
           GROUP BY activity.student_id
         )
         SELECT p.id, p.name, p.school_name AS school,
