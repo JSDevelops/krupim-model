@@ -71,6 +71,20 @@
 .draftBadge { flex: 0 0 auto; padding: 3px 6px; border-radius: 6px; font-size: 7px; font-weight: 850; }
 .readyBadge { color: #347553; background: #e2f1e7; }
 .draftBadge { color: #8b7120; background: #f7edcc; }
+.currentBadge {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 7.5px;
+  font-weight: 850;
+  color: #855307;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  box-shadow: 0 1px 3px rgba(217, 119, 6, 0.15);
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
 .lessonMeta { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 7px; }
 .lessonMeta span { display: inline-flex; align-items: center; gap: 4px; color: #8c9790; font-size: 8px; }
 .lessonStats { display: flex; align-items: center; gap: 8px; }
@@ -85,6 +99,40 @@
 .lessonActions button:hover:not(:disabled) { transform: translateY(-1px); border-color: #b9cec1; background: #f4faf6; }
 .lessonActions .assignButton { color: #1e7048; border-color: #b8deca; background: #eef8f2; }
 .lessonActions .assignButton:hover:not(:disabled) { border-color: #8cc4a4; background: #e0f2e7; color: #155536; }
+.lessonActions .currentBtn {
+  width: auto;
+  padding: 0 8px;
+  color: #785311;
+  border-color: #f0dd9e;
+  background: #fffdf5;
+  font-size: 8px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.lessonActions .currentBtn:hover:not(:disabled) {
+  border-color: #d9b64c;
+  background: #fef8dc;
+  color: #634306;
+}
+.lessonActions .currentActiveBtn {
+  width: auto;
+  padding: 0 8px;
+  color: #78350f;
+  border-color: #f59e0b;
+  background: #fef3c7;
+  font-size: 8px;
+  font-weight: 800;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+}
+.lessonActions .currentActiveBtn:hover:not(:disabled) {
+  border-color: #d97706;
+  background: #fde68a;
+}
 .lessonActions .deleteButton { color: #9a5048; border-color: #ead6d3; }
 .lessonActions .deleteButton:hover:not(:disabled) { border-color: #ddbdb9; background: #fff5f4; }
 .lessonActions button:disabled { cursor: wait; opacity: .5; }

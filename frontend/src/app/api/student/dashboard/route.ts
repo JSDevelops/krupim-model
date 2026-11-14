@@ -69,9 +69,9 @@ export async function GET(request: NextRequest) {
         ORDER BY s.graded_at DESC LIMIT 5
       `, [user.id]),
       safeQuery(`
-        SELECT id,title,subject,level,weeks,concept FROM fine_lesson_plans
+        SELECT id,title,subject,level,weeks,concept,is_current AS "isCurrent" FROM fine_lesson_plans
         WHERE publication_status='published' ${lessonScope}
-        ORDER BY updated_at DESC LIMIT 1
+        ORDER BY is_current DESC, updated_at DESC LIMIT 1
       `, user.role === 'developer' ? [] : [user.id]),
       safeQuery(`
         SELECT id,title,message,type,link_url AS "linkUrl",created_at AS "createdAt"

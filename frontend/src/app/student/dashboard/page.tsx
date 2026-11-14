@@ -33,7 +33,7 @@ type Data = {
   stats?: { knowledgeScore: number; skillsScore: number; attitudeScore: number; competencyScore: number; overallScore: number; lessonsCompleted: number; timeSpentMinutes: number }
   tasks?: Task[]
   recentGraded?: RecentGraded[]
-  latestLesson?: { title: string; subject: string; weeks: string; concept: string } | null
+  latestLesson?: { id?: string; title: string; subject: string; weeks: string; concept: string; isCurrent?: boolean } | null
   notifications?: Array<{ id: string; title: string; message: string; linkUrl?: string | null }>
   journey?: FineJourneyData
 }
@@ -119,6 +119,40 @@ export default function Dashboard() {
 
         <section className={styles.content}>
           <FineJourneyTracker journey={data.journey} />
+
+          {data.latestLesson && (
+            <article className={styles.weeklyFocusBanner}>
+              <div className={styles.weeklyFocusTop}>
+                <span className={styles.weeklyFocusBadge}>
+                  <StudentIcon name="sparkles" size={14} />
+                  {data.latestLesson.isCurrent ? '⭐ บทเรียนประจำสัปดาห์นี้ (Weekly Focus)' : '📖 บทเรียนล่าสุด'}
+                </span>
+                <span className={styles.weeklyFocusWeek}>
+                  {data.latestLesson.weeks || data.latestLesson.subject || 'ประจำสัปดาห์'}
+                </span>
+              </div>
+              <div className={styles.weeklyFocusContent}>
+                <h3>{data.latestLesson.title}</h3>
+                <p>
+                  {data.latestLesson.concept || data.latestLesson.subject || 'ฝึกทักษะการบริการมาตรฐานสากลด้วย FINE Model'}
+                </p>
+              </div>
+              <div className={styles.weeklyFocusActions}>
+                <Link
+                  href={data.latestLesson.id ? `/student/learn?planId=${encodeURIComponent(data.latestLesson.id)}` : '/student/learn'}
+                  className={styles.weeklyFocusPrimaryBtn}
+                >
+                  เริ่มบทเรียนสัปดาห์นี้ (F · I · N · E) <StudentIcon name="arrowRight" size={15} />
+                </Link>
+                <Link
+                  href={data.latestLesson.id ? `/student/navigate?planId=${encodeURIComponent(data.latestLesson.id)}` : '/student/navigate'}
+                  className={styles.weeklyFocusSecondaryBtn}
+                >
+                  🎬 วิดีโอสถานการณ์ (N)
+                </Link>
+              </div>
+            </article>
+          )}
 
           <header className={styles.sectionHeader}>
             <h2>พื้นที่การเรียนรู้</h2>

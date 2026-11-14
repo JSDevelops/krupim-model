@@ -19,6 +19,7 @@ type Scenario = {
   description: string
   activity: string
   videoUrl?: string
+  isCurrent?: boolean
   vocabulary: VocabularyItem[]
   sentences: string[]
 }
@@ -332,6 +333,15 @@ export default function NavigatePage() {
             return getScenarioWeek(a, 0) - getScenarioWeek(b, 0)
           })
           setScenarios(sorted)
+          const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
+          const targetPlanId = searchParams?.get('planId')
+          if (targetPlanId) {
+            const found = sorted.find(s => s.id === targetPlanId)
+            if (found) {
+              setActiveScenarioId(found.id)
+              setActiveView('video')
+            }
+          }
         }
       } catch (error) {
         if (!controller.signal.aborted) console.warn('Unable to load navigation scenarios:', error)
@@ -885,9 +895,24 @@ export default function NavigatePage() {
                 <button type="button" className={styles.scenarioCard} key={scenario.id} onClick={() => openScenario(scenario.id)}>
                   <span className={styles.scenarioAccent} aria-hidden="true" />
                   <span className={styles.scenarioTop}>
-                    <span className={styles.weekPill}>
-                      สัปดาห์ที่ {weekNum}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                      <span className={styles.weekPill}>
+                        สัปดาห์ที่ {weekNum}
+                      </span>
+                      {scenario.isCurrent && (
+                        <span style={{
+                          background: '#fef3c7',
+                          color: '#78350f',
+                          border: '1px solid #fcd34d',
+                          borderRadius: 8,
+                          padding: '3px 8px',
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                        }}>
+                          ⭐ สัปดาห์ปัจจุบัน
+                        </span>
+                      )}
+                    </div>
                     <span className={styles.scenarioIcon}><NavigateIcon name="compass" /></span>
                   </span>
                   <span className={styles.scenarioCopy}>

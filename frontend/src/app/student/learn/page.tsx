@@ -12,6 +12,7 @@ type Lesson = {
   targetClass: string; weeks: string; concept: string; objectivesK: string[]; objectivesS: string[]
   objectivesA: string[]; objectivesAP: string[]; vocabulary: string[]; sentences: string[]
   activitiesF: string; activitiesI: string; activitiesN: string; activitiesE: string
+  isCurrent?: boolean
 }
 
 type PlanAssignment = {
@@ -48,6 +49,7 @@ export default function LearnPage() {
   const [assignmentsByPlan, setAssignmentsByPlan] = useState<Record<string, PlanAssignment[]>>({})
   const [open, setOpen] = useState<string | null>(null)
   const [query, setQuery] = useState('')
+  const [viewTab, setViewTab] = useState<'current' | 'all'>('current')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [completed, setCompleted] = useState<Set<string>>(new Set())
@@ -68,11 +70,22 @@ export default function LearnPage() {
           error?: string
         }
         if (!response.ok) throw new Error(payload.error || 'โหลดบทเรียนไม่สำเร็จ')
-        setLessons(payload.lessons || [])
+        const loadedLessons = payload.lessons || []
+        setLessons(loadedLessons)
         setCompleted(new Set(payload.completedIds || []))
         setTested(new Set(payload.testedIds || []))
         setStageProgress(payload.stageProgress || {})
         setAssignmentsByPlan(payload.assignmentsByPlan || {})
+
+        const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null
+        const targetPlanId = searchParams?.get('planId')
+        if (targetPlanId) {
+          setOpen(targetPlanId)
+          setViewTab('all')
+        } else if (loadedLessons.length > 0) {
+          const currentLesson = loadedLessons.find(l => l.isCurrent) || loadedLessons[0]
+          setOpen(currentLesson.id)
+        }
       })
       .catch(loadError => {
         if (loadError instanceof Error && loadError.name !== 'AbortError') setError(loadError.message)
@@ -82,12 +95,21 @@ export default function LearnPage() {
   }, [])
 
   const shown = useMemo(() => {
+    let list = lessons
+    if (viewTab === 'current') {
+      const hasCurrent = lessons.some(l => l.isCurrent)
+      if (hasCurrent) {
+        list = lessons.filter(l => l.isCurrent)
+      } else if (lessons.length > 0) {
+        list = [lessons[0]]
+      }
+    }
     const keyword = query.trim().toLocaleLowerCase('th-TH')
     const filtered = keyword
-      ? lessons.filter(lesson => `${lesson.title} ${lesson.subject} ${lesson.weeks}`.toLocaleLowerCase('th-TH').includes(keyword))
-      : lessons
+      ? list.filter(lesson => `${lesson.title} ${lesson.subject} ${lesson.weeks}`.toLocaleLowerCase('th-TH').includes(keyword))
+      : list
     return [...filtered].sort((a, b) => getWeekNumber(a, 0) - getWeekNumber(b, 0))
-  }, [lessons, query])
+  }, [lessons, query, viewTab])
 
   async function completeLesson(lesson: Lesson) {
     setSaving(lesson.id)
@@ -138,15 +160,47 @@ export default function LearnPage() {
         </section>
 
         <section className={styles.content} aria-busy={loading}>
-          <label className={styles.field}>
-            <span>ค้นหาบทเรียน</span>
-            <input
-              className={styles.input}
-              value={query}
-              onChange={event => setQuery(event.target.value)}
-              placeholder="ชื่อบทเรียน รายวิชา หรือสัปดาห์"
-            />
-          </label>
+          <div className={styles.learnTabs}>
+            <button
+              type="button"
+              className={`${styles.learnTabBtn} ${viewTab === 'current' ? styles.learnTabBtnActive : ''}`}
+              onClick={() => {
+                setViewTab('current')
+                const currentLesson = lessons.find(l => l.isCurrent) || lessons[0]
+                if (currentLesson) setOpen(currentLesson.id)
+              }}
+            >
+              <StudentIcon name="sparkles" size={15} /> สัปดาห์ปัจจุบัน (Focus)
+            </button>
+            <button
+              type="button"
+              className={`${styles.learnTabBtn} ${viewTab === 'all' ? styles.learnTabBtnActive : ''}`}
+              onClick={() => setViewTab('all')}
+            >
+              <StudentIcon name="book" size={15} /> บทเรียนทั้งหมด ({lessons.length})
+            </button>
+          </div>
+
+          {viewTab === 'current' && (
+            <div className={styles.currentWeekNotice}>
+              <StudentIcon name="sparkles" size={16} />
+              <span>
+                ครูผู้สอนกำหนดบทเรียนนี้เป็นสัปดาห์การเรียนรู้ปัจจุบัน — ให้นักเรียนเรียนรู้ตามขั้นตอน <strong>F · I · N · E</strong> ให้ครบถ้วน
+              </span>
+            </div>
+          )}
+
+          {viewTab === 'all' && (
+            <label className={styles.field} style={{ marginTop: 12 }}>
+              <span>ค้นหาบทเรียน</span>
+              <input
+                className={styles.input}
+                value={query}
+                onChange={event => setQuery(event.target.value)}
+                placeholder="ชื่อบทเรียน รายวิชา หรือสัปดาห์"
+              />
+            </label>
+          )}
 
           {error && (
             <div className={styles.notice} style={{ marginTop: 12 }}>
@@ -180,6 +234,9 @@ export default function LearnPage() {
                         <small>{lesson.weeks || lesson.subject} · {lesson.level || 'ทุกระดับ'}</small>
                       </strong>
                       <div className={styles.lessonBadgeRow}>
+                        {lesson.isCurrent && (
+                          <span className={styles.lessonBadgeCurrent}>⭐ สัปดาห์ปัจจุบัน</span>
+                        )}
                         {isDone && (
                           <span className={styles.lessonBadgeCompleted}>✓ เรียนแล้ว</span>
                         )}

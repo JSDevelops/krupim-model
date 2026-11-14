@@ -16,10 +16,11 @@ export async function GET(request: NextRequest) {
         SELECT id,title,subject,level,term,duration,target_class AS "targetClass",weeks,concept,
                objectives_k AS "objectivesK",objectives_s AS "objectivesS",objectives_a AS "objectivesA",
                objectives_ap AS "objectivesAP",vocabulary,sentences,activities_f AS "activitiesF",
-               activities_i AS "activitiesI",activities_n AS "activitiesN",activities_e AS "activitiesE"
+               activities_i AS "activitiesI",activities_n AS "activitiesN",activities_e AS "activitiesE",
+               is_current AS "isCurrent"
         FROM fine_lesson_plans
         WHERE publication_status='published' ${scope}
-        ORDER BY COALESCE(NULLIF(regexp_replace(weeks, '[^0-9]', '', 'g'), '')::int, NULLIF(regexp_replace(id, '[^0-9]', '', 'g'), '')::int, 999) ASC, updated_at DESC LIMIT 100
+        ORDER BY is_current DESC, COALESCE(NULLIF(regexp_replace(weeks, '[^0-9]', '', 'g'), '')::int, NULLIF(regexp_replace(id, '[^0-9]', '', 'g'), '')::int, 999) ASC, updated_at DESC LIMIT 100
       `, user.role === 'developer' ? [] : [user.id]),
       user.role === 'student'
         ? queryDb<{ reference_id: string }>(`

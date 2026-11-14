@@ -12,6 +12,7 @@ type LessonPlanRow = {
   sentences: unknown
   activity: string | null
   video_url?: string | null
+  is_current?: boolean | null
 }
 
 type VocabularyItem = {
@@ -97,13 +98,13 @@ export async function GET(request: NextRequest) {
 
     const result = await queryDb<LessonPlanRow & { weeks: string }>(`
       SELECT id, title, weeks, subject, level, concept, vocabulary, sentences,
-             activities_n AS activity, video_url
+             activities_n AS activity, video_url, is_current
       FROM fine_lesson_plans
       WHERE publication_status='published' ${scope} ${filterClause}
         AND (jsonb_typeof(vocabulary) = 'array'
          OR jsonb_typeof(sentences) = 'array'
         )
-      ORDER BY COALESCE(
+      ORDER BY is_current DESC, COALESCE(
         NULLIF(substring(weeks from '([0-9]+)'), '')::int,
         NULLIF(substring(id from '([0-9]+)'), '')::int,
         999
@@ -124,6 +125,7 @@ export async function GET(request: NextRequest) {
         description: cleanText(row.concept || row.activity, 'ฝึกการสื่อสารและการให้บริการตามสถานการณ์จริง'),
         activity: cleanText(row.activity),
         videoUrl: cleanText(row.video_url),
+        isCurrent: Boolean(row.is_current),
         vocabulary: normalizeVocabulary(row.vocabulary),
         sentences: normalizeSentences(row.sentences),
       }

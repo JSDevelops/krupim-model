@@ -4,6 +4,8 @@ import { queryDb } from '@/lib/db'
 import { ApiError, apiErrorResponse, guardApi, type AuthUser } from '../../_lib/auth'
 
 type LessonInput = {
+  action?: unknown
+  isCurrent?: unknown
   title?: unknown
   subject?: unknown
   level?: unknown
@@ -35,7 +37,7 @@ const detailSelect = `
   activities_lead AS "activitiesLead", activities_f AS "activitiesF",
   activities_i AS "activitiesI", activities_n AS "activitiesN",
   activities_e AS "activitiesE", activities_wrap AS "activitiesWrap",
-  video_url AS "videoUrl",
+  video_url AS "videoUrl", is_current AS "isCurrent",
   teacher_name AS "teacherName", teacher_email AS "teacherEmail",
   class_id AS "classId", publication_status AS "publicationStatus", published_at AS "publishedAt",
   created_at AS "createdAt", updated_at AS "updatedAt"
@@ -158,7 +160,7 @@ export async function GET(request: NextRequest) {
       SELECT id, title, subject, level, term, duration, target_class AS "targetClass", weeks, concept,
              activities_f AS "activitiesF", activities_i AS "activitiesI",
              activities_n AS "activitiesN", activities_e AS "activitiesE",
-             video_url AS "videoUrl",
+             video_url AS "videoUrl", is_current AS "isCurrent",
              teacher_name AS "teacherName", created_at AS "createdAt", updated_at AS "updatedAt",
              class_id AS "classId", publication_status AS "publicationStatus", published_at AS "publishedAt",
              jsonb_array_length(objectives_k) + jsonb_array_length(objectives_s)
@@ -210,6 +212,33 @@ export async function PATCH(request: NextRequest) {
     const user = await guardApi(request, { roles: ['teacher', 'developer'], maxRequests: 60 })
     const body = await requestBody(request)
     const id = requiredText(body.id, 'รหัสแผนการสอน', 120)
+
+    if (body.action === 'set_current') {
+      const isCurrent = Boolean(body.isCurrent)
+      if (isCurrent) {
+        if (user.role === 'developer') {
+          await queryDb('UPDATE fine_lesson_plans SET is_current = FALSE')
+        } else {
+          await queryDb(
+            'UPDATE fine_lesson_plans SET is_current = FALSE WHERE teacher_email = $1 OR teacher_id = $2::uuid',
+            [user.email, user.id]
+          )
+        }
+      }
+      const values = user.role === 'developer' ? [isCurrent, id] : [isCurrent, id, user.email]
+      const result = await queryDb(`
+        UPDATE fine_lesson_plans SET
+          is_current = $1,
+          publication_status = CASE WHEN $1 = TRUE THEN 'published' ELSE publication_status END,
+          published_at = CASE WHEN $1 = TRUE THEN COALESCE(published_at, NOW()) ELSE published_at END,
+          updated_at = NOW()
+        WHERE id = $2${ownership(user, 3)}
+        RETURNING ${detailSelect}
+      `, values)
+      if (!result.rows[0]) throw new ApiError('ไม่พบแผนการสอนหรือคุณไม่มีสิทธิ์แก้ไข', 404, 'NOT_FOUND')
+      return NextResponse.json({ lesson: result.rows[0] })
+    }
+
     const lesson = normalizeLesson(body)
     const classId = await resolveTargetClass(user, lesson.targetClass, lesson.publicationStatus)
     const values: unknown[] = [...lessonValues(lesson), id]

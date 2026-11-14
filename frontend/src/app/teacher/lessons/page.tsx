@@ -23,6 +23,7 @@ type LessonSummary = {
   objectiveCount: number
   vocabularyCount: number
   complete: boolean
+  isCurrent?: boolean
   publicationStatus: 'draft' | 'published'
 }
 
@@ -338,6 +339,45 @@ export default function TeacherLessonsPage() {
     }
   }
 
+  async function toggleCurrentLesson(lesson: LessonSummary) {
+    const nextState = !lesson.isCurrent
+    setBusyAction(`current:${lesson.id}`)
+    try {
+      const response = await authenticatedFetch('/api/teacher/lessons', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: lesson.id,
+          action: 'set_current',
+          isCurrent: nextState,
+        }),
+      })
+      const data = (await response.json()) as { lesson?: LessonDetail; error?: string }
+      if (!response.ok) throw new Error(data.error || 'ไม่สามารถตั้งเป็นสัปดาห์ปัจจุบันได้')
+      setLessons(current =>
+        current.map(item => {
+          if (item.id === lesson.id) {
+            return {
+              ...item,
+              isCurrent: nextState,
+              publicationStatus: nextState ? 'published' : item.publicationStatus,
+            }
+          }
+          return nextState ? { ...item, isCurrent: false } : item
+        })
+      )
+      toast.success(
+        nextState
+          ? `⭐ ปักหมุด "${lesson.title}" เป็นสัปดาห์ปัจจุบันแล้ว (นักเรียนจะเห็นเด่นชัดทันที)`
+          : `ยกเลิกการปักหมุดสัปดาห์ปัจจุบันแล้ว`
+      )
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการตั้งสัปดาห์ปัจจุบัน')
+    } finally {
+      setBusyAction(null)
+    }
+  }
+
   function updateField<Key extends keyof LessonForm>(key: Key, value: LessonForm[Key]) {
     setForm(current => ({ ...current, [key]: value }))
   }
@@ -387,7 +427,15 @@ export default function TeacherLessonsPage() {
             <article className={styles.lessonCard} key={lesson.id}>
               <div className={styles.lessonAccent}><AdminIcon name="content" size={19} /></div>
               <div className={styles.lessonMain}>
-                <div className={styles.lessonTitle}><span className={lesson.publicationStatus === 'published' ? styles.readyBadge : styles.draftBadge}>{lesson.publicationStatus === 'published' ? 'เผยแพร่แล้ว' : 'ฉบับร่าง'}</span><h3>{lesson.title}</h3></div>
+                <div className={styles.lessonTitle}>
+                  {lesson.isCurrent && (
+                    <span className={styles.currentBadge}>⭐ สัปดาห์ปัจจุบัน</span>
+                  )}
+                  <span className={lesson.publicationStatus === 'published' ? styles.readyBadge : styles.draftBadge}>
+                    {lesson.publicationStatus === 'published' ? 'เผยแพร่แล้ว' : 'ฉบับร่าง'}
+                  </span>
+                  <h3>{lesson.title}</h3>
+                </div>
                 <p>{lesson.subject || 'ยังไม่ได้ระบุรายวิชา'}</p>
                 <div className={styles.lessonMeta}>
                   <span><AdminIcon name="school" size={13} /> {lesson.targetClass || 'ไม่ระบุห้อง'}</span>
@@ -398,6 +446,17 @@ export default function TeacherLessonsPage() {
               <div className={styles.lessonStats}><span><strong>{lesson.objectiveCount || 0}</strong><small>จุดประสงค์</small></span><span><strong>{lesson.vocabularyCount || 0}</strong><small>คำศัพท์</small></span></div>
               <div className={styles.lessonUpdated}><small>แก้ไขล่าสุด</small><strong>{formatDate(lesson.updatedAt)}</strong></div>
               <div className={styles.lessonActions}>
+                <button
+                  type="button"
+                  className={lesson.isCurrent ? styles.currentActiveBtn : styles.currentBtn}
+                  onClick={() => void toggleCurrentLesson(lesson)}
+                  disabled={Boolean(busyAction)}
+                  title={lesson.isCurrent ? '⭐ สัปดาห์ปัจจุบันอยู่ (คลิกเพื่อยกเลิก)' : '⭐ ตั้งเป็นสัปดาห์ปัจจุบันให้นักเรียน'}
+                  aria-label={lesson.isCurrent ? 'ยกเลิกการปักหมุดสัปดาห์ปัจจุบัน' : 'ตั้งเป็นสัปดาห์ปัจจุบัน'}
+                >
+                  <AdminIcon name="sparkles" size={14} />
+                  <span>{lesson.isCurrent ? 'สัปดาห์ปัจจุบัน' : 'ปักหมุดสัปดาห์นี้'}</span>
+                </button>
                 <button
                   type="button"
                   className={styles.assignButton}

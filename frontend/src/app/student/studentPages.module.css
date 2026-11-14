@@ -29,6 +29,63 @@
   font-weight: 600;
 }
 
+.lessonBadgeCurrent {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #fef3c7;
+  color: #78350f;
+  border: 1px solid #fcd34d;
+  font-size: 10.5px;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(217, 119, 6, 0.15);
+}
+
+.learnTabs {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+  margin-bottom: 6px;
+}
+
+.learnTabBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  border: 1px solid #d4ded8;
+  background: #ffffff;
+  color: #4b6255;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+
+.learnTabBtnActive {
+  background: #174b37 !important;
+  color: #ffffff !important;
+  border-color: #174b37 !important;
+  box-shadow: 0 2px 8px rgba(23, 75, 55, 0.18);
+}
+
+.currentWeekNotice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #eef6f1;
+  border: 1px solid #c2e2d1;
+  color: #175338;
+  font-size: 12px;
+  font-weight: 500;
+  margin-top: 8px;
+}
+
 .lessonBadgeTested {
   display: inline-flex;
   align-items: center;
@@ -462,6 +519,112 @@
   border-radius: 12px;
   background: #f5fcf8;
   border: 1px solid #d4ede1;
+}
+
+/* Weekly Focus Banner in dashboard */
+.weeklyFocusBanner {
+  margin-top: 14px;
+  padding: 18px 20px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #f0f7f3 0%, #e2efe8 100%);
+  border: 1.5px solid #b7dcce;
+  box-shadow: 0 4px 16px rgba(23, 75, 55, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.weeklyFocusTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.weeklyFocusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #15553b;
+  background: #d4ebd9;
+  border: 1px solid #a3d9bc;
+}
+
+.weeklyFocusWeek {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #557565;
+  background: #ffffff;
+  padding: 3px 9px;
+  border-radius: 6px;
+  border: 1px solid #d2e4db;
+}
+
+.weeklyFocusContent h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #173f30;
+  line-height: 1.35;
+}
+
+.weeklyFocusContent p {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: #4b6657;
+  line-height: 1.5;
+}
+
+.weeklyFocusActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+
+.weeklyFocusPrimaryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  background: #174b37;
+  color: #ffffff !important;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.weeklyFocusPrimaryBtn:hover {
+  background: #0f3526;
+  transform: translateY(-1px);
+}
+
+.weeklyFocusSecondaryBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #1d5540 !important;
+  border: 1px solid #b3d6c7;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.weeklyFocusSecondaryBtn:hover {
+  background: #f4faf6;
+  transform: translateY(-1px);
 }
 
 .feedbackHeader {
