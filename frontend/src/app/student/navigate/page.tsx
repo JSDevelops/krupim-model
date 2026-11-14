@@ -435,6 +435,12 @@ export default function NavigatePage() {
     window.speechSynthesis.speak(utterance)
   }
 
+  function speakWord(word: string, id: string) {
+    const cleaned = cleanWord(word)
+    if (!cleaned) return
+    speak(cleaned, id)
+  }
+
   function practice(sentence: string, id: string) {
     if (recordingId === id) {
       recognitionRef.current?.stop()
@@ -627,15 +633,29 @@ export default function NavigatePage() {
                                   </div>
                                   <b>{result.score}%</b>
                                 </div>
+                                <div className={styles.wordHelpHint}>
+                                  <NavigateIcon name="volume" size={13} />
+                                  <span>แตะที่คำศัพท์เพื่อฟังเสียงออกเสียงที่ถูกต้องเฉพาะคำ</span>
+                                </div>
                                 <div className={styles.wordResults}>
-                                  {result.words.map((word, wordIndex) => (
-                                    <span
-                                      className={word.correct ? styles.correct : styles.incorrect}
-                                      key={`${word.word}-${wordIndex}`}
-                                    >
-                                      {word.word}
-                                    </span>
-                                  ))}
+                                  {result.words.map((word, wordIndex) => {
+                                    const wordAudioId = `word-${id}-${wordIndex}`
+                                    const isSpeakingThisWord = speakingId === wordAudioId
+                                    return (
+                                      <button
+                                        type="button"
+                                        key={`${word.word}-${wordIndex}`}
+                                        onClick={() => speakWord(word.word, wordAudioId)}
+                                        title={`แตะเพื่อฟังเสียง "${word.word}"`}
+                                        className={`${styles.wordChip} ${word.correct ? styles.correct : styles.incorrect} ${isSpeakingThisWord ? styles.wordChipSpeaking : ''}`}
+                                      >
+                                        <span className={styles.wordText}>{word.word}</span>
+                                        <span className={styles.wordSpeakerIcon}>
+                                          <NavigateIcon name={isSpeakingThisWord ? 'pause' : 'volume'} size={11} />
+                                        </span>
+                                      </button>
+                                    )
+                                  })}
                                 </div>
                                 <p className={styles.transcript}>ระบบได้ยิน: “{result.transcript}”</p>
                               </div>

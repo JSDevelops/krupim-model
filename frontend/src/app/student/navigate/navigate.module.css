@@ -336,10 +336,66 @@
 .resultHeader strong { display: block; font-size: 10.5px; font-weight: 500; }
 .resultHeader span { display: block; margin-top: 2px; color: #7b857f; font-size: 8.5px; line-height: 1.4; overflow-wrap: anywhere; }
 .resultHeader b { color: #28604d; font-size: 17px; font-weight: 500; }
-.wordResults { display: flex; min-width: 0; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
-.wordResults span { padding: 4px 7px; border-radius: 7px; font-size: 9.5px; font-weight: 500; overflow-wrap: anywhere; }
-.correct { color: #245c43; background: #e8f3ed; }
-.incorrect { color: #963e47; background: #faecee; text-decoration: line-through; }
+.wordHelpHint {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 10px;
+  font-size: 10.5px;
+  color: #3b6b57;
+  font-weight: 500;
+}
+.wordResults { display: flex; min-width: 0; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.wordChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+.wordChip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+}
+.wordChip:active {
+  transform: translateY(0);
+}
+.wordSpeakerIcon {
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.75;
+}
+.correct {
+  color: #1e5a40;
+  background: #e6f4ec;
+  border-color: #c0e2d0;
+}
+.incorrect {
+  color: #a32a38;
+  background: #fdebed;
+  border-color: #f7c3c8;
+}
+.incorrect .wordText {
+  text-decoration: line-through;
+}
+.wordChipSpeaking {
+  outline: 2px solid #2e7a57;
+  background: #fdf5d6 !important;
+  color: #725208 !important;
+  border-color: #e5c365 !important;
+  animation: pulseWord 0.8s infinite alternate ease-in-out;
+}
+@keyframes pulseWord {
+  from { transform: scale(1); }
+  to { transform: scale(1.04); box-shadow: 0 0 8px rgba(46, 122, 87, 0.25); }
+}
 .transcript { margin: 9px 0 0; color: #7b857f; font-size: 9px; line-height: 1.5; overflow-wrap: anywhere; }
 .emptyState strong { margin-top: 9px; font-size: 12px; font-weight: 500; }
 .emptyState span { margin-top: 3px; color: #849089; font-size: 9.5px; }
