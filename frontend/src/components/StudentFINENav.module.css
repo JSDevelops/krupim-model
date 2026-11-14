@@ -101,10 +101,10 @@
 
 .label {
   display: block;
-  font-size: 8.5px;
+  font-size: 8px;
   font-weight: 600;
   line-height: 1.15;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.02em;
   white-space: nowrap;
   text-align: center;
   overflow: hidden;
@@ -144,7 +144,13 @@
   transform: translateX(-50%);
 }
 
-@media (min-width: 360px) {
+@media (min-width: 380px) {
+  .label {
+    font-size: 8.5px;
+  }
+}
+
+@media (min-width: 440px) {
   .label {
     font-size: 9.5px;
   }

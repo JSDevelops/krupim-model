@@ -455,19 +455,19 @@ export default function DocsPage() {
                               <td><code>/student/dashboard</code></td>
                             </tr>
                             <tr>
-                              <td><strong>🔍 F · Explore</strong></td>
+                              <td><strong>🔍 F · Familiarize</strong></td>
                               <td>F</td>
                               <td>สำรวจคำศัพท์, หมุนดูโมเดล 3D แบบ 360°, สแกนวัตถุ AI Scan</td>
                               <td><code>/student/explore</code></td>
                             </tr>
                             <tr>
-                              <td><strong>💬 I · Speak</strong></td>
+                              <td><strong>💬 I · Interact</strong></td>
                               <td>I</td>
                               <td>ห้องฝึกสนทนาเสียงภาษาอังกฤษสดกับ AI Voice Coach</td>
                               <td><code>/student/interact</code></td>
                             </tr>
                             <tr>
-                              <td><strong>📦 N · Scenario</strong></td>
+                              <td><strong>📦 N · Navigate</strong></td>
                               <td>N</td>
                               <td>สถานการณ์จำลอง 3 มิติ แก้ไขปัญหาเฉพาะหน้างานบริการ</td>
                               <td><code>/student/navigate</code></td>

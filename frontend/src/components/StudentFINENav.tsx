@@ -17,9 +17,9 @@ type NavItem = {
 
 const TABS: NavItem[] = [
   { href: '/student/dashboard', letter: 'H', label: 'หน้าหลัก', icon: 'home' },
-  { href: '/student/explore', letter: 'F', label: 'F · Explore', icon: 'explore' },
-  { href: '/student/interact', letter: 'I', label: 'I · Speak', icon: 'interact', aliases: ['/chat', '/live'] },
-  { href: '/student/navigate', letter: 'N', label: 'N · Scenario', icon: 'navigate', aliases: ['/simulation', '/student/simulation'] },
+  { href: '/student/explore', letter: 'F', label: 'F · Familiarize', icon: 'explore' },
+  { href: '/student/interact', letter: 'I', label: 'I · Interact', icon: 'interact', aliases: ['/chat', '/live'] },
+  { href: '/student/navigate', letter: 'N', label: 'N · Navigate', icon: 'navigate', aliases: ['/simulation', '/student/simulation'] },
   { href: '/student/exhibit', letter: 'E', label: 'E · Exhibit', icon: 'exhibit' },
   { href: '/student/profile', letter: 'P', label: 'Portfolio', icon: 'profile', aliases: ['/student/progress'] },
 ]
