@@ -314,7 +314,7 @@ export default function NavigatePage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedPhase, setSelectedPhase] = useState<'all' | 'phase1' | 'phase2' | 'phase3' | 'phase4'>('all')
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null)
-  const [activeView, setActiveView] = useState<DetailView>('video')
+  const [activeView, setActiveView] = useState<DetailView>('overview')
   const [expandedWord, setExpandedWord] = useState<number | null>(null)
   const [speakingId, setSpeakingId] = useState<string | null>(null)
   const [recordingId, setRecordingId] = useState<string | null>(null)
@@ -394,7 +394,7 @@ export default function NavigatePage() {
   function openScenario(id: string) {
     stopMedia()
     setActiveScenarioId(id)
-    setActiveView('video')
+    setActiveView('overview')
     setExpandedWord(null)
     setSelectedDecision(null)
     setDecisionAnswered(false)
@@ -403,7 +403,7 @@ export default function NavigatePage() {
   function closeScenario() {
     stopMedia()
     setActiveScenarioId(null)
-    setActiveView('video')
+    setActiveView('overview')
     setExpandedWord(null)
     setSelectedDecision(null)
     setDecisionAnswered(false)
@@ -489,9 +489,9 @@ export default function NavigatePage() {
     const dilemma: Dilemma = resolveScenarioDilemma(activeScenario)
 
     const tabs: Array<{ id: DetailView; label: string; count?: number }> = [
+      { id: 'overview', label: '📋 ภาพรวม' },
       { id: 'video', label: '🎬 วิดีโอ & ฝึกพูด' },
-      { id: 'overview', label: 'ภาพรวม' },
-      { id: 'decision', label: 'ตัดสินใจแก้ปัญหา' },
+      { id: 'decision', label: '💡 ตัดสินใจแก้ปัญหา' },
       { id: 'vocabulary', label: 'คำศัพท์', count: activeScenario.vocabulary.length },
       { id: 'sentences', label: 'ฝึกประโยค', count: activeScenario.sentences.length },
     ]
@@ -759,6 +759,11 @@ export default function NavigatePage() {
                 <div className={styles.cardBody}>
                   <p className={styles.description}>{activeScenario.description}</p>
                   {activeScenario.activity && <div className={styles.activity}><strong>กิจกรรม Navigate</strong><span>{activeScenario.activity}</span></div>}
+                  <div style={{ marginTop: 16 }}>
+                    <button type="button" className={styles.primaryButton} onClick={() => selectView('video')}>
+                      ชมวิดีโอ & ฝึกพูด <NavigateIcon name="arrowRight" size={16} />
+                    </button>
+                  </div>
                 </div>
               </section>
               <aside className={`${styles.card} ${styles.guideCard}`}>
@@ -830,8 +835,8 @@ export default function NavigatePage() {
           <div className={styles.heroContent}>
             <div className={styles.eyebrow}><NavigateIcon name="sparkles" size={15} /> N — Navigate</div>
             <h1 className={styles.title}>ฝึกสถานการณ์งานบริการอย่างเป็นระบบ</h1>
-            <p className={styles.subtitle}>เลือกสถานการณ์ เตรียมคำศัพท์และประโยคสำคัญ ก่อนนำความรู้ไปทดลองใช้ในห้องจำลองเสมือนจริง</p>
-            <Link className={styles.heroLink} href="/student/explore"><NavigateIcon name="arrowLeft" size={15} /> กลับไปหน้าสำรวจ</Link>
+            <p className={styles.subtitle}>ชมคลิปวิดีโอสถานการณ์จำลองจากคุณครู ศึกษาประเด็นสังเกต และฝึกออกเสียงประโยคบริการด้วยระบบ AI ตรวจประเมินรายคำ</p>
+            <Link className={styles.heroLink} href="/student/dashboard"><NavigateIcon name="arrowLeft" size={15} /> กลับหน้าหลัก (Dashboard)</Link>
           </div>
           <div className={styles.heroStats}>
             <div><strong>{scenarios.length}</strong><span>สถานการณ์</span></div>
