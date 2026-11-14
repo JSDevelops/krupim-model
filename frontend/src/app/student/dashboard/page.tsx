@@ -43,7 +43,7 @@ const features: Array<{ href: string; label: string; desc: string; icon: Student
   { href: '/student/interact', label: 'ฝึกฟังและพูด (I)', desc: 'ประเมินการออกเสียงรายคำ', icon: 'message' },
   { href: '/student/simulation', label: 'สถานการณ์จำลอง (N)', desc: 'ฝึกบทบาทงานบริการ 3 มิติ', icon: 'task' },
   { href: '/student/exhibit', label: 'ทบทวนผล (E)', desc: 'แบบทดสอบและคะแนนสะสม', icon: 'exhibit' },
-  { href: '/chat', label: 'ผู้ช่วยการเรียนรู้ AI', desc: 'ถามคำศัพท์และงานบริการ', icon: 'sparkles' },
+  { href: '/chat', label: 'AI Chat', desc: 'ถามคำศัพท์และงานบริการ', icon: 'sparkles' },
   { href: '/live', label: 'AI Voice Coach', desc: 'โต้ตอบด้วยเสียงแบบทันที', icon: 'mic' },
   { href: '/student/profile', label: 'แฟ้มสะสมงาน', desc: 'งาน สมรรถนะ และใบรับรอง', icon: 'profile' },
 ]

@@ -107,7 +107,7 @@ export default function ChatPage() {
               <StudentIcon name="sparkles" size={21} />
             </span>
             <div>
-              <h1>ผู้ช่วยการเรียนรู้ AI</h1>
+              <h1>AI Chat</h1>
               <p><span />พร้อมช่วยตอบคำถามงานบริการ</p>
             </div>
           </header>
