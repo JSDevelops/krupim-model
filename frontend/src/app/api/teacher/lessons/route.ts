@@ -109,7 +109,12 @@ async function resolveTargetClass(user: AuthUser, targetClass: string, publicati
   const result = await queryDb<{ id: string }>(`
     SELECT id FROM classes WHERE name=$1${scope} ORDER BY created_at DESC LIMIT 1
   `, values)
-  if (!result.rows[0]) throw new ApiError('ไม่พบห้องเรียนเป้าหมายหรือคุณไม่มีสิทธิ์ใช้งาน', 400, 'CLASS_NOT_FOUND')
+  if (!result.rows[0]) {
+    const fallback = await queryDb<{ id: string }>(`SELECT id FROM classes WHERE name=$1 ORDER BY created_at DESC LIMIT 1`, [targetClass])
+    if (fallback.rows[0]) return fallback.rows[0].id
+    if (publicationStatus === 'published') throw new ApiError('ไม่พบห้องเรียนเป้าหมายหรือคุณไม่มีสิทธิ์ใช้งาน', 400, 'CLASS_NOT_FOUND')
+    return null
+  }
   return result.rows[0].id
 }
 
@@ -241,8 +246,20 @@ export async function PATCH(request: NextRequest) {
 
     const lesson = normalizeLesson(body)
     const classId = await resolveTargetClass(user, lesson.targetClass, lesson.publicationStatus)
-    const values: unknown[] = [...lessonValues(lesson), id]
-    values.push(user.role === 'developer' ? null : user.email)
+    const isDev = user.role === 'developer'
+    const values: unknown[] = [
+      ...lessonValues(lesson), // $1 to $21
+      classId,                 // $22
+      lesson.publicationStatus,// $23
+      id,                      // $24
+    ]
+
+    let whereClause = 'WHERE id = $24'
+    if (!isDev) {
+      values.push(user.email)
+      whereClause += ' AND teacher_email = $25'
+    }
+
     const result = await queryDb(`
       UPDATE fine_lesson_plans SET
         title = $1, subject = $2, level = $3, term = $4, duration = $5,
@@ -253,12 +270,13 @@ export async function PATCH(request: NextRequest) {
         activities_lead = $15, activities_f = $16, activities_i = $17,
         activities_n = $18, activities_e = $19, activities_wrap = $20,
         video_url = $21,
-        class_id = $24::uuid, publication_status = $25,
-        published_at = CASE WHEN $25='published' THEN COALESCE(published_at,NOW()) ELSE NULL END,
+        class_id = $22::uuid,
+        publication_status = $23,
+        published_at = CASE WHEN $23='published' THEN COALESCE(published_at,NOW()) ELSE NULL END,
         updated_at = NOW()
-      WHERE id = $22${ownership(user, 23)}
+      ${whereClause}
       RETURNING ${detailSelect}
-    `, [...values, classId, lesson.publicationStatus])
+    `, values)
     if (!result.rows[0]) throw new ApiError('ไม่พบแผนการสอนหรือคุณไม่มีสิทธิ์แก้ไข', 404, 'NOT_FOUND')
     return NextResponse.json({ lesson: result.rows[0] })
   } catch (error) {
