@@ -11,6 +11,7 @@ type LessonPlanRow = {
   vocabulary: unknown
   sentences: unknown
   activity: string | null
+  video_url?: string | null
 }
 
 type VocabularyItem = {
@@ -96,7 +97,7 @@ export async function GET(request: NextRequest) {
 
     const result = await queryDb<LessonPlanRow & { weeks: string }>(`
       SELECT id, title, weeks, subject, level, concept, vocabulary, sentences,
-             activities_n AS activity
+             activities_n AS activity, video_url
       FROM fine_lesson_plans
       WHERE publication_status='published' ${scope} ${filterClause}
         AND (jsonb_typeof(vocabulary) = 'array'
@@ -122,6 +123,7 @@ export async function GET(request: NextRequest) {
         role: cleanText(row.level, 'พนักงานบริการอาหารและเครื่องดื่ม'),
         description: cleanText(row.concept || row.activity, 'ฝึกการสื่อสารและการให้บริการตามสถานการณ์จริง'),
         activity: cleanText(row.activity),
+        videoUrl: cleanText(row.video_url),
         vocabulary: normalizeVocabulary(row.vocabulary),
         sentences: normalizeSentences(row.sentences),
       }

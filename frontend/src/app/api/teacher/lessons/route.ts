@@ -24,6 +24,7 @@ type LessonInput = {
   activitiesN?: unknown
   activitiesE?: unknown
   activitiesWrap?: unknown
+  videoUrl?: unknown
   publicationStatus?: unknown
 }
 
@@ -34,6 +35,7 @@ const detailSelect = `
   activities_lead AS "activitiesLead", activities_f AS "activitiesF",
   activities_i AS "activitiesI", activities_n AS "activitiesN",
   activities_e AS "activitiesE", activities_wrap AS "activitiesWrap",
+  video_url AS "videoUrl",
   teacher_name AS "teacherName", teacher_email AS "teacherEmail",
   class_id AS "classId", publication_status AS "publicationStatus", published_at AS "publishedAt",
   created_at AS "createdAt", updated_at AS "updatedAt"
@@ -89,6 +91,7 @@ function normalizeLesson(body: LessonInput) {
     activitiesN: optionalText(body.activitiesN, 'กิจกรรม Navigate', 5_000),
     activitiesE: optionalText(body.activitiesE, 'กิจกรรม Exhibit', 5_000),
     activitiesWrap: optionalText(body.activitiesWrap, 'ขั้นสรุป', 5_000),
+    videoUrl: optionalText(body.videoUrl, 'ลิงก์วิดีโอ YouTube สถานการณ์', 500),
     publicationStatus,
   }
 }
@@ -121,6 +124,7 @@ function lessonValues(lesson: ReturnType<typeof normalizeLesson>) {
     JSON.stringify(lesson.vocabulary), JSON.stringify(lesson.sentences),
     lesson.activitiesLead, lesson.activitiesF, lesson.activitiesI,
     lesson.activitiesN, lesson.activitiesE, lesson.activitiesWrap,
+    lesson.videoUrl,
   ]
 }
 
@@ -154,6 +158,7 @@ export async function GET(request: NextRequest) {
       SELECT id, title, subject, level, term, duration, target_class AS "targetClass", weeks, concept,
              activities_f AS "activitiesF", activities_i AS "activitiesI",
              activities_n AS "activitiesN", activities_e AS "activitiesE",
+             video_url AS "videoUrl",
              teacher_name AS "teacherName", created_at AS "createdAt", updated_at AS "updatedAt",
              class_id AS "classId", publication_status AS "publicationStatus", published_at AS "publishedAt",
              jsonb_array_length(objectives_k) + jsonb_array_length(objectives_s)
@@ -185,12 +190,13 @@ export async function POST(request: NextRequest) {
         id, title, subject, level, term, duration, target_class, weeks, concept,
         objectives_k, objectives_s, objectives_a, objectives_ap, vocabulary, sentences,
         activities_lead, activities_f, activities_i, activities_n, activities_e, activities_wrap,
+        video_url,
         teacher_name, teacher_email, teacher_id, class_id, publication_status, published_at
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9,
         $10::jsonb, $11::jsonb, $12::jsonb, $13::jsonb, $14::jsonb, $15::jsonb,
-        $16, $17, $18, $19, $20, $21, $22, $23, $24::uuid, $25::uuid, $26,
-        CASE WHEN $26='published' THEN NOW() ELSE NULL END
+        $16, $17, $18, $19, $20, $21, $22, $23, $24, $25::uuid, $26::uuid, $27,
+        CASE WHEN $27='published' THEN NOW() ELSE NULL END
       ) RETURNING ${detailSelect}
     `, values)
     return NextResponse.json({ lesson: result.rows[0] }, { status: 201 })
@@ -217,10 +223,11 @@ export async function PATCH(request: NextRequest) {
         vocabulary = $13::jsonb, sentences = $14::jsonb,
         activities_lead = $15, activities_f = $16, activities_i = $17,
         activities_n = $18, activities_e = $19, activities_wrap = $20,
-        class_id = $23::uuid, publication_status = $24,
-        published_at = CASE WHEN $24='published' THEN COALESCE(published_at,NOW()) ELSE NULL END,
+        video_url = $21,
+        class_id = $24::uuid, publication_status = $25,
+        published_at = CASE WHEN $25='published' THEN COALESCE(published_at,NOW()) ELSE NULL END,
         updated_at = NOW()
-      WHERE id = $21${ownership(user, 22)}
+      WHERE id = $22${ownership(user, 23)}
       RETURNING ${detailSelect}
     `, [...values, classId, lesson.publicationStatus])
     if (!result.rows[0]) throw new ApiError('ไม่พบแผนการสอนหรือคุณไม่มีสิทธิ์แก้ไข', 404, 'NOT_FOUND')

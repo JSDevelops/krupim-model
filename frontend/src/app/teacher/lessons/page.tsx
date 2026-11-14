@@ -40,6 +40,7 @@ type LessonDetail = Omit<LessonSummary, 'objectiveCount' | 'vocabularyCount' | '
   activitiesN: string
   activitiesE: string
   activitiesWrap: string
+  videoUrl?: string
   publicationStatus: 'draft' | 'published'
 }
 
@@ -64,6 +65,7 @@ type LessonForm = {
   activitiesN: string
   activitiesE: string
   activitiesWrap: string
+  videoUrl: string
   publicationStatus: 'draft' | 'published'
 }
 
@@ -71,6 +73,7 @@ const emptyForm: LessonForm = {
   title: '', subject: '', level: '', term: '', duration: '', targetClass: '', weeks: '', concept: '',
   objectivesK: '', objectivesS: '', objectivesA: '', objectivesAP: '', vocabulary: '', sentences: '',
   activitiesLead: '', activitiesF: '', activitiesI: '', activitiesN: '', activitiesE: '', activitiesWrap: '',
+  videoUrl: '',
   publicationStatus: 'draft',
 }
 
@@ -99,6 +102,7 @@ function formFromDetail(lesson: LessonDetail): LessonForm {
     vocabulary: (lesson.vocabulary || []).join('\n'), sentences: (lesson.sentences || []).join('\n'),
     activitiesLead: lesson.activitiesLead || '', activitiesF: lesson.activitiesF || '', activitiesI: lesson.activitiesI || '',
     activitiesN: lesson.activitiesN || '', activitiesE: lesson.activitiesE || '', activitiesWrap: lesson.activitiesWrap || '',
+    videoUrl: lesson.videoUrl || '',
     publicationStatus: lesson.publicationStatus || 'draft',
   }
 }
@@ -453,6 +457,22 @@ export default function TeacherLessonsPage() {
                   <label><span><b>F</b> Familiarize</span><textarea rows={3} value={form.activitiesF} onChange={event => updateField('activitiesF', event.target.value)} /></label>
                   <label><span><b>I</b> Interact</span><textarea rows={3} value={form.activitiesI} onChange={event => updateField('activitiesI', event.target.value)} /></label>
                   <label><span><b>N</b> Navigate</span><textarea rows={3} value={form.activitiesN} onChange={event => updateField('activitiesN', event.target.value)} /></label>
+                  <label style={{ gridColumn: '1 / -1' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <b>🎬 ลิงก์วิดีโอสถานการณ์ YouTube ประจำสัปดาห์ (Navigate Video Scenario)</b>
+                      <small style={{ color: '#265d49', fontWeight: 600 }}>(ความยาวแนะนำไม่เกิน 3 นาที)</small>
+                    </span>
+                    <input
+                      type="url"
+                      value={form.videoUrl}
+                      onChange={event => updateField('videoUrl', event.target.value)}
+                      placeholder="เช่น https://www.youtube.com/watch?v=... หรือ https://youtu.be/..."
+                      style={{ marginTop: '4px' }}
+                    />
+                    <small style={{ color: '#687d72', marginTop: '4px', display: 'block', fontSize: '11.5px' }}>
+                      วางลิงก์ YouTube ที่ครูบันทึกเองในห้องปฏิบัติการหรือคลิปตัวอย่างมาตรฐาน เพื่อให้นักเรียนดูตัวอย่างและฝึกพูดประโยคในขั้น N
+                    </small>
+                  </label>
                   <label><span><b>E</b> Exhibit</span><textarea rows={3} value={form.activitiesE} onChange={event => updateField('activitiesE', event.target.value)} /></label>
                   <label><span><b>W</b> ขั้นสรุป</span><textarea rows={3} value={form.activitiesWrap} onChange={event => updateField('activitiesWrap', event.target.value)} /></label>
                 </div>}

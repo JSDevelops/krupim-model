@@ -18,8 +18,23 @@ type Scenario = {
   role: string
   description: string
   activity: string
+  videoUrl?: string
   vocabulary: VocabularyItem[]
   sentences: string[]
+}
+
+export function getYouTubeEmbedUrl(url?: string | null): string | null {
+  if (!url) return null
+  const trimmed = url.trim()
+  if (!trimmed) return null
+  const match = trimmed.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/)
+  if (match && match[1]) {
+    return `https://www.youtube.com/embed/${match[1]}?rel=0&modestbranding=1&enablejsapi=1`
+  }
+  if (/^[\w-]{11}$/.test(trimmed)) {
+    return `https://www.youtube.com/embed/${trimmed}?rel=0&modestbranding=1&enablejsapi=1`
+  }
+  return null
 }
 
 function getScenarioWeek(s: Scenario, fallbackIndex: number): number {
@@ -44,7 +59,7 @@ type SpeechRecognitionInstance = {
   stop: () => void
 }
 type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance
-type DetailView = 'overview' | 'decision' | 'vocabulary' | 'sentences'
+type DetailView = 'video' | 'overview' | 'decision' | 'vocabulary' | 'sentences'
 
 type DecisionOption = {
   text: string
@@ -224,6 +239,7 @@ const defaultScenarios: Scenario[] = [
     role: 'Food & Beverage Staff',
     description: 'ฝึกจัดลำดับอุปกรณ์บนโต๊ะอาหารแบบตะวันตก พร้อมเรียนรู้คำศัพท์และประโยคที่ใช้แนะนำการจัดโต๊ะแก่ผู้รับบริการ',
     activity: 'สำรวจอุปกรณ์ เรียนรู้หลัก Outside-In และทดลองอธิบายการจัดโต๊ะด้วยภาษาอังกฤษ',
+    videoUrl: 'https://www.youtube.com/watch?v=Gk6Wq_8zE_s',
     vocabulary: [
       { word: 'Cutlery', pronunciation: '/ˈkʌtləri/', meaning: 'ชุดมีด ช้อน และส้อมสำหรับรับประทานอาหาร' },
       { word: 'Glassware', pronunciation: '/ˈɡlɑːsweə(r)/', meaning: 'เครื่องแก้วที่ใช้บนโต๊ะอาหาร' },
@@ -243,6 +259,7 @@ const defaultScenarios: Scenario[] = [
     role: 'Restaurant Host',
     description: 'ฝึกขั้นตอนการต้อนรับ ตรวจสอบการจอง และนำผู้รับบริการไปยังโต๊ะอย่างสุภาพและเป็นมืออาชีพ',
     activity: 'ฝึกเลือกประโยคต้อนรับให้เหมาะสมกับสถานการณ์และน้ำเสียงของผู้รับบริการ',
+    videoUrl: 'https://www.youtube.com/watch?v=kYv9rE2t3e8',
     vocabulary: [
       { word: 'Reservation', pronunciation: '/ˌrezəˈveɪʃn/', meaning: 'การจองโต๊ะล่วงหน้า' },
       { word: 'Available', pronunciation: '/əˈveɪləbl/', meaning: 'ว่างหรือพร้อมให้บริการ' },
@@ -261,6 +278,7 @@ const defaultScenarios: Scenario[] = [
     role: 'Service Staff',
     description: 'ฝึกฟังปัญหา กล่าวขอโทษ และเสนอแนวทางแก้ไขอย่างเป็นระบบ เพื่อสร้างความมั่นใจให้ผู้รับบริการ',
     activity: 'วิเคราะห์สถานการณ์ เลือกคำตอบที่เหมาะสม และฝึกพูดประโยคขอโทษอย่างจริงใจ',
+    videoUrl: 'https://www.youtube.com/watch?v=0k1L7G9g7x8',
     vocabulary: [
       { word: 'Apologize', pronunciation: '/əˈpɒlədʒaɪz/', meaning: 'กล่าวขอโทษ' },
       { word: 'Inconvenience', pronunciation: '/ˌɪnkənˈviːniəns/', meaning: 'ความไม่สะดวก' },
@@ -295,7 +313,7 @@ export default function NavigatePage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedPhase, setSelectedPhase] = useState<'all' | 'phase1' | 'phase2' | 'phase3' | 'phase4'>('all')
   const [activeScenarioId, setActiveScenarioId] = useState<string | null>(null)
-  const [activeView, setActiveView] = useState<DetailView>('overview')
+  const [activeView, setActiveView] = useState<DetailView>('video')
   const [expandedWord, setExpandedWord] = useState<number | null>(null)
   const [speakingId, setSpeakingId] = useState<string | null>(null)
   const [recordingId, setRecordingId] = useState<string | null>(null)
@@ -366,7 +384,7 @@ export default function NavigatePage() {
   function openScenario(id: string) {
     stopMedia()
     setActiveScenarioId(id)
-    setActiveView('overview')
+    setActiveView('video')
     setExpandedWord(null)
     setSelectedDecision(null)
     setDecisionAnswered(false)
@@ -375,7 +393,7 @@ export default function NavigatePage() {
   function closeScenario() {
     stopMedia()
     setActiveScenarioId(null)
-    setActiveView('overview')
+    setActiveView('video')
     setExpandedWord(null)
     setSelectedDecision(null)
     setDecisionAnswered(false)
@@ -429,7 +447,21 @@ export default function NavigatePage() {
     recognition.onstart = () => setRecordingId(id)
     recognition.onresult = event => {
       const transcript = event.results[0]?.[0]?.transcript || ''
-      setResults(previous => ({ ...previous, [id]: evaluateSentence(sentence, transcript) }))
+      const evalRes = evaluateSentence(sentence, transcript)
+      setResults(previous => ({ ...previous, [id]: evalRes }))
+      if (evalRes.score >= 75) {
+        toast.success(`ยอดเยี่ยม! ความถูกต้อง ${evalRes.score}% (+5 สมรรถนะ)`)
+        void authenticatedFetch('/api/student/interact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            score: evalRes.score,
+            sentence: `Scenario Speech: ${sentence}`,
+          }),
+        }).catch(() => undefined)
+      } else {
+        toast.warning(`ความถูกต้อง ${evalRes.score}% ลองฟังเสียงต้นแบบแล้วฝึกพูดใหม่อีกครั้ง`)
+      }
     }
     recognition.onerror = event => {
       console.warn('Speech recognition error:', event.error)
@@ -447,6 +479,7 @@ export default function NavigatePage() {
     const dilemma: Dilemma = resolveScenarioDilemma(activeScenario)
 
     const tabs: Array<{ id: DetailView; label: string; count?: number }> = [
+      { id: 'video', label: '🎬 วิดีโอ & ฝึกพูด' },
       { id: 'overview', label: 'ภาพรวม' },
       { id: 'decision', label: 'ตัดสินใจแก้ปัญหา' },
       { id: 'vocabulary', label: 'คำศัพท์', count: activeScenario.vocabulary.length },
@@ -478,6 +511,149 @@ export default function NavigatePage() {
           <div style={{ display: 'flex', justifyContent: 'flex-end', margin: '8px 0 14px' }}>
             <SpeechSpeedToggle currentRate={speechRate} onRateChange={setSpeechRate} />
           </div>
+
+          {activeView === 'video' && (
+            <section className={styles.contentSection}>
+              <header className={styles.sectionHeader}>
+                <div>
+                  <span className={styles.sectionEyebrow}>Video Scenario & Speech Practice</span>
+                  <h2>วิดีโอสถานการณ์จำลอง & ฝึกบทสนทนา</h2>
+                  <p>ชมคลิปตัวอย่างจำลองสถานการณ์จากคุณครู และฝึกพูดประโยคบริการรายบุคคล</p>
+                </div>
+              </header>
+
+              <div className={styles.videoSection}>
+                {getYouTubeEmbedUrl(activeScenario.videoUrl) ? (
+                  <div className={styles.videoCard}>
+                    <div className={styles.videoWrapper}>
+                      <iframe
+                        src={getYouTubeEmbedUrl(activeScenario.videoUrl)!}
+                        title={`วิดีโอสถานการณ์: ${activeScenario.title}`}
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    </div>
+                    <div className={styles.videoContextBox}>
+                      <div className={styles.videoContextItem}>
+                        <span className={styles.videoContextLabel}>
+                          <NavigateIcon name="target" size={14} /> แนวทางการเรียนรู้ & ประเด็นสังเกตจากคลิป
+                        </span>
+                        <p className={styles.videoContextText}>
+                          {activeScenario.activity || 'สังเกตการจัดอุปกรณ์ ลำดับขั้นตอนการบริการ และการสื่อสารอย่างสุภาพ'}
+                        </p>
+                      </div>
+                      <div className={styles.videoContextItem}>
+                        <span className={styles.videoContextLabel}>
+                          <NavigateIcon name="info" size={14} /> โครงเรื่องสถานการณ์ (Storyline)
+                        </span>
+                        <p className={styles.videoContextText}>{activeScenario.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={styles.emptyVideoBox}>
+                    <NavigateIcon name="video" size={36} />
+                    <strong>คุณครูยังไม่ได้แนบวิดีโอตัวอย่างสำหรับสถานการณ์นี้</strong>
+                    <p>สามารถอ่านโครงเรื่อง แนวทางการเรียนรู้ และเริ่มฝึกพูดประโยคบริการด้านล่างได้ทันที</p>
+                  </div>
+                )}
+
+                <div className={styles.videoPracticeCard}>
+                  <div className={styles.videoPracticeHeader}>
+                    <div>
+                      <h3 style={{ fontSize: 16, margin: 0, color: '#153f30', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <NavigateIcon name="mic" size={18} /> ฝึกพูดประโยคจากสถานการณ์นี้ (Speaking Practice)
+                      </h3>
+                      <p style={{ margin: '4px 0 0', fontSize: 12.5, color: '#566e62' }}>
+                        ฟังเสียงต้นแบบเจ้าของภาษา กดปุ่มไมโครโฟนเพื่อพูดตาม และรับการตรวจประเมินความถูกต้องรายคำแบบทันที
+                      </p>
+                    </div>
+                  </div>
+
+                  {activeScenario.sentences.length > 0 ? (
+                    <div className={styles.sentenceList} style={{ marginTop: 14 }}>
+                      {activeScenario.sentences.map((sentence, index) => {
+                        const id = `video-sentence-${activeScenario.id}-${index}`
+                        const audioId = `audio-${id}`
+                        const result = results[id]
+                        const recording = recordingId === id
+                        return (
+                          <article className={styles.sentenceCard} key={`${sentence}-${index}`}>
+                            <div className={styles.sentenceTop}>
+                              <span className={styles.sentenceIndex}>{String(index + 1).padStart(2, '0')}</span>
+                              <p>{sentence}</p>
+                            </div>
+                            <div className={styles.sentenceActions}>
+                              <button
+                                type="button"
+                                className={styles.secondaryButton}
+                                onClick={() => speak(sentence, audioId)}
+                              >
+                                <NavigateIcon name={speakingId === audioId ? 'pause' : 'volume'} size={16} />
+                                {speakingId === audioId ? 'หยุดเสียง' : 'ฟังเสียงต้นแบบ'}
+                              </button>
+                              <button
+                                type="button"
+                                className={`${styles.primaryButton} ${recording ? styles.recording : ''}`}
+                                onClick={() => practice(sentence, id)}
+                              >
+                                <NavigateIcon name={recording ? 'pause' : 'mic'} size={16} />
+                                {recording ? 'หยุดบันทึกเสียง' : 'พูดตามและประเมิน'}
+                              </button>
+                            </div>
+                            {result && (
+                              <div className={styles.resultPanel} aria-live="polite">
+                                <div className={styles.resultHeader}>
+                                  <span className={styles.resultIcon}>
+                                    <NavigateIcon name={result.score >= 75 ? 'check' : 'refresh'} />
+                                  </span>
+                                  <div>
+                                    <strong>ผลการประเมิน</strong>
+                                    <span>
+                                      {result.score >= 75
+                                        ? 'ทำได้ดีมาก ผ่านเกณฑ์สมรรถนะ (+5 แต้ม)'
+                                        : 'ฟังเสียงต้นแบบแล้วลองพูดใหม่อีกครั้ง'}
+                                    </span>
+                                  </div>
+                                  <b>{result.score}%</b>
+                                </div>
+                                <div className={styles.wordResults}>
+                                  {result.words.map((word, wordIndex) => (
+                                    <span
+                                      className={word.correct ? styles.correct : styles.incorrect}
+                                      key={`${word.word}-${wordIndex}`}
+                                    >
+                                      {word.word}
+                                    </span>
+                                  ))}
+                                </div>
+                                <p className={styles.transcript}>ระบบได้ยิน: “{result.transcript}”</p>
+                              </div>
+                            )}
+                          </article>
+                        )
+                      })}
+                    </div>
+                  ) : (
+                    <div className={styles.emptyState}>
+                      <NavigateIcon name="message" size={24} />
+                      <strong>ยังไม่มีประโยคฝึกในสถานการณ์นี้</strong>
+                      <span>คุณครูสามารถเพิ่มประโยคได้จากหน้าแผนการสอน</span>
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: 20, display: 'flex', justifyContent: 'flex-end' }}>
+                    <Link
+                      className={styles.launchButton}
+                      href={`/simulation?scenario=${encodeURIComponent(activeScenario.id)}`}
+                    >
+                      เข้าสู่ห้อง 3D Simulation <NavigateIcon name="arrowRight" size={17} />
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
 
           {activeView === 'decision' && (
             <section className={styles.contentSection}>

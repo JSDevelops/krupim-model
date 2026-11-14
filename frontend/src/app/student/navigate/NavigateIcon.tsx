@@ -16,6 +16,7 @@ type IconName =
   | 'target'
   | 'user'
   | 'volume'
+  | 'video'
 
 export default function NavigateIcon({ name, size = 20 }: { name: IconName; size?: number }) {
   const common = {
@@ -48,6 +49,7 @@ export default function NavigateIcon({ name, size = 20 }: { name: IconName; size
     target: <><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4" /><path d="M12 3v2M21 12h-2M12 21v-2M3 12h2" /></>,
     user: <><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>,
     volume: <><path d="M11 5 6 9H3v6h3l5 4Z" /><path d="M15 9.5a4 4 0 0 1 0 5M18 7a7 7 0 0 1 0 10" /></>,
+    video: <><rect x="2" y="4" width="15" height="16" rx="2" /><path d="m22 7-5 5 5 5V7z" /></>,
   }
 
   return <svg {...common}>{paths[name]}</svg>
