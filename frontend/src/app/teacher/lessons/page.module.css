@@ -136,6 +136,75 @@
 .editorFooter { min-height: 66px; display: flex; align-items: center; justify-content: flex-end; gap: 9px; padding: 12px 18px; border-top: 1px solid #e8eeea; background: #fbfcfb; }
 .editorFooter > button:first-child { min-height: 40px; padding: 8px 14px; color: #5f6f66; border: 1px solid #dce4df; border-radius: 10px; background: #fff; cursor: pointer; font: inherit; font-size: 10px; font-weight: 800; }
 
+.navigateGroup {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.videoFieldCard {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 10px 12px;
+  background: #f4f8f5;
+  border: 1px solid #cce0d5;
+  border-radius: 10px;
+}
+
+.videoFieldTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.videoFieldTitle {
+  font-size: 10px;
+  font-weight: 700;
+  color: #174b37;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.videoFieldBadge {
+  font-size: 8.5px;
+  font-weight: 700;
+  color: #1f644b;
+  background: #e3ede7;
+  padding: 2px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.videoInput {
+  width: 100%;
+  min-height: 35px;
+  padding: 7px 10px;
+  color: #2b3d32;
+  border: 1px solid #bfd5c9;
+  border-radius: 8px;
+  outline: 0;
+  background: #ffffff;
+  font: inherit;
+  font-size: 10px;
+  line-height: 1.4;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+
+.videoInput:focus {
+  border-color: #28634c;
+  box-shadow: 0 0 0 3px rgba(40, 99, 76, 0.12);
+}
+
+.videoFieldHelp {
+  font-size: 9px;
+  color: #62786d;
+  line-height: 1.4;
+}
+
 .srOnly { width: 1px; height: 1px; position: absolute; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 
 @keyframes shimmer { to { background-position: -200% 0; } }
