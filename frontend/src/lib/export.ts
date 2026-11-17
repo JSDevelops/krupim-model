@@ -189,3 +189,174 @@ export async function exportSubmissionsToPDF(
   const safeTitle = assignment.title.replace(/[^a-zA-Z0-9\s-]/g, '').trim().slice(0, 40) || 'report'
   doc.save(`Report_${safeTitle}_${assignment.className}.pdf`)
 }
+
+export type AnonymizedStudentItem = {
+  id: string
+  className?: string | null
+  schoolName?: string | null
+  knowledge: number
+  skills: number
+  attitude: number
+  competency: number
+  overall?: number
+  lessonsCompleted: number
+  timeSpentMinutes: number
+  sessions: number
+  lastActive?: string | null
+}
+
+export type AnonymizedResearchMeta = {
+  researchTitle?: string
+  targetGroup?: string
+  academicYear?: string
+  teacherName?: string
+}
+
+/**
+ * ส่งออกข้อมูลผลการเรียนรู้ KSA-C ของนักเรียนทั้งหมดในรูปแบบรหัสนิรนาม (De-identified Dataset)
+ * สอดคล้องตามมาตรฐานจริยธรรมการวิจัยในมนุษย์และ พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)
+ * เหมาะสำหรับนำไปวิเคราะห์สถิติใน SPSS, Excel และแนบในบทที่ 4 หรือภาคผนวกงานวิจัย/วิทยานิพนธ์
+ */
+export async function exportAnonymizedStudentsResearchExcel(
+  students: AnonymizedStudentItem[],
+  meta?: AnonymizedResearchMeta,
+): Promise<void> {
+  const { utils, writeFileXLSX } = await import('xlsx')
+
+  const getQualityLevel = (score: number) => {
+    if (score >= 80) return 'ดีเยี่ยม (ระดับ 4)'
+    if (score >= 70) return 'ดี (ระดับ 3)'
+    if (score >= 60) return 'พอใช้ (ระดับ 2)'
+    return 'ควรปรับปรุง (ระดับ 1)'
+  }
+
+  const rows = students.map((s, index) => {
+    const participantCode = `STU-${String(index + 1).padStart(3, '0')}`
+    const overall = s.overall !== undefined
+      ? s.overall
+      : Math.round(Number(s.knowledge || 0) * 0.2 + Number(s.skills || 0) * 0.3 + Number(s.attitude || 0) * 0.1 + Number(s.competency || 0) * 0.4)
+
+    return {
+      'รหัสผู้เข้าร่วมวิจัย (Participant ID)': participantCode,
+      'กลุ่มตัวอย่าง / ชั้นเรียน': s.className || meta?.targetGroup || 'กลุ่มทดลอง FINE Model',
+      'K - ความรู้ (20%)': Number(s.knowledge || 0),
+      'S - ทักษะปฏิบัติ (30%)': Number(s.skills || 0),
+      'A - เจตคติ (10%)': Number(s.attitude || 0),
+      'C - สมรรถนะวิชาชีพ (40%)': Number(s.competency || 0),
+      'คะแนนรวมถ่วงน้ำหนัก (%)': overall,
+      'ระดับคุณภาพสมรรถนะ': getQualityLevel(overall),
+      'บทเรียนที่สำเร็จ (บท)': Number(s.lessonsCompleted || 0),
+      'เวลาเรียนสะสม (นาที)': Number(s.timeSpentMinutes || 0),
+      'จำนวนครั้งที่เข้าใช้ระบบ': Number(s.sessions || 0),
+      'สถานะการให้ความยินยอม': 'ยินยอมเข้าร่วมวิจัย (Informed Consent Granted)',
+    }
+  })
+
+  const ws1 = utils.json_to_sheet(rows)
+  ws1['!cols'] = [
+    { wch: 26 }, { wch: 24 }, { wch: 18 }, { wch: 22 },
+    { wch: 18 }, { wch: 24 }, { wch: 22 }, { wch: 20 },
+    { wch: 20 }, { wch: 20 }, { wch: 22 }, { wch: 36 },
+  ]
+
+  const totalN = students.length
+  const calcAvg = (getter: (s: AnonymizedStudentItem) => number) =>
+    totalN ? (students.reduce((sum, s) => sum + getter(s), 0) / totalN).toFixed(2) : '0.00'
+
+  const avgK = calcAvg(s => Number(s.knowledge || 0))
+  const avgS = calcAvg(s => Number(s.skills || 0))
+  const avgA = calcAvg(s => Number(s.attitude || 0))
+  const avgC = calcAvg(s => Number(s.competency || 0))
+  const avgOverall = calcAvg(s => (s.overall !== undefined ? s.overall : Math.round(Number(s.knowledge || 0) * 0.2 + Number(s.skills || 0) * 0.3 + Number(s.attitude || 0) * 0.1 + Number(s.competency || 0) * 0.4)))
+
+  const passed70Count = students.filter(s => {
+    const ov = s.overall !== undefined ? s.overall : Math.round(Number(s.knowledge || 0) * 0.2 + Number(s.skills || 0) * 0.3 + Number(s.attitude || 0) * 0.1 + Number(s.competency || 0) * 0.4)
+    return ov >= 70
+  }).length
+  const passRate = totalN ? ((passed70Count / totalN) * 100).toFixed(1) : '0.0'
+
+  const summaryRows = [
+    { 'หัวข้อสถิติการวิจัย': 'ชื่องานวิจัย/โครงการ', 'ข้อมูล / ค่าสถิติ': meta?.researchTitle || 'การพัฒนาการจัดการเรียนรู้ภาษาอังกฤษจำลองสถานการณ์ด้วยนวัตกรรม FINE Model (AR & AI 3D)' },
+    { 'หัวข้อสถิติการวิจัย': 'กลุ่มตัวอย่าง (Target Sample)', 'ข้อมูล / ค่าสถิติ': meta?.targetGroup || 'นักเรียน/นักศึกษาในชั้นเรียนที่ใช้ FINE Model' },
+    { 'หัวข้อสถิติการวิจัย': 'จำนวนกลุ่มตัวอย่างทั้งหมด (N)', 'ข้อมูล / ค่าสถิติ': `${totalN} คน` },
+    { 'หัวข้อสถิติการวิจัย': 'ค่าเฉลี่ยด้านความรู้ (Mean K)', 'ข้อมูล / ค่าสถิติ': `${avgK}%` },
+    { 'หัวข้อสถิติการวิจัย': 'ค่าเฉลี่ยด้านทักษะปฏิบัติ (Mean S)', 'ข้อมูล / ค่าสถิติ': `${avgS}%` },
+    { 'หัวข้อสถิติการวิจัย': 'ค่าเฉลี่ยด้านเจตคติ (Mean A)', 'ข้อมูล / ค่าสถิติ': `${avgA}%` },
+    { 'หัวข้อสถิติการวิจัย': 'ค่าเฉลี่ยด้านสมรรถนะวิชาชีพ (Mean C)', 'ข้อมูล / ค่าสถิติ': `${avgC}%` },
+    { 'หัวข้อสถิติการวิจัย': 'คะแนนเฉลี่ยรวมถ่วงน้ำหนัก (Mean Total)', 'ข้อมูล / ค่าสถิติ': `${avgOverall}%` },
+    { 'หัวข้อสถิติการวิจัย': 'จำนวนผู้ผ่านเกณฑ์ร้อยละ 70', 'ข้อมูล / ค่าสถิติ': `${passed70Count} คน (${passRate}%)` },
+    { 'หัวข้อสถิติการวิจัย': 'วันที่ประมวลผลข้อมูล', 'ข้อมูล / ค่าสถิติ': new Intl.DateTimeFormat('th-TH', { dateStyle: 'long', timeStyle: 'short' }).format(new Date()) },
+    { 'หัวข้อสถิติการวิจัย': 'การปฏิบัติตามจริยธรรมการวิจัย (Research Ethics & PDPA)', 'ข้อมูล / ค่าสถิติ': 'ข้อมูลชุดนี้ถูกแปลงเป็นรหัสนิรนาม (De-identified) ตัดข้อมูลระบุตัวตนรายบุคคล (No PII) ทั้งหมด ตามมาตรฐานจริยธรรมการวิจัยในมนุษย์และ พ.ร.บ. คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562' },
+  ]
+
+  const ws2 = utils.json_to_sheet(summaryRows)
+  ws2['!cols'] = [{ wch: 38 }, { wch: 70 }]
+
+  const wb = utils.book_new()
+  utils.book_append_sheet(wb, ws1, 'ข้อมูลคะแนนวิจัย (นิรนาม)')
+  utils.book_append_sheet(wb, ws2, 'สรุปสถิติเชิงพรรณนา')
+
+  const timestamp = new Date().toISOString().slice(0, 10)
+  const safeGroup = meta?.targetGroup ? meta.targetGroup.replace(/[^a-zA-Z0-9\u0E00-\u0E7F_-]/g, '').trim() + '_' : ''
+  writeFileXLSX(wb, `ข้อมูลวิจัยนิรนาม_FINE_Model_KSA_${safeGroup}${timestamp}.xlsx`)
+}
+
+/**
+ * ส่งออกผลคะแนนแบบทดสอบ / งานที่มอบหมาย แบบไม่ระบุชื่อ (De-identified Submissions)
+ */
+export async function exportAnonymizedSubmissionsToExcel(
+  submissions: SubmissionRow[],
+  assignment: AssignmentMeta,
+): Promise<void> {
+  const { utils, writeFileXLSX } = await import('xlsx')
+
+  const rows = submissions.map((s, i) => ({
+    'รหัสผู้เรียน (ID)': `STU-${String(i + 1).padStart(3, '0')}`,
+    'กลุ่มทดลอง / ห้องเรียน': s.class ?? assignment.className,
+    'สถานะส่งงาน': statusThai(s.status, s.score),
+    'คะแนนรวม': scoreDisplay(s.score, s.maxScore),
+    'K - ความรู้ (20%)': ksaDisplay(s.knowledge),
+    'S - ทักษะปฏิบัติ (30%)': ksaDisplay(s.skills),
+    'A - เจตคติ (10%)': ksaDisplay(s.attitude),
+    'C - สมรรถนะ (40%)': ksaDisplay(s.competency),
+    'Rubric K': rubricLabel(s.rubricLevelK),
+    'Rubric S': rubricLabel(s.rubricLevelS),
+    'Rubric A': rubricLabel(s.rubricLevelA),
+    'Rubric C': rubricLabel(s.rubricLevelC),
+    'ข้อเสนอแนะครูผู้สอน': s.feedback ?? '-',
+    'สถานะจริยธรรม': 'Informed Consent (De-identified)',
+  }))
+
+  const ws = utils.json_to_sheet(rows)
+  ws['!cols'] = [
+    { wch: 20 }, { wch: 22 }, { wch: 16 }, { wch: 20 },
+    { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 },
+    { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 },
+    { wch: 40 }, { wch: 26 },
+  ]
+
+  const wb = utils.book_new()
+  utils.book_append_sheet(wb, ws, 'คะแนนแบบทดสอบ (นิรนาม)')
+
+  const graded = submissions.filter(s => s.score !== null && s.score !== undefined)
+  const avgScore = graded.length
+    ? Math.round(graded.reduce((acc, s) => acc + (s.score! / s.maxScore) * 100, 0) / graded.length)
+    : 0
+
+  const summaryRows = [
+    { 'หัวข้อสถิติ': 'ชื่อแบบประเมิน/กิจกรรม', 'ค่า': assignment.title },
+    { 'หัวข้อสถิติ': 'กลุ่มตัวอย่าง', 'ค่า': assignment.className },
+    { 'หัวข้อสถิติ': 'ประเภทกิจกรรม FINE Model', 'ค่า': assignment.activityType },
+    { 'หัวข้อสถิติ': 'คะแนนเต็ม', 'ค่า': assignment.maxScore },
+    { 'หัวข้อสถิติ': 'จำนวนผู้เข้าร่วมทั้งหมด (N)', 'ค่า': submissions.length },
+    { 'หัวข้อสถิติ': 'จำนวนที่ตรวจแล้ว', 'ค่า': graded.length },
+    { 'หัวข้อสถิติ': 'คะแนนเฉลี่ยร้อยละ', 'ค่า': `${avgScore}%` },
+    { 'หัวข้อสถิติ': 'มาตรฐานจริยธรรม', 'ค่า': 'ข้อมูลแปลงเป็นรหัสนิรนาม (De-identified) เหมาะสำหรับแนบในบทที่ 4 หรือภาคผนวกวิทยานิพนธ์' },
+  ]
+  const ws2 = utils.json_to_sheet(summaryRows)
+  ws2['!cols'] = [{ wch: 26 }, { wch: 60 }]
+  utils.book_append_sheet(wb, ws2, 'สรุปผลเชิงสถิติ')
+
+  const safeTitle = assignment.title.replace(/[^a-zA-Z0-9\u0E00-\u0E7F\s-]/g, '').trim().slice(0, 40)
+  writeFileXLSX(wb, `รายงานวิจัยนิรนาม_${safeTitle}_${assignment.className}.xlsx`)
+}

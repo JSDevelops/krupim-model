@@ -13,6 +13,7 @@ import AdminIcon from "@/components/admin/AdminIcon";
 import { confirmAction } from "@/components/AppConfirmDialog";
 import { authenticatedFetch } from "@/lib/api";
 import { toast } from "sonner";
+import { exportAnonymizedStudentsResearchExcel } from "@/lib/export";
 import styles from "../management.module.css";
 
 type Classroom = {
@@ -104,6 +105,7 @@ export default function TeacherStudentsPage() {
   const [managedStudent, setManagedStudent] = useState<Student | null>(null);
   const [fromClassId, setFromClassId] = useState("");
   const [toClassId, setToClassId] = useState("");
+  const [exportingResearch, setExportingResearch] = useState(false);
 
   const loadStudents = useCallback(async () => {
     setLoading(true);
@@ -308,6 +310,51 @@ export default function TeacherStudentsPage() {
     }
   }
 
+  async function handleExportResearch() {
+    if (visibleStudents.length === 0) {
+      toast.warning("ไม่มีข้อมูลนักเรียนสำหรับส่งออก");
+      return;
+    }
+    setExportingResearch(true);
+    try {
+      const selectedClassroom = classrooms.find((c) => c.id === classFilter);
+      const targetGroup =
+        classFilter === "all"
+          ? "ทุกห้องเรียน"
+          : selectedClassroom?.name || classFilter;
+
+      await exportAnonymizedStudentsResearchExcel(
+        visibleStudents.map((s) => ({
+          id: s.id,
+          className:
+            s.classrooms.map((c) => c.className).join(", ") || targetGroup,
+          schoolName: s.schoolName,
+          knowledge: s.knowledge,
+          skills: s.skills,
+          attitude: s.attitude,
+          competency: s.competency,
+          overall: s.overall,
+          lessonsCompleted: s.lessonsCompleted,
+          timeSpentMinutes: s.timeSpentMinutes,
+          sessions: s.sessions,
+          lastActive: s.lastActive,
+        })),
+        {
+          targetGroup,
+        },
+      );
+      toast.success("ส่งออกข้อมูลวิจัยนิรนาม (Excel) สำเร็จแล้ว", {
+        description: `รวมนักเรียน ${visibleStudents.length} คน พร้อมสรุปสถิติเชิงพรรณนาสำหรับเล่มวิจัย`,
+      });
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "ส่งออกข้อมูลวิจัยไม่สำเร็จ",
+      );
+    } finally {
+      setExportingResearch(false);
+    }
+  }
+
   return (
     <main className={styles.page}>
       <header className={styles.pageHeader}>
@@ -319,6 +366,23 @@ export default function TeacherStudentsPage() {
           </span>
         </div>
         <div className={styles.headerActions}>
+          <button
+            className={styles.secondaryButton}
+            type="button"
+            onClick={handleExportResearch}
+            disabled={loading || exportingResearch || visibleStudents.length === 0}
+            title="ส่งออกผลคะแนน KSA-C และสถิติการเรียนรู้แบบไม่ระบุชื่อ (De-identified) สำหรับบทที่ 4 หรือภาคผนวกวิทยานิพนธ์"
+            style={{
+              borderColor: "#a3c9b4",
+              color: "#164e38",
+              backgroundColor: "#f2f9f5",
+            }}
+          >
+            <AdminIcon name="download" size={16} />
+            {exportingResearch
+              ? "กำลังส่งออก..."
+              : "ส่งออกข้อมูลวิจัย (นิรนาม .xlsx)"}
+          </button>
           <button
             className={styles.secondaryButton}
             type="button"

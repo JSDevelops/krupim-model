@@ -14,7 +14,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import AdminIcon, { type AdminIconName } from "@/components/admin/AdminIcon";
 import { confirmAction } from "@/components/AppConfirmDialog";
 import { authenticatedFetch } from "@/lib/api";
-import { exportSubmissionsToExcel, exportSubmissionsToPDF } from "@/lib/export";
+import { exportSubmissionsToExcel, exportSubmissionsToPDF, exportAnonymizedSubmissionsToExcel } from "@/lib/export";
 import { toast } from "sonner";
 import styles from "../management.module.css";
 
@@ -255,7 +255,7 @@ function TeacherAssignmentsContent() {
   const [showReturnDialog, setShowReturnDialog] = useState(false);
   const [returnReason, setReturnReason] = useState("");
   // Phase 2: Export busy state
-  const [exporting, setExporting] = useState<"excel" | "pdf" | null>(null);
+  const [exporting, setExporting] = useState<"excel" | "pdf" | "anonymized" | null>(null);
   // Phase 3: Smart Assistance state
   const [aiTone, setAiTone] = useState<"encouraging" | "academic" | "concise">("encouraging");
   const [aiGeneratingFeedback, setAiGeneratingFeedback] = useState(false);
@@ -981,6 +981,46 @@ function TeacherAssignmentsContent() {
       toast.success("ดาวน์โหลด PDF เรียบร้อยแล้ว");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "ส่งออก PDF ไม่สำเร็จ");
+    } finally {
+      setExporting(null);
+    }
+  }
+
+  async function handleExportAnonymizedExcel() {
+    if (!reportAssignment || submissions.length === 0) return;
+    setExporting("anonymized");
+    try {
+      await exportAnonymizedSubmissionsToExcel(
+        submissions.map((s) => ({
+          studentName: s.studentName,
+          email: s.email,
+          class: reportAssignment.className,
+          status: s.status,
+          score: s.score ?? null,
+          maxScore: reportAssignment.maxScore,
+          feedback: s.feedback,
+          rubricLevelK: s.rubricLevelK,
+          rubricLevelS: s.rubricLevelS,
+          rubricLevelA: s.rubricLevelA,
+          rubricLevelC: s.rubricLevelC,
+          submittedAt: s.submittedAt ? formatDate(s.submittedAt, true) : null,
+          gradedAt: s.gradedAt ? formatDate(s.gradedAt, true) : null,
+        })),
+        {
+          title: reportAssignment.title,
+          className: reportAssignment.className,
+          activityType: reportAssignment.activityType,
+          maxScore: reportAssignment.maxScore,
+          dueDate: reportAssignment.dueDate,
+        },
+      );
+      toast.success("ส่งออกรายงานวิจัยนิรนาม (Excel) สำเร็จแล้ว", {
+        description: "ข้อมูลตัดชื่อระบุตัวตนออก สอดคล้องตามจริยธรรมวิจัยและการคุ้มครองข้อมูล PDPA",
+      });
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "ส่งออกข้อมูลวิจัยไม่สำเร็จ",
+      );
     } finally {
       setExporting(null);
     }
@@ -1776,6 +1816,17 @@ function TeacherAssignmentsContent() {
               >
                 <AdminIcon name="download" size={14} />
                 {exporting === "pdf" ? "กำลังส่งออก..." : "Export PDF"}
+              </button>
+              <button
+                type="button"
+                className={styles.exportBtn}
+                style={{ background: "#f2f9f5", borderColor: "#a3c9b4", color: "#164e38" }}
+                onClick={handleExportAnonymizedExcel}
+                disabled={exporting !== null || submissions.length === 0}
+                title="ส่งออกผลคะแนนแบบไม่ระบุชื่อผู้เรียน (De-identified) เหมาะสำหรับบทที่ 4 หรือภาคผนวกวิทยานิพนธ์"
+              >
+                <AdminIcon name="download" size={14} />
+                {exporting === "anonymized" ? "กำลังส่งออก..." : "ข้อมูลวิจัยนิรนาม (.xlsx)"}
               </button>
               <button
                 type="button"
